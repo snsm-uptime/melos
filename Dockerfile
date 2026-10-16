@@ -10,7 +10,7 @@ RUN pip install --no-cache-dir uv
 
 WORKDIR /app
 
-# Instala las dependencias primero para aprovechar la caché de Docker
+# Install dependencies first to take advantage of the Docker cache
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
@@ -18,7 +18,7 @@ COPY src/ ./src/
 
 EXPOSE 8501
 
-# La clave de la API no va en la imagen: pásala al arrancar con --env-file
+# The API key does not go in the image: pass it at startup with --env-file
 CMD ["streamlit", "run", "src/app.py", \
      "--server.address=0.0.0.0", \
      "--server.port=8501", \
