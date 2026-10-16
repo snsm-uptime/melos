@@ -1,8 +1,6 @@
 # Melos — Product specification
 
 > Instructions for the coding agent. Build exactly what is described here. If something is ambiguous or missing, **ask before assuming**. Items marked *Should* or *Later* are not built until the *Must* items in Appendix C are done.
->
-> Previous version (Streamlit, Spanish): `dev/docs/prd-v0-es.md`.
 
 **Problem.** A couple that plans a weekly menu wastes time building the shopping list by hand from several recipes, with quantities that depend on how many people eat.
 
