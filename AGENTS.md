@@ -2,93 +2,141 @@
 
 ## What this project is
 
-[One sentence: what problem it solves and for whom. Example: "An assistant that
-answers the questions of the residents of association X based on its bylaws".]
+A shared home cookbook for a non-technical couple: it turns recipes from text,
+web pages or cookbook photos into structured recipes, answers questions about
+them, and builds a weekly shopping list scaled to the number of people.
+
+The full specification is in `dev/docs/prd.md`. Read it before building
+anything. If the spec and this file disagree, ask.
 
 ## How it is built
 
-- Python 3.12, managed with [uv](https://docs.astral.sh/uv/).
-- Interface: Streamlit.
-- AI: Gemini API with the `google-genai` SDK. The model is in the `MODELO`
-  constant in `src/app.py`.
-- The full specification is in `dev/docs/prd.md`.
+The architecture, structure, auth layer and tooling are reused from
+[`snsm-uptime/finance-dashboard`](https://github.com/snsm-uptime/finance-dashboard)
+(see `dev/docs/prd.md` §1.2–1.3).
+
+- **Three Compose services:** `db` (PostgreSQL 16 + pgvector), `api`
+  (FastAPI, Python 3.12, uv) and `ui` (Next.js 16, App Router, React 19,
+  Tailwind 4). The ui is a BFF: the browser only talks to `ui`, which proxies
+  `/api/*` to `api`.
+- **api is hexagonal:** `domain/` (pure rules, no I/O) → `application/` (use
+  cases + ports) → `adapters/` (Gemini, web fetch, PDF, Postgres, SMTP) →
+  `api/routes/` (HTTP).
+- **AI:** Gemini API with the `google-genai` SDK, only through ports in
+  `adapters/llm/`. Model names come from settings (`GEMINI_CHAT_MODEL`,
+  `GEMINI_EMBED_MODEL`), never hard-coded.
+- **Auth:** reused from finance-dashboard unchanged (session cookie issued by
+  the api, argon2, password reset by email, config-gated email verification,
+  rate limits).
 
 ## Project structure
 
 ```text
 .
-├── AGENTS.md          # Instructions for agents (this file)
-├── CLAUDE.md          # Redirects to AGENTS.md
-├── GEMINI.md          # Redirects to AGENTS.md
-├── README.md          # Guide for end users
-├── Dockerfile         # Container build for deployment
-├── .dockerignore      # Files left out of the container image
-├── .gitignore         # Files left out of git (.env, .venv, ...)
-├── pyproject.toml     # Metadata and dependencies (managed by uv)
-├── uv.lock            # Exact versions; committed to the repository
-├── .python-version    # Python version used by uv (3.12)
-├── dev/               # Support material for the work, not part of the app
-│   ├── docs/
-│   │   ├── prd.md     # Product specification
-│   │   └── *.pdf      # Course brief, rubric, guidelines and templates
-│   ├── memory/        # Daily memory files (ddMMYY.md) and history.md
-│   └── skills/        # Work states based on intent (see "Work states" section)
-└── src/
-    ├── app.py         # The whole Streamlit app
-    └── .env           # Local GEMINI_API_KEY; NEVER committed to git
+├── AGENTS.md                  # Instructions for agents (this file)
+├── CLAUDE.md, GEMINI.md       # Redirect to AGENTS.md
+├── README.md                  # Guide for end users
+├── .env.example               # Every variable, no real values
+├── .env                       # Local secrets; NEVER committed
+├── docker-compose.yml         # db | api | ui
+├── docker-compose.{dev,prod,test,worktree,worktree-lite}.yml
+├── scripts/                   # compose-*.sh and worktree/* helpers
+├── .github/workflows/ci.yml
+├── api/
+│   ├── pyproject.toml, uv.lock, .python-version (3.12), Dockerfile, alembic.ini
+│   ├── domain/                # Pure rules: recipe, cart, catalog, toon, render
+│   ├── application/           # Use cases + ports.py
+│   ├── adapters/              # llm/, web/, pdf/, persistence/, email/
+│   ├── api/                   # FastAPI app, routes/, schemas/, deps, settings
+│   ├── scripts/               # entrypoint, seed data (invented only)
+│   └── tests/
+├── ui/
+│   ├── package.json, Dockerfile, Dockerfile.dev
+│   ├── app/                   # Pages + BFF routes under app/api/
+│   └── components/
+└── dev/                       # Support material, not part of the app
+    ├── docs/                  # prd.md, prd-v0-es.md, course PDFs
+    ├── prompts/               # Working notes and prompts from Sebastián
+    ├── memory/                # Daily memory files (ddMMYY.md) and history.md
+    └── skills/                # Work states and procedures
 ```
-
-Everything that is not the app lives in `dev/`. The app itself lives in `src/`.
 
 If a file does not exist yet, create it following this structure. Do not add
 new folders without asking.
 
-## Development environment (uv)
+## Development environment
 
-ALWAYS use `uv` for Python and dependencies. Do not use `pip`, `pip install`,
-`python -m venv` or `requirements.txt` for local work.
+Prerequisites: Docker with Compose v2, `uv`, Node/`npm`.
 
-- Prepare the environment (creates `.venv` and installs what `uv.lock` says):
-
-  ```bash
-  uv sync
-  ```
-
-- Add a library: `uv add <package>` (updates `pyproject.toml` and `uv.lock`).
-  To remove it: `uv remove <package>`. Never edit `uv.lock` by hand.
-- Run any Python command inside the environment: `uv run <command>`
-  (do not activate `.venv` by hand).
-- Start the app in development, loading the key from `src/.env`:
+- First time: `cp .env.example .env`, fill in the values, and create the data
+  directory outside the repo:
+  `mkdir -p "${MELOS_DATA:-$HOME/melos}/pgdata"`.
+- Start the hot-reload stack (`db`, `api`, `ui`):
 
   ```bash
-  uv run --env-file src/.env streamlit run src/app.py
+  ./scripts/compose-up.sh        # foreground
+  ./scripts/compose-up.sh -d     # detached
+  ./scripts/compose-down.sh      # stop, keep data
+  ./scripts/compose-restart.sh -d
   ```
 
-  The app runs at <http://localhost:8501> and reloads when changes are saved.
+  UI at <http://localhost:3000>, API at <http://localhost:8000>. Health:
+  `/health` on both. There is no reverse proxy in development.
+- Parallel work in a git worktree: `./scripts/worktree/worktree-add.sh <slug>
+  <branch>`, then the bootstrap script it prints (see `scripts/worktree/README.md`).
 
-## Rules
+### Python (api/) — uv only
 
-- The API key ALWAYS goes in secrets: the `GEMINI_API_KEY` environment
-  variable (locally, inside `src/.env`; in deployment, in the platform's
-  secrets). Never in the code, the README or the chat. Do not read or display
-  the contents of `src/.env`.
-- `src/.env` and `.venv/` must be in `.gitignore`.
-- Every API call goes inside a `try/except` and shows a clear message to the
-  user.
-- UI text is in English, simple, written for someone without technical
-  knowledge.
-- Small changes: one per request. When finished, explain what you changed and
-  why.
-- If you add a library, do it with `uv add` and say so.
-- Do not use real personal data. For testing, invent examples.
+ALWAYS use `uv`. Never use `pip`, `python -m venv` or `requirements.txt`.
+
+- `cd api && uv sync --group dev`
+- Add a library: `uv add <package>` (or `uv add --group dev <package>`).
+  Never edit `uv.lock` by hand.
+- Run anything with `uv run <command>`.
+
+### Node (ui/)
+
+- `cd ui && npm install`; add a library with `npm install <package>`.
 
 ## How to check that it works
 
-- Start the app with the development command above and test it in the browser.
-- Test cases (input → expected result):
-  1. [input] → [expected response]
-  2. [input] → [expected response]
-  3. [off-topic input] → [the app kindly says it cannot help with that]
+- **api, in Compose (canonical):**
+  `docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api`
+- **api, on the host:** `cd api && uv run pytest -q` (needs a reachable
+  Postgres; see the README) and `uv run ruff check .`
+- **ui:** `cd ui && npm test && npm run lint && npm run typecheck`
+- **In the browser:** start the stack and walk the acceptance criteria in
+  `dev/docs/prd.md` §2. Key cases:
+  1. Text with "a pinch of salt" and "2 large onions" → a draft where salt
+     has a vague note and onion is `2 unit large`.
+  2. Recipe A with 3 tbsp flour + recipe B with 1 cup flour in the cart →
+     `flour — 1 cup + 3 tbsp` with chips A and B.
+  3. "What's the weather tomorrow?" as a recipe → "That doesn't look like a
+     recipe." and nothing is saved.
+  4. Asking something the recipes don't cover → the assistant says the
+     recipes don't cover it.
+
+## Rules
+
+- Secrets live only in `.env` (local) or the server's environment
+  (production): `GEMINI_API_KEY`, `POSTGRES_PASSWORD`, `SESSION_SECRET`, SMTP
+  credentials. Never in code, the README, fixtures or the chat. Do not read or
+  display the contents of `.env`.
+- `.env`, `.venv/` and `node_modules/` must be in `.gitignore`.
+- English for code, documentation and UI. UI text is simple, for someone
+  without technical knowledge. Recipe content may be English or Spanish.
+- `domain/` imports nothing from `adapters/`, `api/`, FastAPI, SQLAlchemy or
+  the Gemini SDK.
+- Every external call (Gemini, web fetch, SMTP) goes through a port, and its
+  errors map to a clear user message (`dev/docs/prd.md` §1.7). The user's
+  input is never lost on error.
+- Every kitchen-scoped query checks membership in `application/`. A
+  non-member gets `404`.
+- Schema changes go through Alembic migrations.
+- Small changes: one per request. When finished, explain what you changed and
+  why.
+- If you add a library, say so.
+- Do not use real personal data. For tests and seeds, invent examples.
 
 ## Work states (skills)
 
@@ -108,6 +156,9 @@ If Sebastián names a state (for example, "Creating mode"), use that one.
 At the start of the answer, state in one line which state you used (for
 example, "State: 🧩 Reasoning / Logic").
 
+Other procedures in `dev/skills/`: `save_to_memory.md` (memory) and
+`toon_guidelines.md` (TOON format for recipes sent to the model).
+
 ## Memory (dev/memory/)
 
 Every relevant interaction is persisted in `dev/memory/`, using the procedure
@@ -121,11 +172,17 @@ in `dev/skills/save_to_memory.md`.
   `dev/memory/ddMMYY.md`, and creates it if missing. Run it from the repo root.
 - Escape single quotes in the content (`'` becomes `'\''`) so the command does
   not break.
-- Never save secrets, API keys, `src/.env` contents or real personal data.
+- Never save secrets, API keys, `.env` contents or real personal data.
 - Append only. Do not edit or delete existing lines without asking.
 
 ## What not to do
 
 - Do not delete or rewrite the README without asking.
-- Do not change the model or the architecture without asking.
+- Do not change the Gemini model, the auth layer or the architecture
+  (services, layers, dependencies) without asking.
+- Do not add auth features that finance-dashboard doesn't have.
+- Do not add reverse proxy, TLS or server configuration; the server is managed
+  separately.
+- Do not copy finance-dashboard's seed credentials or finance domain code
+  (cards, statements, budgets, splits, FX, bank adapters).
 - Do not push or deploy without my review first.

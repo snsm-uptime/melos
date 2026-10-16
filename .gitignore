@@ -60,13 +60,13 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-src/.env
 
 # uv
 .python-version.bak
 
-# Streamlit
-.streamlit/secrets.toml
+# Node / Next.js
+node_modules/
+.next/
 
 # Jupyter
 .ipynb_checkpoints
