@@ -178,8 +178,8 @@ message(id, conversation_id, role: user|assistant, content, found?, cited_recipe
 
 **Configuration** (in `.env`, never in code or the repo):
 - `GEMINI_API_KEY`
-- `GEMINI_CHAT_MODEL`
-- `GEMINI_EMBED_MODEL`
+- `GEMINI_CHAT_MODEL` (`gemini-2.5-flash-lite`)
+- `GEMINI_EMBED_MODEL` (`gemini-embedding-2`)
 - `GEMINI_EMBED_DIM` (768)
 
 **Structured output.** The extractor and the chat use `response_schema` built from Pydantic models, kept flat (no complex unions) because Gemini supports only part of JSON Schema.
@@ -476,7 +476,7 @@ steps[3]: "Fry the garlic in oil.","Add the tomato and cook 5 minutes.","Add the
 
 ## Appendix D · Open items (decide before building that part)
 
-- The exact Gemini chat and embedding models, and checking that the embedding model supports 768 dimensions.
-- The TOON encoder: write a small one in Python (the default), or use a Python port if a maintained one exists.
+- ✓ **Decided:** Gemini chat model `gemini-2.5-flash-lite`, embedding model `gemini-embedding-2` (supports 768 dimensions).
+- ✓ **Decided:** TOON encoder: use `python-toon` library (https://github.com/xaviviro/python-toon).
 - Whether `DELETE /auth/me` (account deletion) appears in the UI for v1.
 - MCP (Model Context Protocol) for the API layer to enable the UI agent to create, update, and interact with recipes and cart: v1 scope or later?
