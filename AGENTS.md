@@ -15,10 +15,12 @@ The architecture, structure, auth layer and tooling are reused from
 [`snsm-uptime/finance-dashboard`](https://github.com/snsm-uptime/finance-dashboard)
 (see `dev/docs/prd.md` §1.2–1.3).
 
-- **Three Compose services:** `db` (PostgreSQL 16 + pgvector), `api`
-  (FastAPI, Python 3.12, uv) and `ui` (Next.js 16, App Router, React 19,
-  Tailwind 4). The ui is a BFF: the browser only talks to `ui`, which proxies
-  `/api/*` to `api`.
+- **Four Compose services:** `db` (PostgreSQL 16 + pgvector), `api`
+  (FastAPI, Python 3.12, uv), `ui` (Next.js 16, App Router, React 19,
+  Tailwind 4), and `mcp` (FastAPI, Python 3.12, isolated for security).
+  The ui is a BFF: the browser only talks to `ui`, which proxies
+  `/api/*` to `api`. External AI providers (Claude, ChatGPT) reach the `mcp`
+  service via `/mcp` endpoints with per-user API key authentication.
 - **api is hexagonal:** `domain/` (pure rules, no I/O) → `application/` (use
   cases + ports) → `adapters/` (Gemini, web fetch, PDF, Postgres, SMTP) →
   `api/routes/` (HTTP).
@@ -54,6 +56,11 @@ The architecture, structure, auth layer and tooling are reused from
 │   ├── package.json, Dockerfile, Dockerfile.dev
 │   ├── app/                   # Pages + BFF routes under app/api/
 │   └── components/
+├── mcp/                       # MCP server (separate container, isolated)
+│   ├── pyproject.toml, uv.lock, .python-version (3.12), Dockerfile
+│   ├── server/                # MCP server entry point + tools
+│   ├── tools/                 # Recipe, cart, conversation tools
+│   └── tests/
 └── dev/                       # Support material, not part of the app
     ├── docs/                  # prd.md, prd-v0-es.md, course PDFs
     ├── prompts/               # Working notes and prompts from Sebastián
@@ -71,7 +78,7 @@ Prerequisites: Docker with Compose v2, `uv`, Node/`npm`.
 - First time: `cp .env.example .env`, fill in the values, and create the data
   directory outside the repo:
   `mkdir -p "${MELOS_DATA:-$HOME/melos}/pgdata"`.
-- Start the hot-reload stack (`db`, `api`, `ui`):
+- Start the hot-reload stack (`db`, `api`, `ui`, `mcp`):
 
   ```bash
   ./scripts/compose-up.sh        # foreground
@@ -80,7 +87,7 @@ Prerequisites: Docker with Compose v2, `uv`, Node/`npm`.
   ./scripts/compose-restart.sh -d
   ```
 
-  UI at <http://localhost:3000>, API at <http://localhost:8000>. Health:
+  UI at <http://localhost:3000>, API at <http://localhost:8000>, MCP at <http://localhost:9000>. Health:
   `/health` on both. There is no reverse proxy in development.
 - Parallel work in a git worktree: `./scripts/worktree/worktree-add.sh <slug>
   <branch>`, then the bootstrap script it prints (see `scripts/worktree/README.md`).
