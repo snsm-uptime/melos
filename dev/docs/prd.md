@@ -121,10 +121,12 @@ The PDF template reads the domain model, not TOON. `api/Dockerfile` installs Wea
 ```
 Postgres → domain Recipe
   ├─ to_toon()        → LLM context (extraction catalog, chat context)
-  ├─ to_embed_text()  → "Title. Categories. Ingredients. First step." → pgvector
+  ├─ to_embed_text() via EmbedTextStrategy → pgvector
   └─ to_markdown()    → PDF template, Markdown copy
 ```
-Embeddings use plain text, not TOON: the syntax adds noise and no meaning. The TOON encoder follows `dev/skills/toon_guidelines.md` and is tested against its examples.
+Embeddings are generated via the `EmbedTextStrategy` port (Strategy pattern), defaulting to TOON format for consistency with Gemini's chat context. The strategy is swappable to A/B test approaches (e.g., TOON vs. plain text). Each `recipe_embedding` records which strategy was used, input token count, and creation date to measure differences in search quality and token efficiency. The TOON encoder follows `dev/skills/using_toon.md` and is tested against its examples.
+
+**F. Vector search filtering.** Before pgvector similarity search, SQLAlchemy pre-filters recipes by: `kitchen_id` (required), `created_by` (optional, for "my recipes" view), `created_after`/`created_before` (date range), `ingredient_ids` (recipes containing specific ingredients), `category_ids` (optional), and `exclude_recipe_ids` (e.g., to avoid re-citing @mentioned recipes). The filtered set then undergoes cosine similarity search, limited to the top 5 results.
 
 ### 1.6 Data model
 
@@ -141,7 +143,7 @@ recipe_ingredient(id, recipe_id, ingredient_id, quantity?, unit?, size?, prepara
                   vague_note?, position)
 recipe_category(recipe_id, category_id)
 step(id, recipe_id, position, text)
-recipe_embedding(recipe_id, model, embedding vector(768), updated_at)  pk(recipe_id, model)
+recipe_embedding(recipe_id, model, embedding vector(768), strategy_used, input_tokens, updated_at)  pk(recipe_id, model)
 cart(id, kitchen_id unique, people ≥ 1)
 cart_item(cart_id, recipe_id, meals ≥ 1)                               pk(cart_id, recipe_id)
 conversation(id, kitchen_id, user_id, title, archived_at?, created_at, updated_at)
@@ -477,3 +479,4 @@ steps[3]: "Fry the garlic in oil.","Add the tomato and cook 5 minutes.","Add the
 - The exact Gemini chat and embedding models, and checking that the embedding model supports 768 dimensions.
 - The TOON encoder: write a small one in Python (the default), or use a Python port if a maintained one exists.
 - Whether `DELETE /auth/me` (account deletion) appears in the UI for v1.
+- MCP (Model Context Protocol) for the API layer to enable the UI agent to create, update, and interact with recipes and cart: v1 scope or later?
