@@ -156,8 +156,7 @@ If Sebastián names a state (for example, "Creating mode"), use that one.
 At the start of the answer, state in one line which state you used (for
 example, "State: 🧩 Reasoning / Logic").
 
-Other procedures in `dev/skills/`: `save_to_memory.md` (memory) and
-`toon_guidelines.md` (TOON format for recipes sent to the model).
+Other procedures in `dev/skills/`: `save_to_memory.md` (memory), `using_toon.md` (object encoding for LLMs), and `toon_guidelines.md` (reference).
 
 ## Memory (dev/memory/)
 
