@@ -174,6 +174,13 @@ in `dev/skills/save_to_memory.md`.
 - Never save secrets, API keys, `.env` contents or real personal data.
 - Append only. Do not edit or delete existing lines without asking.
 
+### Agent behavior with memory
+
+- **Session start:** Read all files in `dev/memory/` to load context from prior
+  interactions.
+- **After each response:** Review `dev/skills/save_to_memory.md` and consider
+  what, if anything, should be saved about this interaction.
+
 ## What not to do
 
 - Do not delete or rewrite the README without asking.
