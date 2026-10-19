@@ -114,6 +114,153 @@ As a code reviewer, I want to know which patterns come from finance-dashboard so
 - API endpoints remain: `/auth/register`, `/auth/sign-in`, `/auth/sign-out`, `/auth/session`, `/auth/me`, password reset and verification endpoints
 - The auth layer is **not modified** without explicit approval
 
+#### FR5.1: Auth Layer File Inventory
+
+All auth files listed below are copied from `finance-dashboard/api/` to `melos/api/` unchanged. No file-level customizations are made (environment variable prefixes are handled via `.env` and `api/settings.py`, not by modifying individual auth files).
+
+| File Path | Module Purpose | Handles |
+|-----------|---|---|
+| `api/routes/auth.py` | HTTP endpoints | POST /auth/register, /auth/sign-in, /auth/sign-out, /auth/session, /auth/me, password reset, email verification endpoints |
+| `api/schemas/auth.py` | Request/response models | Pydantic models: RegisterRequest, SignInRequest, SessionResponse, PasswordResetRequest, etc. |
+| `api/deps.py` | Dependency injection | `get_current_user()`, `get_session()`, rate limit middleware, authenticated request guards |
+| `api/settings.py` | Config loading | Environment variables: `SESSION_*`, `AUTH_RATE_LIMIT_*`, `TRUSTED_PROXY_IPS`, `AUTH_CLIENT_IP_HEADER` |
+| `api/app.py` | FastAPI setup | Rate limit middleware registration, session middleware setup |
+| `application/email_verification.py` | Email verification logic | Request, confirm, and validate email verification tokens (1-hour expiry) |
+| `application/password_reset.py` | Password reset logic | Request and complete password reset flows (email with token, 1-hour expiry) |
+| `application/preferences.py` | Profile management | Get/set user alias, theme, locale; user preferences CRUD |
+| `application/rate_limit.py` | Rate limiting service | Rate limit checks per IP and per user; status code 429 on exceeded limits |
+| `adapters/persistence/sessions.py` | Session storage | SQLAlchemy session table, httpOnly cookie creation, session validation |
+| `adapters/persistence/password_hasher.py` | Password hashing | Argon2-cffi wrapper for password hashing and verification |
+| `adapters/persistence/password_reset.py` | Password reset storage | SQLAlchemy table and queries for password reset tokens |
+| `adapters/persistence/email_verification.py` | Email verification storage | SQLAlchemy table and queries for email verification tokens |
+| `adapters/persistence/repositories.py` | Data access | `SqlAlchemyAuthUserRepository`, `SqlAlchemySignupRepository` (user CRUD, credential lookup) |
+| `adapters/persistence/models.py` | Database models | SQLAlchemy models: `User`, `Session`, `PasswordResetToken`, `EmailVerification` |
+| `adapters/email/smtp.py` | Email sending | SMTP adapter for password reset and verification emails |
+| `adapters/email/settings.py` | Email config | Environment variables: `SMTP_*`, `PUBLIC_APP_URL`, email template defaults |
+
+**Copy Instructions:**
+1. Copy entire `api/routes/auth.py` as-is
+2. Copy entire `api/schemas/auth.py` as-is
+3. Copy `api/deps.py`, `api/settings.py`, and `api/app.py` as-is (they contain auth logic mixed with other setup)
+4. Copy all files under `application/` that relate to auth (email_verification.py, password_reset.py, preferences.py, rate_limit.py)
+5. Copy entire `adapters/persistence/` directory as-is (includes all auth models and repositories)
+6. Copy entire `adapters/email/` directory as-is
+7. **Do not customize any of these files.** Config differences (e.g., `FH_` → `MELOS_` prefix) are handled via `.env` and `api/settings.py` environment variable loading, not by editing individual modules.
+8. **Do not remove or rename any of these files**, as they are a dependency of other layers.
+
+#### FR5.2: Frontend Auth Components to Copy
+
+All frontend auth files listed below are copied from `finance-dashboard/ui/` to `melos/ui/` with minimal adaptations. Adaptations are file-level only (localStorage key renaming, language toggle removal); no route or logic structure changes.
+
+| File Path | Type | Purpose | Adaptations for Melos |
+|-----------|------|---------|-----|
+| `app/sign-in/page.tsx` | Page | Sign-in page entry point | None |
+| `app/sign-in/SignInForm.tsx` | Component | Login form with email/password fields | None |
+| `app/sign-in/SignInChrome.tsx` | Component | Sign-in layout wrapper | None |
+| `app/sign-in/signInClient.ts` | Utility | Client-side sign-in logic | None |
+| `app/sign-up/page.tsx` | Page | Sign-up page entry point | None |
+| `app/forgot-password/page.tsx` | Page | Forgot password entry point | None |
+| `app/forgot-password/ForgotPasswordForm.tsx` | Component | Forgot password form | None |
+| `app/reset-password/page.tsx` | Page | Reset password entry point | None |
+| `app/reset-password/ResetPasswordForm.tsx` | Component | Reset password form (token validation) | None |
+| `app/verify/page.tsx` | Page | Email verification entry point | None |
+| `app/verify/VerifyForm.tsx` | Component | Email verification form | None |
+| `app/account/page.tsx` | Page | User profile/account management page | Remove language toggle UI; keep theme/alias/photo |
+| `components/AppShell.tsx` | Component | Main layout wrapper, session initialization | None |
+| `components/AppShell.test.tsx` | Test | AppShell tests | None |
+| `components/PreferencesProvider.tsx` | Context | User preferences, theme, locale, photo | Rename localStorage keys: `fh_theme_cache` → `melos_theme_cache`, `fh_lang_cache` → `melos_lang_cache`; remove `setLanguage()` function; default locale to English |
+| `components/AccountMenu.tsx` | Component | User dropdown menu in header | Remove language selector dropdown; keep theme, logout, account link |
+| `components/AccountMenu.test.tsx` | Test | AccountMenu tests | Update snapshot if language selector removed |
+| `components/RedirectIfAuthenticated.tsx` | Component | Route guard redirecting authenticated users | None |
+| `lib/session.ts` | Utility | Session utilities and types | None |
+| `lib/authBff.ts` | Utility | BFF auth proxy (cookie forwarding, IP header validation) | None |
+| `lib/authBff.test.ts` | Test | BFF auth tests | None |
+| `app/api/auth/sign-in/route.ts` | BFF Route | Proxy to POST /auth/sign-in backend | None |
+| `app/api/auth/sign-in/route.test.ts` | Test | Sign-in route tests | None |
+| `app/api/auth/register/route.ts` | BFF Route | Proxy to POST /auth/register backend | None |
+| `app/api/auth/register/route.test.ts` | Test | Register route tests | None |
+| `app/api/auth/sign-out/route.ts` | BFF Route | Proxy to POST /auth/sign-out backend | None |
+| `app/api/auth/sign-out/route.test.ts` | Test | Sign-out route tests | None |
+| `app/api/auth/session/route.ts` | BFF Route | Proxy to GET /auth/session backend | None |
+| `app/api/auth/session/route.test.ts` | Test | Session route tests | None |
+| `app/api/auth/me/route.ts` | BFF Route | Proxy to GET /auth/me backend (current user) | None |
+| `app/api/auth/me/route.test.ts` | Test | Me route tests | None |
+| `app/api/auth/verify/request/route.ts` | BFF Route | Proxy to POST /auth/verify/request backend | None |
+| `app/api/auth/verify/confirm/route.ts` | BFF Route | Proxy to POST /auth/verify/confirm backend | None |
+| `app/api/auth/verify/route.test.ts` | Test | Verify route tests | None |
+| `app/api/auth/password-reset/route.ts` | BFF Route | Proxy to POST /auth/password-reset backend | None |
+| `app/api/auth/password-reset/route.test.ts` | Test | Password reset route tests | None |
+
+**Copy Instructions:**
+1. Copy all files listed above from finance-dashboard/ui/ to melos/ui/ maintaining directory structure
+2. Edit `components/PreferencesProvider.tsx`:
+   - Line 20: `const THEME_CACHE_KEY = "fh_theme_cache"` → `const THEME_CACHE_KEY = "melos_theme_cache"`
+   - Line 21: `const LANG_CACHE_KEY = "fh_lang_cache"` → `const LANG_CACHE_KEY = "melos_lang_cache"`
+   - Remove or stub out `setLanguage()` function (keep function signature but make it a no-op or remove the UI call)
+   - Default `locale` to `"en"` only
+3. Edit `components/AccountMenu.tsx`:
+   - Remove language selector dropdown/toggle UI
+   - Keep theme toggle, profile link, sign-out button
+4. Edit `app/account/page.tsx`:
+   - Remove language selection UI section
+   - Keep alias, theme, photo management UI
+5. No environment variable renaming needed (authBff.ts uses `AUTH_CLIENT_IP_HEADER` and `API_INTERNAL_URL`, not FH_-prefixed vars)
+6. **Do not customize BFF routes** — they proxy directly to the FastAPI backend; configuration is in the backend's `api/settings.py`
+
+#### FR5.3: Minimal Customization Scope
+
+The auth layer is copied as-is from finance-dashboard and is **not modified** without explicit written approval from Sebastián. This section defines the strict boundaries for what may be changed without approval and how developers should handle the manual copy process.
+
+**Off-Limits (Require Pre-Approval):**
+- Session cookie behavior: httpOnly flag, Secure flag, SameSite policy, cookie name, cookie lifetime
+- Password hashing algorithm and configuration: argon2-cffi parameters, salt rounds, memory/time cost settings
+- Rate limit policy thresholds: limits per IP, limits per user, window duration, status codes returned
+- Database schema for auth tables: `user`, `session`, `password_reset_token`, `email_verification`, `preferences` table structure, column types, constraints
+- API endpoint signatures: `/auth/*` paths, HTTP method, parameter names, response structure
+
+**Permitted Without Pre-Approval (Code Review Sufficient):**
+- Configuration via `.env` and `api/settings.py`: loading environment variables, choosing between optional features (e.g., `EMAIL_VERIFICATION_REQUIRED`), selecting SMTP provider
+- Test changes: adding tests, updating test data, refactoring test structure
+- Documentation: comments, docstrings, README updates explaining auth patterns
+- Code formatting: linting, import reorganization, style compliance (must pass ruff)
+- Non-critical bug fixes: typos, logic bugs that do not alter intended behavior, missing error handling for edge cases
+- Type hints and type safety improvements: adding or fixing type annotations without changing logic
+
+**Approval Process:**
+- Changes to **permitted areas** require standard code review approval via pull request
+- Changes to **off-limits areas** require explicit written pre-approval from Sebastián **before** opening a pull request
+- If a developer is unsure whether a change is permitted, they should ask in a GitHub issue or discussion before implementing
+
+**Common Mistakes to Avoid:**
+
+Do not perform a naive find-and-replace of environment variable prefixes (e.g., `FH_` → `MELOS_`) in auth files. The configuration layer handles this for you:
+
+1. **Environment variable names in code** (e.g., `os.getenv("FH_SESSION_SECRET")`):
+   - These reference environment variables defined in `.env`
+   - The `.env` file contains `SESSION_SECRET=<value>` (no prefix in the variable name itself)
+   - The `api/settings.py` file loads these variables and does NOT need manual renaming
+   - **Do not edit individual auth files to rename `FH_` → `MELOS_`**; this breaks the code
+
+2. **Settings class attributes** (e.g., in `api/settings.py`):
+   - Attributes like `session_secret`, `auth_rate_limit_register_max` are already prefix-agnostic
+   - Environment variable loading is centralized in `settings.py`
+   - **Do not edit settings.py unless you are updating the application-wide configuration schema** (requires pre-approval)
+
+3. **Database column names** (e.g., `fh_session_id`, `fh_user_id`):
+   - If column names contain `fh_` prefix, they are part of the schema and cannot be changed without a migration
+   - **Do not rename columns in the schema; request pre-approval if this is necessary**
+
+**Example:**
+```python
+# ❌ WRONG: Do not do this in api/routes/auth.py
+settings = Settings()
+cookie_secret = os.getenv("MELOS_SESSION_SECRET")  # <-- Manually renamed prefix
+
+# ✅ RIGHT: Settings class handles prefix-agnostic loading
+settings = Settings()
+cookie_secret = settings.session_secret  # <-- Use the settings object
+```
+
 ### FR6: UI Shell and Component Reuse
 - **Framework**: Next.js 16.2.12 with App Router (not Pages Router), Turbopack bundler in dev
 - **Styling**: Tailwind CSS 4.3.3 with PostCSS, dark mode support via CSS variables
@@ -212,6 +359,18 @@ Clarifications made during specification refinement phase:
 - **Q3: Development Seeding** → **A:** Seed test user + sample kitchen + 3–5 recipes + ingredient catalog + populated cart + conversation history + archived shopping list for comprehensive local testing
 - **Q4: Database Migrations** → **A:** API entrypoint auto-runs `alembic upgrade head` on startup (reused from finance-dashboard); developers do not run migrations manually
 - **Q5: MCP in Development** → **A:** MCP service runs in dev Compose (all 4 services: db, api, ui, mcp) for end-to-end testing of external AI integrations locally
+- **Q6: Auth Layer File Inventory** → **A:** Add enumerated file inventory (FR5.1) listing exact paths, modules, and what each handles; no file-level customizations needed (config via .env and api/settings.py)
+- **Q7: Frontend Auth Components to Copy** → **A:** Exact file paths from finance-dashboard/ui/ for auth pages (sign-in, sign-up, forgot-password, reset-password, verify, account), session utilities (AppShell, PreferencesProvider, AccountMenu, session.ts, authBff.ts), and BFF proxy routes. Adaptations needed: rename localStorage keys (fh_ → melos_), remove language toggle from AccountMenu (English-only for Melos), default locale to "en".
+
+### Session 2026-10-19 (FR5.3 Clarifications)
+
+Clarifications made during minimal customization scope definition:
+
+- **Q1: FR5.3 Section Formalization** → **A:** Add FR5.3 as formal requirement section with explicit permit/prohibit lists for auth layer changes
+- **Q2: Off-Limits Areas** → **A:** Session cookie behavior, password hashing algorithm, rate limit thresholds (policy), auth database schema, and API endpoint signatures are off-limits. Permitted: configuration via .env/settings.py, tests, comments, formatting, non-critical bug fixes.
+- **Q3: Automatic Transformations** → **A:** No automatic file transformations. All copies are manual, one-time operations. Configuration happens via .env and api/settings.py, not via file-level find-replace or build scripts. Document for developers the specific places where env var prefixes appear (and why they should NOT be manually changed).
+- **Q4: Developer Guidance** → **A:** Add "Common Mistakes" subsection to FR5.3 showing examples of what NOT to do (e.g., naive find-replace of FH_ → MELOS_ in auth files), with corrected examples and explanation of how settings.py handles config.
+- **Q5: Approval Process** → **A:** Code review approval sufficient for permitted changes (tests, docs, formatting, non-critical fixes). Explicit pre-approval from Sebastián required only for off-limits areas before opening a PR.
 
 ## Success Criteria
 

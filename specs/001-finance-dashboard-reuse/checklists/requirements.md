@@ -21,8 +21,9 @@
 - [x] Success criteria are technology-agnostic — Success criteria focus on outcomes (consistency, speed, security) not specific tools
 - [x] All acceptance scenarios are defined — Three scenarios cover developer onboarding, feature implementation, and code review
 - [x] Edge cases are identified — Risk section addresses constraint violations and pattern divergence
-- [x] Scope is clearly bounded — Appendix A reuse checklist makes scope explicit
+- [x] Scope is clearly bounded — Appendix A reuse checklist makes scope explicit; FR5.3 defines auth layer customization boundaries
 - [x] Dependencies and assumptions identified — Assumptions section lists dependencies on Python 3.12, email delivery, secrets handling
+- [x] Auth customization scope formalized — FR5.3 defines off-limits areas, permitted changes, approval process, and common mistakes with examples
 
 ## Feature Readiness
 
@@ -62,12 +63,19 @@ All quality criteria are met. The specification is complete, testable, and ready
 - **Docker Compose Dev Overlay**: Gemini and pgvector environment variables injected; Dockerfiles reused
 - **MCP in Development**: MCP service runs in dev Compose for testing external AI integrations locally
 
-**Clarifications Resolved (5 critical ambiguities):**
+**Clarifications Resolved (12 critical ambiguities):**
 1. Dev Compose overlay adaptations (Gemini/pgvector configs added; Dockerfiles reused)
 2. Explicit developer setup steps (copy .env → create data dir → uv sync → npm install → compose-up)
 3. Development seeding includes complete test data for immediate UI/chat/cart testing
 4. Database migrations auto-run on API startup (reused from finance-dashboard)
 5. MCP service runs in development for end-to-end AI integration testing
+6. **Auth Layer File Inventory (FR5.1)**: Explicit enumeration of 16 auth files with paths, modules, and purposes; no file-level customizations (config via .env and api/settings.py)
+7. **Frontend Auth Components (FR5.2)**: Exact file paths from finance-dashboard/ui/ for auth pages, utilities, context, and BFF routes; 3 minimal adaptations: localStorage key renaming (fh_ → melos_), language toggle removal, default locale to English
+8. **FR5.3 Formalization**: Auth layer customization scope added as formal requirement section with off-limits areas (session cookies, password hashing, rate limits policy, auth schema, API signatures) and permitted changes (config, tests, comments, formatting, non-critical fixes)
+9. **Off-Limits Definition**: Session cookie behavior, password hashing algorithm, rate limit thresholds (policy), auth DB schema, API endpoint signatures require pre-approval; config via .env/settings.py is permitted
+10. **Automatic Transformations**: No automatic file renames or transformations; all manual, one-time copy operations; config handled via settings.py, not file-level find-replace
+11. **Developer Guidance**: "Common Mistakes" subsection in FR5.3 with examples of what NOT to do (naive find-replace of FH_ → MELOS_) and corrected approach (use settings.py)
+12. **Approval Process**: Code review sufficient for permitted changes; explicit pre-approval from Sebastián required only for off-limits areas before PR opening
 
 **Validation Status**: ✅ **PASS** (all items now checked; clarifications fully integrated)
 
