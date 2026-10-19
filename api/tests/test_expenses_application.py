@@ -1,0 +1,792 @@
+"""Unit tests for manual expense create + origin-update application services (Story 4.2).
+
+Fake-repo pattern mirrors test_cards_application.py's _FakeCardRepo — Story 3.2
+never got an application-tier test file for expenses, this is the first one.
+"""
+
+from __future__ import annotations
+
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from datetime import UTC, date, datetime
+from decimal import Decimal
+from uuid import UUID, uuid4
+
+import pytest
+from application.cards import CardRecord
+from application.expenses import (
+    CreateManualExpenseCommand,
+    CreateManualExpenseService,
+    DeleteExpenseCommand,
+    DeleteExpenseService,
+    LedgerEntryRecord,
+    ListExpensesCommand,
+    ListExpensesService,
+    ListMemberView,
+    UpdateExpenseCommand,
+    UpdateExpenseOriginCommand,
+    UpdateExpenseOriginService,
+    UpdateExpenseService,
+)
+from application.fx_service import MaterializeFxService
+from application.lists import ListRecord, MembershipRecord
+from domain.dates import today_costa_rica_iso
+from domain.errors import (
+    ExpenseNotDeletableError,
+    InvalidManualExpenseError,
+    NotEntryPayerError,
+    NotListMemberError,
+    SubjectNotFoundError,
+)
+
+
+class _FakeBccrClient:
+    def get_rate(self, rate_date, currency):
+        return None
+
+    def get_nearest_prior_rate(self, rate_date, currency):
+        return None
+
+    def supported_currencies(self) -> list[str]:
+        return ["USD"]
+
+
+@dataclass
+class _FakeExpenseRepo:
+    list_id: UUID
+    member_ids: list[UUID]
+    cards: list[CardRecord] = field(default_factory=list)
+    entries: dict[UUID, LedgerEntryRecord] = field(default_factory=dict)
+
+    def get_list(self, list_id: UUID) -> ListRecord | None:
+        if list_id != self.list_id:
+            return None
+        return ListRecord(id=self.list_id, name="Household", owner_id=self.member_ids[0])
+
+    def list_member_ids(self, list_id: UUID) -> list[UUID]:
+        return list(self.member_ids)
+
+    def get_membership(self, list_id: UUID, user_id: UUID) -> MembershipRecord | None:
+        if list_id != self.list_id or user_id not in self.member_ids:
+            return None
+        return MembershipRecord(list_id=list_id, user_id=user_id, role="member")
+
+    def get_list_with_grant(self, grant, list_id: UUID) -> ListRecord:
+        return self.get_list(list_id)
+
+    def list_ledger_entries(self, list_id: UUID) -> list[LedgerEntryRecord]:
+        return list(self.entries.values())
+
+    def list_members_with_alias(self, list_id: UUID) -> list[ListMemberView]:
+        return [ListMemberView(user_id=u, alias=None) for u in self.member_ids]
+
+    def get_ledger_entry_payer(self, *, list_id: UUID, entry_id: UUID) -> UUID | None:
+        existing = self.entries.get(entry_id)
+        if existing is None or existing.list_id != list_id:
+            return None
+        return existing.payer_id
+
+    def get_card_for_owner(self, user_id: UUID, card_id: UUID) -> CardRecord | None:
+        for card in self.cards:
+            if card.id == card_id and card.user_id == user_id:
+                return card
+        return None
+
+    def get_split_override(self, list_id: UUID, subject_kind: str, subject_id: UUID):
+        return None
+
+    def get_stored_default_split(self, list_id: UUID):
+        return None
+
+    def create_ledger_entry(self, *, entry_id: UUID, list_id: UUID, draft, fx) -> LedgerEntryRecord:
+        record = LedgerEntryRecord(
+            id=entry_id,
+            list_id=list_id,
+            amount=draft.amount,
+            currency=draft.currency,
+            normalized_description=draft.normalized_description,
+            payer_id=draft.payer_id,
+            provenance=draft.provenance,
+            line_type=draft.line_type,
+            posted_date=date.fromisoformat(draft.posted_date),
+            created_at=datetime.now(UTC),
+            amount_crc=fx.amount_crc,
+            fx_rate=fx.fx_rate,
+            fx_rate_date=fx.fx_rate_date,
+            fx_fallback=fx.fx_fallback,
+            origin_kind=draft.origin_kind,
+            origin_card_id=draft.origin_card_id,
+        )
+        self.entries[entry_id] = record
+        return record
+
+    def update_ledger_entry_origin(
+        self, *, list_id: UUID, entry_id: UUID, actor_user_id: UUID, origin_kind, origin_card_id
+    ) -> LedgerEntryRecord:
+        existing = self.entries.get(entry_id)
+        if existing is None or existing.list_id != list_id:
+            raise SubjectNotFoundError()
+        if existing.payer_id != actor_user_id:
+            raise NotEntryPayerError()
+        updated = LedgerEntryRecord(
+            id=existing.id,
+            list_id=existing.list_id,
+            amount=existing.amount,
+            currency=existing.currency,
+            normalized_description=existing.normalized_description,
+            payer_id=existing.payer_id,
+            provenance=existing.provenance,
+            line_type=existing.line_type,
+            posted_date=existing.posted_date,
+            created_at=existing.created_at,
+            amount_crc=existing.amount_crc,
+            fx_rate=existing.fx_rate,
+            fx_rate_date=existing.fx_rate_date,
+            fx_fallback=existing.fx_fallback,
+            origin_kind=origin_kind,
+            origin_card_id=origin_card_id,
+        )
+        self.entries[entry_id] = updated
+        return updated
+
+    def get_full_ledger_entry(self, *, list_id: UUID, entry_id: UUID) -> LedgerEntryRecord | None:
+        existing = self.entries.get(entry_id)
+        if existing is None or existing.list_id != list_id:
+            return None
+        return existing
+
+    def update_ledger_entry(
+        self,
+        *,
+        list_id: UUID,
+        entry_id: UUID,
+        amount: Decimal,
+        currency: str,
+        description: str,
+        payer_id: UUID,
+        posted_date: str,
+        fx,
+    ) -> LedgerEntryRecord:
+        existing = self.entries[entry_id]
+        updated = LedgerEntryRecord(
+            id=existing.id,
+            list_id=existing.list_id,
+            amount=amount,
+            currency=currency,
+            normalized_description=description,
+            payer_id=payer_id,
+            provenance=existing.provenance,
+            line_type=existing.line_type,
+            posted_date=date.fromisoformat(posted_date),
+            created_at=existing.created_at,
+            amount_crc=fx.amount_crc,
+            fx_rate=fx.fx_rate,
+            fx_rate_date=fx.fx_rate_date,
+            fx_fallback=fx.fx_fallback,
+            origin_kind=existing.origin_kind,
+            origin_card_id=existing.origin_card_id,
+        )
+        self.entries[entry_id] = updated
+        return updated
+
+    def delete_ledger_entry(self, *, list_id: UUID, entry_id: UUID) -> None:
+        existing = self.entries.get(entry_id)
+        if existing is None or existing.list_id != list_id:
+            raise SubjectNotFoundError()
+        del self.entries[entry_id]
+
+    @contextmanager
+    def atomic(self):
+        yield
+
+
+def _command(
+    repo: _FakeExpenseRepo,
+    actor: UUID,
+    *,
+    payer: UUID | None = None,
+    origin_kind: str | None = None,
+    origin_card_id: UUID | None = None,
+    posted_date: str | None = None,
+) -> CreateManualExpenseCommand:
+    return CreateManualExpenseCommand(
+        actor_user_id=actor,
+        list_id=repo.list_id,
+        amount="10.00",
+        currency="CRC",
+        description="Coffee",
+        payer_id=payer if payer is not None else actor,
+        origin_kind=origin_kind,
+        origin_card_id=origin_card_id,
+        posted_date=posted_date,
+    )
+
+
+def test_create_with_owned_card_succeeds() -> None:
+    actor = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    card = CardRecord(
+        id=uuid4(), user_id=actor, label="My Visa", iban="CR05", created_at=datetime.now(UTC)
+    )
+    repo.cards = [card]
+    service = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+
+    result = service.execute(_command(repo, actor, origin_kind="card", origin_card_id=card.id))
+
+    assert result.origin_kind == "card"
+    assert result.origin_card_id == card.id
+
+
+def test_create_with_card_owned_by_different_user_rejected() -> None:
+    actor = uuid4()
+    stranger = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    foreign_card = CardRecord(
+        id=uuid4(), user_id=stranger, label="Their Card", iban="CR06", created_at=datetime.now(UTC)
+    )
+    repo.cards = [foreign_card]
+    service = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+
+    with pytest.raises(InvalidManualExpenseError):
+        service.execute(_command(repo, actor, origin_kind="card", origin_card_id=foreign_card.id))
+
+
+def test_create_with_cash_origin_succeeds() -> None:
+    actor = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    service = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+
+    result = service.execute(_command(repo, actor, origin_kind="cash"))
+
+    assert result.origin_kind == "cash"
+    assert result.origin_card_id is None
+
+
+def test_create_with_explicit_posted_date_uses_it() -> None:
+    actor = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    service = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+
+    result = service.execute(_command(repo, actor, posted_date="2026-01-15"))
+
+    assert result.posted_date.isoformat() == "2026-01-15"
+
+
+def test_create_with_no_posted_date_defaults_to_today() -> None:
+    actor = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    service = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+
+    result = service.execute(_command(repo, actor))
+
+    assert result.posted_date.isoformat() == today_costa_rica_iso(None)
+
+
+def test_create_with_malformed_posted_date_fails_loud() -> None:
+    actor = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    service = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+
+    with pytest.raises(InvalidManualExpenseError):
+        service.execute(_command(repo, actor, posted_date="not-a-date"))
+
+
+def test_create_with_no_origin_succeeds() -> None:
+    actor = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    service = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+
+    result = service.execute(_command(repo, actor))
+
+    assert result.origin_kind is None
+    assert result.origin_card_id is None
+
+
+def test_update_origin_blank_to_cash_to_card_to_blank() -> None:
+    actor = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    card = CardRecord(
+        id=uuid4(), user_id=actor, label="My Visa", iban="CR05", created_at=datetime.now(UTC)
+    )
+    repo.cards = [card]
+    create_service = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+    created = create_service.execute(_command(repo, actor))
+    assert created.origin_kind is None
+
+    update_service = UpdateExpenseOriginService(repo)
+
+    cash_result = update_service.execute(
+        UpdateExpenseOriginCommand(
+            actor_user_id=actor,
+            list_id=repo.list_id,
+            entry_id=created.id,
+            origin_kind="cash",
+            origin_card_id=None,
+        )
+    )
+    assert cash_result.origin_kind == "cash"
+
+    card_result = update_service.execute(
+        UpdateExpenseOriginCommand(
+            actor_user_id=actor,
+            list_id=repo.list_id,
+            entry_id=created.id,
+            origin_kind="card",
+            origin_card_id=card.id,
+        )
+    )
+    assert card_result.origin_kind == "card"
+    assert card_result.origin_card_id == card.id
+
+    blank_result = update_service.execute(
+        UpdateExpenseOriginCommand(
+            actor_user_id=actor,
+            list_id=repo.list_id,
+            entry_id=created.id,
+            origin_kind=None,
+            origin_card_id=None,
+        )
+    )
+    assert blank_result.origin_kind is None
+    assert blank_result.origin_card_id is None
+
+
+def test_update_origin_on_nonexistent_entry_raises_subject_not_found() -> None:
+    actor = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    service = UpdateExpenseOriginService(repo)
+
+    with pytest.raises(SubjectNotFoundError):
+        service.execute(
+            UpdateExpenseOriginCommand(
+                actor_user_id=actor,
+                list_id=repo.list_id,
+                entry_id=uuid4(),
+                origin_kind="cash",
+                origin_card_id=None,
+            )
+        )
+
+
+def test_update_origin_by_non_member_denied() -> None:
+    actor = uuid4()
+    outsider = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    created = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient())).execute(
+        _command(repo, actor)
+    )
+    service = UpdateExpenseOriginService(repo)
+
+    with pytest.raises(NotListMemberError):
+        service.execute(
+            UpdateExpenseOriginCommand(
+                actor_user_id=outsider,
+                list_id=repo.list_id,
+                entry_id=created.id,
+                origin_kind="cash",
+                origin_card_id=None,
+            )
+        )
+
+
+def test_update_origin_with_card_owned_by_different_user_rejected() -> None:
+    actor = uuid4()
+    stranger = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    foreign_card = CardRecord(
+        id=uuid4(), user_id=stranger, label="Their Card", iban="CR06", created_at=datetime.now(UTC)
+    )
+    repo.cards = [foreign_card]
+    created = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient())).execute(
+        _command(repo, actor)
+    )
+    service = UpdateExpenseOriginService(repo)
+
+    with pytest.raises(InvalidManualExpenseError):
+        service.execute(
+            UpdateExpenseOriginCommand(
+                actor_user_id=actor,
+                list_id=repo.list_id,
+                entry_id=created.id,
+                origin_kind="card",
+                origin_card_id=foreign_card.id,
+            )
+        )
+
+
+def test_create_with_non_self_payer_forces_origin_blank() -> None:
+    """Origin belongs to the payer, not the actor entering the expense on their behalf."""
+    actor = uuid4()
+    payer = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor, payer])
+    card = CardRecord(
+        id=uuid4(), user_id=actor, label="My Visa", iban="CR05", created_at=datetime.now(UTC)
+    )
+    repo.cards = [card]
+    service = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+
+    result = service.execute(
+        _command(repo, actor, payer=payer, origin_kind="card", origin_card_id=card.id)
+    )
+
+    assert result.payer_id == payer
+    assert result.origin_kind is None
+    assert result.origin_card_id is None
+
+
+def test_update_origin_by_non_payer_member_rejected() -> None:
+    """Even a fellow list member can't set origin on an entry they didn't pay."""
+    actor = uuid4()
+    payer = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor, payer])
+    created = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient())).execute(
+        _command(repo, actor, payer=payer)
+    )
+    service = UpdateExpenseOriginService(repo)
+
+    with pytest.raises(NotEntryPayerError):
+        service.execute(
+            UpdateExpenseOriginCommand(
+                actor_user_id=actor,
+                list_id=repo.list_id,
+                entry_id=created.id,
+                origin_kind="cash",
+                origin_card_id=None,
+            )
+        )
+
+
+def test_update_origin_by_non_payer_member_with_unowned_card_still_rejects_as_not_entry_payer() -> (
+    None
+):
+    """Authorization (payer identity) is resolved before input-shape checks like
+    card ownership — a non-payer must always get NotEntryPayerError, never the
+    card-ownership InvalidManualExpenseError, regardless of which card they send."""
+    actor = uuid4()
+    payer = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor, payer])
+    created = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient())).execute(
+        _command(repo, actor, payer=payer)
+    )
+    service = UpdateExpenseOriginService(repo)
+
+    with pytest.raises(NotEntryPayerError):
+        service.execute(
+            UpdateExpenseOriginCommand(
+                actor_user_id=actor,
+                list_id=repo.list_id,
+                entry_id=created.id,
+                origin_kind="card",
+                origin_card_id=uuid4(),
+            )
+        )
+
+
+def test_list_expenses_solo_payer_has_100_percent_and_zero_net() -> None:
+    from domain.expense_lens import POLARITY_ZERO, SHARE_PERCENTAGE
+
+    actor = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    created = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient())).execute(
+        _command(repo, actor)
+    )
+    listed = ListExpensesService(repo).execute(
+        ListExpensesCommand(actor_user_id=actor, list_id=repo.list_id)
+    )
+    assert len(listed.expenses) == 1
+    row = listed.expenses[0]
+    assert row.entry.id == created.id
+    assert row.lens is not None
+    assert row.lens.share_kind == SHARE_PERCENTAGE
+    assert row.lens.share_value == Decimal("100.00")
+    assert row.lens.net_polarity == POLARITY_ZERO
+    assert row.origin_card_label is None
+
+
+def test_list_expenses_card_label_only_for_payer() -> None:
+    actor = uuid4()
+    friend = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor, friend])
+    card = CardRecord(
+        id=uuid4(), user_id=actor, label="Kitchen card", iban="CR05", created_at=datetime.now(UTC)
+    )
+    repo.cards = [card]
+    CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient())).execute(
+        _command(repo, actor, origin_kind="card", origin_card_id=card.id)
+    )
+    as_payer = ListExpensesService(repo).execute(
+        ListExpensesCommand(actor_user_id=actor, list_id=repo.list_id)
+    )
+    as_friend = ListExpensesService(repo).execute(
+        ListExpensesCommand(actor_user_id=friend, list_id=repo.list_id)
+    )
+    assert as_payer.expenses[0].origin_card_label == "Kitchen card"
+    assert as_friend.expenses[0].origin_card_label is None
+    assert as_friend.expenses[0].entry.origin_kind == "card"
+
+
+def test_list_expenses_omits_lens_on_key_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    actor = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient())).execute(
+        _command(repo, actor)
+    )
+
+    def _boom(*_args, **_kwargs):
+        raise KeyError("share")
+
+    monkeypatch.setattr("application.expenses.build_viewer_expense_lens", _boom)
+    listed = ListExpensesService(repo).execute(
+        ListExpensesCommand(actor_user_id=actor, list_id=repo.list_id)
+    )
+    assert len(listed.expenses) == 1
+    assert listed.expenses[0].lens is None
+    assert listed.expenses[0].entry.normalized_description == "Coffee"
+
+
+def test_list_expenses_omits_lens_on_value_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    actor = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient())).execute(
+        _command(repo, actor)
+    )
+
+    def _boom(*_args, **_kwargs):
+        raise ValueError("invalid uuid")
+
+    monkeypatch.setattr("application.expenses.compute_share_allocations", _boom)
+    listed = ListExpensesService(repo).execute(
+        ListExpensesCommand(actor_user_id=actor, list_id=repo.list_id)
+    )
+    assert len(listed.expenses) == 1
+    assert listed.expenses[0].lens is None
+    assert listed.expenses[0].entry.normalized_description == "Coffee"
+
+
+def _ledger_entry(
+    *,
+    list_id: UUID,
+    payer_id: UUID,
+    posted_date: date,
+    statement_id: UUID | None,
+    description: str,
+) -> LedgerEntryRecord:
+    return LedgerEntryRecord(
+        id=uuid4(),
+        list_id=list_id,
+        amount=Decimal("10.00"),
+        currency="CRC",
+        normalized_description=description,
+        payer_id=payer_id,
+        provenance="parser" if statement_id is not None else "hand",
+        line_type="expense",
+        posted_date=posted_date,
+        created_at=datetime.now(UTC),
+        amount_crc=Decimal("10.00"),
+        fx_rate=Decimal("1"),
+        fx_rate_date=None,
+        fx_fallback=False,
+        statement_id=statement_id,
+    )
+
+
+def test_list_expenses_by_statement_id_excludes_overlapping_statement() -> None:
+    """Selecting a statement must isolate that upload, not its date span —
+    a same-day entry from a different statement (or a hand entry) must not
+    leak in, even though a [period_start, period_end] range would include it."""
+    actor = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    walmart = uuid4()
+    other_card = uuid4()
+    shared_date = date(2026, 8, 5)
+    walmart_entry = _ledger_entry(
+        list_id=repo.list_id,
+        payer_id=actor,
+        posted_date=shared_date,
+        statement_id=walmart,
+        description="Walmart groceries",
+    )
+    other_entry = _ledger_entry(
+        list_id=repo.list_id,
+        payer_id=actor,
+        posted_date=shared_date,
+        statement_id=other_card,
+        description="Other card purchase",
+    )
+    hand_entry = _ledger_entry(
+        list_id=repo.list_id,
+        payer_id=actor,
+        posted_date=shared_date,
+        statement_id=None,
+        description="Cash tip",
+    )
+    for entry in (walmart_entry, other_entry, hand_entry):
+        repo.entries[entry.id] = entry
+
+    listed = ListExpensesService(repo).execute(
+        ListExpensesCommand(actor_user_id=actor, list_id=repo.list_id, statement_id=walmart)
+    )
+
+    assert [row.entry.id for row in listed.expenses] == [walmart_entry.id]
+
+
+def test_update_expense_amount_date_payer_and_sign() -> None:
+    actor = uuid4()
+    other = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor, other])
+    create_service = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+    created = create_service.execute(_command(repo, actor))
+
+    update_service = UpdateExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+    updated = update_service.execute(
+        UpdateExpenseCommand(
+            actor_user_id=actor,
+            list_id=repo.list_id,
+            entry_id=created.id,
+            amount="-5.00",
+            currency="CRC",
+            description="Refund",
+            payer_id=other,
+            posted_date="2026-01-15",
+        )
+    )
+
+    assert updated.amount == Decimal("-5.00")
+    assert updated.normalized_description == "Refund"
+    assert updated.payer_id == other
+    assert updated.posted_date == date(2026, 1, 15)
+
+
+def test_update_expense_zero_amount_rejected() -> None:
+    actor = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    create_service = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+    created = create_service.execute(_command(repo, actor))
+
+    update_service = UpdateExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+    with pytest.raises(InvalidManualExpenseError):
+        update_service.execute(
+            UpdateExpenseCommand(
+                actor_user_id=actor,
+                list_id=repo.list_id,
+                entry_id=created.id,
+                amount="0",
+                currency="CRC",
+                description="Coffee",
+                payer_id=actor,
+                posted_date="2026-01-15",
+            )
+        )
+
+
+def test_update_expense_payer_must_be_member() -> None:
+    actor = uuid4()
+    stranger = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    create_service = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+    created = create_service.execute(_command(repo, actor))
+
+    update_service = UpdateExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+    with pytest.raises(InvalidManualExpenseError):
+        update_service.execute(
+            UpdateExpenseCommand(
+                actor_user_id=actor,
+                list_id=repo.list_id,
+                entry_id=created.id,
+                amount="10.00",
+                currency="CRC",
+                description="Coffee",
+                payer_id=stranger,
+                posted_date="2026-01-15",
+            )
+        )
+
+
+def test_update_expense_on_nonexistent_entry_raises_subject_not_found() -> None:
+    actor = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    update_service = UpdateExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+
+    with pytest.raises(SubjectNotFoundError):
+        update_service.execute(
+            UpdateExpenseCommand(
+                actor_user_id=actor,
+                list_id=repo.list_id,
+                entry_id=uuid4(),
+                amount="10.00",
+                currency="CRC",
+                description="Coffee",
+                payer_id=actor,
+                posted_date="2026-01-15",
+            )
+        )
+
+
+def test_update_expense_by_non_member_denied() -> None:
+    actor = uuid4()
+    outsider = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    create_service = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+    created = create_service.execute(_command(repo, actor))
+
+    update_service = UpdateExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+    with pytest.raises(NotListMemberError):
+        update_service.execute(
+            UpdateExpenseCommand(
+                actor_user_id=outsider,
+                list_id=repo.list_id,
+                entry_id=created.id,
+                amount="10.00",
+                currency="CRC",
+                description="Coffee",
+                payer_id=actor,
+                posted_date="2026-01-15",
+            )
+        )
+
+
+def test_delete_hand_expense_succeeds() -> None:
+    actor = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    create_service = CreateManualExpenseService(repo, MaterializeFxService(_FakeBccrClient()))
+    created = create_service.execute(_command(repo, actor))
+
+    delete_service = DeleteExpenseService(repo)
+    delete_service.execute(
+        DeleteExpenseCommand(actor_user_id=actor, list_id=repo.list_id, entry_id=created.id)
+    )
+
+    assert created.id not in repo.entries
+
+
+def test_delete_parsed_expense_rejected() -> None:
+    actor = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    parsed_entry = _ledger_entry(
+        list_id=repo.list_id,
+        payer_id=actor,
+        posted_date=date(2026, 1, 1),
+        statement_id=uuid4(),
+        description="Card purchase",
+    )
+    repo.entries[parsed_entry.id] = parsed_entry
+
+    delete_service = DeleteExpenseService(repo)
+    with pytest.raises(ExpenseNotDeletableError):
+        delete_service.execute(
+            DeleteExpenseCommand(
+                actor_user_id=actor, list_id=repo.list_id, entry_id=parsed_entry.id
+            )
+        )
+    assert parsed_entry.id in repo.entries
+
+
+def test_delete_on_nonexistent_entry_raises_subject_not_found() -> None:
+    actor = uuid4()
+    repo = _FakeExpenseRepo(list_id=uuid4(), member_ids=[actor])
+    delete_service = DeleteExpenseService(repo)
+
+    with pytest.raises(SubjectNotFoundError):
+        delete_service.execute(
+            DeleteExpenseCommand(actor_user_id=actor, list_id=repo.list_id, entry_id=uuid4())
+        )

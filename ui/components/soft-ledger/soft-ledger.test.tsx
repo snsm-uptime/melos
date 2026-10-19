@@ -1,0 +1,983 @@
+/**
+ * @vitest-environment jsdom
+ */
+import { act } from "react";
+import type { ReactNode } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { BalanceStrip } from "./BalanceStrip";
+import { Hint } from "./Hint";
+import { IncompleteDisclosure } from "./IncompleteDisclosure";
+import { OriginCards } from "./OriginCards";
+import { PrimaryButton } from "./PrimaryButton";
+import { ReceiptRow } from "./ReceiptRow";
+import { SectionLabel } from "./SectionLabel";
+import { SimplifyPanel, simplifyPlanTextFrom } from "./SimplifyPanel";
+import { SoftLedgerRadio } from "./Radio";
+import { SoftLedgerSelect } from "./Select";
+import { TabBar } from "./TabBar";
+
+vi.mock("next/link", () => ({
+  default: ({
+    href,
+    children,
+    className,
+    ...rest
+  }: {
+    href: string;
+    children: ReactNode;
+    className?: string;
+    "aria-current"?: "page" | undefined;
+  }) => (
+    <a href={href} className={className} {...rest}>
+      {children}
+    </a>
+  ),
+}));
+
+vi.mock("@/components/IconButton/IconButton.module.scss", () => ({
+  default: new Proxy(
+    {},
+    {
+      get: (_target, key) => (typeof key === "string" ? key : "mod"),
+    },
+  ),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
+
+describe("Soft-Ledger primitives", () => {
+  let host: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+  });
+
+  afterEach(() => {
+    act(() => {
+      root.unmount();
+    });
+    host.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it("renders BalanceStrip who-line + amount with text polarity", () => {
+    act(() => {
+      root.render(
+        <BalanceStrip who="You owe Partner" amount="₡42,500" polarity="owe" />,
+      );
+    });
+    const section = host.querySelector("section");
+    expect(section).not.toBeNull();
+    const paragraphs = host.querySelectorAll("p");
+    expect(paragraphs[0]?.textContent).toBe("You owe Partner");
+    expect(host.textContent).toContain("₡42,500");
+    expect(section?.getAttribute("aria-label")).toBe("You owe Partner");
+  });
+
+  it("renders BalanceStrip with owed polarity", () => {
+    act(() => {
+      root.render(
+        <BalanceStrip who="You’re owed" amount="₡10,000" polarity="owed" />,
+      );
+    });
+    const section = host.querySelector("section");
+    expect(section).not.toBeNull();
+    expect(host.textContent).toContain("You’re owed");
+    expect(host.textContent).toContain("₡10,000");
+    expect(section?.getAttribute("aria-label")).toBe("You’re owed");
+  });
+
+  it("renders BalanceStrip with neutral polarity (default)", () => {
+    act(() => {
+      root.render(<BalanceStrip who="Settled" amount="₡0" />);
+    });
+    const section = host.querySelector("section");
+    expect(section).not.toBeNull();
+    expect(host.textContent).toContain("Settled");
+    expect(section?.getAttribute("aria-label")).toBe("Settled");
+  });
+
+  it("renders an optional action in the strip's trailing column", () => {
+    act(() => {
+      root.render(
+        <BalanceStrip
+          who="You owe Partner"
+          amount="₡42,500"
+          polarity="owe"
+          action={<button type="button">Add expense</button>}
+        />,
+      );
+    });
+    const section = host.querySelector("section");
+    const action = host.querySelector("button");
+    expect(section).not.toBeNull();
+    expect(action?.textContent).toBe("Add expense");
+    expect(section?.contains(action)).toBe(true);
+  });
+
+  it("renders BalanceStrip grid variant with a Total figure and a Member details disclosure showing the balance (Story 5.8)", () => {
+    act(() => {
+      root.render(
+        <BalanceStrip
+          variant="grid"
+          memberDetailsTitle="Member details"
+          owesYouLabel="owes you"
+          isOwedLabel="is owed"
+          totalLabel="Total"
+          totalAmount="₡1,200.00"
+          youAreOwed={[{ memberId: "m1", label: "Alice", amount: "₡500.00" }]}
+          youOwe={[]}
+          balanceAmount="₡500.00"
+          balancePolarity="owed"
+        />,
+      );
+    });
+    const section = host.querySelector("section");
+    expect(section).not.toBeNull();
+    expect(host.textContent).toContain("Member details");
+    expect(host.textContent).toContain("Alice");
+    expect(host.textContent).toContain("owes you");
+    expect(host.textContent).toContain("Total");
+    expect(host.textContent).toContain("₡1,200.00");
+    expect(host.textContent).toContain("(₡500.00)");
+    // Two ₡500.00 occurrences: one in the member details row, one in the Member details parenthetical.
+    expect(host.textContent?.match(/₡500\.00/g)?.length).toBe(2);
+    const totalAmountEl = Array.from(host.querySelectorAll("p")).find(
+      (p) => p.textContent === "₡1,200.00",
+    );
+    expect(totalAmountEl?.className).toContain("text-muted");
+    const balanceParenEl = Array.from(host.querySelectorAll("span")).find(
+      (span) => span.textContent === "(₡500.00)",
+    );
+    expect(balanceParenEl?.className).toContain("text-owed");
+  });
+
+  it("Member details disclosure defaults open (Story 5.8)", () => {
+    act(() => {
+      root.render(
+        <BalanceStrip
+          variant="grid"
+          memberDetailsTitle="Member details"
+          owesYouLabel="owes you"
+          isOwedLabel="is owed"
+          totalLabel="Total"
+          totalAmount="₡500.00"
+          youAreOwed={[{ memberId: "m1", label: "Alice", amount: "₡500.00" }]}
+          youOwe={[]}
+          balanceAmount="₡500.00"
+          balancePolarity="owed"
+        />,
+      );
+    });
+    const region = host.querySelector('[role="region"]');
+    expect(region?.getAttribute("aria-hidden")).toBe("false");
+  });
+
+  it("BalanceStrip grid renders no Member details disclosure when both lists are empty (AC #1)", () => {
+    act(() => {
+      root.render(
+        <BalanceStrip
+          variant="grid"
+          memberDetailsTitle="Member details"
+          owesYouLabel="owes you"
+          isOwedLabel="is owed"
+          totalLabel="Total"
+          totalAmount="₡0"
+          youAreOwed={[]}
+          youOwe={[]}
+          balanceAmount="₡0"
+        />,
+      );
+    });
+    expect(host.querySelectorAll("li").length).toBe(0);
+    expect(host.textContent).not.toContain("Member details");
+  });
+
+  it("OriginCards renders one island per origin with correct label + amount (Story 6.2)", () => {
+    act(() => {
+      root.render(
+        <OriginCards
+          origins={[
+            { kind: "card", label: "BAC Visa", amountCrc: "₡100" },
+            { kind: "cash", label: "Cash", amountCrc: "₡20" },
+            { kind: "blank", label: "None", amountCrc: "₡5" },
+          ]}
+          emptyLabel="No purchases yet this period"
+          sectionLabel="Spend by origin"
+        />,
+      );
+    });
+    expect(host.textContent).toContain("Spend by origin");
+    expect(host.textContent).toContain("BAC Visa");
+    expect(host.textContent).toContain("₡100");
+    expect(host.textContent).toContain("Cash");
+    expect(host.textContent).toContain("₡20");
+    expect(host.textContent).toContain("None");
+    expect(host.textContent).toContain("₡5");
+    expect(host.querySelectorAll('[role="status"]').length).toBe(0);
+  });
+
+  it("OriginCards renders a neutral empty state, not a fabricated ₡0 card (Story 6.2 AC #3)", () => {
+    act(() => {
+      root.render(
+        <OriginCards
+          origins={[]}
+          emptyLabel="No purchases yet this period"
+          sectionLabel="Spend by origin"
+        />,
+      );
+    });
+    expect(host.textContent).toContain("No purchases yet this period");
+    expect(host.textContent).not.toContain("₡0");
+    expect(host.querySelector('[role="status"]')).not.toBeNull();
+  });
+
+  it("OriginCards labels come from passed-in message props, no hardcoded English (Story 6.2)", () => {
+    act(() => {
+      root.render(
+        <OriginCards
+          origins={[{ kind: "cash", label: "Efectivo", amountCrc: "₡20" }]}
+          emptyLabel="Aún no hay compras este período"
+          sectionLabel="Gasto por origen"
+        />,
+      );
+    });
+    expect(host.textContent).toContain("Gasto por origen");
+    expect(host.textContent).toContain("Efectivo");
+    expect(host.textContent).not.toContain("Cash");
+  });
+
+  it("OriginCards's section label isn't announced twice to assistive tech (Story 6.2 review)", () => {
+    act(() => {
+      root.render(
+        <OriginCards
+          origins={[{ kind: "cash", label: "Cash", amountCrc: "₡20" }]}
+          emptyLabel="No purchases yet this period"
+          sectionLabel="Spend by origin"
+        />,
+      );
+    });
+    const section = host.querySelector("section");
+    expect(section?.hasAttribute("aria-label")).toBe(false);
+    expect(host.querySelectorAll("h2").length).toBe(1);
+  });
+
+  it("OriginCards marks a negative total explicitly, never a bare unsigned amount (Story 6.2 review)", () => {
+    act(() => {
+      root.render(
+        <OriginCards
+          origins={[{ kind: "card", label: "BAC Visa", amountCrc: "-₡30", isNegative: true }]}
+          emptyLabel="No purchases yet this period"
+          sectionLabel="Spend by origin"
+        />,
+      );
+    });
+    expect(host.textContent).toContain("-₡30");
+    const amount = Array.from(host.querySelectorAll("p")).find((p) =>
+      p.textContent?.includes("-₡30"),
+    );
+    expect(amount?.className).toContain("text-owe");
+  });
+
+  it("simplifyPlanTextFrom builds plain-text lines, never says 'paid' (AC #4)", () => {
+    expect(simplifyPlanTextFrom([])).toBe("");
+    expect(
+      simplifyPlanTextFrom([
+        { fromMemberId: "a", fromLabel: "Alice", toMemberId: "b", toLabel: "Bob", amountCrc: "₡500.00" },
+      ]),
+    ).toBe("Alice pays Bob ₡500.00");
+    const multi = simplifyPlanTextFrom([
+      { fromMemberId: "a", fromLabel: "Alice", toMemberId: "b", toLabel: "Bob", amountCrc: "₡500.00" },
+      { fromMemberId: "c", fromLabel: "Charlie", toMemberId: "b", toLabel: "Bob", amountCrc: "₡100.00" },
+    ]);
+    expect(multi).toBe("Alice pays Bob ₡500.00\nCharlie pays Bob ₡100.00");
+    expect(multi.toLowerCase()).not.toContain("paid");
+    expect(multi.toLowerCase()).not.toContain("settle");
+  });
+
+  it("SimplifyPanel renders nothing when there are no transfers", () => {
+    act(() => {
+      root.render(
+        <SimplifyPanel
+          transfers={[]}
+          messages={{
+            title: "Group transfer plan",
+            copyLabel: "Copy plan",
+            copiedLabel: "Copied",
+          }}
+        />,
+      );
+    });
+    expect(host.textContent).toBe("");
+    expect(host.querySelectorAll("button")).toHaveLength(0);
+  });
+
+  it("SimplifyPanel renders transfer rows and a CopyButton when transfers exist", () => {
+    act(() => {
+      root.render(
+        <SimplifyPanel
+          transfers={[
+            { fromMemberId: "a", fromLabel: "Alice", toMemberId: "b", toLabel: "Bob", amountCrc: "₡500.00" },
+          ]}
+          messages={{
+            title: "Group transfer plan",
+            copyLabel: "Copy plan",
+            copiedLabel: "Copied",
+          }}
+        />,
+      );
+    });
+    // Alias text is replaced by an Avatar (alias surfaces as its
+    // role="img" aria-label, not a native title attribute — Avatar's own
+    // custom Tooltip provides the hover bubble instead).
+    const titles = Array.from(host.querySelectorAll('[role="img"][aria-label]')).map((el) =>
+      el.getAttribute("aria-label"),
+    );
+    expect(titles).toContain("Alice");
+    expect(titles).toContain("Bob");
+    expect(host.textContent).toContain("₡500.00");
+    const copyButton = Array.from(host.querySelectorAll("button")).find(
+      (b) => b.getAttribute("aria-label") === "Copy plan",
+    );
+    expect(copyButton).toBeDefined();
+  });
+
+  it("renders Hint and SectionLabel and empty ReceiptRow", () => {
+    act(() => {
+      root.render(
+        <>
+          <Hint>Shared expenses will land here.</Hint>
+          <SectionLabel>Receipts</SectionLabel>
+          <ReceiptRow emptyLabel="No receipts yet." />
+        </>,
+      );
+    });
+    expect(host.textContent).toContain("Shared expenses will land here.");
+    expect(host.querySelector("h2")?.textContent).toBe("Receipts");
+    expect(host.querySelector("[role='status']")?.textContent).toBe(
+      "No receipts yet.",
+    );
+  });
+
+  it("renders title alone on the first row, total beside origin/payer meta, and a lent label over net", () => {
+    act(() => {
+      root.render(
+        <ReceiptRow
+          title="1000 colones"
+          payerAlias="sebas"
+          payerSeed="user-1"
+          when="2026-08-19"
+          amount="₡1,000"
+          originChip="Cash"
+          directionLabel="you lent"
+          netLabel="₡900"
+          netPolarity="owed"
+          menu={{ menuAria: "Expense options", editLabel: "Edit", deleteLabel: "Delete", moveItemLabel: "Move this item" }}
+        />,
+      );
+    });
+    expect(host.querySelector('[data-slot="type-icon"]')).not.toBeNull();
+    expect(host.textContent).toContain("1000 colones");
+    // The payer alias is an Avatar, not visible text — it only shows up as
+    // the avatar's role="img" aria-label (its custom Tooltip provides the
+    // hover bubble, not a native title attribute).
+    expect(host.textContent).not.toContain("@sebas");
+    expect(host.querySelector('[role="img"][aria-label="sebas"]')).not.toBeNull();
+    expect(host.textContent).toContain("2026-08-19");
+    expect(host.textContent).toContain("Cash");
+    expect(host.textContent).toContain("you lent");
+    expect(host.textContent).toContain("₡1,000");
+    expect(host.textContent).toContain("₡900");
+    const titleEl = Array.from(host.querySelectorAll("span")).find(
+      (el) => el.textContent === "1000 colones",
+    );
+    const totalEl = Array.from(host.querySelectorAll("span")).find(
+      (el) => el.textContent === "₡1,000",
+    );
+    expect(titleEl?.parentElement?.textContent).toBe("1000 colones");
+    const dateEl = Array.from(host.querySelectorAll("span")).find(
+      (el) => el.textContent === "2026-08-19",
+    );
+    const originEl = dateEl?.nextElementSibling as HTMLElement | null;
+    expect(originEl?.textContent).toContain("Cash");
+    const handle = originEl?.querySelector('[role="img"][aria-label="sebas"]');
+    expect(handle).not.toBeNull();
+    expect(totalEl?.parentElement).toBe(dateEl?.parentElement);
+    expect(originEl?.nextElementSibling).toBe(totalEl ?? null);
+    const direction = Array.from(host.querySelectorAll("span")).find(
+      (el) => el.textContent === "you lent",
+    );
+    expect(direction?.className).toContain("text-owed");
+    const net = Array.from(host.querySelectorAll("span")).find((el) => el.textContent === "₡900");
+    expect(net?.className).toContain("text-owed");
+    const trigger = host.querySelector("button[aria-haspopup='menu']") as HTMLButtonElement;
+    expect(trigger).not.toBeNull();
+    act(() => {
+      trigger.click();
+    });
+    expect(host.textContent).toContain("Edit");
+    expect(host.textContent).toContain("Delete");
+  });
+
+  it("parser row with batch id confirms then DELETE import-batches, not expense id", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 204, json: async () => null });
+    vi.stubGlobal("fetch", fetchMock);
+
+    act(() => {
+      root.render(
+        <ReceiptRow
+          title="Parser coffee"
+          amount="₡10"
+          menu={{ menuAria: "Expense options", editLabel: "Edit", deleteLabel: "Delete", moveItemLabel: "Move this item" }}
+          rollback={{
+            listId: "list-1",
+            batchId: "batch-9",
+            confirmTitle: "Undo this import?",
+            confirmBody: "This removes 2 expenses from that import action.",
+            confirmAction: "Undo import",
+            cancelLabel: "Cancel",
+            errorGeneric: "generic",
+            errorForbidden: "forbidden",
+            errorUnauthorized: "unauthorized",
+          }}
+        />,
+      );
+    });
+    const trigger = host.querySelector("button[aria-haspopup='menu']") as HTMLButtonElement;
+    act(() => {
+      trigger.click();
+    });
+    const deleteItem = Array.from(host.querySelectorAll("button")).find(
+      (el) => el.textContent === "Delete",
+    );
+    expect(deleteItem).toBeTruthy();
+    act(() => {
+      deleteItem?.click();
+    });
+    expect(host.textContent).toContain("Undo this import?");
+    expect(host.textContent).toContain("2 expenses");
+    const confirm = Array.from(host.querySelectorAll("button")).find(
+      (el) => el.textContent === "Undo import",
+    );
+    await act(async () => {
+      confirm?.click();
+      await Promise.resolve();
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/lists/list-1/import-batches/batch-9");
+    expect(fetchMock.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ method: "DELETE" }));
+    expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain("expenses");
+  });
+
+  it("hand row Delete does not fetch", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    act(() => {
+      root.render(
+        <ReceiptRow
+          title="Hand coffee"
+          amount="₡10"
+          menu={{ menuAria: "Expense options", editLabel: "Edit", deleteLabel: "Delete", moveItemLabel: "Move this item" }}
+        />,
+      );
+    });
+    const trigger = host.querySelector("button[aria-haspopup='menu']") as HTMLButtonElement;
+    act(() => {
+      trigger.click();
+    });
+    const deleteItem = Array.from(host.querySelectorAll("button")).find(
+      (el) => el.textContent === "Delete",
+    );
+    act(() => {
+      deleteItem?.click();
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(host.querySelector("[role='dialog']")).toBeNull();
+  });
+
+  it("renders an accent New chip after the amount when newBadgeLabel is set", () => {
+    act(() => {
+      root.render(
+        <ReceiptRow title="Coffee" amount="₡10" newBadgeLabel="New" />,
+      );
+    });
+    const amountEl = Array.from(host.querySelectorAll("span")).find(
+      (el) => el.textContent === "₡10",
+    );
+    const badge = amountEl?.nextElementSibling as HTMLElement | null;
+    expect(badge?.textContent).toBe("New");
+    expect(badge?.className).toContain("border-accent");
+  });
+
+  it("hides direction, net, and payer alias when those props are omitted", () => {
+    act(() => {
+      root.render(<ReceiptRow title="Coffee" when="2026-08-19" amount="₡10" />);
+    });
+    expect(host.textContent).toContain("Coffee");
+    expect(host.textContent).toContain("₡10");
+    expect(host.textContent).not.toContain("you borrowed");
+    expect(host.textContent).not.toContain("you lent");
+    expect(host.textContent).not.toContain("@");
+  });
+
+  it("renders Unknown origin on the meta row for another member's blank origin", () => {
+    act(() => {
+      root.render(
+        <ReceiptRow
+          title="grill out"
+          payerAlias="dotmail"
+          payerSeed="user-2"
+          when="2026-08-19"
+          amount="₡10,000"
+          originChip="Unknown"
+          originDisabled
+          directionLabel="you borrowed"
+          netLabel="₡5,000"
+          netPolarity="owe"
+        />,
+      );
+    });
+    expect(host.textContent).toContain("grill out");
+    expect(host.textContent).toContain("Unknown");
+    // The payer alias is an Avatar, not visible text — it only shows up as
+    // the avatar's role="img" aria-label.
+    expect(host.textContent).not.toContain("@dotmail");
+    expect(host.querySelector('[role="img"][aria-label="dotmail"]')).not.toBeNull();
+    expect(host.textContent).toContain("you borrowed");
+    expect(host.querySelector("button[aria-expanded]")).toBeNull();
+    const chip = Array.from(host.querySelectorAll("span")).find((el) =>
+      el.getAttribute("aria-disabled") === "true",
+    );
+    expect(chip?.className).toContain("opacity-55");
+    const originLabel = Array.from(chip?.querySelectorAll("span") ?? []).find(
+      (el) => el.textContent === "Unknown",
+    );
+    expect(originLabel?.className).toContain("text-muted");
+    const handle = chip?.querySelector('[role="img"][aria-label="dotmail"]');
+    expect(handle).not.toBeNull();
+    const direction = Array.from(host.querySelectorAll("span")).find(
+      (el) => el.textContent === "you borrowed",
+    );
+    expect(direction?.className).toContain("text-owe");
+  });
+
+  it("renders a disabled non-payer Cash chip that is not a toggle", () => {
+    act(() => {
+      root.render(
+        <ReceiptRow
+          title="Coffee"
+          payerAlias="dotmail"
+          payerSeed="user-2"
+          when="2026-08-19"
+          amount="₡10"
+          originChip="Cash"
+          originDisabled
+        />,
+      );
+    });
+    expect(host.querySelector("button[aria-expanded]")).toBeNull();
+    const chip = Array.from(host.querySelectorAll("span")).find(
+      (el) => el.getAttribute("aria-disabled") === "true",
+    );
+    expect(chip?.className).toContain("opacity-55");
+    expect(chip?.className).not.toContain("cursor-pointer");
+    const originLabel = Array.from(chip?.querySelectorAll("span") ?? []).find(
+      (el) => el.textContent === "Cash",
+    );
+    expect(originLabel?.className).toContain("text-muted");
+    // The payer alias is an Avatar, not visible text.
+    expect(chip?.textContent).not.toContain("@dotmail");
+    expect(chip?.querySelector('[role="img"][aria-label="dotmail"]')).not.toBeNull();
+  });
+
+  it("renders a warning No Origin chip and a below-row origin panel slot", () => {
+    act(() => {
+      root.render(
+        <ReceiptRow
+          title="Coffee"
+          when="2026-08-19"
+          amount="₡10"
+          originChip="No Origin"
+          originChipTone="warning"
+          originPanel={<div data-slot="origin-panel">panel</div>}
+        />,
+      );
+    });
+    const chip = Array.from(host.querySelectorAll("span")).find((el) =>
+      el.className.includes("text-owe"),
+    );
+    expect(chip?.textContent).toContain("No Origin");
+    expect(chip?.className).toContain("border-owe");
+    expect(host.querySelector('[data-slot="origin-panel"]')?.textContent).toBe("panel");
+  });
+
+  it("renders originAction instead of the display chip", () => {
+    act(() => {
+      root.render(
+        <ReceiptRow
+          title="Coffee"
+          when="2026-08-19"
+          amount="₡10"
+          originChip="Cash"
+          originAction={<button type="button">No Origin</button>}
+        />,
+      );
+    });
+    expect(host.querySelector("button")?.textContent).toBe("No Origin");
+    expect(host.textContent).not.toContain("Cash");
+  });
+
+  it("TabBar renders one link per item + aria-current on the active tab", () => {
+    function DummyIcon(props: { className?: string }) {
+      return <svg {...props} />;
+    }
+    act(() => {
+      root.render(
+        <TabBar
+          items={[
+            { key: "home", href: "/home", label: "Home", Icon: DummyIcon },
+            { key: "upload", href: "/upload", label: "Upload", Icon: DummyIcon },
+            { key: "budgets", href: "/budgets", label: "Budgets", Icon: DummyIcon },
+            { key: "account", href: "/account", label: "Account", Icon: DummyIcon },
+          ]}
+          ariaLabel="Primary"
+          active="home"
+        />,
+      );
+    });
+    const nav = host.querySelector("nav");
+    expect(nav?.getAttribute("aria-label")).toBe("Primary");
+    expect(nav?.className).toContain("justify-evenly");
+    const links = Array.from(host.querySelectorAll("a"));
+    expect(links).toHaveLength(4);
+    expect(links[0]?.getAttribute("href")).toBe("/home");
+    expect(links[0]?.getAttribute("aria-label")).toBe("Home");
+    expect(links[0]?.getAttribute("aria-current")).toBe("page");
+    expect(links[0]?.className).toEqual(links[1]?.className);
+    expect(links[0]?.className).not.toContain("text-accent");
+    expect(links[1]?.getAttribute("href")).toBe("/upload");
+    expect(links[1]?.getAttribute("aria-label")).toBe("Upload");
+    expect(links[1]?.getAttribute("aria-current")).toBeNull();
+    expect(links[2]?.getAttribute("href")).toBe("/budgets");
+    expect(links[2]?.getAttribute("aria-label")).toBe("Budgets");
+    expect(links[2]?.getAttribute("aria-current")).toBeNull();
+    expect(links[3]?.getAttribute("href")).toBe("/account");
+    expect(links[3]?.getAttribute("aria-label")).toBe("Account");
+    expect(links.every((link) => link.querySelector("svg") !== null)).toBe(true);
+  });
+
+  it("PrimaryButton mounts and uses rounded-sm (not pill)", () => {
+    act(() => {
+      root.render(<PrimaryButton>Continue</PrimaryButton>);
+    });
+    const button = host.querySelector("button");
+    expect(button?.textContent).toBe("Continue");
+    expect(button?.className).toContain("rounded-sm");
+    expect(button?.className).not.toContain("rounded-full");
+  });
+
+  it("SoftLedgerSelect opens a listbox and chooses an option", () => {
+    const onChange = vi.fn();
+    act(() => {
+      root.render(
+        <SoftLedgerSelect
+          value="a"
+          options={[
+            { value: "a", label: "Alice" },
+            { value: "b", label: "Bob" },
+          ]}
+          onChange={onChange}
+          aria-label="Member"
+        />,
+      );
+    });
+    const trigger = host.querySelector("button[aria-haspopup='listbox']") as HTMLButtonElement;
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    act(() => {
+      trigger.click();
+    });
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(host.querySelector("[role='listbox']")).not.toBeNull();
+    const alice = Array.from(host.querySelectorAll("[role='option']")).find(
+      (el) => el.textContent === "Alice",
+    ) as HTMLElement;
+    const bob = Array.from(host.querySelectorAll("[role='option']")).find(
+      (el) => el.textContent === "Bob",
+    ) as HTMLElement;
+    expect(alice.getAttribute("aria-selected")).toBe("true");
+    expect(alice.className).toMatch(/itemSelected/);
+    expect(alice.className).not.toContain("bg-accent");
+    expect(bob.getAttribute("aria-selected")).toBe("false");
+    expect(bob.className).not.toMatch(/itemSelected/);
+    act(() => {
+      bob.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    });
+    expect(onChange).toHaveBeenCalledWith("b");
+    expect(document.activeElement).not.toBe(trigger);
+  });
+
+  it("SoftLedgerSelect blurs the trigger after choosing, not after Escape", () => {
+    const onChange = vi.fn();
+    act(() => {
+      root.render(
+        <SoftLedgerSelect
+          value="a"
+          options={[
+            { value: "a", label: "Alice" },
+            { value: "b", label: "Bob" },
+          ]}
+          onChange={onChange}
+          aria-label="Member"
+        />,
+      );
+    });
+    const trigger = host.querySelector("button[aria-haspopup='listbox']") as HTMLButtonElement;
+    act(() => {
+      trigger.focus();
+      trigger.click();
+    });
+    const listbox = host.querySelector("[role='listbox']") as HTMLUListElement;
+    expect(document.activeElement).toBe(listbox);
+    act(() => {
+      listbox.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(trigger);
+    expect(onChange).not.toHaveBeenCalled();
+
+    act(() => {
+      trigger.click();
+    });
+    const bob = Array.from(host.querySelectorAll("[role='option']")).find(
+      (el) => el.textContent === "Bob",
+    ) as HTMLElement;
+    act(() => {
+      bob.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    });
+    expect(onChange).toHaveBeenCalledWith("b");
+    expect(document.activeElement).not.toBe(trigger);
+  });
+
+  it("SoftLedgerSelect blurs the trigger after Enter confirms the listbox value", () => {
+    const onChange = vi.fn();
+    act(() => {
+      root.render(
+        <SoftLedgerSelect
+          value="a"
+          options={[
+            { value: "a", label: "Alice" },
+            { value: "b", label: "Bob" },
+          ]}
+          onChange={onChange}
+          aria-label="Member"
+        />,
+      );
+    });
+    const trigger = host.querySelector("button[aria-haspopup='listbox']") as HTMLButtonElement;
+    act(() => {
+      trigger.focus();
+      trigger.click();
+    });
+    const listbox = host.querySelector("[role='listbox']") as HTMLUListElement;
+    act(() => {
+      listbox.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).not.toBe(trigger);
+  });
+
+  it("SoftLedgerSelect moves highlight with ArrowDown and confirms with Enter", () => {
+    const onChange = vi.fn();
+    act(() => {
+      root.render(
+        <SoftLedgerSelect
+          value="a"
+          options={[
+            { value: "a", label: "Alice" },
+            { value: "b", label: "Bob" },
+          ]}
+          onChange={onChange}
+          aria-label="Member"
+        />,
+      );
+    });
+    const trigger = host.querySelector("button[aria-haspopup='listbox']") as HTMLButtonElement;
+    act(() => {
+      trigger.focus();
+      trigger.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    const listbox = host.querySelector("[role='listbox']") as HTMLUListElement;
+    expect(listbox).not.toBeNull();
+    act(() => {
+      listbox.focus();
+      listbox.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    });
+    expect(onChange).toHaveBeenCalledWith("b");
+    act(() => {
+      listbox.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).not.toBe(trigger);
+  });
+
+  it("SoftLedgerSelect opens on ArrowUp from the trigger", () => {
+    act(() => {
+      root.render(
+        <SoftLedgerSelect
+          value="a"
+          options={[
+            { value: "a", label: "Alice" },
+            { value: "b", label: "Bob" },
+          ]}
+          onChange={() => {}}
+          aria-label="Member"
+        />,
+      );
+    });
+    const trigger = host.querySelector("button[aria-haspopup='listbox']") as HTMLButtonElement;
+    act(() => {
+      trigger.focus();
+      trigger.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+    });
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(host.querySelector("[role='listbox']")).not.toBeNull();
+  });
+
+  it("IncompleteDisclosure renders nothing when isIncomplete is false or undefined (AC #1)", () => {
+    act(() => {
+      root.render(
+        <IncompleteDisclosure isIncomplete={false} label="Balances may be incomplete." />,
+      );
+    });
+    expect(host.querySelector("[role='status']")).toBeNull();
+    expect(host.textContent).toBe("");
+
+    act(() => {
+      root.render(<IncompleteDisclosure label="Balances may be incomplete." />);
+    });
+    expect(host.querySelector("[role='status']")).toBeNull();
+  });
+
+  it("IncompleteDisclosure renders muted text in a status region when isIncomplete is true (AC #2)", () => {
+    act(() => {
+      root.render(
+        <IncompleteDisclosure
+          isIncomplete={true}
+          label="Balances may be incomplete. Check unresolved items to confirm the total."
+        />,
+      );
+    });
+    const status = host.querySelector("[role='status']");
+    // Not color-only: the visible text itself is the accessible signal (UX-DR19),
+    // announced natively via role="status" — no aria-label override needed.
+    expect(status?.textContent).toContain("Balances may be incomplete.");
+  });
+
+  it("IncompleteDisclosure renders a calm resolve link when resolveHref is provided", () => {
+    act(() => {
+      root.render(
+        <IncompleteDisclosure
+          isIncomplete={true}
+          label="Balances may be incomplete."
+          resolveHref="/upload/conflicts"
+          resolveLabel="Resolve incomplete"
+        />,
+      );
+    });
+    const anchor = host.querySelector("a") as HTMLAnchorElement;
+    expect(anchor).not.toBeNull();
+    expect(anchor.getAttribute("href")).toBe("/upload/conflicts");
+    expect(anchor.textContent).toBe("Resolve incomplete");
+  });
+
+  it("IncompleteDisclosure has no resolve control when resolveHref is omitted", () => {
+    act(() => {
+      root.render(
+        <IncompleteDisclosure isIncomplete={true} label="Balances may be incomplete." />,
+      );
+    });
+    expect(host.querySelector("a")).toBeNull();
+  });
+
+  it("shared-expenses composition: strip, then incomplete disclosure (when incomplete), then receipts — same inset, no fabricated data", () => {
+    act(() => {
+      root.render(
+        <>
+          <BalanceStrip who="You owe Partner" amount="₡42,500" polarity="owe" />
+          <IncompleteDisclosure
+            isIncomplete={true}
+            label="Balances may be incomplete. Check unresolved items to confirm the total."
+          />
+          <SectionLabel>Receipts</SectionLabel>
+          <ReceiptRow emptyLabel="No receipts yet." />
+        </>,
+      );
+    });
+    const strip = host.querySelector("section");
+    const disclosure = Array.from(host.querySelectorAll("[role='status']")).find((el) =>
+      el.textContent?.includes("Balances may be incomplete."),
+    );
+    const receiptsLabel = host.querySelector("h2");
+    expect(strip).not.toBeNull();
+    expect(disclosure?.textContent).toContain("Balances may be incomplete.");
+    expect(receiptsLabel?.textContent).toBe("Receipts");
+    // Strip → disclosure → receipts: DOM order preserves Soft-Ledger layout (below strip, above receipts).
+    const order = Array.from(host.children).indexOf(strip as Element);
+    const disclosureIndex = Array.from(host.children).indexOf(disclosure as Element);
+    const receiptsIndex = Array.from(host.children).indexOf(receiptsLabel as Element);
+    expect(order).toBeLessThan(disclosureIndex);
+    expect(disclosureIndex).toBeLessThan(receiptsIndex);
+  });
+
+  it("shared-expenses composition: no incomplete disclosure rendered when isIncomplete is false (no false positives)", () => {
+    act(() => {
+      root.render(
+        <>
+          <BalanceStrip who="Settled" amount="₡0" />
+          <IncompleteDisclosure isIncomplete={false} label="Balances may be incomplete." />
+          <SectionLabel>Receipts</SectionLabel>
+          <ReceiptRow emptyLabel="No receipts yet." />
+        </>,
+      );
+    });
+    expect(host.textContent).not.toContain("Balances may be incomplete.");
+  });
+
+  it("SoftLedgerRadio renders radio and checkbox with background outline fill", () => {
+    const onChange = vi.fn();
+    act(() => {
+      root.render(
+        <SoftLedgerRadio name="mode" checked={false} onChange={onChange}>
+          Even
+        </SoftLedgerRadio>,
+      );
+    });
+    const input = host.querySelector('input[type="radio"]') as HTMLInputElement;
+    expect(input).not.toBeNull();
+    expect(host.textContent).toContain("Even");
+    act(() => {
+      input.click();
+    });
+    expect(onChange).toHaveBeenCalled();
+
+    act(() => {
+      root.render(
+        <SoftLedgerRadio type="checkbox" checked onChange={() => { }}>
+          Agree
+        </SoftLedgerRadio>,
+      );
+    });
+    expect(host.querySelector('input[type="checkbox"]')).not.toBeNull();
+
+    const mark = host.querySelector("span[aria-hidden='true']");
+    expect(mark?.className).toContain("border-accent");
+    expect(mark?.className).toContain("peer-checked:bg-accent");
+  });
+});

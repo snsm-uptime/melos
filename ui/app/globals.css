@@ -1,0 +1,257 @@
+@import "tailwindcss";
+
+/* Class strategy matches PreferencesProvider FOUC: html.dark / html.light */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-secondary: var(--secondary);
+  --color-on-secondary: var(--on-secondary);
+  --color-owe: var(--owe);
+  --color-owed: var(--owed);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --color-danger-strong: var(--danger-strong);
+
+  --radius-sm: var(--rounded-sm);
+  --radius-md: var(--rounded-md);
+  --radius-lg: var(--rounded-lg);
+
+  --spacing-strip-inset: var(--strip-inset);
+  --spacing-page-gutter: var(--page-gutter);
+  --spacing-nav-x: var(--nav-x);
+  --spacing-row-y: var(--row-y);
+}
+
+:root {
+  /* Warm Balance light (UX-DR1) — --wb-* canonical + legacy aliases */
+  --wb-bg: #f7f3ec;
+  --wb-surface: #fffcf7;
+  --wb-text: #2a241c;
+  --wb-muted: #6e6456;
+  --wb-border: #e2d8c8;
+  --wb-accent: #3f6b45;
+  --wb-on-accent: #fffcf7;
+  --wb-owe: #a04936;
+  --wb-owed: #2f6e48;
+  --wb-warn: #a6791f;
+  --wb-danger: #8b3a2a;
+  --wb-danger-strong: #d32f2f;
+
+  --background: var(--wb-bg);
+  --surface: var(--wb-surface);
+  --foreground: var(--wb-text);
+  --muted: var(--wb-muted);
+  --border: var(--wb-border);
+  --accent: var(--wb-accent);
+  --on-accent: var(--wb-on-accent);
+  --owe: var(--wb-owe);
+  --owed: var(--wb-owed);
+  --warn: var(--wb-warn);
+  --danger: var(--wb-danger);
+  --danger-strong: var(--wb-danger-strong);
+
+  /* button-system Secondary variant — distinct from --accent (moss/Primary); see
+     _bmad-output/planning-artifacts/ux-designs/ux-finance-dashboard-2026-09-02-buttons/DESIGN.md */
+  --secondary: #4356a3;
+  --on-secondary: #ffffff;
+
+  /* Dropdown rows: tint --surface so --foreground stays readable. Hover < selected. */
+  --menu-item-hover: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  --menu-item-selected: color-mix(in srgb, var(--accent) 22%, var(--surface));
+
+  /* Soft-Ledger spacing (4px rhythm + named locks) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 10px;
+  --space-4: 12px;
+  --space-5: 14px;
+  --space-6: 16px;
+  --strip-inset: 10px;
+  --page-gutter: 1.5rem;
+  --nav-x: 14px;
+  --row-y: 9px;
+
+  /* Soft-Ledger shape — never use --rounded-full for primary CTAs */
+  --rounded-sm: 8px;
+  --rounded-md: 10px;
+  --rounded-lg: 12px;
+  --rounded-full: 9999px;
+
+  /* Soft-Ledger type roles — 1:1 DESIGN.md typography.* */
+  --type-brand-face: var(--font-brand), "Times New Roman", serif;
+  --type-brand-size: 0.66rem;
+  --type-brand-weight: 500;
+  --type-brand-tracking: 0.03em;
+
+  --type-list-title-face: var(--font-ui), system-ui, sans-serif;
+  --type-list-title-size: 0.66rem;
+  --type-list-title-weight: 500;
+
+  --type-strip-who-face: var(--font-ui), system-ui, sans-serif;
+  --type-strip-who-size: 0.72rem;
+  --type-strip-who-weight: 500;
+  --type-strip-who-tracking: 0.02em;
+  --type-strip-who-lh: 1.3;
+
+  --type-strip-amount-face: var(--font-brand), "Times New Roman", serif;
+  --type-strip-amount-size: 1.7rem;
+  --type-strip-amount-weight: 500;
+  --type-strip-amount-tracking: -0.03em;
+  --type-strip-amount-lh: 1.1;
+
+  --type-section-label-face: var(--font-ui), system-ui, sans-serif;
+  --type-section-label-size: 0.6rem;
+  --type-section-label-weight: 550;
+  --type-section-label-tracking: 0.05em;
+
+  --type-body-face: var(--font-ui), system-ui, sans-serif;
+  --type-body-size: 0.74rem;
+  --type-body-weight: 400;
+  --type-body-lh: 1.4;
+
+  --type-meta-face: var(--font-ui), system-ui, sans-serif;
+  --type-meta-size: 0.62rem;
+  --type-meta-weight: 400;
+
+  --type-amount-inline-face: var(--font-brand), "Times New Roman", serif;
+  --type-amount-inline-size: 0.74rem;
+  --type-amount-inline-weight: 500;
+
+  --type-button-face: var(--font-ui), system-ui, sans-serif;
+  --type-button-size: 0.66rem;
+  --type-button-weight: 550;
+
+  --type-tab-face: var(--font-ui), system-ui, sans-serif;
+  --type-tab-size: 0.58rem;
+  --type-tab-weight: 500;
+
+  /* Material 3 elevation: two lights cast every shadow — a key light straight
+     overhead (tight, dark, no spread) and an ambient light all around (soft,
+     wide, spread). The pair is what reads as a sheet of paper off the page;
+     a single wide blur reads as a glow. M3's alphas assume black on white, so
+     the ink is pulled most of the way to black — enough weight on the cream
+     background while keeping the palette's warm cast. Shared by any control
+     that lifts on activation (UploadButton, IconButton's ghost `active`
+     state, the review screen's keycap legend) so they all cast the same
+     shadow rather than each re-deriving it. */
+  --lift-ink: color-mix(in srgb, var(--foreground) 45%, #000);
+  --lift-key: color-mix(in srgb, var(--lift-ink) 0%, transparent);
+  --lift-ambient: color-mix(in srgb, var(--lift-ink) 50%, transparent);
+}
+
+html.dark {
+  --wb-bg: #17140f;
+  --wb-surface: #221e17;
+  --wb-text: #f0e9dc;
+  --wb-muted: #a89b88;
+  --wb-border: #3a342a;
+  --wb-accent: #8fbb8e;
+  --wb-on-accent: #17140f;
+  --wb-owe: #d48b78;
+  --wb-owed: #7ec794;
+  --wb-warn: #d9b866;
+  --wb-danger: color-mix(in srgb, #8b3a2a 65%, white);
+  --wb-danger-strong: #d32f2f;
+
+  --background: var(--wb-bg);
+  --surface: var(--wb-surface);
+  --foreground: var(--wb-text);
+  --muted: var(--wb-muted);
+  --border: var(--wb-border);
+  --accent: var(--wb-accent);
+  --on-accent: var(--wb-on-accent);
+  --owe: var(--wb-owe);
+  --owed: var(--wb-owed);
+  --warn: var(--wb-warn);
+  --danger: var(--wb-danger);
+  --danger-strong: var(--wb-danger-strong);
+
+  --secondary: #adbdff;
+  --on-secondary: #17140f;
+
+  /* --foreground is cream here and would halo the shadow instead of shading it. */
+  --lift-ink: #000;
+}
+
+/*
+ * System default before JS hydrates: follow OS when no explicit .dark/.light
+ * class was applied by the FOUC script / PreferencesProvider.
+ */
+@media (prefers-color-scheme: dark) {
+  html:not(.light):not(.dark) {
+    --wb-bg: #17140f;
+    --wb-surface: #221e17;
+    --wb-text: #f0e9dc;
+    --wb-muted: #a89b88;
+    --wb-border: #3a342a;
+    --wb-accent: #8fbb8e;
+    --wb-on-accent: #17140f;
+    --wb-owe: #d48b78;
+    --wb-owed: #7ec794;
+    --wb-warn: #d9b866;
+    --wb-danger: color-mix(in srgb, #8b3a2a 65%, white);
+    --wb-danger-strong: #d32f2f;
+
+    --background: var(--wb-bg);
+    --surface: var(--wb-surface);
+    --foreground: var(--wb-text);
+    --muted: var(--wb-muted);
+    --border: var(--wb-border);
+    --accent: var(--wb-accent);
+    --on-accent: var(--wb-on-accent);
+    --owe: var(--wb-owe);
+    --owed: var(--wb-owed);
+    --warn: var(--wb-warn);
+    --danger: var(--wb-danger);
+    --danger-strong: var(--wb-danger-strong);
+
+    --secondary: #adbdff;
+    --on-secondary: #17140f;
+
+    --lift-ink: #000;
+  }
+}
+
+html,
+body {
+  height: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  /* AppShell is fixed to the viewport; nothing outside it may scroll. */
+  overscroll-behavior: none;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-ui), "Manrope", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+}
+
+.box-icon-lid {
+  transition: transform 200ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .box-icon-lid {
+    transition: none;
+  }
+}

@@ -30,16 +30,16 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 
 ### Setup Tasks
 
-- [ ] T001 Create Git branches strategy and initial repo structure (if not already done)
-- [ ] T002 Copy `api/` directory structure from finance-dashboard (preserve hexagonal architecture: domain/, application/, adapters/, api/)
-- [ ] T003 Copy `ui/` directory structure from finance-dashboard (maintain App Router, components/, lib/, styles/)
-- [ ] T004 Copy `scripts/` directory with Compose management scripts (compose-up.sh, compose-down.sh, compose-restart.sh, compose-wipe-db.sh, compose-lib.sh)
-- [ ] T005 [P] Copy worktree management scripts to `scripts/worktree/` (for parallel Cursor development)
-- [ ] T006 [P] Copy `.github/workflows/ci.yml` from finance-dashboard (test, lint, build steps)
-- [ ] T007 [P] Copy `.cursor/worktrees.json` from finance-dashboard
-- [ ] T008 Copy `.gitignore` with Python and Node ignores (add: .env, node_modules/, .venv/)
-- [ ] T009 Adapt and create `.env.example` with new Melos environment variables (MELOS_* prefix; add GEMINI_API_KEY, GEMINI_CHAT_MODEL, GEMINI_EMBED_MODEL, GEMINI_EMBED_DIM; remove all finance-dashboard test credentials)
-- [ ] T009a Create data directory structure: `mkdir -p "${MELOS_DATA:-$HOME/melos}/pgdata" && chmod 700 "${MELOS_DATA:-$HOME/melos}"`; verify Docker Compose can read/write
+- [x] T001 Create Git branches strategy and initial repo structure (if not already done)
+- [x] T002 Copy `api/` directory structure from finance-dashboard (preserve hexagonal architecture: domain/, application/, adapters/, api/)
+- [x] T003 Copy `ui/` directory structure from finance-dashboard (maintain App Router, components/, lib/, styles/)
+- [x] T004 Copy `scripts/` directory with Compose management scripts (compose-up.sh, compose-down.sh, compose-restart.sh, compose-wipe-db.sh, compose-lib.sh)
+- [x] T005 [P] Copy worktree management scripts to `scripts/worktree/` (for parallel Cursor development)
+- [x] T006 [P] Copy `.github/workflows/ci.yml` from finance-dashboard (test, lint, build steps)
+- [x] T007 [P] Copy `.cursor/worktrees.json` from finance-dashboard
+- [x] T008 Copy `.gitignore` with Python and Node ignores (add: .env, node_modules/, .venv/)
+- [x] T009 Adapt and create `.env.example` with new Melos environment variables (MELOS_* prefix; add GEMINI_API_KEY, GEMINI_CHAT_MODEL, GEMINI_EMBED_MODEL, GEMINI_EMBED_DIM; remove all finance-dashboard test credentials)
+- [x] T009a Create data directory structure: `mkdir -p "${MELOS_DATA:-$HOME/melos}/pgdata" && chmod 700 "${MELOS_DATA:-$HOME/melos}"`; verify Docker Compose can read/write
 
 **Validation:**
 ```bash
@@ -60,55 +60,55 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 
 **Reference:** [FR5.1 Auth Layer File Inventory](spec.md#fr51-auth-layer-file-inventory)
 
-- [ ] T010 Copy `api/routes/auth.py` as-is from finance-dashboard (endpoints: /auth/register, /auth/sign-in, /auth/sign-out, /auth/session, /auth/me, password reset, email verify)
-- [ ] T011 Copy `api/schemas/auth.py` as-is (Pydantic models: RegisterRequest, SignInRequest, SessionResponse, etc.)
-- [ ] T012 Copy `api/deps.py`, `api/settings.py`, `api/app.py` as-is (contains auth logic; config via environment variables)
-- [ ] T013 Copy auth application layer files as-is: `api/application/email_verification.py`, `api/application/password_reset.py`, `api/application/preferences.py`, `api/application/rate_limit.py`
-- [ ] T014 Copy entire `api/adapters/persistence/` directory as-is (Session, PasswordReset, EmailVerification models; repositories; password hasher)
-- [ ] T015 Copy entire `api/adapters/email/` directory as-is (SMTP adapter for password reset and verification emails)
-- [ ] T016 Verify NO modifications to any auth files (use `git diff` to confirm against finance-dashboard source)
-- [ ] T017 Verify `api/settings.py` loads all required environment variables (copied as-is from finance-dashboard): Confirm Settings class uses `os.getenv()` to load SESSION_SECRET, SESSION_COOKIE_*, AUTH_RATE_LIMIT_*, TRUSTED_PROXY_IPS, AUTH_CLIENT_IP_HEADER, GEMINI_API_KEY, GEMINI_CHAT_MODEL, GEMINI_EMBED_MODEL, GEMINI_EMBED_DIM; do NOT modify settings.py core auth logic
+- [x] T010 Copy `api/routes/auth.py` as-is from finance-dashboard (endpoints: /auth/register, /auth/sign-in, /auth/sign-out, /auth/session, /auth/me, password reset, email verify)
+- [x] T011 Copy `api/schemas/auth.py` as-is (Pydantic models: RegisterRequest, SignInRequest, SessionResponse, etc.)
+- [x] T012 Copy `api/deps.py`, `api/settings.py`, `api/app.py` as-is (contains auth logic; config via environment variables)
+- [x] T013 Copy auth application layer files as-is: `api/application/email_verification.py`, `api/application/password_reset.py`, `api/application/preferences.py`, `api/application/rate_limit.py`
+- [x] T014 Copy entire `api/adapters/persistence/` directory as-is (Session, PasswordReset, EmailVerification models; repositories; password hasher)
+- [x] T015 Copy entire `api/adapters/email/` directory as-is (SMTP adapter for password reset and verification emails)
+- [x] T016 Verify NO modifications to any auth files (use `git diff` to confirm against finance-dashboard source)
+- [x] T017 Verify `api/settings.py` loads all required environment variables (copied as-is from finance-dashboard): Confirm Settings class uses `os.getenv()` to load SESSION_SECRET, SESSION_COOKIE_*, AUTH_RATE_LIMIT_*, TRUSTED_PROXY_IPS, AUTH_CLIENT_IP_HEADER, GEMINI_API_KEY, GEMINI_CHAT_MODEL, GEMINI_EMBED_MODEL, GEMINI_EMBED_DIM; do NOT modify settings.py core auth logic
 
 ### Frontend Auth Components (Minimal Adaptations)
 
 **Reference:** [FR5.2 Frontend Auth Components](spec.md#fr52-frontend-auth-components-to-copy)
 
-- [ ] T018 [P] Copy auth pages from finance-dashboard/ui/: `app/sign-in/`, `app/sign-up/`, `app/forgot-password/`, `app/reset-password/`, `app/verify/` (no modifications)
-- [ ] T019 [P] Copy BFF routes: `app/api/auth/sign-in/`, `app/api/auth/register/`, `app/api/auth/sign-out/`, `app/api/auth/session/`, `app/api/auth/me/`, `app/api/auth/verify/`, `app/api/auth/password-reset/` (proxy to FastAPI backend)
-- [ ] T020 [P] Copy session utilities: `ui/lib/session.ts`, `ui/lib/authBff.ts`, `ui/lib/authBff.test.ts` (no modifications)
+- [x] T018 [P] Copy auth pages from finance-dashboard/ui/: `app/sign-in/`, `app/sign-up/`, `app/forgot-password/`, `app/reset-password/`, `app/verify/` (no modifications)
+- [x] T019 [P] Copy BFF routes: `app/api/auth/sign-in/`, `app/api/auth/register/`, `app/api/auth/sign-out/`, `app/api/auth/session/`, `app/api/auth/me/`, `app/api/auth/verify/`, `app/api/auth/password-reset/` (proxy to FastAPI backend)
+- [x] T020 [P] Copy session utilities: `ui/lib/session.ts`, `ui/lib/authBff.ts`, `ui/lib/authBff.test.ts` (no modifications)
 - [ ] T021 Copy and adapt `ui/components/PreferencesProvider.tsx`: Rename localStorage keys (fh_theme_cache → melos_theme_cache, fh_lang_cache → melos_lang_cache); remove setLanguage() function; default locale to "en" (English-only)
 - [ ] T022 Copy and adapt `ui/components/AccountMenu.tsx`: Remove language selector dropdown UI; keep theme toggle, profile link, sign-out button
 - [ ] T023 Copy and adapt `ui/app/account/page.tsx`: Remove language selection UI section; keep alias, theme, photo management UI
-- [ ] T024 [P] Copy UI shell components: `ui/components/AppShell.tsx`, `ui/components/AppShell.test.tsx`, `ui/components/RedirectIfAuthenticated.tsx` (no modifications)
-- [ ] T025 [P] Copy reusable UI components: `ui/components/ActionDialog.tsx`, `ui/components/Chip.tsx`, `ui/components/ChipPicker.tsx`, `ui/components/IconButton.tsx`, `ui/components/Disclosure.tsx`, `ui/components/CopyButton.tsx` (no modifications)
-- [ ] T026 [P] Copy UI testing setup: update `ui/vitest.config.ts` (jsdom environment, test utils)
+- [x] T024 [P] Copy UI shell components: `ui/components/AppShell.tsx`, `ui/components/AppShell.test.tsx`, `ui/components/RedirectIfAuthenticated.tsx` (no modifications)
+- [x] T025 [P] Copy reusable UI components: `ui/components/ActionDialog.tsx`, `ui/components/Chip.tsx`, `ui/components/ChipPicker.tsx`, `ui/components/IconButton.tsx`, `ui/components/Disclosure.tsx`, `ui/components/CopyButton.tsx` (no modifications)
+- [x] T026 [P] Copy UI testing setup: update `ui/vitest.config.ts` (jsdom environment, test utils)
 
 ### Docker Compose & Services
 
-- [ ] T027 Copy base `docker-compose.yml` from finance-dashboard (db, api, ui services); **ADAPT db service**: change base image from `postgres:16` to `pgvector/pgvector:pg16` (for vector embeddings)
-- [ ] T028 Copy `docker-compose.dev.yml` from finance-dashboard; **ADAPT for Melos**: inject Gemini environment variables (GEMINI_API_KEY, GEMINI_CHAT_MODEL, GEMINI_EMBED_MODEL, GEMINI_EMBED_DIM); keep SEED_DEV_USER, SEED_DEV_USER_EMAIL, etc. for dev seeding
-- [ ] T028a Implement `api/scripts/seed_dev_user.py`: When `SEED_DEV_USER=1`, create test user (email, password, alias from `SEED_DEV_USER_*` env vars), sample kitchen (`SEED_DEV_USER_KITCHEN` env var), 3–5 recipes with ingredients, pre-populated cart (2 recipes, 1 meal each, 2 people), archived shopping list, 4–6 conversation messages per spec.md Development Seeding section
-- [ ] T029 Add MCP service to `docker-compose.yml`: FastAPI service on port 9000 (separate container for security); builds from `./mcp/` Dockerfile
-- [ ] T030 Copy `docker-compose.test.yml` from finance-dashboard (no modifications)
-- [ ] T031 Copy `docker-compose.prod.yml` from finance-dashboard (no modifications)
-- [ ] T032 [P] Copy worktree overlays: `docker-compose.worktree.yml`, `docker-compose.worktree-lite.yml` (Cursor parallel development; port isolation via API_HOST_PORT, UI_HOST_PORT, MELOS_COMPOSE_NAME)
-- [ ] T033 Verify Dockerfiles are reused as-is: `api/Dockerfile`, `ui/Dockerfile`, `ui/Dockerfile.dev` (build context, entrypoint commands unchanged)
+- [x] T027 Copy base `docker-compose.yml` from finance-dashboard (db, api, ui services); **ADAPT db service**: change base image from `postgres:16` to `pgvector/pgvector:pg16` (for vector embeddings)
+- [x] T028 Copy `docker-compose.dev.yml` from finance-dashboard; **ADAPT for Melos**: inject Gemini environment variables (GEMINI_API_KEY, GEMINI_CHAT_MODEL, GEMINI_EMBED_MODEL, GEMINI_EMBED_DIM); keep SEED_DEV_USER, SEED_DEV_USER_EMAIL, etc. for dev seeding
+- [x] T028a Implement `api/scripts/seed_dev_user.py`: When `SEED_DEV_USER=1`, create test user (email, password, alias from `SEED_DEV_USER_*` env vars), sample kitchen (`SEED_DEV_USER_KITCHEN` env var), 3–5 recipes with ingredients, pre-populated cart (2 recipes, 1 meal each, 2 people), archived shopping list, 4–6 conversation messages per spec.md Development Seeding section
+- [x] T029 Add MCP service to `docker-compose.yml`: FastAPI service on port 9000 (separate container for security); builds from `./mcp/` Dockerfile
+- [x] T030 Copy `docker-compose.test.yml` from finance-dashboard (no modifications)
+- [x] T031 Copy `docker-compose.prod.yml` from finance-dashboard (no modifications)
+- [x] T032 [P] Copy worktree overlays: `docker-compose.worktree.yml`, `docker-compose.worktree-lite.yml` (Cursor parallel development; port isolation via API_HOST_PORT, UI_HOST_PORT, MELOS_COMPOSE_NAME)
+- [x] T033 Verify Dockerfiles are reused as-is: `api/Dockerfile`, `ui/Dockerfile`, `ui/Dockerfile.dev` (build context, entrypoint commands unchanged)
 
 ### Python Tooling & Dependencies
 
-- [ ] T034 Create `api/pyproject.toml` (reuse structure from finance-dashboard; add new dependencies: google-genai, httpx, beautifulsoup4, weasyprint, psycopg[binary])
-- [ ] T035 Copy `api/uv.lock` structure (reused dependencies: FastAPI 0.141.1, SQLAlchemy 2.0.51, Alembic 1.18.5, pytest 9.1.1, ruff 0.14.7)
-- [ ] T036 Create `.python-version` file (Python 3.12)
-- [ ] T037 Create `api/Alembic` configuration (copy from finance-dashboard; migrations path: `api/alembic/versions/`)
-- [ ] T038 Update API entrypoint script (Dockerfile CMD or entrypoint.sh): auto-run `alembic upgrade head` before starting FastAPI (reused pattern from finance-dashboard)
+- [x] T034 Create `api/pyproject.toml` (reuse structure from finance-dashboard; add new dependencies: google-genai, httpx, beautifulsoup4, weasyprint, psycopg[binary])
+- [x] T035 Copy `api/uv.lock` structure (reused dependencies: FastAPI 0.141.1, SQLAlchemy 2.0.51, Alembic 1.18.5, pytest 9.1.1, ruff 0.14.7)
+- [x] T036 Create `.python-version` file (Python 3.12)
+- [x] T037 Create `api/Alembic` configuration (copy from finance-dashboard; migrations path: `api/alembic/versions/`)
+- [x] T038 Update API entrypoint script (Dockerfile CMD or entrypoint.sh): auto-run `alembic upgrade head` before starting FastAPI (reused pattern from finance-dashboard)
 
 ### Node.js Tooling & Dependencies
 
-- [ ] T039 Create `ui/package.json` (reuse structure from finance-dashboard; specify versions: Next.js 16.2.12, React 19.2.4, Tailwind CSS 4.3.3, TypeScript 5, Vitest 4.1.10, ESLint 9)
-- [ ] T040 Create `.node-version` file (latest stable version or specified version)
-- [ ] T041 Copy `ui/tailwind.config.ts` and `ui/postcss.config.ts` from finance-dashboard (color palette, spacing, dark mode support)
-- [ ] T042 Copy global styles: `ui/styles/globals.css` (Tailwind directives, CSS variables for dark mode)
-- [ ] T043 Copy test configuration: `ui/vitest.config.ts`, `ui/jest.setup.ts` (if applicable)
+- [x] T039 Create `ui/package.json` (reuse structure from finance-dashboard; specify versions: Next.js 16.2.12, React 19.2.4, Tailwind CSS 4.3.3, TypeScript 5, Vitest 4.1.10, ESLint 9)
+- [x] T040 Create `.node-version` file (latest stable version or specified version)
+- [x] T041 Copy `ui/tailwind.config.ts` and `ui/postcss.config.ts` from finance-dashboard (color palette, spacing, dark mode support)
+- [x] T042 Copy global styles: `ui/styles/globals.css` (Tailwind directives, CSS variables for dark mode)
+- [x] T043 Copy test configuration: `ui/vitest.config.ts`, `ui/jest.setup.ts` (if applicable)
 
 ---
 
@@ -120,15 +120,15 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 
 ### Database & Migrations
 
-- [ ] T044 Create initial Alembic migration: `api/alembic/versions/001_initial_schema.py` with all 21 tables per spec.md Key Entities (reused: user, session, password_reset_token, email_verification, preferences, kitchen, membership, invite; new: ingredient, category, recipe, recipe_ingredient, step, cart, cart_item, shopping_list, shopping_list_item, conversation, message, recipe_embedding, source); include all field definitions, constraints, and indices per spec.md Implementation Boundaries (line 413–453)
-- [ ] T045 Add pgvector migration extension to initial migration (IF NOT EXISTS pgvector; CREATE EXTENSION pgvector;)
-- [ ] T046 Verify Alembic is configured to auto-run on API container startup (entrypoint script)
+- [x] T044 Create initial Alembic migration: `api/alembic/versions/001_initial_schema.py` with all 21 tables per spec.md Key Entities (reused: user, session, password_reset_token, email_verification, preferences, kitchen, membership, invite; new: ingredient, category, recipe, recipe_ingredient, step, cart, cart_item, shopping_list, shopping_list_item, conversation, message, recipe_embedding, source); include all field definitions, constraints, and indices per spec.md Implementation Boundaries (line 413–453)
+- [x] T045 Add pgvector migration extension to initial migration (IF NOT EXISTS pgvector; CREATE EXTENSION pgvector;)
+- [x] T046 Verify Alembic is configured to auto-run on API container startup (entrypoint script)
 
 ### Service Health & Startup
 
-- [ ] T047 Create `api/routes/health.py` endpoint (GET /health returns 200 with status, timestamp, version)
-- [ ] T048 Create `ui/app/health/route.ts` health proxy (optional; for UI health check)
-- [ ] T049 Create MCP health endpoint (GET /health on port 9000)
+- [x] T047 Create `api/routes/health.py` endpoint (GET /health returns 200 with status, timestamp, version)
+- [x] T048 Create `ui/app/health/route.ts` health proxy (optional; for UI health check)
+- [x] T049 Create MCP health endpoint (GET /health on port 9000)
 - [ ] T050 Test Docker Compose startup: `./scripts/compose-up.sh -d` (all 4 services should be healthy within 30s)
 - [ ] T051 Verify database auto-migrations: `docker compose exec api alembic current` should show head migration applied
 - [ ] T052 Verify API health: `curl http://localhost:8000/health` returns 200
@@ -145,11 +145,11 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 
 ### File Inventory Validation
 
-- [ ] T060 Validate all 16 auth files present (script from quickstart.md phase 7.1)
-- [ ] T061 Validate all frontend auth components present (script from quickstart.md phase 7.2)
-- [ ] T062 Validate environment prefix (no FH_ found in .env): `grep -E "^FH_" .env || echo "✓"`
-- [ ] T063 Validate pgvector image in docker-compose.yml: `grep -q "pgvector/pgvector:pg16"` confirms present
-- [ ] T064 Validate all Compose files present: `docker-compose.*.yml` overlays all exist
+- [x] T060 Validate all 16 auth files present (script from quickstart.md phase 7.1)
+- [x] T061 Validate all frontend auth components present (script from quickstart.md phase 7.2)
+- [x] T062 Validate environment prefix (no FH_ found in .env): `grep -E "^FH_" .env || echo "✓"`
+- [x] T063 Validate pgvector image in docker-compose.yml: `grep -q "pgvector/pgvector:pg16"` confirms present
+- [x] T064 Validate all Compose files present: `docker-compose.*.yml` overlays all exist
 
 ---
 

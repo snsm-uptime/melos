@@ -1,0 +1,34 @@
+/* Generic hover/focus tooltip bubble, mirrors CopyButton's "Copied!" bubble.
+   Portaled into document.body, so positioning (top/left) is computed in JS
+   and passed as inline styles per-instance; only visual chrome lives here. */
+
+.bubble {
+  position: fixed;
+  /* JS sets top/left to the trigger's top edge (minus a small gap) and
+     horizontal center; this shifts the bubble up by its own height and
+     centers it horizontally on that point. */
+  transform: translate(-50%, -100%);
+  white-space: nowrap;
+  border-radius: 6px;
+  background: var(--foreground);
+  color: var(--background);
+  font-size: 0.7rem;
+  font-weight: 550;
+  padding: 0.25rem 0.5rem; /* px-2 py-1 */
+  pointer-events: none;
+  /* Must clear Sheet.module.scss's backdrop/panel z-index (40/41) so a
+     tooltip triggered from inside a Sheet (e.g. a cornerAction button)
+     isn't rendered behind it. */
+  z-index: 50;
+  opacity: 1;
+  animation: tooltip-fade-in 150ms ease;
+}
+
+@keyframes tooltip-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

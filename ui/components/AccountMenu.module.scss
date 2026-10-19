@@ -1,0 +1,36 @@
+/* AccountMenu color-mix hover/focus states */
+
+.choice:not(:disabled):hover {
+  border-color: var(--border);
+}
+
+.choiceActive {
+  border-color: var(--accent);
+}
+
+.choice:disabled,
+.choiceActive:disabled,
+.ghost:disabled,
+.signOut:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.ghost {
+  color: var(--muted);
+  background: transparent;
+}
+
+.ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: transparent;
+}
+
+.ghost:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.signOut:hover:not(:disabled) {
+  border-color: var(--accent);
+}

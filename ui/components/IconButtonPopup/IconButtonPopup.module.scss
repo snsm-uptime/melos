@@ -1,0 +1,53 @@
+.anchored {
+  position: relative;
+}
+
+/* Two-class selector so this beats host z-index (e.g. lists .menuContainer).
+   Each list row's menu is its own stacking context; later rows otherwise
+   paint their 3-dot trigger over an earlier row's open panel. */
+.root.open {
+  z-index: 5;
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 2;
+  min-width: var(--icon-button-popup-min-width, 11rem);
+  overflow: hidden;
+  animation: slideDown 0.15s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+}
+
+.itemDanger:not(:disabled) {
+  color: var(--owe);
+}
+
+.itemDanger:hover:not(:disabled),
+.itemDanger:focus-visible:not(:disabled) {
+  background: color-mix(in srgb, var(--owe) 10%, var(--surface));
+}
+
+.itemLayout {
+  display: block;
+  width: 100%;
+  padding: 0.65rem 1rem;
+  text-align: left;
+}
