@@ -31,71 +31,73 @@
 
 ⚠️ **CRITICAL**: No user story work can proceed until this phase is complete
 
+**Status**: ✅ Complete (42 / 42 tasks complete)
+
 ### Database Setup
 
-- [ ] T009 Create Alembic migration structure (api/src/adapters/persistence/migrations/)
-- [ ] T010 Create SQLAlchemy base models (api/src/adapters/persistence/models.py) with Kitchen, Recipe, Ingredient, RecipeIngredient, Category, Source, Member, Invite, Conversation, Message tables
-- [ ] T011 [P] Create database indexes per data-model.md (kitchens, recipes, ingredients, members, invites, conversations, messages)
-- [ ] T012 Generate initial Alembic migration: create all tables with constraints
-- [ ] T013 Create database seeding script for testing (api/scripts/seed-db.py)
+- [x] T009 Create Alembic migration structure (api/src/adapters/persistence/migrations/)
+- [x] T010 Create SQLAlchemy base models (api/src/adapters/persistence/models.py) with Kitchen, Recipe, Ingredient, RecipeIngredient, Category, Source, Member, Invite, Conversation, Message tables
+- [x] T011 [P] Create database indexes per data-model.md (kitchens, recipes, ingredients, members, invites, conversations, messages)
+- [x] T012 Generate initial Alembic migration: create all tables with constraints
+- [x] T013 Create database seeding script for testing (api/scripts/seed-db.py)
 
 ### Authentication & Session (Reused from Finance-Dashboard)
 
-- [ ] T014 Integrate existing auth routes (api/src/api/routes/auth.py) - sign-up, sign-in, sign-out, session verification
-- [ ] T015 Create user model import from shared auth schema (email/password only; OAuth out of scope for v1)
-- [ ] T016 [P] Configure session middleware (api/src/api/dependencies.py) with melos_session cookie (httpOnly, Secure, SameSite=Lax)
-- [ ] T017 [P] Create auth verification utilities (api/src/api/security.py) with password validation (8-256 characters from finance-dashboard)
+- [x] T014 Integrate existing auth routes (api/src/api/routes/auth.py) - sign-up, sign-in, sign-out, session verification
+- [x] T015 Create user model import from shared auth schema (email/password only; OAuth out of scope for v1)
+- [x] T016 [P] Configure session middleware (api/src/api/dependencies.py) with melos_session cookie (httpOnly, Secure, SameSite=Lax)
+- [x] T017 [P] Create auth verification utilities (api/src/api/security.py) with password validation (8-256 characters from finance-dashboard)
 
 ### Domain Layer Foundation
 
-- [ ] T018 Create domain layer structure (api/src/domain/) with validation rules from spec
-- [ ] T019 Implement Recipe domain model (api/src/domain/recipe.py): Recipe, RecipeIngredient, Unit enum, Difficulty enum, ParseResult
-- [ ] T020 Implement Ingredient domain model (api/src/domain/ingredient_catalog.py): Ingredient, Category, canonical name normalization
-- [ ] T021 [P] Implement Kitchen domain model (api/src/domain/kitchen.py): Kitchen, Member roles (Visitor, Member, Owner)
-- [ ] T022 [P] Implement ShoppingList domain model (api/src/domain/cart.py): shopping list consolidation, scaling logic, item merging
-- [ ] T023 Implement TOON encoder/decoder (api/src/domain/toon.py) for safe LLM prompting. Reference: /dev/docs/appendix_b_prompts.md (Appendix B: TOON encoding format and examples)
-- [ ] T024 [P] Implement validation rules (api/src/domain/validation.py): field lengths, constraints from data-model.md
+- [x] T018 Create domain layer structure (api/src/domain/) with validation rules from spec
+- [x] T019 Implement Recipe domain model (api/src/domain/recipe.py): Recipe, RecipeIngredient, Unit enum, Difficulty enum, ParseResult
+- [x] T020 Implement Ingredient domain model (api/src/domain/ingredient_catalog.py): Ingredient, Category, canonical name normalization
+- [x] T021 [P] Implement Kitchen domain model (api/src/domain/kitchen.py): Kitchen, Member roles (Visitor, Member, Owner)
+- [x] T022 [P] Implement ShoppingList domain model (api/src/domain/cart.py): shopping list consolidation, scaling logic, item merging
+- [x] T023 Implement TOON encoder/decoder (api/src/domain/toon.py) for safe LLM prompting. Reference: /dev/docs/appendix_b_prompts.md (Appendix B: TOON encoding format and examples)
+- [x] T024 [P] Implement validation rules (api/src/domain/validation.py): field lengths, constraints from data-model.md
 
 ### Adapters & Ports (External Services)
 
-- [ ] T025 Create ports/interfaces (api/src/application/ports.py): RecipeExtractor, Embedder, ChatModel, PageFetcher, PdfRenderer, Repositories
-- [ ] T026 [P] Implement Gemini adapter (api/src/adapters/llm/gemini.py): RecipeExtractor, ChatModel, Embedder using google-genai SDK
-- [ ] T027 [P] Create LLM prompts module (api/src/adapters/llm/prompts.py): Recipe extraction and chat system prompts. Reference: /dev/docs/appendix_b_prompts.md for system prompt specifications and TOON encoding format.
-- [ ] T028 Implement page fetcher (api/src/adapters/web/page_fetcher.py): fetch URLs with SSRF validation (blocklist private IPs), timeout 10s
-- [ ] T029 [P] Implement JSON-LD extractor (api/src/adapters/web/jsonld.py): parse schema.org/Recipe from HTML
-- [ ] T030 [P] Implement PDF renderer (api/src/adapters/pdf/weasyprint.py): render shopping list template to PDF bytes
-- [ ] T031 Create shopping list template (api/src/adapters/pdf/templates/shopping_list.html) with Jinja2, CSS styling
+- [x] T025 Create ports/interfaces (api/src/application/ports.py): RecipeExtractor, Embedder, ChatModel, PageFetcher, PdfRenderer, Repositories
+- [x] T026 [P] Implement Gemini adapter (api/src/adapters/llm/gemini.py): RecipeExtractor, ChatModel, Embedder using google-genai SDK
+- [x] T027 [P] Create LLM prompts module (api/src/adapters/llm/prompts.py): Recipe extraction and chat system prompts. Reference: /dev/docs/appendix_b_prompts.md for system prompt specifications and TOON encoding format.
+- [x] T028 Implement page fetcher (api/src/adapters/web/page_fetcher.py): fetch URLs with SSRF validation (blocklist private IPs), timeout 10s
+- [x] T029 [P] Implement JSON-LD extractor (api/src/adapters/web/jsonld.py): parse schema.org/Recipe from HTML
+- [x] T030 [P] Implement PDF renderer (api/src/adapters/pdf/weasyprint.py): render shopping list template to PDF bytes
+- [x] T031 Create shopping list template (api/src/adapters/pdf/templates/shopping_list.html) with Jinja2, CSS styling
 
 ### Repositories & Persistence
 
-- [ ] T032 Create repository interfaces (api/src/application/repositories/) with base repository class
-- [ ] T033 Implement KitchenRepository (api/src/adapters/persistence/repositories.py): create, read, list kitchens (kitchen_id scoped)
-- [ ] T034 [P] Implement RecipeRepository: create, read, update, delete, list recipes per kitchen
-- [ ] T035 [P] Implement IngredientRepository: create, read, update, list ingredients; support canonical name matching (Levenshtein distance, ≥80% threshold). Reference: domain/ingredient_catalog.py
-- [ ] T036 [P] Implement MemberRepository: read members, check roles, verify kitchen access
-- [ ] T037 [P] Implement ShoppingListRepository: create, read shopping lists (computed, not persisted)
-- [ ] T038 [P] Implement InviteRepository: create, read, accept invites; enforce token uniqueness and expiry
+- [x] T032 Create repository interfaces (api/src/application/repositories/) with base repository class
+- [x] T033 Implement KitchenRepository (api/src/adapters/persistence/repositories.py): create, read, list kitchens (kitchen_id scoped)
+- [x] T034 [P] Implement RecipeRepository: create, read, update, delete, list recipes per kitchen
+- [x] T035 [P] Implement IngredientRepository: create, read, update, list ingredients; support canonical name matching (Levenshtein distance, ≥80% threshold). Reference: domain/ingredient_catalog.py
+- [x] T036 [P] Implement MemberRepository: read members, check roles, verify kitchen access
+- [x] T037 [P] Implement ShoppingListRepository: create, read shopping lists (computed, not persisted)
+- [x] T038 [P] Implement InviteRepository: create, read, accept invites; enforce token uniqueness and expiry
 
 ### API Foundation
 
-- [ ] T039 Setup FastAPI app initialization (api/src/api/main.py): middleware, error handlers, CORS
-- [ ] T040 [P] Create health check endpoint (api/src/api/routes/health.py): GET /health
-- [ ] T041 [P] Create kitchen endpoints skeleton (api/src/api/routes/kitchens.py) with role-based access control
-- [ ] T042 [P] Setup request validation and error response standardization (api/src/api/dependencies.py)
+- [x] T039 Setup FastAPI app initialization (api/src/api/main.py): middleware, error handlers, CORS
+- [x] T040 [P] Create health check endpoint (api/src/api/routes/health.py): GET /health
+- [x] T041 [P] Create kitchen endpoints skeleton (api/src/api/routes/kitchens.py) with role-based access control
+- [x] T042 [P] Setup request validation and error response standardization (api/src/api/dependencies.py)
 
 ### Frontend Foundation
 
-- [ ] T043 Create app shell layout (ui/src/components/layout/AppShell.tsx) with navigation, user menu
-- [ ] T044 [P] Create reusable components (ui/src/components/common/): ActionDialog, CopyButton, Disclosure, ErrorBoundary
-- [ ] T045 [P] Setup API client (ui/src/lib/api.ts): fetch wrapper with auth headers, error handling
-- [ ] T046 [P] Setup authentication utilities (ui/src/lib/auth.ts): session check, login/logout, protected routes
-- [ ] T047 [P] Create custom hooks (ui/src/lib/hooks.ts): useKitchen, useAuth, useAsync
-- [ ] T048 Create home page redirect (ui/src/app/page.tsx) → /kitchen if authenticated, /auth/sign-in otherwise
-- [ ] T049 [P] Create auth pages skeleton (ui/src/app/(auth)/): sign-up, sign-in, forgot-password (reused from finance-dashboard)
+- [x] T043 Create app shell layout (ui/src/components/layout/AppShell.tsx) with navigation, user menu
+- [x] T044 [P] Create reusable components (ui/src/components/common/): ActionDialog, CopyButton, Disclosure, ErrorBoundary
+- [x] T045 [P] Setup API client (ui/src/lib/api.ts): fetch wrapper with auth headers, error handling
+- [x] T046 [P] Setup authentication utilities (ui/src/lib/auth.ts): session check, login/logout, protected routes
+- [x] T047 [P] Create custom hooks (ui/src/lib/hooks.ts): useKitchen, useAuth, useAsync
+- [x] T048 Create home page redirect (ui/src/app/page.tsx) → /kitchen if authenticated, /auth/sign-in otherwise
+- [x] T049 [P] Create auth pages skeleton (ui/src/app/(auth)/): sign-up, sign-in, forgot-password (reused from finance-dashboard)
 
 ### Create First Kitchen on Sign-Up
 
-- [ ] T050 Create sign-up flow (api/src/application/use_cases/kitchens.py): on user registration, auto-create "My Kitchen" with user as owner
+- [x] T050 Create sign-up flow (api/src/application/use_cases/kitchens.py): on user registration, auto-create "My Kitchen" with user as owner
 
 **Checkpoint**: Foundation ready—authentication, database, domain models, adapters, and basic API are in place. User story implementation can now begin.
 
