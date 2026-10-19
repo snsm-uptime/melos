@@ -1,0 +1,7 @@
+# .specify/extensions.yml — Spec Kit extensions for Melos
+
+hooks:
+  before_constitution: []
+  after_constitution: []
+
+# Future: add hooks for git commit, task creation, memory tracking
