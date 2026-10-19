@@ -195,6 +195,7 @@ in `dev/skills/save_to_memory.md`.
   interactions.
 - **After each response:** Review `dev/skills/save_to_memory.md` and consider
   what, if anything, should be saved about this interaction.
+- **When implementing:** Read `HOW-TO-DEV.md` for coding instructions.
 
 ## What not to do
 
