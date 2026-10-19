@@ -6,9 +6,9 @@ from collections.abc import Iterator
 from dataclasses import replace
 
 import pytest
-from adapters.persistence.models import ListInviteTokenModel, ListMembershipModel
+from adapters.persistence.models import KitchenInviteTokenModel, KitchenMembershipModel
 from application.ports import EmailMessage
-from domain.list_invite import hash_invite_token
+from domain.kitchen_invite import hash_invite_token
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -41,9 +41,9 @@ def client(
 ) -> Iterator[TestClient]:
     from adapters import email as email_pkg
     from api.routes import auth as auth_routes
-    from api.routes import lists as lists_routes
+    from api.routes import kitchens as kitchens_routes
 
-    monkeypatch.setattr(lists_routes, "SmtpEmailSender", lambda _settings: mailer)
+    monkeypatch.setattr(kitchens_routes, "SmtpEmailSender", lambda _settings: mailer)
     monkeypatch.setattr(auth_routes, "SmtpEmailSender", lambda _settings: mailer)
     monkeypatch.setattr(email_pkg, "SmtpEmailSender", lambda _settings: mailer)
 
@@ -67,12 +67,12 @@ def _extract_raw_from_link(body: str) -> str:
     raise AssertionError(f"no invite token in mail body: {body!r}")
 
 
-def _member_count(db: Session, list_id: str) -> int:
+def _member_count(db: Session, kitchen_id: str) -> int:
     return int(
         db.scalar(
             select(func.count())
-            .select_from(ListMembershipModel)
-            .where(ListMembershipModel.list_id == list_id)
+            .select_from(KitchenMembershipModel)
+            .where(KitchenMembershipModel.kitchen_id == kitchen_id)
         )
         or 0
     )
@@ -82,12 +82,12 @@ def test_unregistered_signup_with_invite_lands_membership_and_cookie(
     client: TestClient, db_session: Session, mailer: CapturingMailer
 ) -> None:
     _register(client, "owner@example.com")
-    created = client.post("/lists", json={"name": "Household"})
-    list_id = created.json()["id"]
-    before = _member_count(db_session, list_id)
+    created = client.post("/kitchens", json={"name": "Household"})
+    kitchen_id = created.json()["id"]
+    before = _member_count(db_session, kitchen_id)
 
     invited = client.post(
-        f"/lists/{list_id}/invites",
+        f"/kitchens/{kitchen_id}/invites",
         json={"email": "invitee@example.com"},
     )
     assert invited.status_code == 201, invited.text
@@ -111,22 +111,22 @@ def test_unregistered_signup_with_invite_lands_membership_and_cookie(
     )
     assert registered.status_code == 201, registered.text
     body = registered.json()
-    assert body["inviting_list_id"] == list_id
+    assert body["inviting_kitchen_id"] == kitchen_id
     assert client.cookies.get("fh_session")
-    assert _member_count(db_session, list_id) == before + 1
+    assert _member_count(db_session, kitchen_id) == before + 1
 
     row = db_session.scalars(
-        select(ListInviteTokenModel).where(
-            ListInviteTokenModel.token_hash == hash_invite_token(raw)
+        select(KitchenInviteTokenModel).where(
+            KitchenInviteTokenModel.token_hash == hash_invite_token(raw)
         )
     ).first()
     assert row is not None
     assert row.used_at is not None
 
     membership = db_session.scalars(
-        select(ListMembershipModel).where(
-            ListMembershipModel.list_id == list_id,
-            ListMembershipModel.role == "member",
+        select(KitchenMembershipModel).where(
+            KitchenMembershipModel.kitchen_id == kitchen_id,
+            KitchenMembershipModel.role == "member",
         )
     ).first()
     assert membership is not None
@@ -136,8 +136,8 @@ def test_registered_accept_creates_membership(
     client: TestClient, db_session: Session, mailer: CapturingMailer
 ) -> None:
     _register(client, "owner@example.com")
-    created = client.post("/lists", json={"name": "Household"})
-    list_id = created.json()["id"]
+    created = client.post("/kitchens", json={"name": "Household"})
+    kitchen_id = created.json()["id"]
 
     client.post("/auth/sign-out")
     _register(client, "invitee@example.com")
@@ -148,7 +148,7 @@ def test_registered_accept_creates_membership(
         json={"email": "owner@example.com", "password": "password1"},
     )
     invited = client.post(
-        f"/lists/{list_id}/invites",
+        f"/kitchens/{kitchen_id}/invites",
         json={"email": "invitee@example.com"},
     )
     assert invited.status_code == 201
@@ -161,17 +161,17 @@ def test_registered_accept_creates_membership(
     )
     accepted = client.post("/invites/accept", json={"token": raw})
     assert accepted.status_code == 200, accepted.text
-    assert accepted.json()["list_id"] == list_id
+    assert accepted.json()["kitchen_id"] == kitchen_id
 
     again = client.post("/invites/accept", json={"token": raw})
     assert again.status_code == 200
     assert (
         db_session.scalar(
             select(func.count())
-            .select_from(ListMembershipModel)
+            .select_from(KitchenMembershipModel)
             .where(
-                ListMembershipModel.list_id == list_id,
-                ListMembershipModel.role == "member",
+                KitchenMembershipModel.kitchen_id == kitchen_id,
+                KitchenMembershipModel.role == "member",
             )
         )
         == 1
@@ -180,9 +180,9 @@ def test_registered_accept_creates_membership(
 
 def test_bad_token_leaves_membership_unchanged(client: TestClient, db_session: Session) -> None:
     _register(client, "owner@example.com")
-    created = client.post("/lists", json={"name": "Household"})
-    list_id = created.json()["id"]
-    before = _member_count(db_session, list_id)
+    created = client.post("/kitchens", json={"name": "Household"})
+    kitchen_id = created.json()["id"]
+    before = _member_count(db_session, kitchen_id)
 
     client.post("/auth/sign-out")
     bad = client.post(
@@ -194,7 +194,7 @@ def test_bad_token_leaves_membership_unchanged(client: TestClient, db_session: S
         },
     )
     assert bad.status_code == 410
-    assert _member_count(db_session, list_id) == before
+    assert _member_count(db_session, kitchen_id) == before
 
     preview = client.get("/invites/preview", params={"token": "nope"})
     assert preview.status_code == 410
@@ -215,11 +215,11 @@ def test_signup_with_invite_verify_on_partial_success(
     )
     assert response.status_code == 201, response.text
     claim_alias(client, "owner@example.com")
-    created = client.post("/lists", json={"name": "Household"})
-    list_id = created.json()["id"]
+    created = client.post("/kitchens", json={"name": "Household"})
+    kitchen_id = created.json()["id"]
 
     invited = client.post(
-        f"/lists/{list_id}/invites",
+        f"/kitchens/{kitchen_id}/invites",
         json={"email": "invitee@example.com"},
     )
     assert invited.status_code == 201
@@ -244,8 +244,8 @@ def test_signup_with_invite_verify_on_partial_success(
     assert me.json()["email"] == "invitee@example.com"
 
     row = db_session.scalars(
-        select(ListInviteTokenModel).where(
-            ListInviteTokenModel.token_hash == hash_invite_token(raw)
+        select(KitchenInviteTokenModel).where(
+            KitchenInviteTokenModel.token_hash == hash_invite_token(raw)
         )
     ).first()
     assert row is not None
@@ -253,10 +253,10 @@ def test_signup_with_invite_verify_on_partial_success(
     assert (
         db_session.scalar(
             select(func.count())
-            .select_from(ListMembershipModel)
+            .select_from(KitchenMembershipModel)
             .where(
-                ListMembershipModel.list_id == list_id,
-                ListMembershipModel.role == "member",
+                KitchenMembershipModel.kitchen_id == kitchen_id,
+                KitchenMembershipModel.role == "member",
             )
         )
         == 0

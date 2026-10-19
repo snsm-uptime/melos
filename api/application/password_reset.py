@@ -118,7 +118,7 @@ class RequestPasswordResetService:
 
         reset_link = f"{self._public_app_url}{self._reset_path}?token={raw}"
         safe_href = escape(reset_link, quote=True)
-        subject = "Reset your finance-helper password"
+        subject = "Reset your Melos password"
         body_text = (
             "We received a request to reset your password.\n\n"
             f"Open this link within one hour to choose a new password:\n{reset_link}\n\n"

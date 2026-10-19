@@ -68,7 +68,7 @@ services:
       SEED_DEV_USER_EMAIL: ${SEED_DEV_USER_EMAIL:-}
       SEED_DEV_USER_PASSWORD: ${SEED_DEV_USER_PASSWORD:-}
       SEED_DEV_USER_ALIAS: ${SEED_DEV_USER_ALIAS:-}
-      SEED_DEV_USER_LISTS: ${SEED_DEV_USER_LISTS:-}
+      SEED_DEV_USER_KITCHEN: ${SEED_DEV_USER_KITCHEN:-}
     ports:
       - "${API_HOST_PORT:-8000}:8000"
     volumes:
@@ -112,28 +112,29 @@ services:
     networks:
       - internal
 
-networks:
-  internal:
-    driver: bridge
   mcp:
     build:
       context: ./mcp
       dockerfile: Dockerfile
     ports:
-      - "${API_HOST_PORT:-9000}:9000"
+      - "${MCP_HOST_PORT:-9000}:9000"
     environment:
       PYTHONUNBUFFERED: "1"
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_CHAT_MODEL: ${GEMINI_CHAT_MODEL:-gemini-2.0-flash}
       GEMINI_EMBED_MODEL: ${GEMINI_EMBED_MODEL:-text-embedding-004}
       GEMINI_EMBED_DIM: ${GEMINI_EMBED_DIM:-768}
     depends_on:
       - db
-    networks:
-      - melos
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      # python:3.12-slim has no curl — same urllib probe as api.
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/health')\""]
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - internal
 
+networks:
+  internal:
+    driver: bridge

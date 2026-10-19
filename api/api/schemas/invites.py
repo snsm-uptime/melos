@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 
 class InvitePreviewResponse(BaseModel):
-    list_name: str
+    kitchen_name: str
     email_hint: str
     path: Literal["signup", "join"]
 
@@ -19,4 +19,4 @@ class AcceptInviteRequest(BaseModel):
 
 
 class AcceptInviteResponse(BaseModel):
-    list_id: UUID
+    kitchen_id: UUID

@@ -3,7 +3,7 @@
 /**
  * Sanitize returnTo. Empty/unsafe values → `/` so the home page can run
  * `resolveServerAuthenticatedLanding` (UX-DR9 / ACL revalidation).
- * Explicit `/lists` remains valid. AccountMenu keeps intentional `/lists` chrome.
+ * Explicit `/kitchens` remains valid. AccountMenu keeps intentional `/kitchens` chrome.
  */
 export function safeReturnTo(value: string | undefined): string {
   if (!value) return "/";

@@ -1,4 +1,4 @@
-"""Sign-up use-case: create account + exactly one personal list."""
+"""Sign-up use-case: create account + exactly one personal kitchen."""
 
 from __future__ import annotations
 
@@ -6,10 +6,10 @@ from dataclasses import dataclass
 from uuid import UUID, uuid4
 
 from domain.errors import DuplicateEmailError
-from domain.signup import PERSONAL_LIST_NAME, validate_signup_input
+from domain.signup import PERSONAL_KITCHEN_NAME, validate_signup_input
 
 from application.ports import (
-    NewListRecord,
+    NewKitchenRecord,
     NewMembershipRecord,
     NewUserRecord,
     PasswordHasher,
@@ -21,8 +21,8 @@ from application.ports import (
 class SignupResult:
     user_id: UUID
     email: str
-    list_id: UUID
-    list_name: str
+    kitchen_id: UUID
+    kitchen_name: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,19 +50,19 @@ class SignUpService:
         _ = command.email_verification_required
 
         user_id = uuid4()
-        list_id = uuid4()
+        kitchen_id = uuid4()
         membership_id = uuid4()
 
-        self._repo.create_user_with_personal_list(
+        self._repo.create_user_with_personal_kitchen(
             user=NewUserRecord(id=user_id, email=email, password_hash=password_hash),
-            personal_list=NewListRecord(
-                id=list_id,
-                name=PERSONAL_LIST_NAME,
+            personal_kitchen=NewKitchenRecord(
+                id=kitchen_id,
+                name=PERSONAL_KITCHEN_NAME,
                 owner_id=user_id,
             ),
             membership=NewMembershipRecord(
                 id=membership_id,
-                list_id=list_id,
+                kitchen_id=kitchen_id,
                 user_id=user_id,
                 role="owner",
             ),
@@ -70,6 +70,6 @@ class SignUpService:
         return SignupResult(
             user_id=user_id,
             email=email,
-            list_id=list_id,
-            list_name=PERSONAL_LIST_NAME,
+            kitchen_id=kitchen_id,
+            kitchen_name=PERSONAL_KITCHEN_NAME,
         )

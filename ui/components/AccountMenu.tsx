@@ -1,15 +1,11 @@
 "use client";
 
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 
-import { fetchCards, type CardItem } from "@/app/cards/cardsClient";
-import { DefaultImportListControl } from "@/app/cards/DefaultImportListControl";
 import { MoonIcon, PencilIcon, SunIcon, SystemIcon, TrashIcon } from "@/app/icons";
-import { fetchLists, type ListItem } from "@/app/lists/listsClient";
-import { resetMembershipListsStore } from "@/app/lists/membershipListsStore";
+import { resetMembershipKitchensStore } from "@/app/kitchens/membershipKitchensStore";
 import { Avatar } from "@/components/Avatar";
-import { SingleChipPicker, type ChipOption } from "@/components/ChipPicker";
 import { useChromeHeader } from "@/components/ChromeBack";
 import {
   clearPrefsCache,
@@ -19,7 +15,7 @@ import { TriSwitch } from "@/components/TriSwitch";
 import { AvatarCropSheet } from "@/components/AvatarCropSheet";
 import { accountCopy } from "@/lib/i18n/account";
 import type { Locale, ThemePreference } from "@/lib/i18n/locale";
-import listsStyles from "@/app/lists/lists.module.scss";
+import kitchensStyles from "@/app/kitchens/kitchens.module.scss";
 
 import styles from "./AccountMenu.module.scss";
 import { Tooltip } from "./Tooltip";
@@ -27,16 +23,12 @@ import { Tooltip } from "./Tooltip";
 export function AccountMenu() {
   // NOTE: SSR hydration mismatch — server renders with default theme; client may hydrate with different theme.
   // This can cause brief light→dark flicker on page load. Mitigation: ensure initial HTML theme matches system preference.
-  const { locale, theme, setLanguage, setTheme, setDefaultOriginKind, ready, me, refresh } =
-    usePreferences();
+  const { locale, theme, setLanguage, setTheme, ready, me, refresh } = usePreferences();
   const t = accountCopy(locale);
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lists, setLists] = useState<ListItem[]>([]);
-  const [cards, setCards] = useState<CardItem[]>([]);
-  const [, setCardsRefreshToken] = useState(0);
   const [photoPending, setPhotoPending] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
@@ -49,41 +41,6 @@ export function AccountMenu() {
     onBack: () => router.back(),
     title: t.title,
   });
-
-  useEffect(() => {
-    let cancelled = false;
-    void fetchLists({
-      errorGeneric: t.errorGeneric,
-      errorInvalidName: t.errorGeneric,
-      errorForbidden: t.errorForbidden,
-      errorUnauthorized: t.errorUnauthorized,
-    }).then((result) => {
-      if (!cancelled && result.ok) setLists(result.lists);
-    });
-    return () => {
-      cancelled = true;
-    };
-    // List membership is independent of locale; fetch once on mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    void fetchCards({
-      errorGeneric: t.errorGeneric,
-      errorUnauthorized: t.errorUnauthorized,
-      errorInvalidLabel: t.errorGeneric,
-      errorInvalidIban: t.errorGeneric,
-      errorDuplicateIban: t.errorGeneric,
-    }).then((result) => {
-      if (!cancelled && result.ok) setCards(result.cards.filter((card) => !card.is_archived));
-    });
-    return () => {
-      cancelled = true;
-    };
-    // Card roster is independent of locale; fetch once on mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   async function onLanguage(next: Locale) {
     setPending(true);
@@ -108,32 +65,6 @@ export function AccountMenu() {
       setPending(false);
     }
   }
-
-  async function onDefaultOrigin(value: string) {
-    setPending(true);
-    setError(null);
-    try {
-      if (value === "cash" || value === "blank") {
-        await setDefaultOriginKind(value);
-      } else {
-        await setDefaultOriginKind("card", value);
-      }
-    } catch {
-      setError(t.saveDefaultOriginFailed);
-    } finally {
-      setPending(false);
-    }
-  }
-
-  const defaultOriginOptions: ChipOption[] = [
-    { value: "cash", label: t.defaultOriginCash },
-    { value: "blank", label: t.defaultOriginBlank },
-    ...cards.map((card) => ({ value: card.id, label: card.label })),
-  ];
-  const defaultOriginSelectedValue =
-    me?.default_origin_kind === "card"
-      ? (me?.default_origin_card_id ?? "blank")
-      : (me?.default_origin_kind ?? "blank");
 
   async function savePhoto(photoBase64: string | null) {
     setPhotoPending(true);
@@ -170,7 +101,7 @@ export function AccountMenu() {
   async function onSignOut() {
     setSigningOut(true);
     clearPrefsCache();
-    resetMembershipListsStore();
+    resetMembershipKitchensStore();
     try {
       await fetch("/api/auth/sign-out", {
         method: "POST",
@@ -179,7 +110,7 @@ export function AccountMenu() {
       });
     } finally {
       clearPrefsCache();
-      resetMembershipListsStore();
+      resetMembershipKitchensStore();
       window.location.assign("/sign-in");
     }
   }
@@ -187,7 +118,7 @@ export function AccountMenu() {
   async function onPasswordReset() {
     setSigningOut(true);
     clearPrefsCache();
-    resetMembershipListsStore();
+    resetMembershipKitchensStore();
     try {
       await fetch("/api/auth/sign-out", {
         method: "POST",
@@ -196,7 +127,7 @@ export function AccountMenu() {
       });
     } finally {
       clearPrefsCache();
-      resetMembershipListsStore();
+      resetMembershipKitchensStore();
       window.location.assign("/forgot-password");
     }
   }
@@ -211,7 +142,7 @@ export function AccountMenu() {
     "absolute inline-flex items-center justify-center rounded-full border border-border bg-surface text-foreground cursor-pointer shadow-sm disabled:opacity-45 disabled:cursor-not-allowed";
 
   return (
-    <main className={listsStyles.main} style={{ fontFamily: "var(--font-ui), Manrope, system-ui, sans-serif" }}>
+    <main className={kitchensStyles.main} style={{ fontFamily: "var(--font-ui), Manrope, system-ui, sans-serif" }}>
       {!ready ? (
         <p className="text-muted text-[0.85rem]">{t.loading}</p>
       ) : null}
@@ -301,36 +232,6 @@ export function AccountMenu() {
           />
         </section>
 
-        <section aria-labelledby="account-default-origin" className="flex flex-col gap-2">
-          <h2 id="account-default-origin" className="m-0 text-[0.7rem] font-semibold text-muted uppercase tracking-[0.04rem]">
-            {t.defaultOriginTitle}
-          </h2>
-          <SingleChipPicker
-            options={defaultOriginOptions}
-            selectedValue={defaultOriginSelectedValue}
-            onSelect={(value) => void onDefaultOrigin(value)}
-            ariaLabel={t.defaultOriginTitle}
-            disabled={controlsDisabled}
-          />
-        </section>
-
-        {lists.length > 0 ? (
-          <section aria-labelledby="account-default-destination" className="flex flex-col gap-2">
-            <DefaultImportListControl
-              lists={lists}
-              messages={{
-                defaultListTitle: t.defaultListTitle,
-                errorGeneric: t.errorGeneric,
-                errorUnauthorized: t.errorUnauthorized,
-                errorForbidden: t.errorForbidden,
-              }}
-              onChanged={() => {
-                void refresh();
-                setCardsRefreshToken((n) => n + 1);
-              }}
-            />
-          </section>
-        ) : null}
       </div>
 
       <section aria-labelledby="account-session" className="flex items-center justify-between gap-2 pt-5 border-t border-border">

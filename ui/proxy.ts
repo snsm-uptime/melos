@@ -15,7 +15,7 @@ const PUBLIC_PREFIXES = [
   "/verify",
   "/health",
   "/api/auth",
-  "/api/lists",
+  "/api/kitchens",
   "/api/invites",
 ];
 
@@ -31,7 +31,7 @@ function isPublicPath(pathname: string): boolean {
  * protected app routes only.
  *
  * Do NOT bounce /sign-in|/signup away based on cookie presence — a stale
- * fh_session after logout would loop: sign-in → lists → sign-in.
+ * fh_session after logout would loop: sign-in → kitchens → sign-in.
  * Fine-grained checks stay in fetchSession / layouts / api.
  */
 export function proxy(request: NextRequest) {

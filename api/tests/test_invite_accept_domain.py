@@ -8,18 +8,18 @@ from uuid import UUID, uuid4
 
 import pytest
 from application.email_verification import EmailVerificationTokenRecord
-from application.list_invite import ListInviteTokenRecord
-from application.list_invite_accept import (
-    AcceptListInviteCommand,
-    AcceptListInviteService,
-    PreviewListInviteCommand,
-    PreviewListInviteService,
+from application.kitchen_invite import KitchenInviteTokenRecord
+from application.kitchen_invite_accept import (
+    AcceptKitchenInviteCommand,
+    AcceptKitchenInviteService,
+    PreviewKitchenInviteCommand,
+    PreviewKitchenInviteService,
     SignUpWithInviteCommand,
     SignUpWithInviteService,
 )
-from application.lists import ListRecord, MembershipRecord
+from application.kitchens import KitchenRecord, MembershipRecord
 from application.ports import (
-    NewListRecord,
+    NewKitchenRecord,
     NewMembershipRecord,
     NewUserRecord,
 )
@@ -30,7 +30,7 @@ from domain.errors import (
     InvalidInviteTokenError,
     InviteEmailMismatchError,
 )
-from domain.list_invite import (
+from domain.kitchen_invite import (
     INVITE_MEMBER_ROLE,
     assert_invite_email_bind,
     assert_invite_token_redeemable,
@@ -41,19 +41,19 @@ from domain.list_invite import (
 
 
 @dataclass
-class FakeLists:
-    lists: dict[UUID, ListRecord] = field(default_factory=dict)
+class FakeKitchens:
+    kitchens: dict[UUID, KitchenRecord] = field(default_factory=dict)
     memberships: dict[tuple[UUID, UUID], MembershipRecord] = field(default_factory=dict)
 
-    def get_list(self, list_id: UUID) -> ListRecord | None:
-        return self.lists.get(list_id)
+    def get_kitchen(self, kitchen_id: UUID) -> KitchenRecord | None:
+        return self.kitchens.get(kitchen_id)
 
-    def get_membership(self, list_id: UUID, user_id: UUID) -> MembershipRecord | None:
-        return self.memberships.get((list_id, user_id))
+    def get_membership(self, kitchen_id: UUID, user_id: UUID) -> MembershipRecord | None:
+        return self.memberships.get((kitchen_id, user_id))
 
     def add_membership(self, membership: NewMembershipRecord) -> None:
-        self.memberships[(membership.list_id, membership.user_id)] = MembershipRecord(
-            list_id=membership.list_id,
+        self.memberships[(membership.kitchen_id, membership.user_id)] = MembershipRecord(
+            kitchen_id=membership.kitchen_id,
             user_id=membership.user_id,
             role=membership.role,
         )
@@ -77,15 +77,15 @@ class FakeUsers:
 
 @dataclass
 class FakeTokens:
-    tokens: dict[str, ListInviteTokenRecord] = field(default_factory=dict)
+    tokens: dict[str, KitchenInviteTokenRecord] = field(default_factory=dict)
 
-    def invalidate_outstanding_for_list_email(self, list_id: UUID, email: str) -> None:
+    def invalidate_outstanding_for_kitchen_email(self, kitchen_id: UUID, email: str) -> None:
         raise NotImplementedError
 
     def create_token(self, **kwargs):  # noqa: ANN003
         raise NotImplementedError
 
-    def get_by_token_hash(self, token_hash: str) -> ListInviteTokenRecord | None:
+    def get_by_token_hash(self, token_hash: str) -> KitchenInviteTokenRecord | None:
         return self.tokens.get(token_hash)
 
     def claim_token(self, token_id: UUID, *, used_at: datetime) -> bool:
@@ -95,9 +95,9 @@ class FakeTokens:
             now = datetime.now(UTC)
             if token.used_at is not None or token.expires_at <= now:
                 return False
-            self.tokens[key] = ListInviteTokenRecord(
+            self.tokens[key] = KitchenInviteTokenRecord(
                 id=token.id,
-                list_id=token.list_id,
+                kitchen_id=token.kitchen_id,
                 email=token.email,
                 token_hash=token.token_hash,
                 inviter_user_id=token.inviter_user_id,
@@ -136,22 +136,22 @@ class FakeVerification:
 class FakeSignupRepo:
     emails: set[str] = field(default_factory=set)
     users: list[NewUserRecord] = field(default_factory=list)
-    lists: list[NewListRecord] = field(default_factory=list)
+    kitchens: list[NewKitchenRecord] = field(default_factory=list)
     memberships: list[NewMembershipRecord] = field(default_factory=list)
 
     def email_exists(self, email: str) -> bool:
         return email in self.emails
 
-    def create_user_with_personal_list(
+    def create_user_with_personal_kitchen(
         self,
         *,
         user: NewUserRecord,
-        personal_list: NewListRecord,
+        personal_kitchen: NewKitchenRecord,
         membership: NewMembershipRecord,
     ) -> None:
         self.emails.add(user.email)
         self.users.append(user)
-        self.lists.append(personal_list)
+        self.kitchens.append(personal_kitchen)
         self.memberships.append(membership)
 
 
@@ -166,16 +166,16 @@ class PlainHasher:
 def _invite(
     *,
     email: str = "invitee@example.com",
-    list_id: UUID | None = None,
+    kitchen_id: UUID | None = None,
     used_at: datetime | None = None,
     expires_at: datetime | None = None,
     raw: str = "raw-invite-token",
-) -> tuple[str, ListInviteTokenRecord]:
-    lid = list_id or uuid4()
+) -> tuple[str, KitchenInviteTokenRecord]:
+    lid = kitchen_id or uuid4()
     now = datetime.now(UTC)
-    record = ListInviteTokenRecord(
+    record = KitchenInviteTokenRecord(
         id=uuid4(),
-        list_id=lid,
+        kitchen_id=lid,
         email=email,
         token_hash=hash_invite_token(raw),
         inviter_user_id=uuid4(),
@@ -212,22 +212,24 @@ def test_invite_email_hint_masks_local_part() -> None:
 def test_accept_creates_member_membership_and_claims_token() -> None:
     raw, invite = _invite()
     tokens = FakeTokens(tokens={invite.token_hash: invite})
-    lists = FakeLists(lists={invite.list_id: ListRecord(invite.list_id, "Household", uuid4())})
+    kitchens = FakeKitchens(
+        kitchens={invite.kitchen_id: KitchenRecord(invite.kitchen_id, "Household", uuid4())}
+    )
     invitee = AuthUserRecord(id=uuid4(), email="invitee@example.com", password_hash="x")
     users = FakeUsers()
     users.add(invitee)
     verification = FakeVerification(verified_at={invitee.id: None})
 
-    result = AcceptListInviteService(tokens, users, lists, verification).execute(
-        AcceptListInviteCommand(
+    result = AcceptKitchenInviteService(tokens, users, kitchens, verification).execute(
+        AcceptKitchenInviteCommand(
             actor_user_id=invitee.id,
             raw_token=raw,
             email_verification_required=False,
         )
     )
-    assert result.list_id == invite.list_id
+    assert result.kitchen_id == invite.kitchen_id
     assert result.already_member is False
-    membership = lists.get_membership(invite.list_id, invitee.id)
+    membership = kitchens.get_membership(invite.kitchen_id, invitee.id)
     assert membership is not None
     assert membership.role == INVITE_MEMBER_ROLE
     assert tokens.get_by_token_hash(invite.token_hash).used_at is not None
@@ -236,20 +238,22 @@ def test_accept_creates_member_membership_and_claims_token() -> None:
 def test_accept_email_mismatch_rejected() -> None:
     raw, invite = _invite(email="invitee@example.com")
     tokens = FakeTokens(tokens={invite.token_hash: invite})
-    lists = FakeLists(lists={invite.list_id: ListRecord(invite.list_id, "H", uuid4())})
+    kitchens = FakeKitchens(
+        kitchens={invite.kitchen_id: KitchenRecord(invite.kitchen_id, "H", uuid4())}
+    )
     other = AuthUserRecord(id=uuid4(), email="other@example.com", password_hash="x")
     users = FakeUsers()
     users.add(other)
 
     with pytest.raises(InviteEmailMismatchError):
-        AcceptListInviteService(tokens, users, lists, FakeVerification()).execute(
-            AcceptListInviteCommand(
+        AcceptKitchenInviteService(tokens, users, kitchens, FakeVerification()).execute(
+            AcceptKitchenInviteCommand(
                 actor_user_id=other.id,
                 raw_token=raw,
                 email_verification_required=False,
             )
         )
-    assert lists.get_membership(invite.list_id, other.id) is None
+    assert kitchens.get_membership(invite.kitchen_id, other.id) is None
 
 
 def test_accept_expired_or_used_no_membership() -> None:
@@ -259,34 +263,34 @@ def test_accept_expired_or_used_no_membership() -> None:
     invitee = AuthUserRecord(id=uuid4(), email="invitee@example.com", password_hash="x")
     users = FakeUsers()
     users.add(invitee)
-    lists = FakeLists(
-        lists={
-            used.list_id: ListRecord(used.list_id, "H", uuid4()),
-            expired.list_id: ListRecord(expired.list_id, "H", uuid4()),
+    kitchens = FakeKitchens(
+        kitchens={
+            used.kitchen_id: KitchenRecord(used.kitchen_id, "H", uuid4()),
+            expired.kitchen_id: KitchenRecord(expired.kitchen_id, "H", uuid4()),
         }
     )
 
     with pytest.raises(InvalidInviteTokenError):
-        AcceptListInviteService(
+        AcceptKitchenInviteService(
             FakeTokens(tokens={used.token_hash: used}),
             users,
-            lists,
+            kitchens,
             FakeVerification(),
         ).execute(
-            AcceptListInviteCommand(
+            AcceptKitchenInviteCommand(
                 actor_user_id=invitee.id,
                 raw_token=raw_used,
                 email_verification_required=False,
             )
         )
     with pytest.raises(InvalidInviteTokenError):
-        AcceptListInviteService(
+        AcceptKitchenInviteService(
             FakeTokens(tokens={expired.token_hash: expired}),
             users,
-            lists,
+            kitchens,
             FakeVerification(),
         ).execute(
-            AcceptListInviteCommand(
+            AcceptKitchenInviteCommand(
                 actor_user_id=invitee.id,
                 raw_token=raw_exp,
                 email_verification_required=False,
@@ -299,18 +303,18 @@ def test_accept_already_member_silent_idempotent() -> None:
     invitee = AuthUserRecord(id=uuid4(), email="invitee@example.com", password_hash="x")
     users = FakeUsers()
     users.add(invitee)
-    lists = FakeLists(
-        lists={invite.list_id: ListRecord(invite.list_id, "H", uuid4())},
+    kitchens = FakeKitchens(
+        kitchens={invite.kitchen_id: KitchenRecord(invite.kitchen_id, "H", uuid4())},
         memberships={
-            (invite.list_id, invitee.id): MembershipRecord(
-                invite.list_id, invitee.id, INVITE_MEMBER_ROLE
+            (invite.kitchen_id, invitee.id): MembershipRecord(
+                invite.kitchen_id, invitee.id, INVITE_MEMBER_ROLE
             )
         },
     )
     tokens = FakeTokens(tokens={invite.token_hash: invite})
 
-    result = AcceptListInviteService(tokens, users, lists, FakeVerification()).execute(
-        AcceptListInviteCommand(
+    result = AcceptKitchenInviteService(tokens, users, kitchens, FakeVerification()).execute(
+        AcceptKitchenInviteCommand(
             actor_user_id=invitee.id,
             raw_token=raw,
             email_verification_required=False,
@@ -325,26 +329,30 @@ def test_accept_verification_required_blocks_before_claim() -> None:
     invitee = AuthUserRecord(id=uuid4(), email="invitee@example.com", password_hash="x")
     users = FakeUsers()
     users.add(invitee)
-    lists = FakeLists(lists={invite.list_id: ListRecord(invite.list_id, "H", uuid4())})
+    kitchens = FakeKitchens(
+        kitchens={invite.kitchen_id: KitchenRecord(invite.kitchen_id, "H", uuid4())}
+    )
     tokens = FakeTokens(tokens={invite.token_hash: invite})
     verification = FakeVerification(verified_at={invitee.id: None})
 
     with pytest.raises(EmailNotVerifiedError):
-        AcceptListInviteService(tokens, users, lists, verification).execute(
-            AcceptListInviteCommand(
+        AcceptKitchenInviteService(tokens, users, kitchens, verification).execute(
+            AcceptKitchenInviteCommand(
                 actor_user_id=invitee.id,
                 raw_token=raw,
                 email_verification_required=True,
             )
         )
-    assert lists.get_membership(invite.list_id, invitee.id) is None
+    assert kitchens.get_membership(invite.kitchen_id, invitee.id) is None
     assert tokens.get_by_token_hash(invite.token_hash).used_at is None
 
 
 def test_signup_with_invite_creates_personal_and_inviting_membership() -> None:
     raw, invite = _invite()
     tokens = FakeTokens(tokens={invite.token_hash: invite})
-    lists = FakeLists(lists={invite.list_id: ListRecord(invite.list_id, "Household", uuid4())})
+    kitchens = FakeKitchens(
+        kitchens={invite.kitchen_id: KitchenRecord(invite.kitchen_id, "Household", uuid4())}
+    )
     signup_repo = FakeSignupRepo()
     users = FakeUsers()
     verification = FakeVerification()
@@ -355,7 +363,7 @@ def test_signup_with_invite_creates_personal_and_inviting_membership() -> None:
         SignUpService(signup_repo, PlainHasher()),
         tokens,
         users,
-        lists,
+        kitchens,
         verification,
     ).execute(
         SignUpWithInviteCommand(
@@ -366,9 +374,9 @@ def test_signup_with_invite_creates_personal_and_inviting_membership() -> None:
         )
     )
     assert result.requires_email_verification is False
-    assert result.inviting_list_id == invite.list_id
-    assert len(signup_repo.lists) == 1
-    membership = lists.get_membership(invite.list_id, result.user_id)
+    assert result.inviting_kitchen_id == invite.kitchen_id
+    assert len(signup_repo.kitchens) == 1
+    membership = kitchens.get_membership(invite.kitchen_id, result.user_id)
     assert membership is not None
     assert membership.role == INVITE_MEMBER_ROLE
     assert tokens.get_by_token_hash(invite.token_hash).used_at is not None
@@ -377,14 +385,16 @@ def test_signup_with_invite_creates_personal_and_inviting_membership() -> None:
 def test_signup_with_invite_verify_on_partial_success() -> None:
     raw, invite = _invite()
     tokens = FakeTokens(tokens={invite.token_hash: invite})
-    lists = FakeLists(lists={invite.list_id: ListRecord(invite.list_id, "H", uuid4())})
+    kitchens = FakeKitchens(
+        kitchens={invite.kitchen_id: KitchenRecord(invite.kitchen_id, "H", uuid4())}
+    )
     signup_repo = FakeSignupRepo()
 
     result = SignUpWithInviteService(
         SignUpService(signup_repo, PlainHasher()),
         tokens,
         FakeUsers(),
-        lists,
+        kitchens,
         FakeVerification(),
     ).execute(
         SignUpWithInviteCommand(
@@ -395,23 +405,25 @@ def test_signup_with_invite_verify_on_partial_success() -> None:
         )
     )
     assert result.requires_email_verification is True
-    assert result.inviting_list_id is None
+    assert result.inviting_kitchen_id is None
     assert len(signup_repo.users) == 1
-    assert lists.get_membership(invite.list_id, result.user_id) is None
+    assert kitchens.get_membership(invite.kitchen_id, result.user_id) is None
     assert tokens.get_by_token_hash(invite.token_hash).used_at is None
 
 
 def test_signup_with_invite_email_mismatch() -> None:
     raw, invite = _invite(email="invitee@example.com")
     tokens = FakeTokens(tokens={invite.token_hash: invite})
-    lists = FakeLists(lists={invite.list_id: ListRecord(invite.list_id, "H", uuid4())})
+    kitchens = FakeKitchens(
+        kitchens={invite.kitchen_id: KitchenRecord(invite.kitchen_id, "H", uuid4())}
+    )
 
     with pytest.raises(InviteEmailMismatchError):
         SignUpWithInviteService(
             SignUpService(FakeSignupRepo(), PlainHasher()),
             tokens,
             FakeUsers(),
-            lists,
+            kitchens,
             FakeVerification(),
         ).execute(
             SignUpWithInviteCommand(
@@ -426,32 +438,34 @@ def test_signup_with_invite_email_mismatch() -> None:
 def test_preview_signup_path_for_unregistered() -> None:
     raw, invite = _invite(email="invitee@example.com")
     tokens = FakeTokens(tokens={invite.token_hash: invite})
-    lists = FakeLists(lists={invite.list_id: ListRecord(invite.list_id, "Household", uuid4())})
-
-    preview = PreviewListInviteService(tokens, lists, FakeUsers()).execute(
-        PreviewListInviteCommand(raw_token=raw)
+    kitchens = FakeKitchens(
+        kitchens={invite.kitchen_id: KitchenRecord(invite.kitchen_id, "Household", uuid4())}
     )
-    assert preview.list_name == "Household"
+
+    preview = PreviewKitchenInviteService(tokens, kitchens, FakeUsers()).execute(
+        PreviewKitchenInviteCommand(raw_token=raw)
+    )
+    assert preview.kitchen_name == "Household"
     assert preview.path == "signup"
     assert preview.email_hint == "i***e@example.com"
 
 
-def test_accept_deleted_list_is_invalid_invite() -> None:
+def test_accept_deleted_kitchen_is_invalid_invite() -> None:
     raw, invite = _invite(email="member@example.com")
     tokens = FakeTokens(tokens={invite.token_hash: invite})
     actor = AuthUserRecord(id=uuid4(), email="member@example.com", password_hash="x")
     users = FakeUsers()
     users.add(actor)
-    lists = FakeLists()  # list missing
+    kitchens = FakeKitchens()  # kitchen missing
 
     with pytest.raises(InvalidInviteTokenError):
-        AcceptListInviteService(
+        AcceptKitchenInviteService(
             tokens,
             users,
-            lists,
+            kitchens,
             FakeVerification(verified_at={actor.id: datetime.now(UTC)}),
         ).execute(
-            AcceptListInviteCommand(
+            AcceptKitchenInviteCommand(
                 actor_user_id=actor.id,
                 raw_token=raw,
                 email_verification_required=False,
@@ -463,14 +477,14 @@ def test_accept_lost_claim_race_succeeds_if_membership_exists() -> None:
     """Concurrent winner claimed + joined; loser's claim fails but membership is there."""
 
     @dataclass
-    class DeferredMembershipLists(FakeLists):
+    class DeferredMembershipKitchens(FakeKitchens):
         _skip_first: bool = True
 
-        def get_membership(self, list_id: UUID, user_id: UUID) -> MembershipRecord | None:
+        def get_membership(self, kitchen_id: UUID, user_id: UUID) -> MembershipRecord | None:
             if self._skip_first:
                 self._skip_first = False
                 return None
-            return self.memberships.get((list_id, user_id))
+            return self.memberships.get((kitchen_id, user_id))
 
     raw, invite = _invite(email="member@example.com")
     tokens = FakeTokens(tokens={invite.token_hash: invite})
@@ -483,26 +497,26 @@ def test_accept_lost_claim_race_succeeds_if_membership_exists() -> None:
     actor = AuthUserRecord(id=uuid4(), email="member@example.com", password_hash="x")
     users = FakeUsers()
     users.add(actor)
-    lists = DeferredMembershipLists(
-        lists={invite.list_id: ListRecord(invite.list_id, "Household", uuid4())},
+    kitchens = DeferredMembershipKitchens(
+        kitchens={invite.kitchen_id: KitchenRecord(invite.kitchen_id, "Household", uuid4())},
         memberships={
-            (invite.list_id, actor.id): MembershipRecord(
-                list_id=invite.list_id, user_id=actor.id, role="member"
+            (invite.kitchen_id, actor.id): MembershipRecord(
+                kitchen_id=invite.kitchen_id, user_id=actor.id, role="member"
             )
         },
     )
 
-    result = AcceptListInviteService(
+    result = AcceptKitchenInviteService(
         tokens,
         users,
-        lists,
+        kitchens,
         FakeVerification(verified_at={actor.id: datetime.now(UTC)}),
     ).execute(
-        AcceptListInviteCommand(
+        AcceptKitchenInviteCommand(
             actor_user_id=actor.id,
             raw_token=raw,
             email_verification_required=False,
         )
     )
     assert result.already_member is True
-    assert result.list_id == invite.list_id
+    assert result.kitchen_id == invite.kitchen_id

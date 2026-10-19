@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Cropper, { type Area, type Point } from "react-easy-crop";
 
-import { Sheet } from "@/app/lists/Sheet";
+import { Sheet } from "@/app/kitchens/Sheet";
 import { FormIconSubmit } from "@/components/FormIconSubmit/FormIconSubmit";
 import { encodeCroppedAvatar, loadImage } from "@/lib/imageEncode";
 

@@ -5,34 +5,12 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const fetchLists = vi.fn();
-const fetchCards = vi.fn();
 const routerBack = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ back: routerBack }),
   usePathname: () => "/account",
 }));
-
-vi.mock("@/app/lists/listsClient", async () => {
-  const actual = await vi.importActual<typeof import("@/app/lists/listsClient")>(
-    "@/app/lists/listsClient",
-  );
-  return {
-    ...actual,
-    fetchLists: (...args: unknown[]) => fetchLists(...args),
-  };
-});
-
-vi.mock("@/app/cards/cardsClient", async () => {
-  const actual = await vi.importActual<typeof import("@/app/cards/cardsClient")>(
-    "@/app/cards/cardsClient",
-  );
-  return {
-    ...actual,
-    fetchCards: (...args: unknown[]) => fetchCards(...args),
-  };
-});
 
 // react-easy-crop needs ResizeObserver/canvas APIs jsdom doesn't provide —
 // stub it with a minimal component that immediately reports a crop area.
@@ -116,10 +94,6 @@ describe("AccountMenu", () => {
     document.documentElement.classList.remove("light", "dark");
     document.documentElement.lang = "en";
     localStorage.clear();
-    fetchLists.mockReset();
-    fetchLists.mockResolvedValue({ ok: true, lists: [] });
-    fetchCards.mockReset();
-    fetchCards.mockResolvedValue({ ok: true, cards: [] });
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -353,73 +327,6 @@ describe("AccountMenu", () => {
     expect(assign).toHaveBeenCalledWith("/forgot-password");
     expect(localStorage.getItem("fh_lang_cache")).toBeNull();
     expect(localStorage.getItem("fh_theme_cache")).toBeNull();
-    unmount();
-  });
-
-  it("shows the default review destination when the user has lists", async () => {
-    fetchLists.mockResolvedValue({
-      ok: true,
-      lists: [{ id: "list-1", name: "Household", owner_id: "u1", role: "owner" }],
-    });
-    const fetchMock = vi.fn().mockImplementation((url: string) => {
-      if (url === "/api/auth/me") {
-        return Promise.resolve(
-          new Response(
-            JSON.stringify(mePayload({ default_import_list_id: "list-1" })),
-            { status: 200, headers: { "Content-Type": "application/json" } },
-          ),
-        );
-      }
-      return Promise.resolve(new Response(null, { status: 404 }));
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const { host, unmount } = renderAccount();
-    await waitForDom(() => host.textContent?.includes("Default review destination"));
-    expect(host.textContent).toContain("Household");
-    unmount();
-  });
-
-  it("PATCHes default origin kind and reflects the active choice", async () => {
-    const fetchMock = vi.fn();
-    fetchMock
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(mePayload({ default_origin_kind: "cash" })), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(mePayload({ default_origin_kind: "blank" })), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
-    vi.stubGlobal("fetch", fetchMock);
-
-    const { host, unmount } = renderAccount();
-    await waitForDom(() =>
-      Boolean(host.querySelector('[aria-label="Default expense origin"]')),
-    );
-    const trigger = host.querySelector(
-      '[aria-label="Default expense origin"]',
-    ) as HTMLButtonElement;
-    await act(async () => {
-      trigger.click();
-    });
-    await waitForDom(() => Boolean(findButton(host, "None")));
-    const noneBtn = findButton(host, "None");
-    await act(async () => {
-      noneBtn!.click();
-    });
-    await waitForDom(() => trigger.textContent?.includes("None") ?? false);
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/auth/me",
-      expect.objectContaining({
-        method: "PATCH",
-        body: JSON.stringify({ default_origin_kind: "blank" }),
-      }),
-    );
     unmount();
   });
 

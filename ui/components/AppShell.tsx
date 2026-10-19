@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { BackIcon, FolderIcon, HomeIcon, WalletIcon } from "@/app/icons";
+import { BackIcon, HomeIcon } from "@/app/icons";
 import {
   ChromeBackProvider,
   chromeHeaderIsActive,
@@ -12,9 +12,8 @@ import {
 import { IconButton } from "@/components/IconButton";
 import { usePreferences } from "@/components/PreferencesProvider";
 import { TabBar, type TabBarItem } from "@/components/soft-ledger/TabBar";
-import { cardsCopy } from "@/lib/i18n/cards";
 import { showsAppChrome, tabKeyFromPath } from "@/lib/appChrome";
-import { listsMessages } from "@/lib/i18n/lists";
+import { kitchensMessages } from "@/lib/i18n/kitchens";
 import { Chip } from "./Chip";
 
 /** Persistent application chrome around authenticated pages. Auth/setup routes skip it. */
@@ -30,20 +29,16 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const { locale } = usePreferences();
-  const t = listsMessages[locale];
-  const cards = cardsCopy(locale);
+  const t = kitchensMessages[locale];
   const header = useChromeHeaderState();
   const showHeader = chromeHeaderIsActive(header);
-  // Decoupled from showHeader: public screens (e.g. /docs, /sign-in) opt into
+  // Decoupled from showHeader: public screens (e.g. /sign-in) opt into
   // just the header — a way back to "/" — via useChromeHeader, without also
   // gaining the authenticated TabBar that showsAppChrome gates.
   const showTabBar = showsAppChrome(pathname);
 
-  const tabs: TabBarItem[] = [
-    { key: "home", href: "/home", label: t.tabList, Icon: HomeIcon },
-    { key: "budgets", href: "/budgets", label: t.budgetsEntryLabel, Icon: FolderIcon },
-    { key: "cards", href: "/cards", label: cards.title, Icon: WalletIcon },
-  ];
+  // Recipes, cart and chat tabs join Home as those features land.
+  const tabs: TabBarItem[] = [{ key: "home", href: "/home", label: t.tabHome, Icon: HomeIcon }];
 
   if (!showHeader && !showTabBar) {
     return <div className="fixed inset-0 overflow-y-auto">{children}</div>;

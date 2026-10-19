@@ -13,8 +13,8 @@ describe("attemptSignup", () => {
         JSON.stringify({
           user_id: "u1",
           email: "member@example.com",
-          list_id: "l1",
-          list_name: "Personal",
+          kitchen_id: "l1",
+          kitchen_name: "Personal",
         }),
         { status: 201 },
       ),
@@ -27,18 +27,18 @@ describe("attemptSignup", () => {
       errorGeneric: signupMessages.en.errorGeneric,
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
-    expect(result).toEqual({ ok: true, invitingListId: null });
+    expect(result).toEqual({ ok: true, invitingKitchenId: null });
   });
 
-  it("sends invite_token and returns invitingListId", async () => {
+  it("sends invite_token and returns invitingKitchenId", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
           user_id: "u1",
           email: "invitee@example.com",
-          list_id: "personal",
-          list_name: "Personal",
-          inviting_list_id: "invite-list",
+          kitchen_id: "personal",
+          kitchen_name: "Personal",
+          inviting_kitchen_id: "invite-kitchen",
         }),
         { status: 201 },
       ),
@@ -52,7 +52,7 @@ describe("attemptSignup", () => {
       errorGeneric: signupMessages.en.errorGeneric,
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
-    expect(result).toEqual({ ok: true, invitingListId: "invite-list" });
+    expect(result).toEqual({ ok: true, invitingKitchenId: "invite-kitchen" });
     expect(fetchImpl).toHaveBeenCalledWith(
       "/api/auth/register",
       expect.objectContaining({
@@ -123,10 +123,10 @@ describe("attemptSignup", () => {
 });
 
 describe("invite landing", () => {
-  it("post-invite-signup redirect targets list detail not homepage", () => {
+  it("post-invite-signup redirect targets kitchen detail not homepage", () => {
     expect(
-      resolveAuthenticatedLanding({ inviteListId: "invite-list" }),
-    ).toBe("/lists/invite-list");
+      resolveAuthenticatedLanding({ inviteKitchenId: "invite-kitchen" }),
+    ).toBe("/kitchens/invite-kitchen");
     expect(resolveAuthenticatedLanding()).toBe("/home");
   });
 
@@ -149,9 +149,9 @@ describe("invite landing", () => {
     });
   });
 
-  it("accept returns list id on success", async () => {
+  it("accept returns kitchen id on success", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ list_id: "list-1" }), { status: 200 }),
+      new Response(JSON.stringify({ kitchen_id: "kitchen-1" }), { status: 200 }),
     );
     const result = await acceptInvite(
       "tok",
@@ -164,6 +164,6 @@ describe("invite landing", () => {
       },
       fetchImpl as unknown as typeof fetch,
     );
-    expect(result).toEqual({ ok: true, listId: "list-1" });
+    expect(result).toEqual({ ok: true, kitchenId: "kitchen-1" });
   });
 });

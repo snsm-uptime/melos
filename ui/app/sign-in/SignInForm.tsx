@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { EyeIcon } from "@/app/icons";
 import { IconButton } from "@/components/IconButton";
-import { resetMembershipListsStore } from "@/app/lists/membershipListsStore";
+import { resetMembershipKitchensStore } from "@/app/kitchens/membershipKitchensStore";
 import { signInMessages, type Locale } from "@/lib/i18n/signin";
 import { attemptSignIn } from "./signInClient";
 import { PrimaryButton } from "@/components/soft-ledger/PrimaryButton";
@@ -33,7 +33,7 @@ export function SignInForm({ locale, returnTo }: Props) {
   // user got here (explicit sign-out, expired session, alias-gate redirect)
   // — any cached membership roster from a previous session is stale.
   useEffect(() => {
-    resetMembershipListsStore();
+    resetMembershipKitchensStore();
   }, []);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {

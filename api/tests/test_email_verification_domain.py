@@ -179,7 +179,7 @@ def test_request_sends_mail_and_persists_token_when_required() -> None:
 
     assert result.already_verified is False
     assert len(mailer.sent) == 1
-    assert "Verify your finance-helper email" in mailer.sent[0].subject
+    assert "Verify your Melos email" in mailer.sent[0].subject
     assert "/verify?token=" in mailer.sent[0].body_text
     assert len(repo.tokens) == 1
 

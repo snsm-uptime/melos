@@ -1,7 +1,7 @@
 /** Pure helpers for signup form (unit-tested without a React render). */
 
 export type SignupAttemptResult =
-  | { ok: true; invitingListId?: string | null }
+  | { ok: true; invitingKitchenId?: string | null }
   | {
       ok: false;
       error: string;
@@ -39,7 +39,7 @@ export async function attemptSignup(args: {
     const data = (await response.json().catch(() => ({}))) as {
       detail?: string;
       code?: string;
-      inviting_list_id?: string | null;
+      inviting_kitchen_id?: string | null;
     };
     if (!response.ok) {
       if (data.code === "email_not_verified" || response.status === 403) {
@@ -82,8 +82,8 @@ export async function attemptSignup(args: {
     }
     return {
       ok: true,
-      invitingListId:
-        typeof data.inviting_list_id === "string" ? data.inviting_list_id : null,
+      invitingKitchenId:
+        typeof data.inviting_kitchen_id === "string" ? data.inviting_kitchen_id : null,
     };
   } catch {
     return { ok: false, error: args.errorGeneric };

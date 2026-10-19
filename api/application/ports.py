@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
-from decimal import Decimal
+from datetime import timedelta
 from typing import Protocol
 from uuid import UUID
 
@@ -21,17 +20,16 @@ class NewUserRecord:
 
 
 @dataclass(frozen=True, slots=True)
-class NewListRecord:
+class NewKitchenRecord:
     id: UUID
     name: str
     owner_id: UUID
-    default_split_mode: str = "even"
 
 
 @dataclass(frozen=True, slots=True)
 class NewMembershipRecord:
     id: UUID
-    list_id: UUID
+    kitchen_id: UUID
     user_id: UUID
     role: str
 
@@ -42,32 +40,29 @@ class UserPreferencesRecord:
     email: str
     language: str | None
     theme: str | None
-    last_opened_list_id: UUID | None = None
-    default_import_list_id: UUID | None = None
-    default_origin_kind: str | None = None
-    default_origin_card_id: UUID | None = None
+    last_opened_kitchen_id: UUID | None = None
     alias: str | None = None
     photo_base64: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
-class ListAccessGrant:
-    """Opaque per-request grant binding list_id + authorized action."""
+class KitchenAccessGrant:
+    """Opaque per-request grant binding kitchen_id + authorized action."""
 
-    list_id: UUID
+    kitchen_id: UUID
     action: str
     acting_user_id: UUID
 
 
-class ListAccessAuthorizer(Protocol):
-    """Canonical ACL port — authorize_list_access(acting_user_id, list_id, action)."""
+class KitchenAccessAuthorizer(Protocol):
+    """Canonical ACL port — authorize_kitchen_access(acting_user_id, kitchen_id, action)."""
 
-    def authorize_list_access(
+    def authorize_kitchen_access(
         self,
         acting_user_id: UUID,
-        list_id: UUID,
+        kitchen_id: UUID,
         action: str,
-    ) -> ListAccessGrant: ...
+    ) -> KitchenAccessGrant: ...
 
 
 class PasswordHasher(Protocol):
@@ -95,13 +90,8 @@ class PreferencesRepository(Protocol):
         *,
         language: str | None = None,
         theme: str | None = None,
-        last_opened_list_id: UUID | None = None,
-        clear_last_opened_list_id: bool = False,
-        default_import_list_id: UUID | None = None,
-        clear_default_import_list_id: bool = False,
-        default_origin_kind: str | None = None,
-        default_origin_card_id: UUID | None = None,
-        clear_default_origin_card_id: bool = False,
+        last_opened_kitchen_id: UUID | None = None,
+        clear_last_opened_kitchen_id: bool = False,
         photo_base64: str | None = None,
         clear_photo: bool = False,
     ) -> UserPreferencesRecord: ...
@@ -118,11 +108,11 @@ class PreferencesRepository(Protocol):
 class SignupRepository(Protocol):
     def email_exists(self, email: str) -> bool: ...
 
-    def create_user_with_personal_list(
+    def create_user_with_personal_kitchen(
         self,
         *,
         user: NewUserRecord,
-        personal_list: NewListRecord,
+        personal_kitchen: NewKitchenRecord,
         membership: NewMembershipRecord,
     ) -> None: ...
 
@@ -138,43 +128,4 @@ class EmailMessage:
 class EmailSender(Protocol):
     def send(self, message: EmailMessage) -> None:
         """Send transactional email. Raises SmtpConfigurationError / SmtpSendError on failure."""
-        ...
-
-
-class BccrClient(Protocol):
-    """BCCR (Banco Central de Costa Rica) daily FX rate port (Story 3.5 / AD-7).
-
-    Implementations own transport/auth/caching; callers never fall back to 1:1.
-    """
-
-    def get_rate(self, rate_date: date, currency: str) -> Decimal | None:
-        """Fetch the BCCR rate for the exact date. None if no rate is published."""
-        ...
-
-    def get_nearest_prior_rate(self, rate_date: date, currency: str) -> tuple[Decimal, date] | None:
-        """Fetch the most recent rate on/before rate_date. None if none exists."""
-        ...
-
-    def supported_currencies(self) -> list[str]:
-        """Currencies this client can convert to CRC (v1: USD)."""
-        ...
-
-
-class PdfStorage(Protocol):
-    """Operator PDF volume port (Story 4.6, AD-3) — path-reference-only.
-
-    Implementations own where/how bytes land on disk; callers only ever see
-    the opaque path reference this returns.
-    """
-
-    def save(self, *, user_id: UUID, filename: str, content: bytes) -> str:
-        """Persist content, returning an opaque path reference string."""
-        ...
-
-    def delete(self, path: str) -> None:
-        """Remove the stored file. Must not raise if the path is already gone."""
-        ...
-
-    def read(self, path: str) -> bytes | None:
-        """Return file bytes if `path` is inside the volume; None if missing/unsafe."""
         ...

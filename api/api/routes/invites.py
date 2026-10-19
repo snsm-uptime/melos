@@ -6,22 +6,22 @@ import logging
 import uuid
 
 from adapters.persistence.email_verification import SqlAlchemyEmailVerificationRepository
-from adapters.persistence.list_invite import SqlAlchemyListInviteTokenRepository
+from adapters.persistence.kitchen_invite import SqlAlchemyKitchenInviteTokenRepository
 from adapters.persistence.repositories import (
     SqlAlchemyAuthUserRepository,
-    SqlAlchemyListRepository,
+    SqlAlchemyKitchenRepository,
 )
-from application.list_invite_accept import (
-    AcceptListInviteCommand,
-    AcceptListInviteService,
-    PreviewListInviteCommand,
-    PreviewListInviteService,
+from application.kitchen_invite_accept import (
+    AcceptKitchenInviteCommand,
+    AcceptKitchenInviteService,
+    PreviewKitchenInviteCommand,
+    PreviewKitchenInviteService,
 )
 from domain.errors import (
     EmailNotVerifiedError,
     InvalidInviteTokenError,
     InviteEmailMismatchError,
-    ListWriteError,
+    KitchenWriteError,
 )
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import JSONResponse
@@ -57,17 +57,17 @@ def preview_invite(
 ) -> InvitePreviewResponse | JSONResponse:
     if not token.strip():
         return _invalid_invite_response()
-    service = PreviewListInviteService(
-        SqlAlchemyListInviteTokenRepository(db),
-        SqlAlchemyListRepository(db),
+    service = PreviewKitchenInviteService(
+        SqlAlchemyKitchenInviteTokenRepository(db),
+        SqlAlchemyKitchenRepository(db),
         SqlAlchemyAuthUserRepository(db),
     )
     try:
-        result = service.execute(PreviewListInviteCommand(raw_token=token))
+        result = service.execute(PreviewKitchenInviteCommand(raw_token=token))
     except InvalidInviteTokenError:
         return _invalid_invite_response()
     return InvitePreviewResponse(
-        list_name=result.list_name,
+        kitchen_name=result.kitchen_name,
         email_hint=result.email_hint,
         path=result.path,  # type: ignore[arg-type]
     )
@@ -80,15 +80,15 @@ def accept_invite(
     user_id: uuid.UUID = Depends(require_authenticated_user),
     settings: AuthSettings = Depends(get_auth_settings),
 ) -> AcceptInviteResponse | JSONResponse:
-    service = AcceptListInviteService(
-        SqlAlchemyListInviteTokenRepository(db),
+    service = AcceptKitchenInviteService(
+        SqlAlchemyKitchenInviteTokenRepository(db),
         SqlAlchemyAuthUserRepository(db),
-        SqlAlchemyListRepository(db),
+        SqlAlchemyKitchenRepository(db),
         SqlAlchemyEmailVerificationRepository(db),
     )
     try:
         result = service.execute(
-            AcceptListInviteCommand(
+            AcceptKitchenInviteCommand(
                 actor_user_id=user_id,
                 raw_token=body.token,
                 email_verification_required=settings.email_verification_required,
@@ -106,12 +106,12 @@ def accept_invite(
             status_code=status.HTTP_403_FORBIDDEN,
             content={"detail": str(exc), "code": "email_not_verified"},
         )
-    except ListWriteError:
+    except KitchenWriteError:
         return _invalid_invite_response()
     logger.info(
-        "invite_accepted user_id=%s list_id=%s already_member=%s",
+        "invite_accepted user_id=%s kitchen_id=%s already_member=%s",
         user_id,
-        result.list_id,
+        result.kitchen_id,
         result.already_member,
     )
-    return AcceptInviteResponse(list_id=result.list_id)
+    return AcceptInviteResponse(kitchen_id=result.kitchen_id)

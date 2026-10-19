@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { resolveAuthenticatedLanding } from "@/lib/landing";
 import { inviteMessages, type Locale } from "@/lib/i18n/invite";
-import { setLastOpenedList } from "@/app/lists/listsClient";
+import { setLastOpenedKitchen } from "@/app/kitchens/kitchensClient";
 import { acceptInvite } from "../inviteClient";
 import { PrimaryButton } from "@/components/soft-ledger/PrimaryButton";
 import styles from "../../signup/signup.module.scss";
@@ -51,17 +51,17 @@ export function AcceptInvitePanel({ locale, token, authenticated }: Props) {
         return;
       }
       // Last-opened is best-effort; membership already succeeded — always land.
-      const remembered = await setLastOpenedList(result.listId, {
+      const remembered = await setLastOpenedKitchen(result.kitchenId, {
         errorGeneric: t.errorGeneric,
         errorInvalidName: t.errorGeneric,
         errorForbidden: t.errorGeneric,
         errorUnauthorized: t.errorUnauthorized,
       });
       if (!remembered.ok) {
-        // Intentionally still navigate — remembered list is non-blocking.
+        // Intentionally still navigate — remembered kitchen is non-blocking.
       }
       if (cancelled) return;
-      const dest = resolveAuthenticatedLanding({ inviteListId: result.listId });
+      const dest = resolveAuthenticatedLanding({ inviteKitchenId: result.kitchenId });
       router.replace(dest);
       router.refresh();
     })();

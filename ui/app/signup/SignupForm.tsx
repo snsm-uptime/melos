@@ -8,7 +8,7 @@ import { IconButton } from "@/components/IconButton";
 import { resolveAuthenticatedLanding } from "@/lib/landing";
 import { inviteMessages } from "@/lib/i18n/invite";
 import { signupMessages, type Locale } from "@/lib/i18n/signup";
-import { setLastOpenedList } from "@/app/lists/listsClient";
+import { setLastOpenedKitchen } from "@/app/kitchens/kitchensClient";
 import { fetchInvitePreview } from "@/app/invites/inviteClient";
 import { attemptSignup } from "./signupClient";
 import { PrimaryButton } from "@/components/soft-ledger/PrimaryButton";
@@ -25,7 +25,7 @@ export function SignupForm({ locale, inviteToken }: Props) {
   const ti = inviteMessages[locale];
   const [email, setEmail] = useState("");
   const [emailHint, setEmailHint] = useState<string | null>(null);
-  const [listName, setListName] = useState<string | null>(null);
+  const [kitchenName, setKitchenName] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +54,7 @@ export function SignupForm({ locale, inviteToken }: Props) {
         );
         return;
       }
-      setListName(preview.preview.list_name);
+      setKitchenName(preview.preview.kitchen_name);
       setEmailHint(preview.preview.email_hint);
       setInviteLoading(false);
     })();
@@ -73,8 +73,8 @@ export function SignupForm({ locale, inviteToken }: Props) {
     [email, password, pending, inviteLoading, inviteFatal],
   );
 
-  const subtitle = listName
-    ? ti.inviteSignupSubtitle.replace("{listName}", listName)
+  const subtitle = kitchenName
+    ? ti.inviteSignupSubtitle.replace("{kitchenName}", kitchenName)
     : t.subtitle;
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -103,20 +103,20 @@ export function SignupForm({ locale, inviteToken }: Props) {
         setError(result.error);
         return;
       }
-      const inviteListId = result.invitingListId;
-      if (inviteListId) {
+      const inviteKitchenId = result.invitingKitchenId;
+      if (inviteKitchenId) {
         // Last-opened is best-effort; membership already succeeded — always land.
-        const remembered = await setLastOpenedList(inviteListId, {
+        const remembered = await setLastOpenedKitchen(inviteKitchenId, {
           errorGeneric: t.errorGeneric,
           errorInvalidName: t.errorGeneric,
           errorForbidden: t.errorGeneric,
           errorUnauthorized: t.errorGeneric,
         });
         if (!remembered.ok) {
-          // Intentionally still navigate — remembered list is non-blocking.
+          // Intentionally still navigate — remembered kitchen is non-blocking.
         }
       }
-      const dest = resolveAuthenticatedLanding({ inviteListId });
+      const dest = resolveAuthenticatedLanding({ inviteKitchenId });
       router.replace(dest);
       router.refresh();
     } finally {

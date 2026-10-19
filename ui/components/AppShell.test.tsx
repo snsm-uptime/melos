@@ -141,7 +141,7 @@ describe("AppShell chrome header", () => {
   });
 
   it("still shows the TabBar (without a header) on authenticated tab routes when no screen opts in", async () => {
-    pathname = "/upload";
+    pathname = "/home";
     await act(async () => {
       root.render(
         <AppShell>

@@ -1,0 +1,23 @@
+import type { TabKey } from "@/components/soft-ledger/TabBar";
+
+const APP_CHROME_PREFIXES = ["/home", "/kitchens", "/account"] as const;
+
+/** Authenticated product surfaces that keep the bottom tab bar mounted. */
+export function showsAppChrome(pathname: string): boolean {
+  return APP_CHROME_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+export function tabKeyFromPath(pathname: string): TabKey | undefined {
+  if (
+    pathname === "/home" ||
+    pathname.startsWith("/home/") ||
+    pathname === "/kitchens" ||
+    pathname.startsWith("/kitchens/")
+  ) {
+    return "home";
+  }
+  if (pathname === "/account" || pathname.startsWith("/account/")) return "account";
+  return undefined;
+}

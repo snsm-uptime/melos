@@ -35,11 +35,11 @@ describe("HomeChrome", () => {
     container.remove();
   });
 
-  it("renders the avatar in the standard leading slot (replacing Back), and the Lists help icon at the opposite end", () => {
+  it("renders the avatar in the standard leading slot (replacing Back) and no help icon", () => {
     act(() => {
       root.render(
         <AppShell>
-          <HomeChrome title="Lists" alias="sebas" userId="owner-1" photoBase64={null} />
+          <HomeChrome title="Kitchens" alias="sebas" userId="owner-1" photoBase64={null} />
         </AppShell>,
       );
     });
@@ -51,28 +51,16 @@ describe("HomeChrome", () => {
     expect(leadingSlot.querySelector("button")).toBeNull(); // no Back button
 
     const titleEl = header.querySelector("h1") as HTMLElement;
-    expect(titleEl.textContent).toBe("Lists");
+    expect(titleEl.textContent).toBe("Kitchens");
 
-    const helpButton = header.querySelector(
-      'button[aria-label="Learn more about Lists"]',
-    ) as HTMLButtonElement;
-    expect(helpButton).toBeTruthy();
-    // avatar (leading edge) comes before the help button (trailing, opposite edge)
-    expect(
-      avatar.compareDocumentPosition(helpButton) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-
-    act(() => {
-      helpButton.click();
-    });
-    expect(push).toHaveBeenCalledWith("/docs?from=%2Fhome#lists");
+    expect(header.querySelector('button[aria-label^="Learn more"]')).toBeNull();
   });
 
   it("renders no archive toggle when onToggleArchived is omitted", () => {
     act(() => {
       root.render(
         <AppShell>
-          <HomeChrome title="Lists" alias="sebas" userId="owner-1" photoBase64={null} />
+          <HomeChrome title="Kitchens" alias="sebas" userId="owner-1" photoBase64={null} />
         </AppShell>,
       );
     });
@@ -80,13 +68,13 @@ describe("HomeChrome", () => {
     expect(header.querySelector('[aria-pressed]')).toBeNull();
   });
 
-  it("renders the archive toggle before the Docs help button and invokes onToggleArchived on click", () => {
+  it("renders the archive toggle at the trailing end and invokes onToggleArchived on click", () => {
     const onToggleArchived = vi.fn();
     act(() => {
       root.render(
         <AppShell>
           <HomeChrome
-            title="Lists"
+            title="Kitchens"
             alias="sebas"
             userId="owner-1"
             photoBase64={null}
@@ -101,14 +89,7 @@ describe("HomeChrome", () => {
     const toggle = header.querySelector('[aria-pressed]') as HTMLButtonElement;
     expect(toggle).toBeTruthy();
     expect(toggle.getAttribute("aria-pressed")).toBe("false");
-    expect(toggle.getAttribute("aria-label")).toBe("Show archived lists");
-
-    const helpButton = header.querySelector(
-      'button[aria-label="Learn more about Lists"]',
-    ) as HTMLButtonElement;
-    expect(
-      toggle.compareDocumentPosition(helpButton) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(toggle.getAttribute("aria-label")).toBe("Show archived kitchens");
 
     act(() => {
       toggle.click();
@@ -121,7 +102,7 @@ describe("HomeChrome", () => {
       root.render(
         <AppShell>
           <HomeChrome
-            title="Lists"
+            title="Kitchens"
             alias="sebas"
             userId="owner-1"
             photoBase64={null}
@@ -134,6 +115,6 @@ describe("HomeChrome", () => {
     const header = container.querySelector('[data-app-chrome="header"]') as HTMLElement;
     const toggle = header.querySelector('[aria-pressed]') as HTMLButtonElement;
     expect(toggle.getAttribute("aria-pressed")).toBe("true");
-    expect(toggle.getAttribute("aria-label")).toBe("Show active lists");
+    expect(toggle.getAttribute("aria-label")).toBe("Show active kitchens");
   });
 });

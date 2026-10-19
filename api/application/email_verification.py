@@ -138,7 +138,7 @@ class RequestEmailVerificationService:
 
         verify_link = f"{self._public_app_url}{self._verify_path}?token={raw}"
         safe_href = escape(verify_link, quote=True)
-        subject = "Verify your finance-helper email"
+        subject = "Verify your Melos email"
         body_text = (
             "Please verify your email address.\n\n"
             f"Open this link within 24 hours to verify:\n{verify_link}\n\n"

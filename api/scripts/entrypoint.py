@@ -39,7 +39,7 @@ def main() -> None:
         raise SystemExit(result.returncode)
 
     if _env_truthy("SEED_DEV_USER"):
-        # Dev/worktree convenience only: a pre-verified account with lists so the
+        # Dev/worktree convenience only: a pre-verified account with kitchens so the
         # stack is testable without going through signup.
         from scripts.seed_dev_user import seed
 

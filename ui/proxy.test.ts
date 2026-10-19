@@ -12,16 +12,16 @@ function makeRequest(path: string, cookie?: string): NextRequest {
 }
 
 describe("proxy auth gate", () => {
-  it("redirects unauthenticated /lists to /sign-in with returnTo", () => {
-    const response = proxy(makeRequest("/lists"));
+  it("redirects unauthenticated /kitchens to /sign-in with returnTo", () => {
+    const response = proxy(makeRequest("/kitchens"));
     expect(response.status).toBe(307);
     const location = response.headers.get("location");
     expect(location).toContain("/sign-in");
-    expect(location).toContain("returnTo=%2Flists");
+    expect(location).toContain("returnTo=%2Fkitchens");
   });
 
-  it("allows /lists when fh_session cookie is present", () => {
-    const response = proxy(makeRequest("/lists", "fh_session=opaque-token"));
+  it("allows /kitchens when fh_session cookie is present", () => {
+    const response = proxy(makeRequest("/kitchens", "fh_session=opaque-token"));
     expect(response.status).toBe(200);
   });
 

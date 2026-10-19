@@ -1,1 +1,1 @@
-"""Domain package — pure rules; no FastAPI / SQLAlchemy / pdfplumber imports."""
+"""Domain package — pure rules; no FastAPI / SQLAlchemy / Gemini SDK imports."""

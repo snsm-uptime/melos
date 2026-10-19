@@ -42,25 +42,25 @@ describe("Home page", () => {
 
     expect(markup).not.toContain("Stack is up");
     expect(markup).not.toContain("Compose services");
-    expect(markup).toMatch(/expenses/i);
-    expect(markup).toMatch(/budgets/i);
-    expect(markup).toMatch(/import/i);
+    expect(markup).toMatch(/recipes/i);
+    expect(markup).toMatch(/shopping kitchen/i);
+    expect(markup).toMatch(/kitchens/i);
     expect(markup).toContain('href="/signup"');
     expect(markup).toContain('href="/sign-in"');
-    expect(markup).toContain('href="/docs"');
+    expect(markup).not.toContain('href="/docs"');
     expect(redirect).not.toHaveBeenCalled();
   });
 
   it("redirects to the resolved landing destination when signed in", async () => {
     fetchSession.mockResolvedValue({ userId: "u1" });
-    resolveServerAuthenticatedLanding.mockResolvedValue("/lists/123");
+    resolveServerAuthenticatedLanding.mockResolvedValue("/kitchens/123");
     requireAlias.mockResolvedValue(undefined);
     const { default: Home } = await import("./page");
 
     await Home();
 
     expect(resolveServerAuthenticatedLanding).toHaveBeenCalled();
-    expect(requireAlias).toHaveBeenCalledWith("/lists/123");
-    expect(redirect).toHaveBeenCalledWith("/lists/123");
+    expect(requireAlias).toHaveBeenCalledWith("/kitchens/123");
+    expect(redirect).toHaveBeenCalledWith("/kitchens/123");
   });
 });

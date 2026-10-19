@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -15,7 +14,7 @@ export default async function Home() {
   const session = await fetchSession();
   if (session) {
     const destination = await resolveServerAuthenticatedLanding();
-    // First signed-in visit (verify-off) must claim an alias before list chrome.
+    // First signed-in visit (verify-off) must claim an alias before kitchen chrome.
     await requireAlias(destination);
     redirect(destination);
   }
@@ -42,12 +41,12 @@ export default async function Home() {
         </svg>
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-4 px-6 py-20 text-center">
           <h1 className="m-0 text-[2.25rem] font-semibold leading-[1.15]">
-            Finance Helper
+            Melos
           </h1>
           <p className="m-0 max-w-lg text-muted leading-[1.5]">
-            This tool helps you share expenses with roommates and friends, keep
-            budgets on track, and import bank statements instead of entering every
-            transaction by hand.
+            Menus everyone loves to share: a home cookbook for the people you cook
+            with. Keep your recipes together, plan the week, and shop for it in one
+            kitchen.
           </p>
           <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
             <PrimaryButton href="/signup">Create an account</PrimaryButton>
@@ -61,38 +60,31 @@ export default async function Home() {
           icon={
             <path d="M4 6h16M4 6l2-2m-2 2 2 2M4 12h16M4 12l2-2m-2 2 2 2M4 18h16M4 18l2-2m-2 2 2 2" />
           }
-          title="Lists, shared or solo"
-          description="Track expenses on your own or split them with roommates and friends — everyone sees the same running balance."
+          title="Kitchens, shared or solo"
+          description="Cook on your own or invite the people you share meals with — everyone sees the same recipes."
         />
         <FeatureCard
           icon={
             <>
-              <rect x="3" y="6" width="18" height="12" rx="2" />
-              <path d="M3 10h18" />
+              <path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3Z" />
+              <path d="M5 17a3 3 0 0 1 3-3h11" />
             </>
           }
-          title="Cards"
-          description="Register the cards you pay with and route imported transactions to the right list automatically."
+          title="Recipes"
+          description="Turn recipes from text, web pages or cookbook photos into one tidy format you can scale."
         />
         <FeatureCard
           icon={
             <>
-              <path d="M4 20V10M10 20V4M16 20v-7" />
+              <path d="M9 6h11M9 12h11M9 18h11" />
+              <path d="M4 6h.01M4 12h.01M4 18h.01" />
             </>
           }
-          title="Budgets"
-          description="Set spending limits by category, assign transactions, and see progress at a glance before you overspend."
+          title="Shopping kitchen"
+          description="Pick the week's meals and get one shopping kitchen, scaled to the number of people."
         />
       </section>
 
-      <section className="mx-auto max-w-4xl px-6 pb-14 text-center">
-        <Link
-          href="/docs"
-          className="text-accent no-underline hover:underline"
-        >
-          Tutorials &amp; accessibility guide
-        </Link>
-      </section>
     </main>
   );
 }

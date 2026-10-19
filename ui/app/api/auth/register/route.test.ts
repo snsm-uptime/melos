@@ -13,8 +13,8 @@ describe("register BFF route", () => {
         JSON.stringify({
           user_id: "00000000-0000-0000-0000-000000000001",
           email: "member@example.com",
-          list_id: "00000000-0000-0000-0000-000000000002",
-          list_name: "Personal",
+          kitchen_id: "00000000-0000-0000-0000-000000000002",
+          kitchen_name: "Personal",
         }),
         {
           status: 201,

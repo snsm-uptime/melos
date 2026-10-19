@@ -2,26 +2,14 @@
 
 from __future__ import annotations
 
-import os
 import uuid
 from collections.abc import Iterator
 
-from adapters.bank import ADAPTERS
-from adapters.fx.bccr_client import BccrSwClient, CachedBccrClient
 from adapters.persistence.db import get_session_factory
 from adapters.persistence.password_hasher import Argon2PasswordHasher
 from adapters.persistence.repositories import SqlAlchemyAuthUserRepository
 from adapters.persistence.sessions import SqlAlchemySessionStore
-from adapters.storage.pdf_storage import FilesystemPdfStorage
-from application.bank_adapters import BankAdapter
-from application.fx_service import MaterializeFxService
-from application.ports import (
-    BccrClient,
-    PasswordHasher,
-    PdfStorage,
-    PreferencesRepository,
-    SessionStore,
-)
+from application.ports import PasswordHasher, PreferencesRepository, SessionStore
 from application.rate_limit import SlidingWindowRateLimiter, resolve_trusted_client_ip
 from domain.errors import AliasRequiredError
 from fastapi import Depends, HTTPException, Request, status
@@ -55,22 +43,6 @@ def get_preferences_repository(db: Session = Depends(get_db)) -> PreferencesRepo
     return SqlAlchemyAuthUserRepository(db)
 
 
-def get_bccr_client(db: Session = Depends(get_db)) -> BccrClient:
-    return CachedBccrClient(BccrSwClient(), db)
-
-
-def get_fx_service(bccr: BccrClient = Depends(get_bccr_client)) -> MaterializeFxService:
-    return MaterializeFxService(bccr)
-
-
-def get_pdf_storage() -> PdfStorage:
-    return FilesystemPdfStorage(base_dir=os.environ["PDF_STORAGE_PATH"])
-
-
-def get_bank_adapters() -> list[BankAdapter]:
-    return ADAPTERS
-
-
 def get_auth_settings(request: Request) -> AuthSettings:
     cached = getattr(request.app.state, "auth_settings", None)
     if cached is None:
@@ -102,7 +74,7 @@ def require_authenticated_user(
     sessions: SessionStore = Depends(get_session_store),
     settings: AuthSettings = Depends(get_auth_settings),
 ) -> uuid.UUID:
-    """Authentication gate for protected API routes (membership ACL = Epic 2)."""
+    """Authentication gate for protected API routes (membership ACL lives in application/)."""
     token = request.cookies.get(settings.session_cookie_name)
     user_id = sessions.resolve_user_id(token)
     if user_id is None:
@@ -117,7 +89,7 @@ def require_user_alias(
     user_id: uuid.UUID = Depends(require_authenticated_user),
     prefs: PreferencesRepository = Depends(get_preferences_repository),
 ) -> uuid.UUID:
-    """List surfaces need a person label; accounts without an alias are sent to setup."""
+    """Kitchen surfaces need a person label; accounts without an alias are sent to setup."""
     row = prefs.get_preferences(user_id)
     if row is None:
         raise HTTPException(

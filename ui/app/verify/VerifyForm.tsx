@@ -24,7 +24,7 @@ export function VerifyForm({ locale, token, returnTo }: Props) {
 
   // Reuse sign-in sanitizer; unsafe values become "/" — fall back to Home for verify.
   // Success routes through /alias so a verified account picks a display alias
-  // before any list chrome; /alias passes straight through once one is set.
+  // before any kitchen chrome; /alias passes straight through once one is set.
   const continueHref = (() => {
     const destination = (() => {
       if (!returnTo) return "/home";
@@ -133,7 +133,7 @@ export function VerifyForm({ locale, token, returnTo }: Props) {
           {t.confirmSuccess}
         </p>
         <p className={styles.hint}>
-          <Link href={continueHref}>{t.listsLink}</Link>
+          <Link href={continueHref}>{t.kitchensLink}</Link>
         </p>
       </div>
     );

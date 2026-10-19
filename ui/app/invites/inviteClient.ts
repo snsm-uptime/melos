@@ -1,7 +1,7 @@
 /** Invite accept / preview client helpers (Story 2.4). */
 
 export type InvitePreview = {
-  list_name: string;
+  kitchen_name: string;
   email_hint: string;
   path: "signup" | "join";
 };
@@ -11,7 +11,7 @@ export type InvitePreviewResult =
   | { ok: false; code: string; error: string };
 
 export type AcceptInviteResult =
-  | { ok: true; listId: string }
+  | { ok: true; kitchenId: string }
   | { ok: false; code: string; error: string };
 
 export async function fetchInvitePreview(
@@ -25,7 +25,7 @@ export async function fetchInvitePreview(
       { method: "GET", headers: { Accept: "application/json" }, credentials: "same-origin" },
     );
     const data = (await response.json().catch(() => ({}))) as {
-      list_name?: string;
+      kitchen_name?: string;
       email_hint?: string;
       path?: string;
       detail?: string;
@@ -38,7 +38,7 @@ export async function fetchInvitePreview(
       return { ok: false, code: data.code || "error", error: messages.errorGeneric };
     }
     if (
-      typeof data.list_name !== "string" ||
+      typeof data.kitchen_name !== "string" ||
       typeof data.email_hint !== "string" ||
       (data.path !== "signup" && data.path !== "join")
     ) {
@@ -47,7 +47,7 @@ export async function fetchInvitePreview(
     return {
       ok: true,
       preview: {
-        list_name: data.list_name,
+        kitchen_name: data.kitchen_name,
         email_hint: data.email_hint,
         path: data.path,
       },
@@ -76,7 +76,7 @@ export async function acceptInvite(
       credentials: "same-origin",
     });
     const data = (await response.json().catch(() => ({}))) as {
-      list_id?: string;
+      kitchen_id?: string;
       detail?: string;
       code?: string;
     };
@@ -99,10 +99,10 @@ export async function acceptInvite(
       }
       return { ok: false, code: data.code || "error", error: messages.errorGeneric };
     }
-    if (typeof data.list_id !== "string" || !data.list_id) {
+    if (typeof data.kitchen_id !== "string" || !data.kitchen_id) {
       return { ok: false, code: "error", error: messages.errorGeneric };
     }
-    return { ok: true, listId: data.list_id };
+    return { ok: true, kitchenId: data.kitchen_id };
   } catch {
     return { ok: false, code: "error", error: messages.errorGeneric };
   }

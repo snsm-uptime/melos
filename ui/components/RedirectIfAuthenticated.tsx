@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 /**
  * Client guard for back/forward cache: if a session cookie is still valid,
- * bounce auth pages back to lists without requiring a full reload.
+ * bounce auth pages back to kitchens without requiring a full reload.
  */
 export function RedirectIfAuthenticated({ to = "/" }: { to?: string }) {
   const router = useRouter();

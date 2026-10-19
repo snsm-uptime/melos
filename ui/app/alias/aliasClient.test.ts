@@ -43,7 +43,7 @@ describe("aliasErrorMessage", () => {
   });
 
   it("does not treat unlabeled 409/422 as alias-specific copy", () => {
-    expect(aliasErrorMessage(409, "not_list_member", messages)).toBe(messages.errorGeneric);
+    expect(aliasErrorMessage(409, "not_kitchen_member", messages)).toBe(messages.errorGeneric);
     expect(aliasErrorMessage(422, "", messages)).toBe(messages.errorGeneric);
   });
 });

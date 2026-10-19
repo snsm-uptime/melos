@@ -9,7 +9,7 @@ from domain.errors import InvalidSignupError
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 MIN_PASSWORD_LEN = 8
 _MIN_PASSWORD_LEN = MIN_PASSWORD_LEN  # backwards-compatible alias
-PERSONAL_LIST_NAME = "Personal"
+PERSONAL_KITCHEN_NAME = "My kitchen"
 
 
 def normalize_email(email: str) -> str:

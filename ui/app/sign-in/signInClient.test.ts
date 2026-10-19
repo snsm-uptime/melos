@@ -10,7 +10,7 @@ describe("safeReturnTo", () => {
     expect(safeReturnTo("//evil.example")).toBe("/");
     expect(safeReturnTo("/\\evil.example")).toBe("/");
     expect(safeReturnTo("/upload")).toBe("/upload");
-    expect(safeReturnTo("/lists")).toBe("/lists");
+    expect(safeReturnTo("/kitchens")).toBe("/kitchens");
   });
 });
 
@@ -53,7 +53,7 @@ describe("sign-in form failure path", () => {
     const result = await attemptSignIn({
       email: "user@example.com",
       password: "password1",
-      returnTo: "/lists",
+      returnTo: "/kitchens",
       errorGeneric: signInMessages.en.errorGeneric,
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });

@@ -6,10 +6,10 @@ from dataclasses import dataclass, field
 from uuid import UUID
 
 import pytest
-from application.ports import NewListRecord, NewMembershipRecord, NewUserRecord
+from application.ports import NewKitchenRecord, NewMembershipRecord, NewUserRecord
 from application.signup import SignupCommand, SignUpService
 from domain.errors import DuplicateEmailError, InvalidSignupError
-from domain.signup import PERSONAL_LIST_NAME, validate_signup_input
+from domain.signup import PERSONAL_KITCHEN_NAME, validate_signup_input
 
 
 class FakeHasher:
@@ -24,22 +24,22 @@ class FakeHasher:
 class FakeSignupRepo:
     emails: set[str] = field(default_factory=set)
     users: list[NewUserRecord] = field(default_factory=list)
-    lists: list[NewListRecord] = field(default_factory=list)
+    kitchens: list[NewKitchenRecord] = field(default_factory=list)
     memberships: list[NewMembershipRecord] = field(default_factory=list)
 
     def email_exists(self, email: str) -> bool:
         return email in self.emails
 
-    def create_user_with_personal_list(
+    def create_user_with_personal_kitchen(
         self,
         *,
         user: NewUserRecord,
-        personal_list: NewListRecord,
+        personal_kitchen: NewKitchenRecord,
         membership: NewMembershipRecord,
     ) -> None:
         self.emails.add(user.email)
         self.users.append(user)
-        self.lists.append(personal_list)
+        self.kitchens.append(personal_kitchen)
         self.memberships.append(membership)
 
 
@@ -62,27 +62,27 @@ def test_validate_signup_rejects_whitespace_only_password() -> None:
         validate_signup_input("user@example.com", "        ")
 
 
-def test_signup_creates_user_and_exactly_one_personal_list() -> None:
+def test_signup_creates_user_and_exactly_one_personal_kitchen() -> None:
     repo = FakeSignupRepo()
     service = SignUpService(repo, FakeHasher())
 
     result = service.execute(SignupCommand(email="member@example.com", password="password1"))
 
     assert result.email == "member@example.com"
-    assert result.list_name == PERSONAL_LIST_NAME
+    assert result.kitchen_name == PERSONAL_KITCHEN_NAME
     assert len(repo.users) == 1
-    assert len(repo.lists) == 1
+    assert len(repo.kitchens) == 1
     assert len(repo.memberships) == 1
     assert repo.users[0].password_hash == "hashed:password1"
     assert "password1" not in repo.users[0].password_hash or repo.users[0].password_hash.startswith(
         "hashed:"
     )
-    assert repo.lists[0].owner_id == result.user_id
-    assert repo.memberships[0].list_id == result.list_id
+    assert repo.kitchens[0].owner_id == result.user_id
+    assert repo.memberships[0].kitchen_id == result.kitchen_id
     assert repo.memberships[0].user_id == result.user_id
     assert repo.memberships[0].role == "owner"
     assert isinstance(result.user_id, UUID)
-    assert isinstance(result.list_id, UUID)
+    assert isinstance(result.kitchen_id, UUID)
 
 
 def test_signup_rejects_duplicate_email() -> None:
@@ -121,4 +121,4 @@ def test_signup_fr4_off_does_not_require_verification_step() -> None:
     )
 
     assert result.user_id is not None
-    assert len(repo.lists) == 1
+    assert len(repo.kitchens) == 1

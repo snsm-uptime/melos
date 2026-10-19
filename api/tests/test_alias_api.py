@@ -68,20 +68,20 @@ def test_alias_change_rejected_once_set(client: TestClient) -> None:
     assert client.get("/auth/me").json()["alias"] == "dave"
 
 
-def test_lists_are_gated_until_alias_is_set(client: TestClient) -> None:
+def test_kitchens_are_gated_until_alias_is_set(client: TestClient) -> None:
     _register(client, "erin-gate@example.com")
 
-    blocked = client.get("/lists")
+    blocked = client.get("/kitchens")
     assert blocked.status_code == 403, blocked.text
     assert blocked.json()["code"] == "alias_required"
 
-    created_blocked = client.post("/lists", json={"name": "Household"})
+    created_blocked = client.post("/kitchens", json={"name": "Household"})
     assert created_blocked.status_code == 403
     assert created_blocked.json()["code"] == "alias_required"
 
     assert client.patch("/auth/me", json={"alias": "erin"}).status_code == 200
-    assert client.get("/lists").status_code == 200
-    assert client.post("/lists", json={"name": "Household"}).status_code == 201
+    assert client.get("/kitchens").status_code == 200
+    assert client.post("/kitchens", json={"name": "Household"}).status_code == 201
 
 
 def test_alias_gate_does_not_block_account_surfaces(client: TestClient) -> None:
@@ -103,14 +103,14 @@ def test_failed_combined_patch_does_not_leave_set_once_alias(client: TestClient)
     import uuid
 
     _register(client, "gina-partial@example.com")
-    foreign_list = str(uuid.uuid4())
+    foreign_kitchen = str(uuid.uuid4())
 
     failed = client.patch(
         "/auth/me",
-        json={"alias": "gina", "last_opened_list_id": foreign_list},
+        json={"alias": "gina", "last_opened_kitchen_id": foreign_kitchen},
     )
     assert failed.status_code == 403, failed.text
-    assert failed.json()["code"] == "not_list_member"
+    assert failed.json()["code"] == "not_kitchen_member"
     assert client.get("/auth/me").json()["alias"] is None
 
     # Claim still works on a clean follow-up.

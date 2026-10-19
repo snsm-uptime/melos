@@ -38,9 +38,9 @@ def db_session(engine: Engine) -> Iterator[Session]:
     connection = engine.connect()
     transaction = connection.begin()
     # Route app-level rollback() to a SAVEPOINT instead of the outer test
-    # transaction. Bulk commit rolls back on error (Story 4.10); without this
-    # the app's rollback would discard the fixture's registered user/auth
-    # session too, and the next request in the test would 401.
+    # transaction. Routes roll back on SMTP failure; without this the app's
+    # rollback would discard the fixture's registered user/auth session too,
+    # and the next request in the test would 401.
     session = sessionmaker(
         bind=connection,
         autoflush=False,

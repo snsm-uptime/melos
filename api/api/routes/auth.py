@@ -6,13 +6,12 @@ import logging
 import uuid
 
 from adapters.email import SmtpEmailSender, load_smtp_settings
-from adapters.persistence.cards import SqlAlchemyCardRepository
 from adapters.persistence.email_verification import SqlAlchemyEmailVerificationRepository
-from adapters.persistence.list_invite import SqlAlchemyListInviteTokenRepository
+from adapters.persistence.kitchen_invite import SqlAlchemyKitchenInviteTokenRepository
 from adapters.persistence.password_reset import SqlAlchemyPasswordResetTokenRepository
 from adapters.persistence.repositories import (
     SqlAlchemyAuthUserRepository,
-    SqlAlchemyListRepository,
+    SqlAlchemyKitchenRepository,
     SqlAlchemySignupRepository,
 )
 from adapters.persistence.sessions import SESSION_COOKIE_MAX_AGE
@@ -24,15 +23,13 @@ from application.email_verification import (
     RequestEmailVerificationCommand,
     RequestEmailVerificationService,
 )
-from application.list_invite_accept import (
+from application.kitchen_invite_accept import (
     SignUpWithInviteCommand,
     SignUpWithInviteService,
 )
-from application.lists import (
-    SetDefaultImportListCommand,
-    SetDefaultImportListService,
-    SetLastOpenedListCommand,
-    SetLastOpenedListService,
+from application.kitchens import (
+    SetLastOpenedKitchenCommand,
+    SetLastOpenedKitchenService,
 )
 from application.password_reset import (
     CompletePasswordResetCommand,
@@ -55,7 +52,6 @@ from application.signup import SignupCommand, SignUpService
 from domain.errors import (
     AliasAlreadySetError,
     AliasTakenError,
-    CardNotFoundError,
     DuplicateEmailError,
     EmailNotVerifiedError,
     InvalidAliasError,
@@ -68,7 +64,7 @@ from domain.errors import (
     InvalidSignupError,
     InvalidVerificationTokenError,
     InviteEmailMismatchError,
-    NotListMemberError,
+    NotKitchenMemberError,
     PrincipalNotFoundError,
     RateLimitedError,
     SmtpConfigurationError,
@@ -154,10 +150,7 @@ def _me_response(result) -> MeResponse:
         photo_base64=result.photo_base64,
         language=result.language,
         theme=result.theme,
-        last_opened_list_id=result.last_opened_list_id,
-        default_import_list_id=result.default_import_list_id,
-        default_origin_kind=result.default_origin_kind,
-        default_origin_card_id=result.default_origin_card_id,
+        last_opened_kitchen_id=result.last_opened_kitchen_id,
     )
 
 
@@ -260,45 +253,27 @@ def patch_current_user(
     # wire-set membership is the only signal for "clear".
     photo_field_set = "photo_base64" in body.model_fields_set
     clear_photo = photo_field_set and body.photo_base64 is None
-    wrote_prefs = (
-        body.language is not None
-        or body.theme is not None
-        or body.default_origin_kind is not None
-        or photo_field_set
-    )
+    wrote_prefs = body.language is not None or body.theme is not None or photo_field_set
     try:
         # Prefs / last-opened first; claim alias last so a later failure cannot
         # leave a set-once alias under an error JSON response (get_db commits on
         # return). Do not session.rollback() here — integration tests share an
         # outer transaction, and unique races already use a nested savepoint.
-        if body.last_opened_list_id is not None:
-            SetLastOpenedListService(
-                SqlAlchemyListRepository(db),
+        if body.last_opened_kitchen_id is not None:
+            SetLastOpenedKitchenService(
+                SqlAlchemyKitchenRepository(db),
                 prefs,
             ).execute(
-                SetLastOpenedListCommand(
+                SetLastOpenedKitchenCommand(
                     actor_user_id=user_id,
-                    list_id=body.last_opened_list_id,
+                    kitchen_id=body.last_opened_kitchen_id,
                 )
             )
-        if body.default_import_list_id is not None:
-            SetDefaultImportListService(
-                SqlAlchemyListRepository(db),
-                prefs,
-                SqlAlchemyCardRepository(db),
-            ).execute(
-                SetDefaultImportListCommand(
-                    actor_user_id=user_id,
-                    list_id=body.default_import_list_id,
-                )
-            )
-        result = UpdatePreferencesService(prefs, SqlAlchemyCardRepository(db)).execute(
+        result = UpdatePreferencesService(prefs).execute(
             UpdatePreferencesCommand(
                 user_id=user_id,
                 language=body.language,
                 theme=body.theme,
-                default_origin_kind=body.default_origin_kind,
-                default_origin_card_id=body.default_origin_card_id,
                 photo_base64=body.photo_base64,
                 clear_photo=clear_photo,
             )
@@ -308,10 +283,10 @@ def patch_current_user(
             result = SetAliasService(prefs).execute(
                 SetAliasCommand(user_id=user_id, alias=body.alias)
             )
-    except NotListMemberError:
+    except NotKitchenMemberError:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            content={"detail": NotListMemberError.MESSAGE, "code": "not_list_member"},
+            content={"detail": NotKitchenMemberError.MESSAGE, "code": "not_kitchen_member"},
         )
     except InvalidAliasError as exc:
         return JSONResponse(
@@ -338,11 +313,6 @@ def patch_current_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={"detail": str(exc), "code": "invalid_preferences"},
         )
-    except CardNotFoundError as exc:
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={"detail": str(exc), "code": CardNotFoundError.CODE},
-        )
     except PrincipalNotFoundError:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -350,10 +320,7 @@ def patch_current_user(
         )
     if body.alias is not None:
         logger.info("user_alias_set user_id=%s", user_id)
-    wrote_list_prefs = (
-        body.last_opened_list_id is not None or body.default_import_list_id is not None
-    )
-    if wrote_prefs or wrote_list_prefs:
+    if wrote_prefs or body.last_opened_kitchen_id is not None:
         logger.info("user_preferences_updated user_id=%s", user_id)
     return _me_response(result)
 
@@ -397,9 +364,9 @@ def register(
         if invite_token:
             invite_result = SignUpWithInviteService(
                 service,
-                SqlAlchemyListInviteTokenRepository(db),
+                SqlAlchemyKitchenInviteTokenRepository(db),
                 SqlAlchemyAuthUserRepository(db),
-                SqlAlchemyListRepository(db),
+                SqlAlchemyKitchenRepository(db),
                 SqlAlchemyEmailVerificationRepository(db),
             ).execute(
                 SignUpWithInviteCommand(
@@ -411,9 +378,9 @@ def register(
             )
             result_user_id = invite_result.user_id
             result_email = invite_result.email
-            result_list_id = invite_result.personal_list_id
-            result_list_name = invite_result.personal_list_name
-            inviting_list_id = invite_result.inviting_list_id
+            result_kitchen_id = invite_result.personal_kitchen_id
+            result_kitchen_name = invite_result.personal_kitchen_name
+            inviting_kitchen_id = invite_result.inviting_kitchen_id
             requires_verify = invite_result.requires_email_verification
         else:
             plain = service.execute(
@@ -425,9 +392,9 @@ def register(
             )
             result_user_id = plain.user_id
             result_email = plain.email
-            result_list_id = plain.list_id
-            result_list_name = plain.list_name
-            inviting_list_id = None
+            result_kitchen_id = plain.kitchen_id
+            result_kitchen_name = plain.kitchen_name
+            inviting_kitchen_id = None
             requires_verify = False
     except InvalidSignupError as exc:
         return JSONResponse(
@@ -505,9 +472,9 @@ def register(
         sessions.revoke_all_for_user(result_user_id)
         token = sessions.create(result_user_id)
         logger.info(
-            "user_registered_invite_pending_verify user_id=%s list_id=%s",
+            "user_registered_invite_pending_verify user_id=%s kitchen_id=%s",
             result_user_id,
-            result_list_id,
+            result_kitchen_id,
         )
         # Cookies must be set on the returned response — a separate JSONResponse
         # does not inherit Set-Cookie from the injected Response parameter.
@@ -517,7 +484,7 @@ def register(
                 "detail": EmailNotVerifiedError.MESSAGE,
                 "code": "email_not_verified",
                 "user_id": str(result_user_id),
-                "list_id": str(result_list_id),
+                "kitchen_id": str(result_kitchen_id),
                 "invite_token_retained": True,
             },
         )
@@ -528,17 +495,17 @@ def register(
     token = sessions.create(result_user_id)
     _set_session_cookie(response, settings, token)
     logger.info(
-        "user_registered user_id=%s list_id=%s inviting_list_id=%s",
+        "user_registered user_id=%s kitchen_id=%s inviting_kitchen_id=%s",
         result_user_id,
-        result_list_id,
-        inviting_list_id,
+        result_kitchen_id,
+        inviting_kitchen_id,
     )
     return RegisterResponse(
         user_id=result_user_id,
         email=result_email,
-        list_id=result_list_id,
-        list_name=result_list_name,
-        inviting_list_id=inviting_list_id,
+        kitchen_id=result_kitchen_id,
+        kitchen_name=result_kitchen_name,
+        inviting_kitchen_id=inviting_kitchen_id,
     )
 
 

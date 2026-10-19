@@ -11,12 +11,6 @@ ALLOWED_THEMES = frozenset({"light", "dark", "system"})
 DEFAULT_LANGUAGE = "en"
 DEFAULT_THEME = "system"
 
-# Account-level default for new expenses' origin: Cash, no default, or one of
-# the account's own cards (default_origin_card_id carries the card when kind
-# is "card"; application layer owns the ownership check).
-ALLOWED_DEFAULT_ORIGIN_KINDS = frozenset({"cash", "blank", "card"})
-DEFAULT_ORIGIN_KIND = "cash"
-
 _Q_PARAM = re.compile(r";\s*q\s*=", re.IGNORECASE)
 
 
@@ -34,39 +28,6 @@ def validate_theme(value: str) -> str:
     if normalized not in ALLOWED_THEMES:
         raise InvalidPreferencesError(f"theme must be one of: {', '.join(sorted(ALLOWED_THEMES))}")
     return normalized
-
-
-def validate_default_origin_kind(value: str) -> str:
-    normalized = value.strip().lower()
-    if normalized not in ALLOWED_DEFAULT_ORIGIN_KINDS:
-        raise InvalidPreferencesError(
-            f"default_origin_kind must be one of: {', '.join(sorted(ALLOWED_DEFAULT_ORIGIN_KINDS))}"
-        )
-    return normalized
-
-
-def coerce_stored_default_origin_kind(stored: str | None) -> str:
-    """Effective default-origin-kind — unset/corrupt values fall back to Cash."""
-    if not stored:
-        return DEFAULT_ORIGIN_KIND
-    try:
-        return validate_default_origin_kind(stored)
-    except InvalidPreferencesError:
-        return DEFAULT_ORIGIN_KIND
-
-
-def coerce_stored_default_origin(
-    stored_kind: str | None, stored_card_id: object
-) -> tuple[str, object]:
-    """Effective (kind, card_id) pair — a "card" kind whose card vanished (the FK
-
-    sets it null on delete) falls back to Cash rather than surfacing a
-    dangling reference.
-    """
-    kind = coerce_stored_default_origin_kind(stored_kind)
-    if kind == "card" and stored_card_id is None:
-        return DEFAULT_ORIGIN_KIND, None
-    return kind, stored_card_id if kind == "card" else None
 
 
 def coerce_stored_language(stored: str | None) -> str | None:

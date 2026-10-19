@@ -102,7 +102,7 @@ describe("AliasSetupForm", () => {
     );
   }
 
-  async function render(continueHref = "/lists") {
+  async function render(continueHref = "/kitchens") {
     await act(async () => {
       root.render(<AliasSetupForm messages={messages} continueHref={continueHref} />);
     });
@@ -136,12 +136,12 @@ describe("AliasSetupForm", () => {
 
   it("continues to the return destination after a successful claim", async () => {
     setAlias.mockResolvedValue({ ok: true, alias: "alice" });
-    await render("/lists/list-1");
+    await render("/kitchens/kitchen-1");
     await type("Alice");
     await submit();
 
     expect(setAlias).toHaveBeenCalledWith("alice", messages);
-    expect(replace).toHaveBeenCalledWith("/lists/list-1");
+    expect(replace).toHaveBeenCalledWith("/kitchens/kitchen-1");
     expect(refresh).toHaveBeenCalled();
   });
 

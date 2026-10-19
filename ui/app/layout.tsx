@@ -22,8 +22,8 @@ const petrona = Petrona({
 });
 
 export const metadata: Metadata = {
-  title: "finance-helper",
-  description: "Self-hosted shared finance helper",
+  title: "Melos",
+  description: "Menus Everyone Loves to Share — a shared home cookbook",
 };
 
 export default function RootLayout({
