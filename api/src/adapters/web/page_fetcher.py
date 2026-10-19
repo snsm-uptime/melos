@@ -3,7 +3,7 @@ import re
 import asyncio
 from typing import Optional
 import aiohttp
-from api.src.application.ports import PageFetcher
+from src.application.ports import PageFetcher
 
 
 PRIVATE_IP_PATTERNS = [

@@ -7,8 +7,8 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 import logging
 
-from api.src.settings import settings
-from api.src.api.routes import health, kitchens
+from src.settings import settings
+from src.api.routes import health, kitchens
 
 logger = logging.getLogger(__name__)
 

@@ -1,8 +1,8 @@
 """Use case for ingredient management"""
 from typing import Optional, List
 from uuid import UUID
-from api.src.domain.ingredient_catalog import Ingredient, IngredientCatalog
-from api.src.application.ports import IngredientRepository
+from src.domain.ingredient_catalog import Ingredient, IngredientCatalog
+from src.application.ports import IngredientRepository
 
 
 class IngredientsUseCase:

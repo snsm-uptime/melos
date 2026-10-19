@@ -3,11 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from typing import Optional, List
 from uuid import UUID
-from api.src.api.dependencies import get_kitchen, verify_kitchen_access
-from api.src.application.use_cases.recipes import RecipesUseCase
-from api.src.application.use_cases.ingredients import IngredientsUseCase
-from api.src.adapters.llm.gemini import GeminiAdapter
-from api.src.adapters.persistence.repositories import RecipeRepository, IngredientRepository
+from src.api.dependencies import get_kitchen, verify_kitchen_access
+from src.application.use_cases.recipes import RecipesUseCase
+from src.application.use_cases.ingredients import IngredientsUseCase
+from src.adapters.llm.gemini import GeminiAdapter
+from src.adapters.persistence.repositories import RecipeRepository, IngredientRepository
 
 
 router = APIRouter()
@@ -57,7 +57,7 @@ async def save_recipe(
 
     await verify_kitchen_access(kitchen_id, user.id)
 
-    from api.src.domain.recipe import RecipeDraft
+    from src.domain.recipe import RecipeDraft
 
     draft = RecipeDraft(
         title=request.title,
@@ -84,7 +84,7 @@ async def save_recipe(
             kitchen_id, ing.ingredient_name, unit=ing.unit
         )
 
-        from api.src.domain.recipe import RecipeIngredient
+        from src.domain.recipe import RecipeIngredient
         recipe_ingredient = RecipeIngredient(
             recipe_id=recipe.id,
             ingredient_id=ingredient_id,

@@ -4,7 +4,7 @@ import re
 
 def validate_password(password: str) -> bool:
     """Validate password meets requirements"""
-    from api.src.settings import settings
+    from src.settings import settings
 
     if len(password) < settings.password_min_length:
         return False

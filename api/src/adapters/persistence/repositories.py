@@ -3,7 +3,7 @@ from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
 from sqlalchemy.orm import Session
-from api.src.adapters.persistence.models import (
+from src.adapters.persistence.models import (
     Kitchen,
     Recipe,
     Ingredient,

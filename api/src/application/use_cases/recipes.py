@@ -1,8 +1,8 @@
 """Use case for recipe management"""
 from typing import Optional, List
 from uuid import UUID
-from api.src.domain.recipe import Recipe, RecipeDraft, RecipeIngredient
-from api.src.application.ports import RecipeRepository, Embedder
+from src.domain.recipe import Recipe, RecipeDraft, RecipeIngredient
+from src.application.ports import RecipeRepository, Embedder
 
 
 class RecipesUseCase:

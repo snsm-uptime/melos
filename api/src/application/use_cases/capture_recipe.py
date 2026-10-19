@@ -1,8 +1,8 @@
 """Use case for capturing recipes from text, URL, or photo"""
 from typing import Optional
 from uuid import UUID
-from api.src.domain.recipe import ParseResult, RecipeDraft
-from api.src.application.ports import RecipeExtractor, PageFetcher
+from src.domain.recipe import ParseResult, RecipeDraft
+from src.application.ports import RecipeExtractor, PageFetcher
 
 
 class CaptureRecipeUseCase:

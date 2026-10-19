@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 from weasyprint import HTML, CSS
 from jinja2 import Template
 from io import BytesIO
-from api.src.application.ports import PdfRenderer
+from src.application.ports import PdfRenderer
 
 
 SHOPPING_LIST_TEMPLATE = """

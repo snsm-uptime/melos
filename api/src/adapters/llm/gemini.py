@@ -1,9 +1,9 @@
 """Google Gemini adapter for recipe extraction, embeddings, and chat"""
 from typing import List, Dict, Optional
 from uuid import UUID
-from api.src.application.ports import RecipeExtractor, Embedder, ChatModel
-from api.src.domain.recipe import ParseResult, RecipeDraft
-from api.src.settings import settings
+from src.application.ports import RecipeExtractor, Embedder, ChatModel
+from src.domain.recipe import ParseResult, RecipeDraft
+from src.settings import settings
 
 
 class GeminiRecipeExtractor(RecipeExtractor):

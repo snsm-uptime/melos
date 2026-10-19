@@ -2,9 +2,9 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
 from pydantic import BaseModel
 from uuid import UUID
-from api.src.api.dependencies import get_kitchen, verify_kitchen_access
-from api.src.application.use_cases.capture_recipe import CaptureRecipeUseCase
-from api.src.adapters.llm.gemini import GeminiAdapter
+from src.api.dependencies import get_kitchen, verify_kitchen_access
+from src.application.use_cases.capture_recipe import CaptureRecipeUseCase
+from src.adapters.llm.gemini import GeminiAdapter
 
 
 router = APIRouter()

@@ -9,8 +9,8 @@ import sys
 # Add api src to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
 
-from api.src.adapters.persistence.base import Base
-from api.src.settings import settings
+from src.adapters.persistence.base import Base
+from src.settings import settings
 
 config = context.config
 

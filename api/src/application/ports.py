@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any
 from uuid import UUID
-from api.src.domain.recipe import ParseResult, RecipeDraft
+from src.domain.recipe import ParseResult, RecipeDraft
 
 
 class RecipeExtractor(ABC):

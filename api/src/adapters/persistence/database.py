@@ -1,7 +1,7 @@
 """Database connection and session management"""
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-from api.src.settings import settings
+from src.settings import settings
 
 engine = create_engine(
     settings.database_url,

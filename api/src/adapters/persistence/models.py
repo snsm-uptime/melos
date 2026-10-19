@@ -16,7 +16,7 @@ from sqlalchemy import (
     Index,
 )
 from sqlalchemy.orm import relationship
-from api.src.adapters.persistence.base import Base
+from src.adapters.persistence.base import Base
 import enum
 
 
