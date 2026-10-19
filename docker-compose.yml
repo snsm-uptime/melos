@@ -1,0 +1,86 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: melos-db
+    environment:
+      POSTGRES_USER: melos
+      POSTGRES_PASSWORD: melos_dev_password
+      POSTGRES_DB: melos_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U melos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - melos
+
+  pgvector:
+    image: postgres:16-alpine
+    container_name: melos-pgvector
+    environment:
+      POSTGRES_USER: melos
+      POSTGRES_PASSWORD: melos_dev_password
+      POSTGRES_DB: melos_db
+      POSTGRES_INITDB_ARGS: "-c shared_preload_libraries=vector"
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U melos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - melos
+
+  api:
+    build:
+      context: .
+      dockerfile: api.Dockerfile
+    container_name: melos-api
+    environment:
+      DATABASE_URL: postgresql://melos:melos_dev_password@postgres:5432/melos_db
+      ENVIRONMENT: development
+      LOG_LEVEL: debug
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./api:/app
+    networks:
+      - melos
+    command: uvicorn api.src.api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  ui:
+    build:
+      context: .
+      dockerfile: ui.Dockerfile
+    container_name: melos-ui
+    environment:
+      NEXT_PUBLIC_API_URL: http://api:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    volumes:
+      - ./ui:/app
+    networks:
+      - melos
+    command: npm run dev
+
+volumes:
+  postgres_data:
+  pgvector_data:
+
+networks:
+  melos:
+    driver: bridge

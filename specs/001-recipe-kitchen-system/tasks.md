@@ -12,16 +12,16 @@
 
 **Purpose**: Project initialization and basic structure
 
-**Status**: Not started
+**Status**: ✅ Complete
 
-- [ ] T001 Create repository structure (api/, ui/, scripts/) with .gitignore
-- [ ] T002 Initialize Python backend: create pyproject.toml (FastAPI, SQLAlchemy, Alembic, google-genai, weasyprint, pytest)
-- [ ] T003 Initialize Next.js frontend: npm create next-app with TypeScript, Tailwind 4
-- [ ] T004 [P] Create Docker Compose file (PostgreSQL 16, pgvector extension, API container, UI container)
-- [ ] T005 [P] Setup environment configuration (api/settings.py, MELOS_* env vars, ui/.env.local)
-- [ ] T006 Setup linting & formatting tools (ruff for Python, prettier for JS/TS)
-- [ ] T007 Create base FastAPI application skeleton (api/src/main.py with health check)
-- [ ] T008 Create base Next.js pages (layout, home page redirect to /kitchen)
+- [x] T001 Create repository structure (api/, ui/, scripts/) with .gitignore
+- [x] T002 Initialize Python backend: create pyproject.toml (FastAPI, SQLAlchemy, Alembic, google-genai, weasyprint, pytest)
+- [x] T003 Initialize Next.js frontend: npm create next-app with TypeScript, Tailwind 4
+- [x] T004 [P] Create Docker Compose file (PostgreSQL 16, pgvector extension, API container, UI container)
+- [x] T005 [P] Setup environment configuration (api/settings.py, MELOS_* env vars, ui/.env.local)
+- [x] T006 Setup linting & formatting tools (ruff for Python, prettier for JS/TS)
+- [x] T007 Create base FastAPI application skeleton (api/src/main.py with health check)
+- [x] T008 Create base Next.js pages (layout, home page redirect to /kitchen)
 
 ---
 
