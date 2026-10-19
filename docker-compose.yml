@@ -1,0 +1,139 @@
+# Local / default Compose graph — finance-helper
+# Services: db | api | ui only (AD-2). Volumes outside the repo (AD-3 / NFR-9).
+# Requires a local `.env` (copy from `.env.example`) — no silent secret defaults.
+
+# FH_COMPOSE_NAME / API_HOST_PORT / UI_HOST_PORT let parallel Cursor worktrees
+# run isolated Compose stacks without port or container-name clashes.
+# Defaults preserve the single-checkout local workflow.
+name: ${FH_COMPOSE_NAME:-finance-helper}
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - type: bind
+        source: ${FINANCE_HELPER_DATA:-${HOME}/finance-helper}/pgdata
+        target: /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 1h
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      SESSION_SECRET: ${SESSION_SECRET}
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-fh_session}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      SESSION_COOKIE_SAMESITE: ${SESSION_COOKIE_SAMESITE:-lax}
+      EMAIL_VERIFICATION_REQUIRED: ${EMAIL_VERIFICATION_REQUIRED:-false}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:3000}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      SMTP_TIMEOUT_SECONDS: ${SMTP_TIMEOUT_SECONDS:-20}
+      AUTH_RATE_LIMIT_REGISTER_MAX: ${AUTH_RATE_LIMIT_REGISTER_MAX:-5}
+      AUTH_RATE_LIMIT_REGISTER_WINDOW_SECONDS: ${AUTH_RATE_LIMIT_REGISTER_WINDOW_SECONDS:-3600}
+      AUTH_RATE_LIMIT_SIGN_IN_MAX: ${AUTH_RATE_LIMIT_SIGN_IN_MAX:-20}
+      AUTH_RATE_LIMIT_SIGN_IN_WINDOW_SECONDS: ${AUTH_RATE_LIMIT_SIGN_IN_WINDOW_SECONDS:-900}
+      AUTH_RATE_LIMIT_PASSWORD_RESET_REQUEST_MAX: ${AUTH_RATE_LIMIT_PASSWORD_RESET_REQUEST_MAX:-5}
+      AUTH_RATE_LIMIT_PASSWORD_RESET_REQUEST_WINDOW_SECONDS: ${AUTH_RATE_LIMIT_PASSWORD_RESET_REQUEST_WINDOW_SECONDS:-3600}
+      AUTH_RATE_LIMIT_VERIFY_REQUEST_MAX: ${AUTH_RATE_LIMIT_VERIFY_REQUEST_MAX:-5}
+      AUTH_RATE_LIMIT_VERIFY_REQUEST_WINDOW_SECONDS: ${AUTH_RATE_LIMIT_VERIFY_REQUEST_WINDOW_SECONDS:-3600}
+      AUTH_CLIENT_IP_HEADER: ${AUTH_CLIENT_IP_HEADER:-X-FH-Client-IP}
+      # Docker bridge + loopback only — not blanket RFC1918 (10/8, 192.168/16).
+      # Pin tighter (ui container CIDR) if api is reachable beyond the Compose network.
+      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-172.16.0.0/12,127.0.0.1,::1}
+      PDF_STORAGE_PATH: ${PDF_STORAGE_PATH:-/data/pdfs}
+      # Dev/worktree only — seeds pre-verified accounts at boot (see api/scripts/seed_dev_user.py).
+      SEED_DEV_USER: ${SEED_DEV_USER:-0}
+      SEED_DEV_USER_EMAIL: ${SEED_DEV_USER_EMAIL:-}
+      SEED_DEV_USER_PASSWORD: ${SEED_DEV_USER_PASSWORD:-}
+      SEED_DEV_USER_ALIAS: ${SEED_DEV_USER_ALIAS:-}
+      SEED_DEV_USER_LISTS: ${SEED_DEV_USER_LISTS:-}
+    ports:
+      - "${API_HOST_PORT:-8000}:8000"
+    volumes:
+      - type: bind
+        source: ${FINANCE_HELPER_DATA:-${HOME}/finance-helper}/pdfs
+        target: /data/pdfs
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
+      interval: 1h
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+    networks:
+      - internal
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      API_INTERNAL_URL: ${API_INTERNAL_URL}
+      AUTH_CLIENT_IP_HEADER: ${AUTH_CLIENT_IP_HEADER:-X-FH-Client-IP}
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
+    ports:
+      - "${UI_HOST_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 1h
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+  mcp:
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+    ports:
+      - "${API_HOST_PORT:-9000}:9000"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_CHAT_MODEL: ${GEMINI_CHAT_MODEL:-gemini-2.0-flash}
+      GEMINI_EMBED_MODEL: ${GEMINI_EMBED_MODEL:-text-embedding-004}
+      GEMINI_EMBED_DIM: ${GEMINI_EMBED_DIM:-768}
+    depends_on:
+      - db
+    networks:
+      - melos
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
