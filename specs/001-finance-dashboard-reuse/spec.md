@@ -145,7 +145,10 @@ All auth files listed below are copied from `finance-dashboard/api/` to `melos/a
 4. Copy all files under `application/` that relate to auth (email_verification.py, password_reset.py, preferences.py, rate_limit.py)
 5. Copy entire `adapters/persistence/` directory as-is (includes all auth models and repositories)
 6. Copy entire `adapters/email/` directory as-is
-7. **Do not customize any of these files.** Config differences (e.g., `FH_` → `MELOS_` prefix) are handled via `.env` and `api/settings.py` environment variable loading, not by editing individual modules.
+7. **Do not customize the core auth logic in any of these files.** Config differences (e.g., `FH_` → `MELOS_` prefix, new Gemini vars) are handled via:
+   - `.env` environment file (defines all variable values)
+   - `api/settings.py` Settings class (loads variables via `os.getenv()`; already exists in finance-dashboard)
+   - **Clarification:** `settings.py` is copied as-is from finance-dashboard. The Settings class already has a mechanism to load environment variables. Verify that `SESSION_SECRET`, `AUTH_RATE_LIMIT_*`, `TRUSTED_PROXY_IPS`, and new Melos vars (`GEMINI_*`, `MELOS_DATA`) can be loaded via existing `os.getenv()` calls. Do NOT add new environment variable loading code to auth files; the Settings class pattern handles this.
 8. **Do not remove or rename any of these files**, as they are a dependency of other layers.
 
 #### FR5.2: Frontend Auth Components to Copy

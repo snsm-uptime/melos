@@ -39,6 +39,7 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 - [ ] T007 [P] Copy `.cursor/worktrees.json` from finance-dashboard
 - [ ] T008 Copy `.gitignore` with Python and Node ignores (add: .env, node_modules/, .venv/)
 - [ ] T009 Adapt and create `.env.example` with new Melos environment variables (MELOS_* prefix; add GEMINI_API_KEY, GEMINI_CHAT_MODEL, GEMINI_EMBED_MODEL, GEMINI_EMBED_DIM; remove all finance-dashboard test credentials)
+- [ ] T009a Create data directory structure: `mkdir -p "${MELOS_DATA:-$HOME/melos}/pgdata" && chmod 700 "${MELOS_DATA:-$HOME/melos}"`; verify Docker Compose can read/write
 
 **Validation:**
 ```bash
@@ -66,7 +67,7 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 - [ ] T014 Copy entire `api/adapters/persistence/` directory as-is (Session, PasswordReset, EmailVerification models; repositories; password hasher)
 - [ ] T015 Copy entire `api/adapters/email/` directory as-is (SMTP adapter for password reset and verification emails)
 - [ ] T016 Verify NO modifications to any auth files (use `git diff` to confirm against finance-dashboard source)
-- [ ] T017 Update `api/settings.py` ONLY to load Melos environment variables (MELOS_* prefix handled here, not in individual files): SESSION_SECRET, SESSION_COOKIE_*, AUTH_RATE_LIMIT_*, TRUSTED_PROXY_IPS, AUTH_CLIENT_IP_HEADER, GEMINI_API_KEY, GEMINI_CHAT_MODEL, GEMINI_EMBED_MODEL, GEMINI_EMBED_DIM
+- [ ] T017 Verify `api/settings.py` loads all required environment variables (copied as-is from finance-dashboard): Confirm Settings class uses `os.getenv()` to load SESSION_SECRET, SESSION_COOKIE_*, AUTH_RATE_LIMIT_*, TRUSTED_PROXY_IPS, AUTH_CLIENT_IP_HEADER, GEMINI_API_KEY, GEMINI_CHAT_MODEL, GEMINI_EMBED_MODEL, GEMINI_EMBED_DIM; do NOT modify settings.py core auth logic
 
 ### Frontend Auth Components (Minimal Adaptations)
 
@@ -86,6 +87,7 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 
 - [ ] T027 Copy base `docker-compose.yml` from finance-dashboard (db, api, ui services); **ADAPT db service**: change base image from `postgres:16` to `pgvector/pgvector:pg16` (for vector embeddings)
 - [ ] T028 Copy `docker-compose.dev.yml` from finance-dashboard; **ADAPT for Melos**: inject Gemini environment variables (GEMINI_API_KEY, GEMINI_CHAT_MODEL, GEMINI_EMBED_MODEL, GEMINI_EMBED_DIM); keep SEED_DEV_USER, SEED_DEV_USER_EMAIL, etc. for dev seeding
+- [ ] T028a Implement `api/scripts/seed_dev_user.py`: When `SEED_DEV_USER=1`, create test user (email, password, alias from `SEED_DEV_USER_*` env vars), sample kitchen (`SEED_DEV_USER_KITCHEN` env var), 3–5 recipes with ingredients, pre-populated cart (2 recipes, 1 meal each, 2 people), archived shopping list, 4–6 conversation messages per spec.md Development Seeding section
 - [ ] T029 Add MCP service to `docker-compose.yml`: FastAPI service on port 9000 (separate container for security); builds from `./mcp/` Dockerfile
 - [ ] T030 Copy `docker-compose.test.yml` from finance-dashboard (no modifications)
 - [ ] T031 Copy `docker-compose.prod.yml` from finance-dashboard (no modifications)
@@ -118,7 +120,7 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 
 ### Database & Migrations
 
-- [ ] T044 Create initial Alembic migration (if not present): `api/alembic/versions/001_initial_schema.py` (reused auth tables: user, session, password_reset_token, email_verification, preferences; reused kitchen tables: kitchen, membership, invite)
+- [ ] T044 Create initial Alembic migration: `api/alembic/versions/001_initial_schema.py` with all 21 tables per spec.md Key Entities (reused: user, session, password_reset_token, email_verification, preferences, kitchen, membership, invite; new: ingredient, category, recipe, recipe_ingredient, step, cart, cart_item, shopping_list, shopping_list_item, conversation, message, recipe_embedding, source); include all field definitions, constraints, and indices per spec.md Implementation Boundaries (line 413–453)
 - [ ] T045 Add pgvector migration extension to initial migration (IF NOT EXISTS pgvector; CREATE EXTENSION pgvector;)
 - [ ] T046 Verify Alembic is configured to auto-run on API container startup (entrypoint script)
 
@@ -161,6 +163,7 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 
 - [ ] T065 Run Python linting: `cd api && uv run ruff check .` (E, F, I, UP, B rule sets; line length 100)
 - [ ] T066 Run Python tests: `cd api && uv run pytest -q` (all tests pass; auth layer tests validate without modification)
+- [ ] T066a Verify pytest integration tests use real PostgreSQL (per constitution Principle 6): Inspect `api/tests/` for real database connections (not mocks); ensure `-f docker-compose.yml -f docker-compose.test.yml` test overlay is used; no SQLAlchemy mock objects
 - [ ] T067 Run Python tests in Compose: `docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api`
 - [ ] T068 Add type checking config (pyright or mypy if not present in finance-dashboard)
 - [ ] T069 Verify no hardcoded secrets in Python code (grep for API keys, passwords, email creds)
@@ -182,6 +185,7 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 ### Documentation
 
 - [ ] T078 Create or update `README.md` (project overview, architecture, tech stack, setup instructions)
+- [ ] T078a Add reuse origin documentation: All files copied from finance-dashboard must have header comment indicating source and any adaptations (format: `// Reused from finance-dashboard/<path>` or `// Adapted from finance-dashboard/<path>: <changes>`)
 - [ ] T079 Document environment variables in README (POSTGRES_*, SESSION_*, AUTH_RATE_LIMIT_*, SMTP_*, GEMINI_*, MELOS_DATA)
 - [ ] T080 Document setup steps in README (15-minute quickstart from quickstart.md)
 - [ ] T081 Document how to run tests locally: Python (uv run pytest), JavaScript (npm test), both in Compose
@@ -196,6 +200,8 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 - [ ] T087 Verify `.gitignore` includes `.env`, `node_modules/`, `.venv/`, `pgdata/`, all secrets
 - [ ] T088 Scan commit history for secrets: `git log --all --source --remotes --decorate -- .` (no credentials leaked)
 - [ ] T089 Clean up any temporary files or debug code before final commit
+- [ ] T089a Set up pre-commit hook for secret detection: Create `.git/hooks/pre-commit` (or use `pre-commit` framework with detect-secrets); reject commits containing API keys, passwords, database credentials (patterns: `[A-Z0-9]{32,}`, `password.*=`, `api.*key.*=`, `.env` files); per constitution Principle 4 & 8
+- [ ] T089b Test worktree isolation: Create two worktrees; start both with `compose-up.sh`; verify: (1) port bindings differ (e.g., api:8001, api:8002), (2) container names differ (via `MELOS_COMPOSE_NAME`), (3) both health checks pass without conflicts
 
 ---
 
@@ -231,12 +237,12 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 
 | Phase | Task Count | Parallel Opportunities | Duration Estimate |
 |-------|-----------|------------------------|-------------------|
-| Phase 1: Setup | T001–T009 (9 tasks) | T005–T007 (3 parallel copy tasks) | 15–20 min |
-| Phase 2: Foundational | T010–T043 (34 tasks) | T018–T025 (8 parallel UI tasks); T034–T043 (10 parallel tool tasks) | 60–90 min |
+| Phase 1: Setup | T001–T009a (10 tasks) | T005–T007 (3 parallel copy tasks) | 15–25 min |
+| Phase 2: Foundational | T010–T043, T028a (35 tasks) | T018–T025 (8 parallel UI tasks); T034–T043 (10 parallel tool tasks) | 70–100 min |
 | Phase 3: Integration | T044–T064 (21 tasks) | T047–T049 (3 parallel health endpoints); T051–T054 (4 parallel verification tests) | 30–45 min |
-| Phase 4: Quality | T065–T089 (25 tasks) | T065–T067 (3 parallel Python quality); T070–T074 (5 parallel JavaScript quality) | 45–60 min |
+| Phase 4: Quality | T065–T089b (30 tasks) | T065–T067a (4 parallel Python quality); T070–T074 (5 parallel JavaScript quality); T089a–T089b (2 parallel final validation) | 60–75 min |
 | Phase 5: Production | T090–T100 (11 tasks) | T091–T093 (3 parallel prod testing) | 30–45 min |
-| **TOTAL** | **100 tasks** | **30+ parallelizable** | **180–260 min (3–4.5 hours)** |
+| **TOTAL** | **107 tasks** | **35+ parallelizable** | **205–290 min (3.5–4.8 hours)** |
 
 ---
 
