@@ -1,0 +1,48 @@
+# Dev overlay — hot reload for api + ui
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# Source is bind-mounted from the host. Production images remain the default
+# `docker compose up` / prod overlay path.
+
+services:
+  postgres:
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  api:
+    environment:
+      DEV_RELOAD: "true"
+      LOG_LEVEL: "DEBUG"
+      SEED_DEV_DATA: ${SEED_DEV_DATA:-1}
+    volumes:
+      - ./api:/app
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+
+  ui:
+    environment:
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./ui:/app
+      - ui_node_modules:/app/node_modules
+      - ./ui/.next:/app/.next
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 1h
+      timeout: 5s
+      retries: 15
+      start_period: 45s
+
+volumes:
+  ui_node_modules:
