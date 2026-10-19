@@ -9,6 +9,8 @@ them, and builds a weekly shopping list scaled to the number of people.
 The full specification is in `dev/docs/prd.md`. Read it before building
 anything. If the spec and this file disagree, ask.
 
+**→ Before starting work, read the [Project Constitution](.specify/memory/constitution.md) (`.specify/memory/constitution.md`).** It establishes the engineering principles, architectural boundaries, and non-negotiable rules that all contributors must follow.
+
 ## How it is built
 
 The architecture, structure, auth layer and tooling are reused from
@@ -123,7 +125,11 @@ ALWAYS use `uv`. Never use `pip`, `python -m venv` or `requirements.txt`.
   4. Asking something the recipes don't cover → the assistant says the
      recipes don't cover it.
 
-## Rules
+## Governance and Rules
+
+**The [Project Constitution](.specify/memory/constitution.md) is the source of truth for engineering principles.** This section highlights key rules; see the constitution for the complete set with rationale and how to apply them.
+
+### Core Rules
 
 - Secrets live only in `.env` (local) or the server's environment
   (production): `GEMINI_API_KEY`, `POSTGRES_PASSWORD`, `SESSION_SECRET`, SMTP
@@ -188,6 +194,17 @@ in `dev/skills/save_to_memory.md`.
 - **After each response:** Review `dev/skills/save_to_memory.md` and consider
   what, if anything, should be saved about this interaction.
 
+## Amendments to Governance
+
+Changes to this document (AGENTS.md) or the [Project Constitution](.specify/memory/constitution.md) require explicit approval and should be documented.
+
+**To amend the constitution:**
+```bash
+/speckit-constitution
+```
+
+This will guide you through updating principles, versioning, and recording changes.
+
 ## What not to do
 
 - Do not delete or rewrite the README without asking.
@@ -198,4 +215,5 @@ in `dev/skills/save_to_memory.md`.
   separately.
 - Do not copy finance-dashboard's seed credentials or finance domain code
   (cards, statements, budgets, splits, FX, bank adapters).
+- **Do not violate the [Project Constitution](.specify/memory/constitution.md).** If you need an exception, ask for written approval and document it.
 - Do not push or deploy without my review first.
