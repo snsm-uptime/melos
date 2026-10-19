@@ -42,9 +42,9 @@
 ### Authentication & Session (Reused from Finance-Dashboard)
 
 - [ ] T014 Integrate existing auth routes (api/src/api/routes/auth.py) - sign-up, sign-in, sign-out, session verification
-- [ ] T015 Create user model import from shared auth schema
-- [ ] T016 [P] Configure session middleware (api/src/api/dependencies.py) with MELOS_SESSION cookie
-- [ ] T017 [P] Create auth verification utilities (api/src/api/security.py)
+- [ ] T015 Create user model import from shared auth schema (email/password only; OAuth out of scope for v1)
+- [ ] T016 [P] Configure session middleware (api/src/api/dependencies.py) with melos_session cookie (httpOnly, Secure, SameSite=Lax)
+- [ ] T017 [P] Create auth verification utilities (api/src/api/security.py) with password validation (8-256 characters from finance-dashboard)
 
 ### Domain Layer Foundation
 
@@ -53,14 +53,14 @@
 - [ ] T020 Implement Ingredient domain model (api/src/domain/ingredient_catalog.py): Ingredient, Category, canonical name normalization
 - [ ] T021 [P] Implement Kitchen domain model (api/src/domain/kitchen.py): Kitchen, Member roles (Visitor, Member, Owner)
 - [ ] T022 [P] Implement ShoppingList domain model (api/src/domain/cart.py): shopping list consolidation, scaling logic, item merging
-- [ ] T023 Implement TOON encoder/decoder (api/src/domain/toon.py) for safe LLM prompting (per research.md)
+- [ ] T023 Implement TOON encoder/decoder (api/src/domain/toon.py) for safe LLM prompting. Reference: /dev/docs/appendix_b_prompts.md (Appendix B: TOON encoding format and examples)
 - [ ] T024 [P] Implement validation rules (api/src/domain/validation.py): field lengths, constraints from data-model.md
 
 ### Adapters & Ports (External Services)
 
 - [ ] T025 Create ports/interfaces (api/src/application/ports.py): RecipeExtractor, Embedder, ChatModel, PageFetcher, PdfRenderer, Repositories
 - [ ] T026 [P] Implement Gemini adapter (api/src/adapters/llm/gemini.py): RecipeExtractor, ChatModel, Embedder using google-genai SDK
-- [ ] T027 [P] Create LLM prompts module (api/src/adapters/llm/prompts.py): Recipe extraction and chat system prompts (reference Appendix B)
+- [ ] T027 [P] Create LLM prompts module (api/src/adapters/llm/prompts.py): Recipe extraction and chat system prompts. Reference: /dev/docs/appendix_b_prompts.md for system prompt specifications and TOON encoding format.
 - [ ] T028 Implement page fetcher (api/src/adapters/web/page_fetcher.py): fetch URLs with SSRF validation (blocklist private IPs), timeout 10s
 - [ ] T029 [P] Implement JSON-LD extractor (api/src/adapters/web/jsonld.py): parse schema.org/Recipe from HTML
 - [ ] T030 [P] Implement PDF renderer (api/src/adapters/pdf/weasyprint.py): render shopping list template to PDF bytes
@@ -71,7 +71,7 @@
 - [ ] T032 Create repository interfaces (api/src/application/repositories/) with base repository class
 - [ ] T033 Implement KitchenRepository (api/src/adapters/persistence/repositories.py): create, read, list kitchens (kitchen_id scoped)
 - [ ] T034 [P] Implement RecipeRepository: create, read, update, delete, list recipes per kitchen
-- [ ] T035 [P] Implement IngredientRepository: create, read, update, list ingredients; support canonical name matching
+- [ ] T035 [P] Implement IngredientRepository: create, read, update, list ingredients; support canonical name matching (Levenshtein distance, ≥80% threshold). Reference: domain/ingredient_catalog.py
 - [ ] T036 [P] Implement MemberRepository: read members, check roles, verify kitchen access
 - [ ] T037 [P] Implement ShoppingListRepository: create, read shopping lists (computed, not persisted)
 - [ ] T038 [P] Implement InviteRepository: create, read, accept invites; enforce token uniqueness and expiry
@@ -114,6 +114,7 @@
 - [ ] T053 [P] [US1] Contract test: POST /kitchens/{id}/recipes/draft with photo upload
 - [ ] T054 [P] [US1] Integration test: capture recipe, verify ingredients stored (tests/integration/test_capture_recipe.py)
 - [ ] T055 [US1] Unit test: TOON parser handles invalid input gracefully (tests/unit/test_toon.py)
+- [ ] T055b [US1] Contract test: DELETE /recipes/{id} permissions — verify Member can delete own, Owner can delete any, Visitor cannot delete (tests/contract/test_recipe_delete_permissions.py)
 
 ### Implementation for User Story 1
 
@@ -150,6 +151,7 @@
 - [ ] T072 [US1] Store photo temporarily (api/src/adapters/persistence/models.py): Source.photo_filename
 - [ ] T073 [US1] Implement vision-based extraction (api/src/adapters/llm/gemini.py): send image to Gemini Vision, OCR → recipe text → parse
 - [ ] T074 [US1] Handle OCR failures: if vision fails, return error state; user can provide text instead
+- [ ] T074b [US1] Implement OCR error handling UI (ui/src/components/recipe/RecipeCapturePhoto.tsx): show error message, allow user to paste text as fallback
 
 #### Ingredient Matching & Catalog
 
@@ -229,7 +231,7 @@
 ### Tests for User Story 3 (OPTIONAL)
 
 - [ ] T104 [P] [US3] Contract test: POST /kitchens/{id}/shopping-list generates list (tests/contract/test_shopping_list_endpoints.py)
-- [ ] T105 [P] [US3] Unit test: cart.py scaling logic (tests/unit/test_cart.py): verify quantity scaling, merging, non-linear flag
+- [ ] T105 [P] [US3] Unit test: cart.py scaling logic (tests/unit/test_cart.py): verify quantity scaling for common units (cup, tbsp, tsp, oz, lb) with ±5% accuracy. Test merging, non-linear flag handling. Document conversion table.
 - [ ] T106 [US3] Integration test: E2E shopping list generation (tests/integration/test_shopping_list.py)
 
 ### Implementation for User Story 3
@@ -284,7 +286,7 @@
 
 #### Domain & Use Cases
 
-- [ ] T124 [US4] Implement ConversationUseCase (api/src/application/use_cases/conversations.py): create conversation, add messages, get chat history
+- [ ] T124 [US4] Implement ConversationUseCase (api/src/application/use_cases/conversations.py): create conversation, add messages, get chat history. Support expected question types: fact lookup ("Do we have eggs?"), meal suggestions ("What meals can we make?"), ingredient computation ("How much flour do we need?").
 - [ ] T125 [US4] Implement Kitchen Assistant logic (api/src/adapters/llm/gemini.py): embed query, search pgvector, build TOON context, call ChatModel
 - [ ] T126 [US4] Implement context building (api/src/application/use_cases/conversations.py): serialize top-5 similar recipes as TOON, include kitchen catalog, last 6 messages
 
@@ -345,9 +347,10 @@
 
 #### Invite Workflow & Email
 
-- [ ] T152 [US5] Implement invite token generation (api/src/adapters/persistence/repositories.py): UUID token, 7-day expiry
-- [ ] T153 [US5] Implement invite email (api/src/adapters/email/): send invite link to invitee (reuse finance-dashboard email service)
-- [ ] T154 [US5] Create accept invite page (ui/src/app/(auth)/accept-invite/[token]/page.tsx): display kitchen name, show join button; if not logged in, sign up first
+- [ ] T152 [US5] Implement invite token generation (api/src/adapters/persistence/repositories.py): UUID token, 7-day expiry. Follow finance-dashboard pattern.
+- [ ] T153 [US5] Implement invite email (api/src/adapters/email/): send invite link to invitee (reuse finance-dashboard email service and SMTP settings)
+- [ ] T154 [US5] Create accept invite page (ui/src/app/(auth)/accept-invite/[token]/page.tsx): display kitchen name, show join button; if not logged in, sign up first (uses invite_token parameter)
+- [ ] T155b [US5] Implement kitchen deletion (owner only): DELETE /kitchens/{id} endpoint with owner-only permission check. Note: Members can only EXIT (leave) kitchen, not delete it (api/src/api/routes/kitchens.py)
 
 #### Frontend - Member Management
 
@@ -427,8 +430,8 @@
 ### Database & Performance
 
 - [ ] T186 Verify database indexes exist per Phase 2 (T011)
-- [ ] T187 [P] Profile query performance: shopping list generation, embeddings search
-- [ ] T188 [P] Load test: verify system handles 10+ concurrent users in single kitchen
+- [ ] T187 [P] Profile query performance: shopping list generation (target: <10s for 5 recipes), embeddings search (target: <5s for 100 recipes). Use Python profiler; identify slow queries and optimize indexes.
+- [ ] T188 [P] Load test: verify system handles 10+ concurrent users in single kitchen. Test on staging with production-like DB (100 recipes, 50 ingredients). Target endpoints: POST /recipes/draft, GET /shopping-list, POST /conversations/*/messages. Report p50/p95/p99 latencies for each endpoint.
 - [ ] T189 Backup strategy: document database backup and recovery process
 
 ### Deployment

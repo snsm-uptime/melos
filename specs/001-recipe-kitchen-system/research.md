@@ -147,24 +147,24 @@ This document resolves technical unknowns and validates assumptions from the fea
 
 ---
 
-### 7. Authentication & Session Reuse
+### 7. Authentication & Session Reuse (Email/Password, No OAuth)
 
-**Unknown**: Can we reuse finance-dashboard auth fully, or are there Melos-specific changes?
-
-**Decision**: Reuse fully; no Melos-specific changes to auth layer.
+**Decision**: Reuse email/password authentication layer from finance-dashboard unchanged; no OAuth in v1.
 
 **Rationale**:
-- Architecture doc specifies auth is reused as-is
+- Architecture doc specifies auth is reused as-is (email/password, httpOnly session cookie)
 - Constitution states: "The authentication layer ... is the security base of the app, so changes to it need explicit approval"
 - Email verification and password reset already exist
 - Invite-by-email-token flow already exists
+- OAuth deferred to v2
 
 **Implementation Details**:
 - Use existing endpoints: `/auth/register`, `/auth/sign-in`, `/auth/sign-out`, `/auth/session`, `/auth/me`
 - Env var prefix: `MELOS_` (not `FH_`)
 - Session cookie: `melos_session` (not `fh_session`)
+- Password validation: 8–256 characters (from finance-dashboard)
 - On sign-up, create personal kitchen: "My Kitchen"
-- Invite acceptance uses same mechanism (create user + join kitchen)
+- Invite acceptance uses same mechanism (create user + join kitchen via invite token)
 
 **Reference**: Architecture doc Section 1.3
 

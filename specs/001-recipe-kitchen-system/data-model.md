@@ -223,9 +223,9 @@ Metadata about where a recipe came from.
 
 ---
 
-### 8. Member (Membership)
+### 8. Membership
 
-A user's role and access level in a kitchen.
+A user's role and access level in a kitchen (join table between Kitchen and User).
 
 | Field | Type | Constraints | Notes |
 |-------|------|-------------|-------|
@@ -236,18 +236,19 @@ A user's role and access level in a kitchen.
 | `invited_by_user_id` | UUID | FK users.id | Who sent the invite |
 | `invited_at` | DateTime | NOT NULL | |
 | `joined_at` | DateTime | Optional | When user accepted the invite |
-| `is_active` | Boolean | default=True | Soft delete for removed members |
+| `is_active` | Boolean | default=True | Soft delete for removed memberships |
 
 **Relationships**:
-- N Members : 1 Kitchen
-- N Members : 1 User
-- N Kitchens : 1 User (via Membership)
+- N Memberships : 1 Kitchen
+- N Memberships : 1 User
+- N Kitchens : N Users (via Membership)
 
 **Validation**:
 - (kitchen_id, user_id) is unique
 - Role must be 'visitor', 'member', or 'owner'
 - joined_at is null until user accepts invite (accepts via email link)
 - Only 1 owner per kitchen
+- A member can only EXIT (leave) a kitchen, not delete it; only the owner can delete a kitchen
 
 ---
 

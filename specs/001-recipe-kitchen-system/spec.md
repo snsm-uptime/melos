@@ -10,7 +10,7 @@
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Add Recipe to Kitchen (Priority: P1)
+### User Story 1 (US1) - Add Recipe to Kitchen (Priority: P1)
 
 A non-technical home cook captures a recipe from a source (free-form text, website URL, or photo of a cookbook page) and stores it in their shared kitchen. The recipe is structured automatically into standardized format with ingredients, quantities, and instructions.
 
@@ -27,7 +27,7 @@ A non-technical home cook captures a recipe from a source (free-form text, websi
 
 ---
 
-### User Story 2 - View Kitchen Inventory & Recipes (Priority: P1)
+### User Story 2 (US2) - View Kitchen Inventory & Recipes (Priority: P1)
 
 A user views their shared kitchen—all recipes they've added, the complete ingredient catalog, and which ingredients are available or needed.
 
@@ -43,7 +43,7 @@ A user views their shared kitchen—all recipes they've added, the complete ingr
 
 ---
 
-### User Story 3 - Generate Consolidated Shopping List (Priority: P1)
+### User Story 3 (US3) - Generate Consolidated Shopping List (Priority: P1)
 
 Given a set of recipes selected for the week and a headcount, the user generates a single consolidated shopping list with merged and scaled ingredients.
 
@@ -60,7 +60,7 @@ Given a set of recipes selected for the week and a headcount, the user generates
 
 ---
 
-### User Story 4 - Answer Questions About Kitchen (Priority: P2)
+### User Story 4 (US4) - Answer Questions About Kitchen (Priority: P2)
 
 A user asks the system natural-language questions about their kitchen: "Do we have eggs?", "What meals can we make with these 5 ingredients?", "How much flour do our recipes need this week?"
 
@@ -76,7 +76,7 @@ A user asks the system natural-language questions about their kitchen: "Do we ha
 
 ---
 
-### User Story 5 - Manage Shared Kitchen & Members (Priority: P2)
+### User Story 5 (US5) - Manage Shared Kitchen & Members (Priority: P2)
 
 A kitchen Owner invites household members, sets permissions (who can add/edit recipes), and manages the shared kitchen's ingredient catalog.
 
@@ -92,7 +92,7 @@ A kitchen Owner invites household members, sets permissions (who can add/edit re
 
 ---
 
-### User Story 6 - Standardize Ingredient Names Across Kitchen (Priority: P3)
+### User Story 6 (US6) - Standardize Ingredient Names Across Kitchen (Priority: P3)
 
 When multiple recipes reference the same ingredient with different names or spellings ("flour" vs. "all-purpose flour" vs. "APF"), the system standardizes them in the kitchen catalog. Users can define canonical names for ingredients.
 
@@ -169,7 +169,7 @@ When multiple recipes reference the same ingredient with different names or spel
 - **Kitchen Ownership**: Each kitchen has one Owner (the person who set it up); households are assumed to be small (2-6 people).
 - **Data Persistence**: Recipes and kitchen data are the user's most valuable asset. System assumes reliable, persistent storage; data loss is unacceptable.
 - **AI Integration Scope**: Recipe extraction and question answering use AI. Ingredient substitution, meal recommendations based on preferences, and dietary filtering are out of scope for v1.
-- **Authentication**: Reuses existing authentication system (assumed available). Users log in via email/password or OAuth.
+- **Authentication**: Reuses email/password authentication from finance-dashboard (no OAuth in v1; reused from finance-dashboard architecture).
 - **PDF Generation**: Shopping lists are generated as downloadable PDFs; email delivery is out of scope for v1.
 - **Invite Workflow**: Kitchen invitations use unique links or email-based flows (exact mechanism TBD based on existing auth system).
 - **Mobile Support**: v1 targets desktop web; mobile app is out of scope (May investigate responsive design for phones in v2).
