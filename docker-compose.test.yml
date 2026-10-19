@@ -25,3 +25,7 @@ services:
   ui:
     profiles:
       - ""  # Excluded from default test runs
+
+  # mcp:
+  #   profiles:
+  #     - ""  # Excluded from default test runs

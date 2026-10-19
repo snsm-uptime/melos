@@ -35,15 +35,18 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - ./api:/app
+      - ./api/src:/app/src
+      - ./api/scripts:/app/scripts
+      - ./api/pyproject.toml:/app/pyproject.toml
+      - ./api/alembic.ini:/app/alembic.ini
     networks:
       - melos
-    command: uvicorn api.src.api.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
 
   ui:
     build:
       context: .
-      dockerfile: ui.Dockerfile
+      dockerfile: ui.Dockerfile.dev
     container_name: melos-ui
     environment:
       NEXT_PUBLIC_API_URL: http://api:8000
@@ -53,9 +56,31 @@ services:
       - api
     volumes:
       - ./ui:/app
+      - ui_node_modules:/app/node_modules
     networks:
       - melos
-    command: npm run dev
+
+  # mcp:
+  #   build:
+  #     context: .
+  #     dockerfile: mcp.Dockerfile
+  #   container_name: melos-mcp
+  #   environment:
+  #     ENVIRONMENT: development
+  #     LOG_LEVEL: debug
+  #   ports:
+  #     - "9000:9000"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   volumes:
+  #     - ./mcp:/app
+  #   networks:
+  #     - melos
+  #   command: uvicorn server.main:app --host 0.0.0.0 --port 9000 --reload
+
+volumes:
+  ui_node_modules:
 
 networks:
   melos:

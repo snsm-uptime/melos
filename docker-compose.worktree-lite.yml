@@ -13,6 +13,10 @@ services:
     profiles:
       - ""  # Excluded from lite runs
 
+  # mcp:
+  #   profiles:
+  #     - ""  # Excluded from lite runs
+
 volumes:
   ui_node_modules:
     driver: local

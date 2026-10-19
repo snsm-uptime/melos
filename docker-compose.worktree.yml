@@ -21,3 +21,7 @@ services:
   ui:
     ports:
       - "${UI_HOST_PORT:-3000}:3000"
+
+  # mcp:
+  #   ports:
+  #     - "${MCP_HOST_PORT:-9000}:9000"

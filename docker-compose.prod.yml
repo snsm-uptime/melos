@@ -26,4 +26,11 @@ services:
     restart: unless-stopped
     volumes: []  # No source bind-mount in production
 
+  # mcp:
+  #   restart: unless-stopped
+  #   volumes: []  # No source bind-mount in production
+  #   environment:
+  #     ENVIRONMENT: production
+  #     LOG_LEVEL: info
+
 volumes: {}
