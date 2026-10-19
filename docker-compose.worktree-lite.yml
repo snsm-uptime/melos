@@ -1,0 +1,18 @@
+# Worktree Lite overlay — lightweight variant for API + DB only (no UI rebuild)
+# Usage:
+#   MELOS_DATA=/path/to/worktree/data COMPOSE_PROJECT_NAME=melos-branch2 \
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.worktree-lite.yml up -d
+#
+# Typical use:
+# - Skips full Next.js dev rebuild; run UI locally against shared API
+# - Faster startup; useful when you only need API + DB
+# - Still includes COMPOSE_PROJECT_NAME and MELOS_DATA isolation
+
+services:
+  ui:
+    profiles:
+      - ""  # Excluded from lite runs
+
+volumes:
+  ui_node_modules:
+    driver: local

@@ -64,7 +64,7 @@ Stops the Compose stack and removes containers.
 ```
 
 **Flags:**
-- `--wipe` — Remove named volumes (e.g., `ui_node_modules`, `postgres_data`, `pgvector_data`).
+- `--wipe` — Remove named volumes (e.g., `ui_node_modules`). Note: Postgres data is stored in a bind mount, not a named volume — use `compose-wipe-db.sh` to reset the database.
 - `--help` — Show help text.
 - `--` — Pass remaining arguments to `docker compose down`.
 
@@ -82,7 +82,7 @@ Stop and remove named volumes (full clean):
 
 ### `compose-wipe-db.sh` — Wipe the Database Clean
 
-Deletes the Postgres volumes so the next stack start reinitializes an empty database. `compose-down.sh --wipe` removes all named volumes.
+Deletes the Postgres data directory on the host so the next stack start reinitializes an empty database. Postgres data is stored in a bind mount at `${MELOS_DATA:-$HOME/melos}/pgdata` instead of named volumes. Use `compose-down.sh --wipe` to remove named volumes like `ui_node_modules`.
 
 **Usage:**
 ```bash
@@ -97,7 +97,7 @@ Deletes the Postgres volumes so the next stack start reinitializes an empty data
 
 **What it does:**
 1. Stops the Compose stack (`docker compose down`).
-2. Removes Postgres data volumes (`postgres_data`, `pgvector_data`).
+2. Deletes the host Postgres data directory (`${MELOS_DATA:-$HOME/melos}/pgdata`).
 3. Starts the stack back up (unless `--no-up`).
 
 **Examples:**
@@ -151,9 +151,15 @@ Restart with fresh volumes and run detached:
 
 Each script automatically selects the right docker-compose files:
 
-**Files used (always):**
-- `docker-compose.yml` — production config
-- `docker-compose.dev.yml` — local development overrides (hot reload, debug env vars)
+**Default (compose-up, compose-down, compose-restart):**
+- `docker-compose.yml` — base production config
+- `docker-compose.dev.yml` — development overrides (hot reload, debug env vars)
+
+**Other overlays available (not used by default):**
+- `docker-compose.prod.yml` — production hardening (restart policies, no host DB port, SESSION_COOKIE_SECURE)
+- `docker-compose.test.yml` — pytest runner with ephemeral DB (used as: `docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api`)
+- `docker-compose.worktree.yml` — isolated project name and ports for parallel checkouts (requires `MELOS_DATA`, `COMPOSE_PROJECT_NAME`, `API_HOST_PORT`, `UI_HOST_PORT`, `DB_HOST_PORT`)
+- `docker-compose.worktree-lite.yml` — lightweight variant (API + DB only, skip UI rebuild)
 
 ### Validation
 

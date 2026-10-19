@@ -1,39 +1,19 @@
 version: '3.9'
 
 services:
-  postgres:
-    image: postgres:16-alpine
+  db:
+    image: pgvector/pgvector:pg16
     container_name: melos-db
     environment:
-      POSTGRES_USER: melos
-      POSTGRES_PASSWORD: melos_dev_password
-      POSTGRES_DB: melos_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ${MELOS_DATA:-${HOME}/melos}/pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U melos"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - melos
-
-  pgvector:
-    image: postgres:16-alpine
-    container_name: melos-pgvector
-    environment:
-      POSTGRES_USER: melos
-      POSTGRES_PASSWORD: melos_dev_password
-      POSTGRES_DB: melos_db
-      POSTGRES_INITDB_ARGS: "-c shared_preload_libraries=vector"
-    ports:
-      - "5433:5432"
-    volumes:
-      - pgvector_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U melos"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -46,13 +26,13 @@ services:
       dockerfile: api.Dockerfile
     container_name: melos-api
     environment:
-      DATABASE_URL: postgresql://melos:melos_dev_password@postgres:5432/melos_db
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       ENVIRONMENT: development
       LOG_LEVEL: debug
     ports:
       - "8000:8000"
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
     volumes:
       - ./api:/app
@@ -76,10 +56,6 @@ services:
     networks:
       - melos
     command: npm run dev
-
-volumes:
-  postgres_data:
-  pgvector_data:
 
 networks:
   melos:

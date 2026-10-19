@@ -1,0 +1,27 @@
+# Test overlay — isolated ephemeral database, pytest runner
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api
+#
+# Differences from dev:
+# - db uses tmpfs (no persistence)
+# - db is not exposed to host (ephemeral)
+# - api runs pytest instead of uvicorn
+# - ui is excluded from test runs
+
+services:
+  db:
+    volumes:
+      - /var/lib/postgresql/data
+    ports: []  # No host port exposure
+
+  api:
+    volumes: []  # No source bind-mount; use the build
+    environment:
+      ENVIRONMENT: test
+      LOG_LEVEL: info
+      SEED_DEV_DATA: "0"
+    command: pytest -v --tb=short
+
+  ui:
+    profiles:
+      - ""  # Excluded from default test runs

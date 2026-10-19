@@ -1,0 +1,23 @@
+# Worktree overlay — isolated project name and ports for parallel checkouts
+# Usage:
+#   MELOS_DATA=/path/to/worktree/data COMPOSE_PROJECT_NAME=melos-branch1 \
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.worktree.yml up -d
+#
+# Each worktree checkout gets:
+# - Unique COMPOSE_PROJECT_NAME (passed by caller or scripts/worktree/)
+# - Separate MELOS_DATA directory (passed by caller)
+# - Different host ports (API_HOST_PORT, UI_HOST_PORT, DB_HOST_PORT)
+# - Isolated containers and volumes
+
+services:
+  db:
+    ports:
+      - "${DB_HOST_PORT:-5432}:5432"
+
+  api:
+    ports:
+      - "${API_HOST_PORT:-8000}:8000"
+
+  ui:
+    ports:
+      - "${UI_HOST_PORT:-3000}:3000"

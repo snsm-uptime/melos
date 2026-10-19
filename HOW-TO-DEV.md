@@ -12,11 +12,15 @@
 git clone <repo-url> melos
 cd melos
 
-# Copy the environment file
+# Copy the environment file and fill in secrets
 cp .env.example .env
+# Edit .env: set POSTGRES_PASSWORD, GEMINI_API_KEY, SESSION_SECRET, etc.
+
+# Create the data directory for Postgres
+mkdir -p "${MELOS_DATA:-$HOME/melos}/pgdata"
 
 # Install dependencies (optional if using Docker for everything)
-cd api && pip install -r requirements.txt && cd ..
+cd api && uv sync --group dev && cd ..
 cd ui && npm install && cd ..
 ```
 
@@ -88,7 +92,7 @@ docker compose logs -f
 # Specific service
 docker compose logs -f api
 docker compose logs -f ui
-docker compose logs -f postgres
+docker compose logs -f db
 
 # Follow API logs with timestamps
 docker compose logs -f --timestamps api
@@ -104,23 +108,30 @@ docker compose exec api bash
 docker compose exec ui bash
 
 # Database
-docker compose exec postgres psql -U melos -d melos_db
+docker compose exec db psql -U melos -d melos
 ```
 
 ## How the Docker Compose Setup Works
 
 ### Files
 
-- **`docker-compose.yml`** — Production configuration (base)
-  - Services: postgres, pgvector, api, ui
+- **`docker-compose.yml`** — Base configuration (dev + prod)
+  - Services: `db` (PostgreSQL 16 with pgvector), `api`, `ui`
   - Default ports: 5432 (db), 8000 (api), 3000 (ui)
-  - Uses production builds and read-only volumes
+  - Data bound to host at `${MELOS_DATA:-$HOME/melos}/pgdata`
+  - Credentials from `.env` variables
 
 - **`docker-compose.dev.yml`** — Development overlay
   - Adds hot-reload for code changes
   - Bind-mounts source code for live editing
   - Sets dev-mode environment variables (DEV_RELOAD, LOG_LEVEL=DEBUG)
   - Volume: `ui_node_modules` (prevents conflicts between host and container npm)
+
+- **`docker-compose.{prod,test,worktree,worktree-lite}.yml`** — Optional overlays
+  - `prod`: Production hardening (restart policies, no host DB port)
+  - `test`: Ephemeral database for pytest
+  - `worktree`: Isolated ports and project name for parallel checkouts
+  - `worktree-lite`: API + DB only (skip UI rebuild)
 
 ### Helper Scripts
 
@@ -171,37 +182,46 @@ The UI runs Next.js dev server with hot module reload. When you save:
 
 ## Database
 
-### PostgreSQL
+### PostgreSQL with pgvector
 
-- **Host:** localhost (from your machine) or `postgres` (from inside containers)
+A single PostgreSQL 16 instance with the `pgvector` extension for vector embeddings. Recipes and embeddings both live in the same database.
+
+- **Service:** `db` (in compose)
+- **Host:** `db` (from inside containers) or `localhost` (from your machine)
 - **Port:** 5432
-- **Username:** `melos`
-- **Password:** `melos_dev_password` (from `.env`)
-- **Database:** `melos_db`
+- **Username:** `POSTGRES_USER` from `.env` (default: `melos`)
+- **Password:** `POSTGRES_PASSWORD` from `.env`
+- **Database:** `POSTGRES_DB` from `.env` (default: `melos`)
+- **Data location:** `${MELOS_DATA:-$HOME/melos}/pgdata` (host bind mount)
 
-### pgvector (Optional)
+Connect from your machine:
+```bash
+psql -U melos -h localhost -d melos -c "SELECT * FROM recipes LIMIT 1;"
+```
 
-A second Postgres instance with the `pgvector` extension for vector embeddings.
-
-- **Port:** 5433
-- **Same credentials as main postgres**
-
-Connect to it: `psql -U melos -h localhost -p 5433 -d melos_db`
+From inside a container:
+```bash
+docker compose exec db psql -U melos -d melos -c "SELECT * FROM recipes LIMIT 1;"
+```
 
 ### Migrations
 
-When you change the schema:
+When you change the schema, use Alembic:
 
-1. **If using Alembic (Flask-style):**
-   ```bash
-   docker compose exec api alembic revision --autogenerate -m "Description"
-   docker compose exec api alembic upgrade head
-   ```
+```bash
+# Generate a migration based on model changes
+docker compose exec api alembic revision --autogenerate -m "Description"
 
-2. **Restart the stack** to ensure the database schema is up to date:
-   ```bash
-   ./scripts/compose-restart.sh -d
-   ```
+# Review and edit the migration file in api/src/adapters/persistence/migrations/versions/
+
+# Apply the migration
+docker compose exec api alembic upgrade head
+```
+
+Or restart the stack to auto-apply pending migrations:
+```bash
+./scripts/compose-restart.sh -d
+```
 
 ## Environment Variables
 
@@ -210,17 +230,16 @@ When you change the schema:
 Copy `.env.example` to `.env` and customize:
 
 ```bash
-# Ports
-API_HOST_PORT=8000
-UI_HOST_PORT=3000
+# Data directory (outside the repo)
+MELOS_DATA=${HOME}/melos
 
-# Development
-SEED_DEV_DATA=1            # Auto-seed test data when API starts (set to 0 to disable)
-
-# Database (set in docker-compose.yml)
+# Database
 POSTGRES_USER=melos
-POSTGRES_PASSWORD=melos_dev_password
-POSTGRES_DB=melos_db
+POSTGRES_PASSWORD=<secure-password>  # Set to a secure value, never commit to git
+POSTGRES_DB=melos
+
+# Other services (Gemini, SMTP, etc.)
+# See .env.example for the full list
 ```
 
 ### API Environment (Development)
@@ -231,7 +250,7 @@ Inside the container, the API has:
 DEV_RELOAD=true            # Enable auto-reload on file changes
 LOG_LEVEL=DEBUG            # Verbose logging
 SEED_DEV_DATA=1            # Seed test data (from .env)
-DATABASE_URL=postgresql://melos:melos_dev_password@postgres:5432/melos_db
+DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
 ```
 
 ## Testing
@@ -289,8 +308,8 @@ docker compose logs postgres
 ### Database Connection Refused
 
 ```bash
-# Ensure postgres is healthy
-docker compose exec postgres pg_isready -U melos
+# Ensure db is healthy
+docker compose exec db pg_isready -U melos
 
 # Reset database
 ./scripts/compose-wipe-db.sh -y -d

@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     log_level: str = "info"
 
     # Database
-    database_url: str = "postgresql://melos:melos_dev_password@localhost:5432/melos_db"
+    database_url: str = ""  # Must be provided via DATABASE_URL env var
     database_echo: bool = False
 
     # API

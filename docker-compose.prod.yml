@@ -1,0 +1,29 @@
+# Production overlay — no hot-reload, optimized builds, hardened settings
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+#
+# Differences from dev:
+# - db is not exposed to the host (only api/ui are published)
+# - api/ui are production builds with no source bind-mounts
+# - HTTPS/SESSION_COOKIE_SECURE are configured in the environment
+# - restart policy ensures automatic recovery
+
+services:
+  db:
+    restart: unless-stopped
+    expose:
+      - "5432"
+    ports: []  # Override dev defaults; db not published
+
+  api:
+    restart: unless-stopped
+    volumes: []  # No source bind-mount in production
+    environment:
+      SESSION_COOKIE_SECURE: "true"
+      ENVIRONMENT: production
+
+  ui:
+    restart: unless-stopped
+    volumes: []  # No source bind-mount in production
+
+volumes: {}

@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Wipe the Postgres data for this checkout's Compose stack (destructive).
-# Postgres uses named volumes (postgres_data, pgvector_data). This script stops
-# the stack, removes those volumes, and (unless --no-up) starts it back up so
-# Postgres reinitializes from scratch.
+# Postgres data is stored in a bind mount at MELOS_DATA/pgdata on the host.
+# This script stops the stack and deletes that directory, so Postgres reinitializes from scratch.
 # Usage: ./scripts/compose-wipe-db.sh [-y|--yes] [--no-up] [-d|--detach]
 set -euo pipefail
 
@@ -24,9 +23,11 @@ while [[ $# -gt 0 ]]; do
       cat <<'EOF'
 Usage: ./scripts/compose-wipe-db.sh [-y|--yes] [--no-up] [-d|--detach]
 
-Stops this checkout's Compose stack, removes Postgres data volumes
-(postgres_data, pgvector_data), and starts the stack back up so
-Postgres reinitializes empty.
+Stops this checkout's Compose stack and deletes the Postgres data directory
+(${MELOS_DATA:-$HOME/melos}/pgdata) on the host so Postgres reinitializes empty.
+
+Note: --wipe on compose-down.sh removes named volumes (ui_node_modules).
+Use this script to reset just the database.
 
 -y, --yes    Skip the confirmation prompt.
 --no-up      Leave the stack down after wiping (skip compose-up.sh).
@@ -45,7 +46,11 @@ done
 compose_require_docker
 compose_require_env "$ROOT"
 
-echo "==> This will DELETE all Postgres data (postgres_data and pgvector_data volumes)"
+MELOS_DATA="$(compose_env_get MELOS_DATA "$ROOT/.env")"
+MELOS_DATA="${MELOS_DATA:-${HOME}/melos}"
+PGDATA_PATH="${MELOS_DATA}/pgdata"
+
+echo "==> This will DELETE all Postgres data at: $PGDATA_PATH"
 if [[ "$YES" != "1" ]]; then
   read -r -p "Type 'yes' to continue: " CONFIRM
   if [[ "$CONFIRM" != "yes" ]]; then
@@ -57,8 +62,12 @@ fi
 echo "==> Stopping stack in $ROOT"
 compose_run "$ROOT" down
 
-echo "==> Removing Postgres volumes"
-compose_run "$ROOT" volume rm postgres_data pgvector_data 2>/dev/null || echo "Volumes already removed or do not exist"
+if [[ -d "$PGDATA_PATH" ]]; then
+  echo "==> Removing Postgres data at $PGDATA_PATH"
+  rm -rf "$PGDATA_PATH"
+else
+  echo "==> Postgres data directory not found at $PGDATA_PATH (already clean)"
+fi
 
 if [[ "$NO_UP" == "1" ]]; then
   echo "Done. Stack left down (--no-up). Run ./scripts/compose-up.sh when ready."
