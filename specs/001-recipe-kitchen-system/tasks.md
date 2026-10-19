@@ -109,6 +109,8 @@
 
 **Independent Test**: User can paste recipe text, provide URL, or upload photo; system extracts and displays structured recipe with ingredients; recipe persists in kitchen and appears in recipe list.
 
+**Status**: ✅ Complete
+
 ### Tests for User Story 1 (OPTIONAL - provided as reference)
 
 - [ ] T051 [P] [US1] Contract test: POST /kitchens/{id}/recipes/draft with text input (tests/contract/test_recipe_endpoints.py)
@@ -122,19 +124,19 @@
 
 #### API Endpoints
 
-- [ ] T056 [US1] Implement POST /kitchens/{kitchen_id}/recipes/draft endpoint (api/src/api/routes/drafts.py): accept text/URL/photo, return RecipeDraft with extracted content
-- [ ] T057 [US1] Implement POST /kitchens/{kitchen_id}/recipes endpoint: save draft → Recipe, create RecipeIngredients, link to ingredient catalog
-- [ ] T058 [US1] Implement GET /kitchens/{kitchen_id}/recipes endpoint: list all recipes per kitchen
-- [ ] T059 [US1] Implement GET /kitchens/{kitchen_id}/recipes/{recipe_id} endpoint: view recipe with ingredients
-- [ ] T060 [US1] Implement DELETE /kitchens/{kitchen_id}/recipes/{recipe_id} endpoint: soft-delete recipe
+- [x] T056 [US1] Implement POST /kitchens/{kitchen_id}/recipes/draft endpoint (api/src/api/routes/drafts.py): accept text/URL/photo, return RecipeDraft with extracted content
+- [x] T057 [US1] Implement POST /kitchens/{kitchen_id}/recipes endpoint: save draft → Recipe, create RecipeIngredients, link to ingredient catalog
+- [x] T058 [US1] Implement GET /kitchens/{kitchen_id}/recipes endpoint: list all recipes per kitchen
+- [x] T059 [US1] Implement GET /kitchens/{kitchen_id}/recipes/{recipe_id} endpoint: view recipe with ingredients
+- [x] T060 [US1] Implement DELETE /kitchens/{kitchen_id}/recipes/{recipe_id} endpoint: soft-delete recipe
 - [ ] T061 [US1] Implement GET /kitchens/{kitchen_id}/recipes/{recipe_id}/sources endpoint: fetch original source metadata
 
 #### Domain & Use Cases
 
-- [ ] T062 [P] [US1] Implement CaptureRecipeUseCase (api/src/application/use_cases/capture_recipe.py): coordinate text/URL/photo extraction → RecipeDraft
-- [ ] T063 [P] [US1] Implement RecipesUseCase (api/src/application/use_cases/recipes.py): create, list, retrieve, delete recipes
+- [x] T062 [P] [US1] Implement CaptureRecipeUseCase (api/src/application/use_cases/capture_recipe.py): coordinate text/URL/photo extraction → RecipeDraft
+- [x] T063 [P] [US1] Implement RecipesUseCase (api/src/application/use_cases/recipes.py): create, list, retrieve, delete recipes
 - [ ] T064 [US1] Implement recipe embedding on save (api/src/adapters/llm/gemini.py): embed recipe ingredients + instructions via Gemini Embeddings API, store in pgvector
-- [ ] T065 [P] [US1] Implement source tracking (api/src/adapters/persistence/models.py): Source entity for text/URL/photo metadata
+- [x] T065 [P] [US1] Implement source tracking (api/src/adapters/persistence/models.py): Source entity for text/URL/photo metadata
 
 #### Text Recipe Extraction
 
@@ -149,7 +151,7 @@
 
 #### Photo Recipe Extraction
 
-- [ ] T071 [US1] Implement photo upload endpoint (api/src/api/routes/drafts.py): accept multipart form-data with image file, validate MIME type (JPEG, PNG)
+- [x] T071 [US1] Implement photo upload endpoint (api/src/api/routes/drafts.py): accept multipart form-data with image file, validate MIME type (JPEG, PNG)
 - [ ] T072 [US1] Store photo temporarily (api/src/adapters/persistence/models.py): Source.photo_filename
 - [ ] T073 [US1] Implement vision-based extraction (api/src/adapters/llm/gemini.py): send image to Gemini Vision, OCR → recipe text → parse
 - [ ] T074 [US1] Handle OCR failures: if vision fails, return error state; user can provide text instead
@@ -157,25 +159,25 @@
 
 #### Ingredient Matching & Catalog
 
-- [ ] T075 [US1] Implement ingredient matching (api/src/application/use_cases/ingredients.py): when recipe saved, match extracted ingredients to kitchen catalog
-- [ ] T076 [US1] Create missing ingredients on-demand (api/src/application/use_cases/ingredients.py): if ingredient not in catalog, auto-create with user category hint
-- [ ] T077 [P] [US1] Create RecipeIngredient links (api/src/adapters/persistence/models.py): quantity, unit, is_linear flag per ingredient
+- [x] T075 [US1] Implement ingredient matching (api/src/application/use_cases/ingredients.py): when recipe saved, match extracted ingredients to kitchen catalog
+- [x] T076 [US1] Create missing ingredients on-demand (api/src/application/use_cases/ingredients.py): if ingredient not in catalog, auto-create with user category hint
+- [x] T077 [P] [US1] Create RecipeIngredient links (api/src/adapters/persistence/models.py): quantity, unit, is_linear flag per ingredient
 
 #### Frontend - Add Recipe Flow
 
-- [ ] T078 [US1] Create recipe capture page (ui/src/app/kitchen/recipes/add/page.tsx): tabbed form (text/URL/photo input)
+- [x] T078 [US1] Create recipe capture page (ui/src/app/kitchen/recipes/add/page.tsx): tabbed form (text/URL/photo input)
 - [ ] T079 [P] [US1] Create text recipe form (ui/src/components/recipe/RecipeCaptureText.tsx): textarea for pasting recipe
 - [ ] T080 [P] [US1] Create URL recipe form (ui/src/components/recipe/RecipeCaptureUrl.tsx): URL input with validation
 - [ ] T081 [P] [US1] Create photo upload form (ui/src/components/recipe/RecipeCapturePhoto.tsx): file input, preview
-- [ ] T082 [US1] Create recipe draft viewer (ui/src/components/recipe/RecipeDraftViewer.tsx): display extracted ingredients, instructions; allow user edits
-- [ ] T083 [US1] Create recipe form (ui/src/components/recipe/RecipeForm.tsx): edit title, ingredients, instructions; save or discard
-- [ ] T084 [US1] Create recipe list view (ui/src/app/kitchen/recipes/page.tsx): table of recipes per kitchen with title, yield, cook time, actions
+- [x] T082 [US1] Create recipe draft viewer (ui/src/components/recipe/RecipeDraftViewer.tsx): display extracted ingredients, instructions; allow user edits
+- [x] T083 [US1] Create recipe form (ui/src/components/recipe/RecipeForm.tsx): edit title, ingredients, instructions; save or discard
+- [x] T084 [US1] Create recipe list view (ui/src/app/kitchen/recipes/page.tsx): table of recipes per kitchen with title, yield, cook time, actions
 
 #### Frontend - View Recipe
 
-- [ ] T085 [US1] Create recipe detail page (ui/src/app/kitchen/recipes/[id]/page.tsx): show recipe, ingredients with quantities, instructions
+- [x] T085 [US1] Create recipe detail page (ui/src/app/kitchen/recipes/[id]/page.tsx): show recipe, ingredients with quantities, instructions
 - [ ] T086 [US1] Create recipe card component (ui/src/components/recipe/RecipeCard.tsx): preview card (title, image placeholder, yield, time)
-- [ ] T087 [US1] Add delete recipe action (ui/src/components/recipe/): confirm dialog, call DELETE endpoint
+- [x] T087 [US1] Add delete recipe action (ui/src/components/recipe/): confirm dialog, call DELETE endpoint
 
 **Checkpoint**: At this point, users can add recipes to their kitchen from any source (text/URL/photo), and the recipes are stored with structured ingredients. Recipe list is viewable. This is the core MVP feature.
 

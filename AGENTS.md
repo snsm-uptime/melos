@@ -6,14 +6,18 @@ A shared home cookbook for a non-technical couple: it turns recipes from text,
 web pages or cookbook photos into structured recipes, answers questions about
 them, and builds a weekly shopping list scaled to the number of people.
 
-The full specification is in `dev/docs/prd.md`. Read it before building
-anything. If the spec and this file disagree, ask.
+The product spec lives in `specs/`, produced by spec-kit. The current
+feature is `specs/001-recipe-kitchen-system/` (`spec.md` for requirements,
+`plan.md` for architecture, `data-model.md` and `contracts/` for design).
+Read those before building anything. Principles are in
+`.specify/memory/constitution.md`. If the spec, the constitution, and this
+file disagree, ask.
 
 ## How it is built
 
 The architecture, structure, auth layer and tooling are reused from
 [`snsm-uptime/finance-dashboard`](https://github.com/snsm-uptime/finance-dashboard)
-(see `dev/docs/prd.md` §1.2–1.3).
+(see `specs/001-recipe-kitchen-system/plan.md`).
 
 - **Four Compose services:** `db` (PostgreSQL 16 + pgvector), `api`
   (FastAPI, Python 3.12, uv), `ui` (Next.js 16, App Router, React 19,
@@ -44,6 +48,9 @@ The architecture, structure, auth layer and tooling are reused from
 ├── docker-compose.{dev,prod,test,worktree,worktree-lite}.yml
 ├── scripts/                   # compose-*.sh and worktree/* helpers
 ├── .github/workflows/ci.yml
+├── specs/                     # Spec-kit feature specs (source of truth)
+│   └── 001-recipe-kitchen-system/
+├── .specify/                  # Spec-kit constitution, templates, scripts
 ├── api/
 │   ├── pyproject.toml, uv.lock, .python-version (3.12), Dockerfile, alembic.ini
 │   ├── domain/                # Pure rules: recipe, cart, catalog, toon, render
@@ -62,7 +69,7 @@ The architecture, structure, auth layer and tooling are reused from
 │   ├── tools/                 # Recipe, cart, conversation tools
 │   └── tests/
 └── dev/                       # Support material, not part of the app
-    ├── docs/                  # prd.md, prd-v0-es.md, course PDFs
+    ├── docs/                  # Historical notes and course PDFs (not the spec)
     ├── prompts/               # Working notes and prompts from Sebastián
     ├── memory/                # Daily memory files (ddMMYY.md) and history.md
     └── skills/                # Work states and procedures
@@ -112,8 +119,8 @@ ALWAYS use `uv`. Never use `pip`, `python -m venv` or `requirements.txt`.
 - **api, on the host:** `cd api && uv run pytest -q` (needs a reachable
   Postgres; see the README) and `uv run ruff check .`
 - **ui:** `cd ui && npm test && npm run lint && npm run typecheck`
-- **In the browser:** start the stack and walk the acceptance criteria in
-  `dev/docs/prd.md` §2. Key cases:
+- **In the browser:** start the stack and walk the acceptance scenarios in
+  `specs/001-recipe-kitchen-system/spec.md`. Key cases:
   1. Text with "a pinch of salt" and "2 large onions" → a draft where salt
      has a vague note and onion is `2 unit large`.
   2. Recipe A with 3 tbsp flour + recipe B with 1 cup flour in the cart →
@@ -135,8 +142,9 @@ ALWAYS use `uv`. Never use `pip`, `python -m venv` or `requirements.txt`.
 - `domain/` imports nothing from `adapters/`, `api/`, FastAPI, SQLAlchemy or
   the Gemini SDK.
 - Every external call (Gemini, web fetch, SMTP) goes through a port, and its
-  errors map to a clear user message (`dev/docs/prd.md` §1.7). The user's
-  input is never lost on error.
+  errors map to a clear user message (`specs/001-recipe-kitchen-system/spec.md`
+  Assumptions and `contracts/api.md`). The user's input is never lost on
+  error.
 - Every kitchen-scoped query checks membership in `application/`. A
   non-member gets `404`.
 - Schema changes go through Alembic migrations.
