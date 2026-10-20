@@ -12,10 +12,12 @@ class CreateKitchenBody(BaseModel):
     # Domain validates blank/whitespace via InvalidKitchenNameError for a stable
     # `invalid_kitchen_name` code; wire only caps length to match DB String(200).
     name: str = Field(max_length=KITCHEN_NAME_MAX_LENGTH)
+    content_language: str = "en"  # Owner can set language; default "en"
 
 
 class RenameKitchenBody(BaseModel):
     name: str = Field(max_length=KITCHEN_NAME_MAX_LENGTH)
+    content_language: str | None = None  # Optional owner-only update
 
 
 class KitchenResponse(BaseModel):
@@ -23,6 +25,7 @@ class KitchenResponse(BaseModel):
     name: str
     owner_id: UUID
     is_archived: bool = False
+    content_language: str = "en"
 
 
 class KitchenMemberItem(BaseModel):
@@ -40,6 +43,7 @@ class KitchenMembershipItem(BaseModel):
     role: str
     members: list[KitchenMemberItem] = Field(default_factory=list)
     is_archived: bool = False
+    content_language: str = "en"
 
 
 class KitchenMembershipsResponse(BaseModel):

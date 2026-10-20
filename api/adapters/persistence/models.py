@@ -72,6 +72,7 @@ class KitchenModel(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    content_language: Mapped[str] = mapped_column(String(2), nullable=False, server_default="en")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
