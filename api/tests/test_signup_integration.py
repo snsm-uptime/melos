@@ -38,8 +38,8 @@ def test_register_hashes_password_sets_cookie_creates_personal_kitchen(
     assert "password" not in body
     assert "password_hash" not in body
 
-    assert "fh_session" in response.cookies
-    cookie = response.cookies["fh_session"]
+    assert "melos_session" in response.cookies
+    cookie = response.cookies["melos_session"]
     assert cookie
 
     user = db_session.scalar(select(UserModel).where(UserModel.email == "member@example.com"))
@@ -87,7 +87,7 @@ def test_register_fr4_off_no_verification_step(client: TestClient) -> None:
     )
     assert response.status_code == 201
     # No verification challenge in body — immediately authenticated via cookie.
-    assert "fh_session" in response.cookies
+    assert "melos_session" in response.cookies
     assert "verification" not in response.text.lower()
 
 

@@ -120,14 +120,14 @@ describe("AppShell chrome header", () => {
     await act(async () => {
       root.render(
         <AppShell>
-          <EnableHeader href="/" title="Finance Helper" />
+          <EnableHeader href="/" title="Melos" />
         </AppShell>,
       );
     });
 
     const header = container.querySelector("header");
     expect(header).toBeTruthy();
-    expect(header?.querySelector("h1")?.textContent).toBe("Finance Helper");
+    expect(header?.querySelector("h1")?.textContent).toBe("Melos");
     const back = header?.querySelector('button[aria-label="Back"]') as HTMLButtonElement;
     expect(back).toBeTruthy();
 

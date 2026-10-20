@@ -112,7 +112,7 @@ def test_unregistered_signup_with_invite_lands_membership_and_cookie(
     assert registered.status_code == 201, registered.text
     body = registered.json()
     assert body["inviting_kitchen_id"] == kitchen_id
-    assert client.cookies.get("fh_session")
+    assert client.cookies.get("melos_session")
     assert _member_count(db_session, kitchen_id) == before + 1
 
     row = db_session.scalars(
@@ -237,8 +237,8 @@ def test_signup_with_invite_verify_on_partial_success(
     assert registered.status_code == 403, registered.text
     assert registered.json()["code"] == "email_not_verified"
     set_cookie = registered.headers.get("set-cookie") or ""
-    assert "fh_session=" in set_cookie
-    assert client.cookies.get("fh_session")
+    assert "melos_session=" in set_cookie
+    assert client.cookies.get("melos_session")
     me = client.get("/auth/me")
     assert me.status_code == 200, me.text
     assert me.json()["email"] == "invitee@example.com"

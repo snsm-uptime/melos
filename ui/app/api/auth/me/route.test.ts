@@ -31,7 +31,7 @@ describe("/api/auth/me BFF", () => {
     const request = new Request("http://localhost/api/auth/me", {
       method: "GET",
       headers: {
-        cookie: "fh_session=tok",
+        cookie: "melos_session=tok",
         "accept-language": "es-CR",
       },
     });
@@ -43,7 +43,7 @@ describe("/api/auth/me BFF", () => {
       expect.objectContaining({
         method: "GET",
         headers: expect.objectContaining({
-          Cookie: "fh_session=tok",
+          Cookie: "melos_session=tok",
           "Accept-Language": "es-CR",
         }),
       }),
@@ -69,7 +69,7 @@ describe("/api/auth/me BFF", () => {
     const request = new Request("http://localhost/api/auth/me", {
       method: "PATCH",
       headers: {
-        cookie: "fh_session=tok",
+        cookie: "melos_session=tok",
         "content-type": "application/json",
       },
       body: JSON.stringify({ theme: "dark" }),

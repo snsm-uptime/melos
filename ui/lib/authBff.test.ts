@@ -21,7 +21,7 @@ describe("authBff", () => {
 
   it("uses the default client IP header name", () => {
     delete process.env.AUTH_CLIENT_IP_HEADER;
-    expect(authClientIpHeaderName()).toBe("X-FH-Client-IP");
+    expect(authClientIpHeaderName()).toBe("X-Melos-Client-IP");
   });
 
   it("uses a trimmed configured client IP header name", () => {
@@ -56,7 +56,7 @@ describe("authBff", () => {
     });
     expect(withClientIpHeader(request, { Accept: "application/json" })).toEqual({
       Accept: "application/json",
-      "X-FH-Client-IP": "192.0.2.10",
+      "X-Melos-Client-IP": "192.0.2.10",
     });
   });
 
@@ -65,13 +65,13 @@ describe("authBff", () => {
       headers: {
         "Content-Type": "text/plain",
         "Retry-After": "9",
-        "Set-Cookie": "fh_session=tok; Path=/",
+        "Set-Cookie": "melos_session=tok; Path=/",
       },
     });
     const headers = forwardUpstreamHeaders(upstream, { forwardSetCookie: true });
     expect(headers.get("Content-Type")).toBe("text/plain");
     expect(headers.get("Retry-After")).toBe("9");
-    expect(headers.get("set-cookie")).toContain("fh_session=tok");
+    expect(headers.get("set-cookie")).toContain("melos_session=tok");
   });
 
   it("defaults Content-Type when upstream omits it", () => {
@@ -83,14 +83,14 @@ describe("authBff", () => {
 
   it("falls back to a single set-cookie header when getSetCookie is empty", () => {
     const headers = new Headers({
-      "Set-Cookie": "fh_session=legacy; Path=/",
+      "Set-Cookie": "melos_session=legacy; Path=/",
     });
     headers.getSetCookie = () => [];
     const forwarded = forwardUpstreamHeaders(
       { headers } as unknown as Response,
       { forwardSetCookie: true },
     );
-    expect(forwarded.get("set-cookie")).toContain("fh_session=legacy");
+    expect(forwarded.get("set-cookie")).toContain("melos_session=legacy");
   });
 
   it("skips Set-Cookie when getSetCookie is missing and no header is present", () => {

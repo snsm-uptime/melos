@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({
-    getAll: () => [{ name: "fh_session", value: "token" }],
+    getAll: () => [{ name: "melos_session", value: "token" }],
   }),
 }));
 

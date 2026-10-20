@@ -90,7 +90,7 @@ describe("password-reset BFF", () => {
     expect(response.status).toBe(503);
   });
 
-  it("forwards 429 Retry-After and sets X-FH-Client-IP on request", async () => {
+  it("forwards 429 Retry-After and sets X-Melos-Client-IP on request", async () => {
     fetchMock.mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -121,7 +121,7 @@ describe("password-reset BFF", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "http://api.test:8000/auth/password-reset/request",
       expect.objectContaining({
-        headers: expect.objectContaining({ "X-FH-Client-IP": "192.0.2.44" }),
+        headers: expect.objectContaining({ "X-Melos-Client-IP": "192.0.2.44" }),
       }),
     );
   });

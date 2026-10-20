@@ -144,7 +144,7 @@ def test_complete_reset_new_password_works_old_fails(
         json={"email": "cycle@example.com", "password": "old-password1"},
     )
     assert signed.status_code == 200
-    old_cookie = signed.cookies["fh_session"]
+    old_cookie = signed.cookies["melos_session"]
     assert db_session.scalar(select(SessionModel).where(SessionModel.token == old_cookie))
 
     req = client.post(
@@ -175,7 +175,7 @@ def test_complete_reset_new_password_works_old_fails(
         json={"email": "cycle@example.com", "password": "new-password1"},
     )
     assert new_signin.status_code == 200
-    assert "fh_session" in new_signin.cookies
+    assert "melos_session" in new_signin.cookies
 
     user = db_session.scalar(select(UserModel).where(UserModel.email == "cycle@example.com"))
     assert user is not None

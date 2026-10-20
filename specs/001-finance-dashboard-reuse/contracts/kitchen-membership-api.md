@@ -19,11 +19,11 @@ Kitchens are shared spaces where users collaborate on recipes, shopping lists, a
 | Field | Type | Notes |
 |-------|------|-------|
 | `id` | UUID | Primary key |
-| `name` | String | Human-readable name (e.g., "Weeknight Dinners") |
+| `name` | varchar(200) | Required; human-readable name (e.g., "Weeknight Dinners") |
 | `owner_id` | UUID | Foreign key to user; cannot be changed |
-| `description` | String | Optional; kitchen metadata |
+| `is_archived` | Boolean | Default false; hides kitchen from owner's list |
+| `content_language` | varchar(2) | Default `'en'`; CHECK constraint: `'en'` or `'es'`. Sets canonical ingredient/category language |
 | `created_at` | Timestamp | Creation time |
-| `updated_at` | Timestamp | Last modification time |
 
 ### Membership
 
@@ -32,10 +32,11 @@ Kitchens are shared spaces where users collaborate on recipes, shopping lists, a
 | `id` | UUID | Primary key |
 | `kitchen_id` | UUID | Foreign key to kitchen |
 | `user_id` | UUID | Foreign key to user |
-| `role` | Enum | "owner" or "member" |
-| `joined_at` | Timestamp | When user joined |
+| `role` | Enum | `'owner'` or `'member'` |
+| `is_hidden` | Boolean | Per-user hide (member-only; owner cannot hide their own kitchen) |
+| `created_at` | Timestamp | When user joined |
 
-**Constraint:** One membership per (kitchen_id, user_id) pair.
+**Constraint:** Unique (kitchen_id, user_id) pair.
 
 ---
 
@@ -54,20 +55,32 @@ List all kitchens where the authenticated user is a member or owner.
     {
       "id": "uuid-1",
       "name": "Weeknight Dinners",
-      "description": "Quick meals for work nights",
       "owner_id": "uuid-owner",
       "role": "owner",
-      "member_count": 3,
-      "created_at": "2026-10-01T10:00:00Z"
+      "is_archived": false,
+      "content_language": "en",
+      "members": [
+        {
+          "user_id": "uuid-owner",
+          "alias": "John Doe",
+          "photo_base64": null
+        }
+      ]
     },
     {
       "id": "uuid-2",
       "name": "Sunday Brunch",
-      "description": "Shared brunch recipes",
       "owner_id": "uuid-other",
       "role": "member",
-      "member_count": 2,
-      "created_at": "2026-10-05T14:30:00Z"
+      "is_archived": false,
+      "content_language": "en",
+      "members": [
+        {
+          "user_id": "uuid-other",
+          "alias": "Jane Smith",
+          "photo_base64": null
+        }
+      ]
     }
   ]
 }
@@ -84,13 +97,13 @@ List all kitchens where the authenticated user is a member or owner.
 
 ### POST /kitchens
 
-Create a new kitchen.
+Create a new kitchen owned by the authenticated user.
 
 **Request:**
 ```json
 {
   "name": "Holiday Recipes",
-  "description": "Recipes for holiday meals"
+  "content_language": "en"
 }
 ```
 
@@ -99,11 +112,9 @@ Create a new kitchen.
 {
   "id": "uuid",
   "name": "Holiday Recipes",
-  "description": "Recipes for holiday meals",
   "owner_id": "<authenticated_user_id>",
-  "role": "owner",
-  "member_count": 1,
-  "created_at": "2026-10-19T12:00:00Z"
+  "is_archived": false,
+  "content_language": "en"
 }
 ```
 
@@ -134,24 +145,8 @@ Get kitchen details (only if user is a member or owner).
 {
   "id": "uuid",
   "name": "Weeknight Dinners",
-  "description": "Quick meals",
   "owner_id": "uuid-owner",
-  "role": "member",
-  "members": [
-    {
-      "user_id": "uuid-owner",
-      "alias": "John Doe",
-      "role": "owner",
-      "joined_at": "2026-10-01T10:00:00Z"
-    },
-    {
-      "user_id": "uuid-member",
-      "alias": "Jane Smith",
-      "role": "member",
-      "joined_at": "2026-10-15T14:30:00Z"
-    }
-  ],
-  "created_at": "2026-10-01T10:00:00Z"
+  "is_archived": false
 }
 ```
 
@@ -175,13 +170,13 @@ Get kitchen details (only if user is a member or owner).
 
 ### PATCH /kitchens/{kitchen_id}
 
-Update kitchen details (owner only).
+Update kitchen name or content_language (owner only).
 
 **Request:**
 ```json
 {
   "name": "Weeknight Dinners (Updated)",
-  "description": "Easy recipes for busy weeknights"
+  "content_language": "es"
 }
 ```
 
@@ -190,11 +185,9 @@ Update kitchen details (owner only).
 {
   "id": "uuid",
   "name": "Weeknight Dinners (Updated)",
-  "description": "Easy recipes for busy weeknights",
   "owner_id": "uuid-owner",
-  "role": "owner",
-  "created_at": "2026-10-01T10:00:00Z",
-  "updated_at": "2026-10-19T15:45:00Z"
+  "is_archived": false,
+  "content_language": "es"
 }
 ```
 
@@ -209,6 +202,124 @@ Update kitchen details (owner only).
 ```json
 {
   "detail": "Only the kitchen owner can update settings"
+}
+```
+
+**Error (404 Not Found):**
+```json
+{
+  "detail": "Kitchen not found"
+}
+```
+
+---
+
+### POST /kitchens/{kitchen_id}/archive
+
+Archive a kitchen (owner only). Archived kitchens are hidden from the owner's list.
+
+**Request:** (uses session cookie)
+
+**Response (200 OK):**
+```json
+{
+  "id": "uuid",
+  "name": "Weeknight Dinners",
+  "owner_id": "uuid-owner",
+  "is_archived": true,
+  "content_language": "en"
+}
+```
+
+**Error (403 Forbidden):**
+```json
+{
+  "detail": "Only the kitchen owner can archive the kitchen",
+  "code": "not_kitchen_owner"
+}
+```
+
+**Error (404 Not Found):**
+```json
+{
+  "detail": "Kitchen not found"
+}
+```
+
+---
+
+### POST /kitchens/{kitchen_id}/unarchive
+
+Unarchive a kitchen (owner only).
+
+**Request:** (uses session cookie)
+
+**Response (200 OK):**
+```json
+{
+  "id": "uuid",
+  "name": "Weeknight Dinners",
+  "owner_id": "uuid-owner",
+  "is_archived": false,
+  "content_language": "en"
+}
+```
+
+**Error (403 Forbidden):**
+```json
+{
+  "detail": "Only the kitchen owner can unarchive the kitchen",
+  "code": "not_kitchen_owner"
+}
+```
+
+**Error (404 Not Found):**
+```json
+{
+  "detail": "Kitchen not found"
+}
+```
+
+---
+
+### POST /kitchens/{kitchen_id}/hide
+
+Hide a kitchen from the authenticated user's list (member only; owner cannot hide their own kitchen).
+
+**Request:** (uses session cookie)
+
+**Response (204 No Content)**
+
+**Error (403 Forbidden):**
+```json
+{
+  "detail": "Kitchen owner cannot hide their own kitchen",
+  "code": "cannot_hide_owned_kitchen"
+}
+```
+
+**Error (404 Not Found):**
+```json
+{
+  "detail": "Kitchen not found"
+}
+```
+
+---
+
+### POST /kitchens/{kitchen_id}/unhide
+
+Unhide a kitchen in the authenticated user's list.
+
+**Request:** (uses session cookie)
+
+**Response (204 No Content)**
+
+**Error (403 Forbidden):**
+```json
+{
+  "detail": "Kitchen owner cannot hide their own kitchen",
+  "code": "cannot_hide_owned_kitchen"
 }
 ```
 
@@ -267,16 +378,12 @@ List all members of a kitchen (any member can view).
     {
       "user_id": "uuid-owner",
       "alias": "John Doe",
-      "email": "john@example.com",
-      "role": "owner",
-      "joined_at": "2026-10-01T10:00:00Z"
+      "photo_base64": null
     },
     {
       "user_id": "uuid-member",
       "alias": "Jane Smith",
-      "email": "jane@example.com",
-      "role": "member",
-      "joined_at": "2026-10-15T14:30:00Z"
+      "photo_base64": null
     }
   ]
 }
@@ -286,27 +393,7 @@ List all members of a kitchen (any member can view).
 
 ### DELETE /kitchens/{kitchen_id}/members/{user_id}
 
-Remove a member from a kitchen (owner only).
-
-**Request:** (uses session cookie)
-
-**Response (204 No Content)**
-
-**Error (403 Forbidden):**
-```json
-{
-  "detail": "Only the owner can remove members"
-}
-```
-
-**Error (400 Bad Request):**
-```json
-{
-  "detail": "Cannot remove the owner"
-}
-```
-
-**Note:** Owner cannot remove self via this endpoint (use kitchen deletion instead).
+**Status:** Not in bootstrap scope. Will be added in a future phase.
 
 ---
 

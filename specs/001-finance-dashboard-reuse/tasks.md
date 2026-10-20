@@ -124,14 +124,14 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 
 - [x] T101 Rename Compose and scripts names (D1): `docker-compose.yml` (`name: ${MELOS_COMPOSE_NAME:-melos}`, pgdata/pdfs binds under `${MELOS_DATA:-$HOME/melos}`, `SESSION_COOKIE_NAME` default `melos_session`, `AUTH_CLIENT_IP_HEADER` default `X-Melos-Client-IP`), `docker-compose.prod.yml` (header defaults), `scripts/compose-lib.sh`, `compose-{up,down,restart,wipe-db}.sh`, `scripts/worktree/*` (`melos-<slug>` compose names, `~/melos-wt/` data, `../melos-wt-<slug>` checkouts), `scripts/README.md`, `scripts/worktree/README.md`
 - [x] T102 Rename auth defaults (D2, approved 2026-10-19): `api/api/settings.py` fallbacks `fh_session` → `melos_session`, `X-FH-Client-IP` → `X-Melos-Client-IP`; `.env.example` updated. Names only, no logic changes
-- [ ] T103 [P] Rename test fixtures: every `fh_session` / `X-FH-Client-IP` in `api/tests/` (partial) and `ui/**/*.test.ts(x)` (auth, kitchens, invites, proxy, authBff, alias)
+- [x] T103 [P] Rename test fixtures: every `fh_session` / `X-FH-Client-IP` in `api/tests/` (partial) and `ui/**/*.test.ts(x)` (auth, kitchens, invites, proxy, authBff, alias)
 - [x] T104 [P] Rename env and CI names: `.env.example` (`MELOS_COMPOSE_NAME`, `MELOS_DATA`, `POSTGRES_DB=melos`, `SESSION_COOKIE_NAME=melos_session`, `AUTH_CLIENT_IP_HEADER=X-Melos-Client-IP`), `.github/workflows/ci.yml` (DB/user `melos`)
-- [ ] T105 [P] Rename the UI title "Finance Helper" → "Melos" in `ui/app/sign-in/SignInChrome.tsx` and `ui/components/AppShell.test.tsx`
+- [x] T105 [P] Rename the UI title "Finance Helper" → "Melos" in `ui/app/sign-in/SignInChrome.tsx` and `ui/components/AppShell.test.tsx`
 - [ ] T106 Run naming checks: quickstart A1 (check for stray finance references in code) and A1b (no `version:` key in `docker-compose*.yml`). Update your local `.env` keys per the quickstart migration note. (Remaining references are test/comment only)
 
 ### Dev Seed (plan D7)
 
-- [ ] T107 Extend `api/scripts/seed_dev_user.py`: owner (`SEED_DEV_USER_EMAIL/PASSWORD/ALIAS`) + member (`SEED_DEV_MEMBER_EMAIL/PASSWORD/ALIAS`), both verified via the sign-up use case; one shared kitchen `SEED_DEV_USER_KITCHEN` (default "Dev Kitchen") with owner + member memberships; idempotent; skip with a warning if any of the four required vars is missing. Add the new vars to `docker-compose.yml` and `.env.example` (placeholders only). Update `api/scripts/README.md` and the root `README.md` seed paragraph. Add an integration test for the seed
+- [x] T107 Extend `api/scripts/seed_dev_user.py`: owner (`SEED_DEV_USER_EMAIL/PASSWORD/ALIAS`) + member (`SEED_DEV_MEMBER_EMAIL/PASSWORD/ALIAS`), both verified via the sign-up use case; one shared kitchen `SEED_DEV_USER_KITCHEN` (default "Dev Kitchen") with owner + member memberships; idempotent; skip with a warning if any of the four required vars is missing. Add the new vars to `docker-compose.yml` and `.env.example` (placeholders only). Update `api/scripts/README.md` and the root `README.md` seed paragraph. Add an integration test for the seed
 
 ### Schema (plan D4)
 
@@ -144,16 +144,16 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 
 ### MCP Packaging
 
-- [ ] T110 [P] Add `mcp/uv.lock` and `mcp/.python-version` (uv only); make the `mcp/Dockerfile` install from the lock file
+- [x] T110 [P] Add `mcp/uv.lock` and `mcp/.python-version` (uv only); make the `mcp/Dockerfile` install from the lock file
 
 ### Dev SMTP
 
-- [ ] T111 Treat SMTP as configured in every environment, dev included: `.env.example` comments and README say dev uses a real SMTP provider (e.g. a Gmail app password) and that emails reach real inboxes. The spec (Assumption 3) and `contracts/error-responses.md` §SMTP already match the code: misconfiguration returns `503` `smtp_config_error` on the sending request and is logged, and the API still boots
+- [x] T111 Treat SMTP as configured in every environment, dev included: `.env.example` comments and README say dev uses a real SMTP provider (e.g. a Gmail app password) and that emails reach real inboxes. The spec (Assumption 3) and `contracts/error-responses.md` §SMTP already match the code: misconfiguration returns `503` `smtp_config_error` on the sending request and is logged, and the API still boots
 
 ### Kitchen Access & Contract (CHK024–CHK027)
 
 - [ ] T113 Return 404 to non-members on every kitchen write (spec FR7, Q8): in `api/api/routes/kitchens.py` replace `_access_denied()` (403 `not_kitchen_member`) with the same `404 kitchen_not_found` used by reads (invite, rename, archive, unarchive, hide, unhide, delete); same change for the `last_opened_kitchen_id` branch of `PATCH /auth/me` in `api/api/routes/auth.py` (owner-approved 2026-10-19). Keep `403 not_kitchen_owner` for members. Update the affected tests (`test_kitchens_integration.py`, `test_kitchen_invite_integration.py`, `test_alias_api.py`, others asserting `not_kitchen_member`) and check the ui error mapping (`ui/app/kitchens/kitchensClient.ts`, `ui/lib/i18n/*`) shows a "kitchen not found" message for 404
-- [ ] T112 Finish aligning `contracts/kitchen-membership-api.md` with the code (CHK025, CHK026 rest): Kitchen and Membership field tables per [data-model.md](data-model.md) (`is_archived`, `content_language`, `is_hidden`; no `description`/`updated_at`/`joined_at`), document the archive/unarchive/hide/unhide endpoints, and mark `DELETE /kitchens/{id}/members/{user_id}` as not in the bootstrap unless it exists. Access Control and Invitations are already aligned (2026-10-19)
+- [x] T112 Finish aligning `contracts/kitchen-membership-api.md` with the code (CHK025, CHK026 rest): Kitchen and Membership field tables per [data-model.md](data-model.md) (`is_archived`, `content_language`, `is_hidden`; no `description`/`updated_at`/`joined_at`), document the archive/unarchive/hide/unhide endpoints, and mark `DELETE /kitchens/{id}/members/{user_id}` as not in the bootstrap unless it exists. Access Control and Invitations are already aligned (2026-10-19)
 
 ---
 

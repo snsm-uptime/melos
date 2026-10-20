@@ -20,8 +20,8 @@ describe("proxy auth gate", () => {
     expect(location).toContain("returnTo=%2Fkitchens");
   });
 
-  it("allows /kitchens when fh_session cookie is present", () => {
-    const response = proxy(makeRequest("/kitchens", "fh_session=opaque-token"));
+  it("allows /kitchens when melos_session cookie is present", () => {
+    const response = proxy(makeRequest("/kitchens", "melos_session=opaque-token"));
     expect(response.status).toBe(200);
   });
 
@@ -31,7 +31,7 @@ describe("proxy auth gate", () => {
   });
 
   it("allows /sign-in even when a stale cookie is present (no bounce loop)", () => {
-    const response = proxy(makeRequest("/sign-in", "fh_session=stale-token"));
+    const response = proxy(makeRequest("/sign-in", "melos_session=stale-token"));
     expect(response.status).toBe(200);
   });
 
@@ -51,8 +51,8 @@ describe("proxy auth gate", () => {
     expect(proxy(makeRequest("/docs")).status).toBe(200);
   });
 
-  it("allows /docs when fh_session cookie is present", () => {
-    expect(proxy(makeRequest("/docs", "fh_session=opaque-token")).status).toBe(
+  it("allows /docs when melos_session cookie is present", () => {
+    expect(proxy(makeRequest("/docs", "melos_session=opaque-token")).status).toBe(
       200,
     );
   });

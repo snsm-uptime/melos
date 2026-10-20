@@ -83,7 +83,11 @@ Prerequisites: Docker, `uv`, Node.js / npm.
 ```bash
 # 1. Configure secrets (never commit .env)
 cp .env.example .env
-#    fill in POSTGRES_PASSWORD, SESSION_SECRET, GEMINI_API_KEY (SMTP_* optional)
+#    fill in POSTGRES_PASSWORD, SESSION_SECRET, GEMINI_API_KEY, SMTP_*
+#    SMTP is required for email verification, password reset, and kitchen invites.
+#    Use a real provider (e.g., Gmail app password) — misconfigured SMTP returns 503
+#    on the sending request and is logged. For dev: SMTP_HOST, SMTP_USER, SMTP_PASSWORD,
+#    SMTP_FROM (RFC5322 format like "Melos <noreply@example.com>"), SMTP_STARTTLS=true
 
 # 2. Create the data directory outside the repo
 mkdir -p "${MELOS_DATA:-$HOME/melos}/pgdata"

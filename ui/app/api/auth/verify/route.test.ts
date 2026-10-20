@@ -54,7 +54,7 @@ describe("email-verification BFF", () => {
       method: "POST",
       headers: {
         Accept: "application/json",
-        cookie: "fh_session=opaque",
+        cookie: "melos_session=opaque",
       },
     });
     const response = await requestVerify(request as never);
@@ -63,7 +63,7 @@ describe("email-verification BFF", () => {
       "http://api.test:8000/auth/verify/request",
       expect.objectContaining({
         method: "POST",
-        headers: expect.objectContaining({ Cookie: "fh_session=opaque" }),
+        headers: expect.objectContaining({ Cookie: "melos_session=opaque" }),
       }),
     );
   });
@@ -81,7 +81,7 @@ describe("email-verification BFF", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("forwards 429 Retry-After and sets X-FH-Client-IP on verify request", async () => {
+  it("forwards 429 Retry-After and sets X-Melos-Client-IP on verify request", async () => {
     fetchMock.mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -102,7 +102,7 @@ describe("email-verification BFF", () => {
       method: "POST",
       headers: {
         Accept: "application/json",
-        cookie: "fh_session=opaque",
+        cookie: "melos_session=opaque",
       },
     });
     Object.defineProperty(request, "ip", { value: "203.0.113.8" });
@@ -113,8 +113,8 @@ describe("email-verification BFF", () => {
       "http://api.test:8000/auth/verify/request",
       expect.objectContaining({
         headers: expect.objectContaining({
-          Cookie: "fh_session=opaque",
-          "X-FH-Client-IP": "203.0.113.8",
+          Cookie: "melos_session=opaque",
+          "X-Melos-Client-IP": "203.0.113.8",
         }),
       }),
     );

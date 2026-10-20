@@ -37,8 +37,8 @@ def test_sign_in_sets_session_cookie(client: TestClient, db_session: Session) ->
     body = response.json()
     assert body["email"] == "signin@example.com"
     assert "password" not in body
-    assert "fh_session" in response.cookies
-    cookie = response.cookies["fh_session"]
+    assert "melos_session" in response.cookies
+    cookie = response.cookies["melos_session"]
     row = db_session.scalar(select(SessionModel).where(SessionModel.token == cookie))
     assert row is not None
 
@@ -65,7 +65,7 @@ def test_sign_in_invalid_credentials_are_generic(client: TestClient) -> None:
     assert unknown.json() == bad.json() == empty.json()
     assert unknown.json()["code"] == "invalid_credentials"
     assert unknown.json()["detail"] == InvalidCredentialsError.MESSAGE
-    assert "fh_session" not in unknown.cookies
+    assert "melos_session" not in unknown.cookies
 
 
 def test_sign_out_revokes_session_and_protects_me(client: TestClient, db_session: Session) -> None:
@@ -75,7 +75,7 @@ def test_sign_out_revokes_session_and_protects_me(client: TestClient, db_session
         json={"email": "logout@example.com", "password": "password1"},
     )
     assert signed_in.status_code == 200
-    token = signed_in.cookies["fh_session"]
+    token = signed_in.cookies["melos_session"]
     assert db_session.scalar(select(SessionModel).where(SessionModel.token == token)) is not None
 
     me_before = client.get("/auth/me")
@@ -134,7 +134,7 @@ def test_sign_in_revokes_prior_sessions(client: TestClient, db_session: Session)
         json={"email": "single@example.com", "password": "password1"},
     )
     assert first.status_code == 200
-    old_token = first.cookies["fh_session"]
+    old_token = first.cookies["melos_session"]
     client.cookies.clear()
 
     second = client.post(
@@ -142,7 +142,7 @@ def test_sign_in_revokes_prior_sessions(client: TestClient, db_session: Session)
         json={"email": "single@example.com", "password": "password1"},
     )
     assert second.status_code == 200
-    new_token = second.cookies["fh_session"]
+    new_token = second.cookies["melos_session"]
     assert new_token != old_token
     assert db_session.scalar(select(SessionModel).where(SessionModel.token == old_token)) is None
     assert (

@@ -25,7 +25,7 @@ describe("kitchens / invites BFF smoke (coverage floor)", () => {
     const { GET } = await import("@/app/api/kitchens/route");
     const response = await GET(
       new Request("http://localhost/api/kitchens", {
-        headers: { cookie: "fh_session=tok" },
+        headers: { cookie: "melos_session=tok" },
       }) as never,
     );
     expect(response.status).toBe(200);
@@ -41,7 +41,7 @@ describe("kitchens / invites BFF smoke (coverage floor)", () => {
       new Request("http://localhost/api/kitchens", {
         method: "POST",
         headers: {
-          cookie: "fh_session=tok",
+          cookie: "melos_session=tok",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ name: "Home" }),
@@ -59,7 +59,7 @@ describe("kitchens / invites BFF smoke (coverage floor)", () => {
     const ctx = { params: Promise.resolve({ kitchenId: "l1" }) };
     const getRes = await mod.GET(
       new Request("http://localhost/api/kitchens/l1", {
-        headers: { cookie: "fh_session=tok" },
+        headers: { cookie: "melos_session=tok" },
       }) as never,
       ctx,
     );
@@ -69,7 +69,7 @@ describe("kitchens / invites BFF smoke (coverage floor)", () => {
       new Request("http://localhost/api/kitchens/l1", {
         method: "PATCH",
         headers: {
-          cookie: "fh_session=tok",
+          cookie: "melos_session=tok",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ name: "Renamed" }),
@@ -82,7 +82,7 @@ describe("kitchens / invites BFF smoke (coverage floor)", () => {
   it("GET members forwards", async () => {
     const ctx = { params: Promise.resolve({ kitchenId: "l1" }) };
     const request = new Request("http://localhost/api/kitchens/l1/members", {
-      headers: { cookie: "fh_session=tok" },
+      headers: { cookie: "melos_session=tok" },
     }) as never;
 
     const members = await import("@/app/api/kitchens/[kitchenId]/members/route");
@@ -94,7 +94,7 @@ describe("kitchens / invites BFF smoke (coverage floor)", () => {
       new Request("http://localhost/api/kitchens/l1/invites", {
         method: "POST",
         headers: {
-          cookie: "fh_session=tok",
+          cookie: "melos_session=tok",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email: "a@b.com" }),
@@ -120,7 +120,7 @@ describe("kitchens / invites BFF smoke (coverage floor)", () => {
       new Request("http://localhost/api/invites/accept", {
         method: "POST",
         headers: {
-          cookie: "fh_session=tok",
+          cookie: "melos_session=tok",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ token: "abc" }),
@@ -136,7 +136,7 @@ describe("kitchens / invites BFF smoke (coverage floor)", () => {
     const gone = await DELETE(
       new Request("http://localhost/api/kitchens/l1", {
         method: "DELETE",
-        headers: { cookie: "fh_session=tok" },
+        headers: { cookie: "melos_session=tok" },
       }) as never,
       ctx,
     );
@@ -180,7 +180,7 @@ describe("kitchens / invites BFF smoke (coverage floor)", () => {
       new Request("http://localhost/api/kitchens/l1", {
         method: "PATCH",
         headers: {
-          cookie: "fh_session=tok",
+          cookie: "melos_session=tok",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ name: 1 }),

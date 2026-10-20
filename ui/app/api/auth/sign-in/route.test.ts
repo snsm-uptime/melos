@@ -21,7 +21,7 @@ describe("POST /api/auth/sign-in BFF", () => {
         headers: {
           "Content-Type": "application/json",
           "Set-Cookie":
-            "fh_session=token123; Path=/; HttpOnly; SameSite=Lax",
+            "melos_session=token123; Path=/; HttpOnly; SameSite=Lax",
         },
       }),
     );
@@ -39,13 +39,13 @@ describe("POST /api/auth/sign-in BFF", () => {
       expect.objectContaining({ method: "POST" }),
     );
     const setCookie = response.headers.get("set-cookie");
-    expect(setCookie).toContain("fh_session=token123");
+    expect(setCookie).toContain("melos_session=token123");
   });
 
   it("forwards single set-cookie when getSetCookie is empty", async () => {
     const headers = new Headers({
       "Content-Type": "application/json",
-      "Set-Cookie": "fh_session=legacy; Path=/; HttpOnly",
+      "Set-Cookie": "melos_session=legacy; Path=/; HttpOnly",
     });
     headers.getSetCookie = () => [];
     fetchMock.mockResolvedValue({
@@ -61,7 +61,7 @@ describe("POST /api/auth/sign-in BFF", () => {
     });
     const response = await POST(request as never);
     expect(response.status).toBe(200);
-    expect(response.headers.get("set-cookie")).toContain("fh_session=legacy");
+    expect(response.headers.get("set-cookie")).toContain("melos_session=legacy");
   });
 
   it("returns generic invalid_credentials for invalid JSON", async () => {
@@ -76,7 +76,7 @@ describe("POST /api/auth/sign-in BFF", () => {
     expect(body.code).toBe("invalid_credentials");
   });
 
-  it("forwards 429 body, Retry-After, and sets X-FH-Client-IP", async () => {
+  it("forwards 429 body, Retry-After, and sets X-Melos-Client-IP", async () => {
     fetchMock.mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -108,7 +108,7 @@ describe("POST /api/auth/sign-in BFF", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "http://api.test:8000/auth/sign-in",
       expect.objectContaining({
-        headers: expect.objectContaining({ "X-FH-Client-IP": "198.51.100.7" }),
+        headers: expect.objectContaining({ "X-Melos-Client-IP": "198.51.100.7" }),
       }),
     );
   });

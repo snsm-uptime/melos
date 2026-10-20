@@ -22,7 +22,7 @@ describe("session BFF route", () => {
     const { GET } = await import("@/app/api/auth/session/route");
     const request = new Request("http://localhost:3000/api/auth/session", {
       method: "GET",
-      headers: { cookie: "fh_session=test-token" },
+      headers: { cookie: "melos_session=test-token" },
     });
 
     const response = await GET(request as never);
@@ -30,7 +30,7 @@ describe("session BFF route", () => {
       "http://api:8000/auth/session",
       expect.objectContaining({
         method: "GET",
-        headers: expect.objectContaining({ Cookie: "fh_session=test-token" }),
+        headers: expect.objectContaining({ Cookie: "melos_session=test-token" }),
       }),
     );
     expect(response.status).toBe(200);

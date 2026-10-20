@@ -21,7 +21,7 @@ describe("register BFF route", () => {
           headers: {
             "Content-Type": "application/json",
             "Set-Cookie":
-              "fh_session=test-token; HttpOnly; Path=/; SameSite=Lax",
+              "melos_session=test-token; HttpOnly; Path=/; SameSite=Lax",
           },
         },
       ),
@@ -45,7 +45,7 @@ describe("register BFF route", () => {
     );
     expect(response.status).toBe(201);
     const setCookie = response.headers.get("set-cookie");
-    expect(setCookie).toContain("fh_session=test-token");
+    expect(setCookie).toContain("melos_session=test-token");
     expect(setCookie?.toLowerCase()).toContain("httponly");
   });
 
@@ -78,7 +78,7 @@ describe("register BFF route", () => {
     expect(body.code).toBe("bad_gateway");
   });
 
-  it("forwards 429 body, Retry-After, and sets X-FH-Client-IP on upstream", async () => {
+  it("forwards 429 body, Retry-After, and sets X-Melos-Client-IP on upstream", async () => {
     process.env.API_INTERNAL_URL = "http://api:8000";
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -116,7 +116,7 @@ describe("register BFF route", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "http://api:8000/auth/register",
       expect.objectContaining({
-        headers: expect.objectContaining({ "X-FH-Client-IP": "203.0.113.50" }),
+        headers: expect.objectContaining({ "X-Melos-Client-IP": "203.0.113.50" }),
       }),
     );
   });

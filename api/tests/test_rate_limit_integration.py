@@ -99,12 +99,12 @@ def client(
     monkeypatch.setenv("SESSION_SECRET", "test-session-secret-not-for-prod")
     monkeypatch.setenv("SESSION_COOKIE_SECURE", "false")
     monkeypatch.setenv("EMAIL_VERIFICATION_REQUIRED", "false")
-    monkeypatch.setenv("SESSION_COOKIE_NAME", "fh_session")
+    monkeypatch.setenv("SESSION_COOKIE_NAME", "melos_session")
     monkeypatch.setenv("PUBLIC_APP_URL", "http://localhost:3000")
     monkeypatch.setenv("SMTP_HOST", "smtp.test")
     monkeypatch.setenv("SMTP_FROM", "noreply@example.com")
     monkeypatch.setenv("TRUSTED_PROXY_IPS", "testclient")
-    monkeypatch.setenv("AUTH_CLIENT_IP_HEADER", "X-FH-Client-IP")
+    monkeypatch.setenv("AUTH_CLIENT_IP_HEADER", "X-Melos-Client-IP")
 
     from adapters import email as email_pkg
     from adapters.email import settings as email_settings
@@ -144,8 +144,8 @@ def test_register_rate_limit_and_identity_isolation(client: TestClient) -> None:
         client,
         rate_limit_register=RateLimitPolicy(max_attempts=2, window_seconds=3600),
     )
-    headers_a = {"X-FH-Client-IP": "203.0.113.10"}
-    headers_b = {"X-FH-Client-IP": "203.0.113.11"}
+    headers_a = {"X-Melos-Client-IP": "203.0.113.10"}
+    headers_b = {"X-Melos-Client-IP": "203.0.113.11"}
 
     r1 = client.post(
         "/auth/register",
@@ -184,11 +184,11 @@ def test_sign_in_rate_limit_anti_oracle(client: TestClient) -> None:
     client.post(
         "/auth/register",
         json={"email": "known-rl@example.com", "password": "password1"},
-        headers={"X-FH-Client-IP": "198.51.100.1"},
+        headers={"X-Melos-Client-IP": "198.51.100.1"},
     )
     client.cookies.clear()
 
-    ip = {"X-FH-Client-IP": "198.51.100.2"}
+    ip = {"X-Melos-Client-IP": "198.51.100.2"}
     assert (
         client.post(
             "/auth/sign-in",
@@ -233,12 +233,12 @@ def test_password_reset_request_rate_limit_anti_oracle(
     client.post(
         "/auth/register",
         json={"email": "reset-known@example.com", "password": "password1"},
-        headers={"X-FH-Client-IP": "203.0.113.20"},
+        headers={"X-Melos-Client-IP": "203.0.113.20"},
     )
     client.cookies.clear()
     mailer.sent.clear()
 
-    ip = {"X-FH-Client-IP": "203.0.113.21"}
+    ip = {"X-Melos-Client-IP": "203.0.113.21"}
     assert (
         client.post(
             "/auth/password-reset/request",
@@ -281,7 +281,7 @@ def test_verify_request_rate_limit_with_gate_on(client: TestClient) -> None:
     reg = client.post(
         "/auth/register",
         json={"email": "verify-rl@example.com", "password": "password1"},
-        headers={"X-FH-Client-IP": "203.0.113.30"},
+        headers={"X-Melos-Client-IP": "203.0.113.30"},
     )
     assert reg.status_code == 201, reg.text
 
@@ -297,7 +297,7 @@ def test_health_unaffected_after_auth_exhausted(client: TestClient) -> None:
         client,
         rate_limit_register=RateLimitPolicy(max_attempts=1, window_seconds=3600),
     )
-    ip = {"X-FH-Client-IP": "203.0.113.40"}
+    ip = {"X-Melos-Client-IP": "203.0.113.40"}
     assert (
         client.post(
             "/auth/register",
@@ -327,14 +327,14 @@ def test_under_limit_smtp_fail_still_503(client: TestClient, mailer: CapturingMa
     client.post(
         "/auth/register",
         json={"email": "smtp-rl@example.com", "password": "password1"},
-        headers={"X-FH-Client-IP": "203.0.113.50"},
+        headers={"X-Melos-Client-IP": "203.0.113.50"},
     )
     client.cookies.clear()
     mailer.fail = SmtpConfigurationError()
     response = client.post(
         "/auth/password-reset/request",
         json={"email": "smtp-rl@example.com"},
-        headers={"X-FH-Client-IP": "203.0.113.51"},
+        headers={"X-Melos-Client-IP": "203.0.113.51"},
     )
     assert response.status_code == 503
     assert response.json()["code"] == "smtp_config_error"

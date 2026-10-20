@@ -23,7 +23,7 @@ describe("POST /api/kitchens/{kitchenId}/hide BFF", () => {
 
     const request = new Request("http://localhost/api/kitchens/l1/hide", {
       method: "POST",
-      headers: { cookie: "fh_session=tok" },
+      headers: { cookie: "melos_session=tok" },
     });
 
     const response = await POST(request as never, context("l1"));
@@ -32,7 +32,7 @@ describe("POST /api/kitchens/{kitchenId}/hide BFF", () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("http://api.test:8000/kitchens/l1/hide");
     expect(init.method).toBe("POST");
-    expect((init.headers as Headers).get("Cookie")).toBe("fh_session=tok");
+    expect((init.headers as Headers).get("Cookie")).toBe("melos_session=tok");
   });
 
   it("passes through a 403 (owner cannot hide own kitchen) upstream error", async () => {
