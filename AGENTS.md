@@ -33,6 +33,44 @@ The architecture, structure, auth layer and tooling are reused from
   the api, argon2, password reset by email, config-gated email verification,
   rate limits).
 
+## Domain rules
+
+Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
+
+- A recipe belongs to one user, its owner. A kitchen sees a recipe only when
+  the owner shares it into that kitchen (`recipe_share`). The kitchen shows the
+  owner's alias as the author. If the owner removes the recipe, the kitchen
+  keeps it, carts keep it, and the alias reads "unknown".
+- Only the owner edits, deletes, shares or unshares a recipe. Members clone a
+  shared recipe into their own account; the copy has no link to the original.
+- Author history is out of scope. Never store past owners.
+- A recipe stores its ingredient and category names as confirmed when it enters
+  a kitchen, so it reads the same in every kitchen it is shared into.
+- When Gemini matches a name to an existing kitchen entry (e.g. "onions" to
+  "onion"), the app tells the member which changes were made, before save.
+- Recipe preview images are stored as base64 text on the recipe. Captured
+  source photos are not stored (PRD §4).
+- Cart frequency counts every addition to the kitchen's cart. Removing a recipe
+  from the cart does not lower it.
+
+## Shared UI components
+
+- **Add-recipe call to action** (`ui/components/AddRecipeCallToAction/`, to be
+  created with S-016): the rounded-corner placeholder rectangle with a plus
+  icon. Any page that lets a user add a recipe uses this component. Do not
+  rebuild it on a page.
+  - Tapping it opens the add-recipe options dialog: a vertical list separated
+    by dividers, with no confirm or cancel buttons, in this order:
+    1. URL: shown, disabled, not implemented yet.
+    2. Picture: shown, disabled, marked "coming soon", until S-040.
+    3. Text: opens the text sheet with the paste input and submit control.
+  - Built on `ActionDialog` (its confirm and cancel props become optional so
+    it can render without footer buttons) and `Sheet`. The picture sheet, when
+    built, has an inner dashed border (about 2rem thick) with the text "Upload
+    file or drag and drop".
+  - Change the option list in this component only. Other pages get the change
+    for free.
+
 ## Project structure
 
 ```text
@@ -158,6 +196,8 @@ ALWAYS use `uv`. Never use `pip`, `python -m venv` or `requirements.txt`.
   input is never lost on error.
 - Every kitchen-scoped query checks membership in `application/`. A
   non-member gets `404`.
+- Every recipe query checks that the caller owns the recipe or that the recipe
+  is shared into a kitchen the caller belongs to. Otherwise `404`.
 - Schema changes go through Alembic migrations.
 - Small changes: one per request. When finished, explain what you changed and
   why.
@@ -230,3 +270,5 @@ This will guide you through updating principles, versioning, and recording chang
   (cards, statements, budgets, splits, FX, bank adapters).
 - **Do not violate the [Project Constitution](.specify/memory/constitution.md).** If you need an exception, ask for written approval and document it.
 - Do not push or deploy without my review first.
+- Do not build a second add-recipe entry point or its options on a page. Use
+  the shared add-recipe call to action.
