@@ -7,6 +7,10 @@
 #   in_progress  being implemented now
 #   in_design    a speckit spec exists under specs/ for the story, no implementation yet
 #   backlog      no speckit spec yet (PRD mention alone is not enough), or explicitly Later in the PRD
+#
+# Order within the Must work: the fewest stories that give a first full flow come first
+# (capture -> save -> list -> cart -> shopping list, PRD J2 to J5). Stories needed only for
+# extra input paths, editing or PDF come after the shopping list (S-025, S-026, S-027).
 
 stories:
   # ---------------------------------------------------------------------------
@@ -130,11 +134,19 @@ stories:
       tests; Compose startup, health, migrations and pgvector; Python tests in Compose (259 passed).
       Manual checks validated by the user: auth flows, SMTP, rate limit, seed, CI, worktree isolation.
 
+  - id: S-015
+    title: Gemini extraction adapter (RecipeExtractor port, google-genai wiring, error mapping to PRD §1.7)
+    epic: Capture
+    priority: must
+    status: backlog
+    source: prd.md 1.4, 1.7 (error mapping), Appendix C; prerequisite for S-016 (clarify session 002, Q1 = B)
+    notes: Built and tested with a fake extractor first. S-016 consumes the port and does not implement it.
+
   # ---------------------------------------------------------------------------
   # Must (v1 feature work). Documented in PRD, not implemented.
   # ---------------------------------------------------------------------------
 
-  - id: S-020
+  - id: S-016
     title: Capture a recipe from pasted text into a draft review screen
     epic: Capture
     priority: must
@@ -143,16 +155,7 @@ stories:
     source: prd.md J2, 1.5A, Appendix B.1
     acceptance: [AC2.1, AC2.4, AC2.5]
 
-  - id: S-021
-    title: Capture a recipe from a URL (SSRF-safe fetch, JSON-LD first)
-    epic: Capture
-    priority: must
-    status: backlog
-    journey: J2
-    source: prd.md J2, 1.5A, 1.7 (URL fetching)
-    acceptance: [AC2.3]
-
-  - id: S-022
+  - id: S-017
     title: Match captured ingredients to the kitchen catalog
     epic: Capture
     priority: must
@@ -161,7 +164,15 @@ stories:
     source: prd.md J2, 1.6 (normalization), Appendix B.1 rule 3
     acceptance: [AC2.2]
 
-  - id: S-023
+  - id: S-018
+    title: Embeddings and pgvector search pre-filtered by kitchen
+    epic: Ask
+    priority: must
+    status: backlog
+    source: prd.md 1.5E, 1.5F, 1.6 (recipe_embedding), Appendix D
+    notes: Embedding model and dimension check still open (Appendix D).
+
+  - id: S-019
     title: Save a confirmed draft as a recipe and create new catalog entries
     epic: Recipes
     priority: must
@@ -169,7 +180,7 @@ stories:
     journey: J2
     source: prd.md 1.5A, Appendix A (Recipe)
 
-  - id: S-024
+  - id: S-020
     title: Recipe list with text and category filters
     epic: Recipes
     priority: must
@@ -177,25 +188,7 @@ stories:
     journey: J3
     source: prd.md J3
 
-  - id: S-025
-    title: Recipe detail, edit and delete with confirmation; deletion removes it from cart and search
-    epic: Recipes
-    priority: must
-    status: backlog
-    journey: J3
-    source: prd.md J3
-    acceptance: [AC3.2]
-
-  - id: S-026
-    title: Recipe PDF with correct accents and fractions
-    epic: Recipes
-    priority: must
-    status: backlog
-    journey: J3
-    source: prd.md 1.5D, J3
-    acceptance: [AC3.1]
-
-  - id: S-027
+  - id: S-021
     title: Shared cart with people and per-recipe meals; scale factor
     epic: Cart
     priority: must
@@ -203,7 +196,7 @@ stories:
     journey: J4
     source: prd.md J4, 1.6 (cart)
 
-  - id: S-028
+  - id: S-022
     title: Consolidated shopping list (domain/cart.py) with units, sizes, vague section and chips
     epic: Cart
     priority: must
@@ -212,7 +205,7 @@ stories:
     source: prd.md J5 steps 1–7
     acceptance: [AC5.1, AC5.2, AC5.3, AC5.4]
 
-  - id: S-029
+  - id: S-023
     title: Shopping list export as Markdown copy and PDF
     epic: Cart
     priority: must
@@ -221,7 +214,7 @@ stories:
     source: prd.md J5 Export
     acceptance: [AC5.5]
 
-  - id: S-030
+  - id: S-024
     title: Finalize shopping list as a snapshot with closing_date
     epic: Cart
     priority: must
@@ -229,7 +222,34 @@ stories:
     journey: J5
     source: prd.md J5 Finalize, 1.6 (shopping_list)
 
-  - id: S-031
+  - id: S-025
+    title: Capture a recipe from a URL (SSRF-safe fetch, JSON-LD first)
+    epic: Capture
+    priority: must
+    status: backlog
+    journey: J2
+    source: prd.md J2, 1.5A, 1.7 (URL fetching)
+    acceptance: [AC2.3]
+
+  - id: S-026
+    title: Recipe detail, edit and delete with confirmation; deletion removes it from cart and search
+    epic: Recipes
+    priority: must
+    status: backlog
+    journey: J3
+    source: prd.md J3
+    acceptance: [AC3.2]
+
+  - id: S-027
+    title: Recipe PDF with correct accents and fractions
+    epic: Recipes
+    priority: must
+    status: backlog
+    journey: J3
+    source: prd.md 1.5D, J3
+    acceptance: [AC3.1]
+
+  - id: S-028
     title: "Personal conversations: new, rename, archive, unarchive, delete; private to each user"
     epic: Ask
     priority: must
@@ -238,7 +258,7 @@ stories:
     source: prd.md J6, 3
     acceptance: [AC6.3]
 
-  - id: S-032
+  - id: S-029
     title: Ask the kitchen assistant with grounded, cited answers
     epic: Ask
     priority: must
@@ -247,15 +267,7 @@ stories:
     source: prd.md 1.5B, 1.7, Appendix B.2
     acceptance: [AC6.1, AC6.2, AC6.4]
 
-  - id: S-033
-    title: Embeddings and pgvector search pre-filtered by kitchen
-    epic: Ask
-    priority: must
-    status: backlog
-    source: prd.md 1.5E, 1.5F, 1.6 (recipe_embedding), Appendix D
-    notes: Embedding model and dimension check still open (Appendix D).
-
-  - id: S-034
+  - id: S-030
     title: Shopping list history answered in chat as cards
     epic: Ask
     priority: must
@@ -264,7 +276,7 @@ stories:
     source: prd.md J5 History, J6, Appendix B.2 rule 6
     acceptance: [AC6.5]
 
-  - id: S-035
+  - id: S-031
     title: MCP service with per-user Bearer API keys and kitchen-scoped tools
     epic: MCP
     priority: must
@@ -274,7 +286,7 @@ stories:
       Container, health endpoint and lock file exist from the bootstrap. Keys, auth and tools
       (capture, read recipes, cart ops, shopping list ops, ask) are not built.
 
-  - id: S-036
+  - id: S-032
     title: Deploy v1 on the owner's server with the prod overlay
     epic: Deployment
     priority: must
@@ -282,7 +294,7 @@ stories:
     source: prd.md 1.9, Appendix C; tasks.md T090–T100 (docs only)
     notes: Deployment docs exist from the bootstrap. The deploy itself is not done.
 
-  - id: S-037
+  - id: S-033
     title: AI evaluation set (about 10 fixtures) with expected drafts
     epic: Quality
     priority: must
@@ -338,6 +350,27 @@ stories:
     priority: should
     status: backlog
     source: prd.md Appendix A (ShoppingListItem)
+
+  - id: S-046
+    title: Kitchen recipes page as cards with image or default pot, author chips, ingredient filter and cart-frequency sort
+    epic: Recipes
+    priority: should
+    status: backlog
+    journey: J3
+    source: user request in clarify session 002 (not in prd.md; extends J3 list)
+    notes: >
+      Cards show a recipe image preview or a default cooking-pot SVG, the title, and author chips
+      (ui/components/Chip). Filters: ingredients, recipe author. Sort: times added to a cart in
+      this kitchen, ascending or descending. Author alias comes from the owner's user_id by inner join;
+      "unknown" when the owner removed the recipe (clarify session 002, Q5).
+
+  - id: S-047
+    title: Clone a recipe shared on another kitchen into my own account
+    epic: Recipes
+    priority: should
+    status: backlog
+    source: user request in clarify session 002 (extra story; not in prd.md)
+    notes: Creates a copy owned by the requesting user; the original and its owner are unchanged.
 
   # ---------------------------------------------------------------------------
   # Later or not in v1
