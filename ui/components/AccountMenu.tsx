@@ -14,7 +14,7 @@ import {
 import { TriSwitch } from "@/components/TriSwitch";
 import { AvatarCropSheet } from "@/components/AvatarCropSheet";
 import { accountCopy } from "@/lib/i18n/account";
-import type { Locale, ThemePreference } from "@/lib/i18n/locale";
+import type { ThemePreference } from "@/lib/i18n/locale";
 import kitchensStyles from "@/app/kitchens/kitchens.module.scss";
 
 import styles from "./AccountMenu.module.scss";
@@ -122,8 +122,6 @@ export function AccountMenu() {
 
   const controlsDisabled = pending || !ready || signingOut;
 
-  const choiceButtonClass = `font-inherit text-[0.85rem] font-semibold py-[0.5rem] px-[0.85rem] rounded-[8px] border border-border bg-surface text-foreground cursor-pointer ${styles.choice}`;
-  const choiceButtonActiveClass = `font-inherit text-[0.85rem] font-semibold py-[0.5rem] px-[0.85rem] rounded-[8px] border border-accent bg-accent text-on-accent cursor-pointer ${styles.choiceActive}`;
   const ghostClass = `font-inherit text-[0.9rem] font-semibold py-[0.55rem] px-[1rem] rounded-[8px] border-0 bg-transparent text-muted cursor-pointer ${styles.ghost}`;
   const signOutClass = `font-inherit text-[0.9rem] font-semibold py-[0.55rem] px-[1rem] rounded-[8px] border border-border bg-surface text-foreground cursor-pointer ${styles.signOut}`;
   const avatarActionClass =

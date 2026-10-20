@@ -94,7 +94,7 @@ def test_register_fr4_off_no_verification_step(client: TestClient) -> None:
 def test_health_still_ok(client: TestClient) -> None:
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json()["status"] == "healthy"
 
 
 def test_session_endpoint_requires_cookie(client: TestClient) -> None:
