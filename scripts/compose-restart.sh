@@ -21,7 +21,7 @@ Usage: ./scripts/compose-restart.sh [-d|--detach] [--wipe] [-- docker-compose-up
 Runs compose-down then compose-up with the same checkout Compose file set.
 
 --wipe only removes named Compose volumes on the way down (not Postgres bind
-data under FINANCE_HELPER_DATA). Prefer a plain restart unless you know you
+data under MELOS_DATA). Prefer a plain restart unless you know you
 need -v.
 EOF
       exit 0

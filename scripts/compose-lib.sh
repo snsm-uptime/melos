@@ -39,8 +39,8 @@ compose_is_worktree_env() {
   if grep -qF '# --- cursor worktree overrides (generated) ---' "$env_file" 2>/dev/null; then
     return 0
   fi
-  name="$(compose_env_get FH_COMPOSE_NAME "$env_file")"
-  [[ "$name" == fh-* ]]
+  name="$(compose_env_get MELOS_COMPOSE_NAME "$env_file")"
+  [[ "$name" == melos-* ]]
 }
 
 compose_files() {
@@ -127,8 +127,8 @@ compose_require_lite() {
     return 1
   fi
 
-  PRIMARY_COMPOSE_NAME="$(compose_env_get FH_COMPOSE_NAME "$ROOT_WORKTREE_PATH/.env")"
-  PRIMARY_COMPOSE_NAME="${PRIMARY_COMPOSE_NAME:-finance-helper}"
+  PRIMARY_COMPOSE_NAME="$(compose_env_get MELOS_COMPOSE_NAME "$ROOT_WORKTREE_PATH/.env")"
+  PRIMARY_COMPOSE_NAME="${PRIMARY_COMPOSE_NAME:-melos}"
   PRIMARY_API_PORT="$(compose_env_get API_HOST_PORT "$ROOT_WORKTREE_PATH/.env")"
   PRIMARY_API_PORT="${PRIMARY_API_PORT:-8000}"
 

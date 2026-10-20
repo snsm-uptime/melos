@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Wipe the Postgres data for this checkout's Compose stack (destructive).
-# Postgres uses a host bind under FINANCE_HELPER_DATA/pgdata — `compose-down.sh
+# Postgres uses a host bind under MELOS_DATA/pgdata — `compose-down.sh
 # --wipe` only removes named volumes and does NOT touch that directory. This
 # script stops the stack, deletes the bind-mounted pgdata dir, and (unless
 # --no-up) starts the stack back up so Postgres reinitializes from scratch.
@@ -26,7 +26,7 @@ while [[ $# -gt 0 ]]; do
 Usage: ./scripts/compose-wipe-db.sh [-y|--yes] [--no-up] [-d|--detach]
 
 Stops this checkout's Compose stack, deletes the Postgres bind-mounted data
-directory (FINANCE_HELPER_DATA/pgdata), and starts the stack back up so
+directory (MELOS_DATA/pgdata), and starts the stack back up so
 Postgres reinitializes empty.
 
 -y, --yes    Skip the confirmation prompt.
@@ -52,8 +52,8 @@ compose_require_env "$ROOT"
 compose_require_files "$ROOT"
 
 ENV_FILE="$ROOT/.env"
-DATA_ROOT="$(compose_env_get FINANCE_HELPER_DATA "$ENV_FILE")"
-DATA_ROOT="${DATA_ROOT:-$HOME/finance-helper}"
+DATA_ROOT="$(compose_env_get MELOS_DATA "$ENV_FILE")"
+DATA_ROOT="${DATA_ROOT:-$HOME/melos}"
 PGDATA_DIR="$DATA_ROOT/pgdata"
 
 echo "==> This will DELETE all Postgres data for this checkout:"

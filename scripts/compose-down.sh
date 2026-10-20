@@ -23,7 +23,7 @@ Stops the same Compose file set compose-up would use for this checkout.
 Default keeps named/bind data.
 
 --wipe runs `docker compose down -v` (named volumes only, e.g. ui_node_modules).
-Postgres uses a host bind under FINANCE_HELPER_DATA — that directory is NOT
+Postgres uses a host bind under MELOS_DATA — that directory is NOT
 deleted by --wipe; remove it on disk yourself if you need a clean database.
 EOF
       exit 0
@@ -45,5 +45,5 @@ DOWN_ARGS+=("${EXTRA[@]+"${EXTRA[@]}"}")
 echo "==> Compose down in $ROOT$([[ "$WIPE" == "1" ]] && echo ' (wipe named volumes)')"
 compose_run "$ROOT" "${DOWN_ARGS[@]}"
 if [[ "$WIPE" == "1" ]]; then
-  echo "Note: Postgres bind data under FINANCE_HELPER_DATA was not deleted."
+  echo "Note: Postgres bind data under MELOS_DATA was not deleted."
 fi

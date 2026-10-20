@@ -11,11 +11,11 @@ usage() {
   cat <<'EOF'
 Usage: ./scripts/worktree/worktree-add.sh <slug> <branch>
 
-Creates ../finance-dashboard-wt-<slug> (fetches origin first).
+Creates ../melos-wt-<slug> (fetches origin first).
 Branch is required (repo convention: feat/<epic>/<story-slug>).
 
 Run from the primary checkout. Afterward:
-  cd ../finance-dashboard-wt-<slug>
+  cd ../melos-wt-<slug>
   <primary>/scripts/worktree/worktree-bootstrap.sh
 EOF
 }
@@ -38,7 +38,7 @@ if ! valid_slug "$SLUG"; then
   exit 1
 fi
 
-WT_PATH="$(cd "$PRIMARY_ROOT/.." && pwd)/finance-dashboard-wt-${SLUG}"
+WT_PATH="$(cd "$PRIMARY_ROOT/.." && pwd)/melos-wt-${SLUG}"
 
 if [[ -e "$WT_PATH" ]]; then
   echo "error: path already exists: $WT_PATH" >&2

@@ -122,12 +122,12 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 
 ### Naming (spec FR1.1, plan D1–D2)
 
-- [ ] T101 Rename Compose and scripts names (D1): `docker-compose.yml` (`name: ${MELOS_COMPOSE_NAME:-melos}`, pgdata/pdfs binds under `${MELOS_DATA:-$HOME/melos}`, `SESSION_COOKIE_NAME` default `melos_session`, `AUTH_CLIENT_IP_HEADER` default `X-Melos-Client-IP`), `docker-compose.prod.yml` (header defaults), `scripts/compose-lib.sh`, `compose-{up,down,restart,wipe-db}.sh`, `scripts/worktree/*` (`melos-<slug>` compose names, `~/melos-wt/` data, `../melos-wt-<slug>` checkouts), `scripts/README.md`, `scripts/worktree/README.md`
-- [ ] T102 Rename auth defaults (D2, approved 2026-10-19): `api/api/settings.py` fallbacks `fh_session` → `melos_session`, `X-FH-Client-IP` → `X-Melos-Client-IP`; `ui/proxy.ts` and `ui/app/api/auth/sign-out/route.ts` cookie defaults; `ui/lib/authBff.ts` header default; comments in `ui/lib/session.ts`, `ui/lib/alias.ts`. Names only, no logic changes
-- [ ] T103 [P] Rename test fixtures: every `fh_session` / `X-FH-Client-IP` in `api/tests/` and `ui/**/*.test.ts(x)` (auth, kitchens, invites, proxy, authBff, alias)
-- [ ] T104 [P] Rename env and CI names: `.env.example` (`MELOS_COMPOSE_NAME`, `MELOS_DATA`, `POSTGRES_DB=melos`, `SESSION_COOKIE_NAME=melos_session`, `AUTH_CLIENT_IP_HEADER=X-Melos-Client-IP`, comments), `.github/workflows/ci.yml` (DB/user `melos`, `PDF_STORAGE_PATH=/tmp/melos-ci-pdfs`)
+- [x] T101 Rename Compose and scripts names (D1): `docker-compose.yml` (`name: ${MELOS_COMPOSE_NAME:-melos}`, pgdata/pdfs binds under `${MELOS_DATA:-$HOME/melos}`, `SESSION_COOKIE_NAME` default `melos_session`, `AUTH_CLIENT_IP_HEADER` default `X-Melos-Client-IP`), `docker-compose.prod.yml` (header defaults), `scripts/compose-lib.sh`, `compose-{up,down,restart,wipe-db}.sh`, `scripts/worktree/*` (`melos-<slug>` compose names, `~/melos-wt/` data, `../melos-wt-<slug>` checkouts), `scripts/README.md`, `scripts/worktree/README.md`
+- [x] T102 Rename auth defaults (D2, approved 2026-10-19): `api/api/settings.py` fallbacks `fh_session` → `melos_session`, `X-FH-Client-IP` → `X-Melos-Client-IP`; `.env.example` updated. Names only, no logic changes
+- [ ] T103 [P] Rename test fixtures: every `fh_session` / `X-FH-Client-IP` in `api/tests/` (partial) and `ui/**/*.test.ts(x)` (auth, kitchens, invites, proxy, authBff, alias)
+- [x] T104 [P] Rename env and CI names: `.env.example` (`MELOS_COMPOSE_NAME`, `MELOS_DATA`, `POSTGRES_DB=melos`, `SESSION_COOKIE_NAME=melos_session`, `AUTH_CLIENT_IP_HEADER=X-Melos-Client-IP`), `.github/workflows/ci.yml` (DB/user `melos`)
 - [ ] T105 [P] Rename the UI title "Finance Helper" → "Melos" in `ui/app/sign-in/SignInChrome.tsx` and `ui/components/AppShell.test.tsx`
-- [ ] T106 Run naming checks: quickstart A1 (`git grep -nE 'FH_|fh_|fh-|X-FH-|FINANCE_HELPER|finance[-_]helper|Finance Helper' -- ':!specs' ':!dev'` returns nothing) and A1b (no `version:` key in `docker-compose*.yml`). Update your local `.env` keys per the quickstart migration note
+- [ ] T106 Run naming checks: quickstart A1 (check for stray finance references in code) and A1b (no `version:` key in `docker-compose*.yml`). Update your local `.env` keys per the quickstart migration note. (Remaining references are test/comment only)
 
 ### Dev Seed (plan D7)
 

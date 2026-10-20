@@ -84,8 +84,8 @@ def load_auth_settings() -> AuthSettings:
     if samesite == "none" and not secure:
         samesite = "lax"
     public_app_url = (os.environ.get("PUBLIC_APP_URL") or "http://localhost:3000").strip()
-    header_raw = (os.environ.get("AUTH_CLIENT_IP_HEADER") or "X-FH-Client-IP").strip()
-    header = header_raw or "X-FH-Client-IP"
+    header_raw = (os.environ.get("AUTH_CLIENT_IP_HEADER") or "X-Melos-Client-IP").strip()
+    header = header_raw or "X-Melos-Client-IP"
     # Empty TRUSTED_PROXY_IPS = never honor the client-IP header (safe for direct api hits).
     # Compose pins Docker bridge + loopback only (not blanket RFC1918).
     trusted_raw = os.environ.get("TRUSTED_PROXY_IPS")
@@ -95,8 +95,8 @@ def load_auth_settings() -> AuthSettings:
         trusted = parse_trusted_proxy_ips(trusted_raw)
     return AuthSettings(
         session_secret=secret,
-        session_cookie_name=(os.environ.get("SESSION_COOKIE_NAME") or "fh_session").strip()
-        or "fh_session",
+        session_cookie_name=(os.environ.get("SESSION_COOKIE_NAME") or "melos_session").strip()
+        or "melos_session",
         session_cookie_secure=secure,
         session_cookie_samesite=samesite,
         email_verification_required=_env_bool("EMAIL_VERIFICATION_REQUIRED", default=False),

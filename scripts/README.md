@@ -1,6 +1,6 @@
 # Scripts — Docker Compose Utilities
 
-This directory contains shell scripts that manage the Docker Compose stack for the finance-dashboard project. They provide a consistent, safe interface for starting, stopping, and restarting services across your local checkout and CI/CD environments.
+This directory contains shell scripts that manage the Docker Compose stack for the Melos project. They provide a consistent, safe interface for starting, stopping, and restarting services across your local checkout and CI/CD environments. (Reused from finance-dashboard with naming adaptations.)
 
 ## Quick Start
 

@@ -27,7 +27,7 @@ Usage: ./scripts/compose-up.sh [-d|--detach] [--lite] [-- docker-compose-up-args
 
 Starts docker-compose.yml + docker-compose.dev.yml.
 Adds docker-compose.worktree.yml when this checkout looks like a worktree
-(.env has FH_COMPOSE_NAME=fh-* or the generated worktree override marker).
+(.env has MELOS_COMPOSE_NAME=fh-* or the generated worktree override marker).
 
 --lite: starts only the ui container, joined to the primary checkout's
 Compose network and node_modules volume, talking to the primary's already-

@@ -1,4 +1,4 @@
-# Cursor worktrees (finance-dashboard)
+# Cursor worktrees (Melos)
 
 Parallel feature development with **isolated checkouts** + **unique Compose ports/data** + **separate Claude Code sessions**.
 This enables multiple developers or stories to work simultaneously without port/database conflicts.
@@ -18,7 +18,7 @@ This setup ensures each Claude Code session (or developer) can run the full stac
 
 | File | Role |
 | --- | --- |
-| `worktree-add.sh` | Create `../finance-dashboard-wt-<slug>` sibling checkout + branch |
+| `worktree-add.sh` | Create `../melos-wt-<slug>` sibling checkout + branch |
 | `worktree-bootstrap.sh` | Copy `.env`, assign unique ports/project/data dir, install deps, optional Compose (or `--lite`, see below) |
 | `setup-worktree-unix.sh` | Core bootstrap logic: `.env` rewrites, `uv`/`npm`, Compose lifecycle (see also its `pr` subcommand and `--lite` mode below) |
 | `worktree-remove.sh` | Compose-down (best effort) + `git worktree remove` |
@@ -38,10 +38,11 @@ Day-to-day Compose helpers (work in primary or any worktree):
 Each worktree receives a unique, auto-generated `.env` block:
 
 ```
-FH_COMPOSE_NAME=fh-{branch-slug}           # e.g., fh-feat-2-3-invite
+MELOS_COMPOSE_NAME=melos-{branch-slug}     # e.g., melos-feat-2-3-invite
 API_HOST_PORT={8010..8400}                 # Stable offset from worktree path
 UI_HOST_PORT={3010..3400}                  # Stable offset from worktree path
-FINANCE_HELPER_DATA=~/finance-helper-wt/{compose-name}  # Isolated Postgres data
+MCP_HOST_PORT={9010..9400}                 # Stable offset from worktree path
+MELOS_DATA=~/melos-wt/{compose-name}       # Isolated Postgres data
 PUBLIC_APP_URL=http://localhost:{UI_HOST_PORT}  # Used for email links, etc.
 ```
 
@@ -50,7 +51,7 @@ These values are auto-calculated and injected by `setup-worktree-unix.sh`.
 ## Typical Workflow: Single Story per Worktree
 
 ### Step 1: Create a worktree for your story
-From the **primary checkout** (`finance-dashboard/`):
+From the **primary checkout** (`melos/`):
 
 ```bash
 ./scripts/worktree/worktree-add.sh <slug> <branch>
@@ -61,14 +62,14 @@ Example:
 ./scripts/worktree/worktree-add.sh 2-3-invite feat/2/2-3-invite-members-by-email
 ```
 
-This creates `../finance-dashboard-wt-2-3-invite` with the specified branch checked out.
+This creates `../melos-wt-2-3-invite` with the specified branch checked out.
 
 ### Step 2: Bootstrap the worktree
 Inside the new worktree:
 
 ```bash
-cd ../finance-dashboard-wt-2-3-invite
-../finance-dashboard/scripts/worktree/worktree-bootstrap.sh
+cd ../melos-wt-2-3-invite
+../melos/scripts/worktree/worktree-bootstrap.sh
 ```
 
 This:
@@ -79,12 +80,12 @@ This:
 
 **Output example:**
 ```
-==> Primary checkout: /path/to/finance-dashboard
-==> Worktree:         /path/to/finance-dashboard-wt-2-3-invite
-==> Worktree Compose: name=fh-2-3-invite api=:8040 ui=:3040
-==> Postgres data: ~/finance-helper-wt/fh-2-3-invite/pgdata
+==> Primary checkout: /path/to/melos
+==> Worktree:         /path/to/melos-wt-2-3-invite
+==> Worktree Compose: name=melos-2-3-invite api=:8040 ui=:3040
+==> Postgres data: ~/finance-helper-wt/melos-2-3-invite/pgdata
 
-Worktree ready: /path/to/finance-dashboard-wt-2-3-invite
+Worktree ready: /path/to/melos-wt-2-3-invite
 UI:  http://localhost:3040
 API: http://localhost:8040
 ```
@@ -128,8 +129,8 @@ For a **UI-only story** — a copy tweak, a layout fix, a component prop, anythi
 Usage:
 ```bash
 ./scripts/worktree/worktree-add.sh <slug> <branch>
-cd ../finance-dashboard-wt-<slug>
-../finance-dashboard/scripts/worktree/worktree-bootstrap.sh --lite
+cd ../melos-wt-<slug>
+../melos/scripts/worktree/worktree-bootstrap.sh --lite
 ```
 This prints the assigned `UI_HOST_PORT` (e.g. `http://localhost:3140`) — open that in a browser, no further steps needed.
 
@@ -151,19 +152,19 @@ To work on **2+ stories simultaneously**, repeat Steps 1–3 in separate termina
 
 **Terminal 1 (Story 2-3):**
 ```bash
-cd ~/finance-dashboard
+cd ~/melos
 ./scripts/worktree/worktree-add.sh 2-3-invite feat/2/2-3-invite-members-by-email
-cd ../finance-dashboard-wt-2-3-invite
-../finance-dashboard/scripts/worktree/worktree-bootstrap.sh
+cd ../melos-wt-2-3-invite
+../melos/scripts/worktree/worktree-bootstrap.sh
 claude .
 ```
 
 **Terminal 2 (Story 2-4):**
 ```bash
-cd ~/finance-dashboard
+cd ~/melos
 ./scripts/worktree/worktree-add.sh 2-4-billing feat/2/2-4-billing-page
-cd ../finance-dashboard-wt-2-4-billing
-../finance-dashboard/scripts/worktree/worktree-bootstrap.sh
+cd ../melos-wt-2-4-billing
+../melos/scripts/worktree/worktree-bootstrap.sh
 claude .
 ```
 
@@ -179,7 +180,7 @@ Each Claude session:
 
 ### Reboot bootstrap (deps/`.env` only, skip Compose)
 ```bash
-START_COMPOSE=0 ../finance-dashboard/scripts/worktree/worktree-bootstrap.sh
+START_COMPOSE=0 ../melos/scripts/worktree/worktree-bootstrap.sh
 ```
 
 ### List all worktrees
@@ -217,7 +218,7 @@ grep -E '^(API_HOST_PORT|UI_HOST_PORT|PUBLIC_APP_URL)=' .env
 
 If using **Cursor editor** instead of Claude Code CLI:
 - Cursor reads `.cursor/worktrees.json` and auto-runs `setup-worktree-unix.sh` on new worktrees
-- Open the worktree folder in Cursor: **File → Open Folder** → select `../finance-dashboard-wt-<slug>`
+- Open the worktree folder in Cursor: **File → Open Folder** → select `../melos-wt-<slug>`
 - Cursor will bootstrap it automatically
 
 For Claude Code CLI, manually run `worktree-bootstrap.sh` as shown above.

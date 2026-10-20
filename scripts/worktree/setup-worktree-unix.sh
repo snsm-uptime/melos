@@ -163,11 +163,11 @@ BRANCH="$(git -C "$WT_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo work
 {
   WT_SLUG="$(slugify "$(basename "$WT_ROOT")")"
   BRANCH_SLUG="$(slugify "$BRANCH")"
-  COMPOSE_NAME="fh-${BRANCH_SLUG:-$WT_SLUG}"
+  COMPOSE_NAME="melos-${BRANCH_SLUG:-$WT_SLUG}"
   COMPOSE_NAME="$(printf '%s' "$COMPOSE_NAME" | cut -c1-50)"
   read -r API_HOST_PORT UI_HOST_PORT <<<"$(port_pair_from_path "$WT_ROOT")"
   read -r UI_DEBUG_PORT UI_DEBUG_WORKER_PORT <<<"$(debug_port_pair_from_path "$WT_ROOT")"
-  DATA_DIR="${HOME}/finance-helper-wt/${COMPOSE_NAME}"
+  DATA_DIR="${HOME}/melos-wt/${COMPOSE_NAME}"
   PUBLIC_APP_URL="http://localhost:${UI_HOST_PORT}"
 
   mkdir -p "$DATA_DIR"
@@ -185,7 +185,7 @@ BRANCH="$(git -C "$WT_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo work
       $0 == "# --- cursor worktree overrides (generated) ---" { skip=1; next }
       $0 == "# --- end cursor worktree overrides ---" { skip=0; next }
       skip { next }
-      /^(FH_COMPOSE_NAME|API_HOST_PORT|UI_HOST_PORT|FINANCE_HELPER_DATA|PUBLIC_APP_URL|UI_DEBUG_PORT|UI_DEBUG_WORKER_PORT)=/ { next }
+      /^(MELOS_COMPOSE_NAME|API_HOST_PORT|UI_HOST_PORT|MELOS_DATA|PUBLIC_APP_URL|UI_DEBUG_PORT|UI_DEBUG_WORKER_PORT)=/ { next }
       { print }
     ' "$WT_ROOT/.env" >"$tmp_keys"
     mv "$tmp_keys" "$WT_ROOT/.env"
@@ -201,10 +201,10 @@ BRANCH="$(git -C "$WT_ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo work
       cat "$tmp"
       echo ""
       echo "$MARKER_BEGIN"
-      echo "FH_COMPOSE_NAME=${COMPOSE_NAME}"
+      echo "MELOS_COMPOSE_NAME=${COMPOSE_NAME}"
       echo "API_HOST_PORT=${API_HOST_PORT}"
       echo "UI_HOST_PORT=${UI_HOST_PORT}"
-      echo "FINANCE_HELPER_DATA=${DATA_DIR}"
+      echo "MELOS_DATA=${DATA_DIR}"
       echo "PUBLIC_APP_URL=${PUBLIC_APP_URL}"
       echo "UI_DEBUG_PORT=${UI_DEBUG_PORT}"
       echo "UI_DEBUG_WORKER_PORT=${UI_DEBUG_WORKER_PORT}"

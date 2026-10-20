@@ -64,7 +64,7 @@ def _set_verification_required(client: TestClient, required: bool) -> None:
 def _register_and_keep_session(client: TestClient, email: str, password: str = "password1") -> None:
     response = client.post("/auth/register", json={"email": email, "password": password})
     assert response.status_code == 201, response.text
-    assert "fh_session" in response.cookies
+    assert "melos_session" in response.cookies
 
 
 def _extract_token(mailer: CapturingMailer) -> str:

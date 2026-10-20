@@ -11,9 +11,9 @@ usage() {
 Usage: ./scripts/worktree/worktree-remove.sh <slug>
 
 Stops Compose in that worktree when possible, then removes
-../finance-dashboard-wt-<slug> via git worktree remove.
+../melos-wt-<slug> via git worktree remove.
 
-Postgres bind data under ~/finance-helper-wt/ is left alone
+Postgres bind data under ~/melos-wt/ is left alone
 (use compose-down --wipe only for named volumes; delete pgdata on disk to wipe DB).
 EOF
 }
@@ -34,7 +34,7 @@ if ! valid_slug "$SLUG"; then
   exit 1
 fi
 
-WT_PATH="$(cd "$PRIMARY_ROOT/.." && pwd)/finance-dashboard-wt-${SLUG}"
+WT_PATH="$(cd "$PRIMARY_ROOT/.." && pwd)/melos-wt-${SLUG}"
 
 cd "$PRIMARY_ROOT"
 if [[ ! -e "$WT_PATH" ]]; then
@@ -51,4 +51,4 @@ fi
 echo "==> Removing worktree $WT_PATH"
 git worktree remove "$WT_PATH"
 git worktree prune
-echo "Done. (Postgres data under ~/finance-helper-wt/ may still exist.)"
+echo "Done. (Postgres data under ~/melos-wt/ may still exist.)"
