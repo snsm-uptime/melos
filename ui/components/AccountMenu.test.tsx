@@ -137,10 +137,9 @@ describe("AccountMenu", () => {
     );
   }
 
-  it("shows language, theme, password reset, and sign out", async () => {
+  it("shows theme, password reset, and sign out", async () => {
     const { host, unmount } = renderAccount();
-    await waitForDom(() => host.textContent?.includes("Language"));
-    expect(host.textContent).toContain("Language");
+    await waitForDom(() => host.textContent?.includes("Theme"));
     expect(host.textContent).toContain("Theme");
     expect(host.textContent).toContain("Password reset");
     expect(host.textContent).toContain("Sign out");
@@ -158,45 +157,6 @@ describe("AccountMenu", () => {
           resetBtn.compareDocumentPosition(signOutBtn) & Node.DOCUMENT_POSITION_FOLLOWING,
       ),
     ).toBe(true);
-    unmount();
-  });
-
-  it("PATCHes language and updates document lang", async () => {
-    const fetchMock = vi.fn();
-    fetchMock
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(mePayload()), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify(mePayload({ language: "es", theme: null })),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
-      );
-    vi.stubGlobal("fetch", fetchMock);
-
-    const { host, unmount } = renderAccount();
-    await waitForDom(() => {
-      const btn = findButton(host, "Español");
-      return Boolean(btn && !btn.disabled);
-    });
-    const esBtn = findButton(host, "Español");
-    expect(esBtn).toBeTruthy();
-    await act(async () => {
-      esBtn!.click();
-    });
-    await waitForDom(() => document.documentElement.lang === "es");
-    expect(document.documentElement.lang).toBe("es");
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/auth/me",
-      expect.objectContaining({
-        method: "PATCH",
-        body: JSON.stringify({ language: "es" }),
-      }),
-    );
     unmount();
   });
 
@@ -345,7 +305,7 @@ describe("AccountMenu", () => {
         </PreferencesProvider>,
       );
     });
-    await waitForDom(() => host.textContent?.includes("Language"));
+    await waitForDom(() => host.textContent?.includes("Theme"));
 
     const header = host.querySelector('[data-app-chrome="header"]') as HTMLElement;
     const backButton = header.querySelector('button[aria-label="Back"]') as HTMLButtonElement;
@@ -384,7 +344,7 @@ describe("AccountMenu", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const { host, unmount } = renderAccount();
-    await waitForDom(() => host.textContent?.includes("Language"));
+    await waitForDom(() => host.textContent?.includes("Theme"));
 
     const fileInput = host.querySelector('input[type="file"]') as HTMLInputElement;
     expect(fileInput).toBeTruthy();
