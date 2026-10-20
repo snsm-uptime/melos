@@ -106,6 +106,19 @@ ALWAYS use `uv`. Never use `pip`, `python -m venv` or `requirements.txt`.
 ### Node (ui/)
 
 - `cd ui && npm install`; add a library with `npm install <package>`.
+- No deprecated code, including transitive dependencies. If CI or a local run
+  prints a deprecation warning, find the dependency chain with
+  `npm ls <module>` (for example, `npm ls punycode`) and fix it at the source.
+- To replace a transitive dependency, use an `overrides` entry in
+  `ui/package.json`, then delete the stale nested copy and its entry in
+  `package-lock.json` and run `npm install`. Re-run lint, typecheck and tests.
+  Keep the override and say why in the commit message.
+- Known case: `eslint@9` → `ajv@6` → `uri-js` loads Node's deprecated built-in
+  `punycode` (DEP0040). Fixed by overriding `uri-js` to `npm:fast-uri@4.2.3`
+  (`overrides.ajv["uri-js"]`). Installing the `punycode` npm package does not
+  help, because Node resolves the bare name to its built-in first. The
+  remaining `punycode` copy under `jsdom` → `whatwg-url` → `tr46` does not
+  print the warning; check it if the warning comes back.
 
 ## How to check that it works
 
