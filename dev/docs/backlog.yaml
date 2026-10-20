@@ -1,0 +1,373 @@
+# Melos backlog
+# Source: dev/docs/prd.md (journeys J0–J6, Appendix C priorities), specs/001-finance-dashboard-reuse/tasks.md (bootstrap),
+#         git history (bootstrap merged in #4 and #5).
+#
+# Status values:
+#   done         implemented and merged (manual verification may still be open; see verification)
+#   in_progress  being implemented now
+#   in_design    a speckit spec exists under specs/ for the story, no implementation yet
+#   backlog      no speckit spec yet (PRD mention alone is not enough), or explicitly Later in the PRD
+
+stories:
+
+  # ---------------------------------------------------------------------------
+  # Bootstrap (spec 001). Merged in PRs #4 and #5.
+  # ---------------------------------------------------------------------------
+
+  - id: S-001
+    title: Project scaffold, Compose services and tooling reused from finance-dashboard
+    epic: Bootstrap
+    priority: must
+    status: done
+    journey: 1.2
+    source: specs/001-finance-dashboard-reuse/tasks.md (T001–T043)
+    verification: Compose files and Dockerfiles in place; runtime checks pending (see S-014)
+
+  - id: S-002
+    title: Sign up, sign in and sign out with the reused auth layer
+    epic: Bootstrap
+    priority: must
+    status: done
+    journey: J0
+    source: prd.md 1.3; tasks.md T010–T017
+    acceptance: [AC0.1, AC0.2]
+    verification: code merged; manual sign-up/in/out pending (T055–T057)
+
+  - id: S-003
+    title: Password reset and email verification over SMTP
+    epic: Bootstrap
+    priority: must
+    status: done
+    journey: J0
+    source: prd.md 1.3; tasks.md T015, T058
+    acceptance: [AC0.3]
+    verification: code merged; real-inbox test pending (T058)
+
+  - id: S-004
+    title: Rate limiting on register, sign-in, reset and verification
+    epic: Bootstrap
+    priority: must
+    status: done
+    journey: J0
+    source: prd.md 1.3; tasks.md T013, T059
+    acceptance: [AC0.4]
+    verification: code merged; 429 check pending (T059)
+
+  - id: S-005
+    title: Profile page (alias, theme, photo); language selector removed
+    epic: Bootstrap
+    priority: must
+    status: done
+    journey: J0
+    source: prd.md 1.3; tasks.md T021–T023
+
+  - id: S-006
+    title: Health endpoints for api, ui and mcp following contracts/health.md
+    epic: Bootstrap
+    priority: must
+    status: done
+    source: tasks.md T047–T049, T109; specs/001-finance-dashboard-reuse/contracts/health.md
+    verification: unit tests pass; live curl checks pending (T052–T054)
+
+  - id: S-007
+    title: Rename finance-dashboard names to Melos (FR1.1)
+    epic: Bootstrap
+    priority: must
+    status: done
+    source: tasks.md T101–T106
+
+  - id: S-008
+    title: Dev seed with owner, member and shared kitchen
+    epic: Bootstrap
+    priority: must
+    status: done
+    source: tasks.md T028a, T107
+    verification: integration test added; manual seed check pending (T059a)
+
+  - id: S-009
+    title: Kitchen create, rename, content_language (en|es), archive, hide
+    epic: Kitchens
+    priority: must
+    status: done
+    journey: J1
+    source: prd.md J1; tasks.md T108, T112
+    acceptance: [AC1.1]
+
+  - id: S-010
+    title: Non-members get 404 on kitchen resources; owner-only actions return 403 to members
+    epic: Kitchens
+    priority: must
+    status: done
+    journey: J1
+    source: tasks.md T113; spec FR7
+    acceptance: [AC1.1]
+
+  - id: S-011
+    title: Owner invites by email; invitee lands in the inviting kitchen
+    epic: Kitchens
+    priority: must
+    status: done
+    journey: J1
+    source: prd.md J1; tasks.md (reused invite flow)
+    acceptance: [AC1.2]
+    verification: invite email test pending (T058)
+
+  - id: S-012
+    title: Kitchen switcher remembers the last kitchen opened
+    epic: Kitchens
+    priority: must
+    status: done
+    journey: J1
+    source: prd.md J1 (last_opened_kitchen_id in PATCH /auth/me)
+
+  - id: S-014
+    title: Bootstrap verification in a running environment
+    epic: Bootstrap
+    priority: must
+    status: in_progress
+    source: tasks.md T050–T059a, T062, T066a, T067, T070–T073, T076–T077, T089b
+    notes: >
+      Remaining open items are manual checks marked READY: Compose startup, migrations,
+      health curls, auth E2E, SMTP inbox test, rate limit, seed check, UI lint/typecheck/tests,
+      CI run on the branch, worktree isolation.
+
+  # ---------------------------------------------------------------------------
+  # Must (v1 feature work). Documented in PRD, not implemented.
+  # ---------------------------------------------------------------------------
+
+  - id: S-020
+    title: Capture a recipe from pasted text into a draft review screen
+    epic: Capture
+    priority: must
+    status: backlog
+    journey: J2
+    source: prd.md J2, 1.5A, Appendix B.1
+    acceptance: [AC2.1, AC2.4, AC2.5]
+
+  - id: S-021
+    title: Capture a recipe from a URL (SSRF-safe fetch, JSON-LD first)
+    epic: Capture
+    priority: must
+    status: backlog
+    journey: J2
+    source: prd.md J2, 1.5A, 1.7 (URL fetching)
+    acceptance: [AC2.3]
+
+  - id: S-022
+    title: Match captured ingredients to the kitchen catalog
+    epic: Capture
+    priority: must
+    status: backlog
+    journey: J2
+    source: prd.md J2, 1.6 (normalization), Appendix B.1 rule 3
+    acceptance: [AC2.2]
+
+  - id: S-023
+    title: Save a confirmed draft as a recipe and create new catalog entries
+    epic: Recipes
+    priority: must
+    status: backlog
+    journey: J2
+    source: prd.md 1.5A, Appendix A (Recipe)
+
+  - id: S-024
+    title: Recipe list with text and category filters
+    epic: Recipes
+    priority: must
+    status: backlog
+    journey: J3
+    source: prd.md J3
+
+  - id: S-025
+    title: Recipe detail, edit and delete with confirmation; deletion removes it from cart and search
+    epic: Recipes
+    priority: must
+    status: backlog
+    journey: J3
+    source: prd.md J3
+    acceptance: [AC3.2]
+
+  - id: S-026
+    title: Recipe PDF with correct accents and fractions
+    epic: Recipes
+    priority: must
+    status: backlog
+    journey: J3
+    source: prd.md 1.5D, J3
+    acceptance: [AC3.1]
+
+  - id: S-027
+    title: Shared cart with people and per-recipe meals; scale factor
+    epic: Cart
+    priority: must
+    status: backlog
+    journey: J4
+    source: prd.md J4, 1.6 (cart)
+
+  - id: S-028
+    title: Consolidated shopping list (domain/cart.py) with units, sizes, vague section and chips
+    epic: Cart
+    priority: must
+    status: backlog
+    journey: J5
+    source: prd.md J5 steps 1–7
+    acceptance: [AC5.1, AC5.2, AC5.3, AC5.4]
+
+  - id: S-029
+    title: Shopping list export as Markdown copy and PDF
+    epic: Cart
+    priority: must
+    status: backlog
+    journey: J5
+    source: prd.md J5 Export
+    acceptance: [AC5.5]
+
+  - id: S-030
+    title: Finalize shopping list as a snapshot with closing_date
+    epic: Cart
+    priority: must
+    status: backlog
+    journey: J5
+    source: prd.md J5 Finalize, 1.6 (shopping_list)
+
+  - id: S-031
+    title: Personal conversations: new, rename, archive, unarchive, delete; private to each user
+    epic: Ask
+    priority: must
+    status: backlog
+    journey: J6
+    source: prd.md J6, 3
+    acceptance: [AC6.3]
+
+  - id: S-032
+    title: Ask the kitchen assistant with grounded, cited answers
+    epic: Ask
+    priority: must
+    status: backlog
+    journey: J6
+    source: prd.md 1.5B, 1.7, Appendix B.2
+    acceptance: [AC6.1, AC6.2, AC6.4]
+
+  - id: S-033
+    title: Embeddings and pgvector search pre-filtered by kitchen
+    epic: Ask
+    priority: must
+    status: backlog
+    source: prd.md 1.5E, 1.5F, 1.6 (recipe_embedding), Appendix D
+    notes: Embedding model and dimension check still open (Appendix D).
+
+  - id: S-034
+    title: Shopping list history answered in chat as cards
+    epic: Ask
+    priority: must
+    status: backlog
+    journey: J5, J6
+    source: prd.md J5 History, J6, Appendix B.2 rule 6
+    acceptance: [AC6.5]
+
+  - id: S-035
+    title: MCP service with per-user Bearer API keys and kitchen-scoped tools
+    epic: MCP
+    priority: must
+    status: backlog
+    source: prd.md 1.3.1, Appendix A (MCP column), Appendix C
+    notes: >
+      Container, health endpoint and lock file exist from the bootstrap. Keys, auth and tools
+      (capture, read recipes, cart ops, shopping list ops, ask) are not built.
+
+  - id: S-036
+    title: Deploy v1 on the owner's server with the prod overlay
+    epic: Deployment
+    priority: must
+    status: backlog
+    source: prd.md 1.9, Appendix C; tasks.md T090–T100 (docs only)
+    notes: Deployment docs exist from the bootstrap. The deploy itself is not done.
+
+  - id: S-037
+    title: AI evaluation set (about 10 fixtures) with expected drafts
+    epic: Quality
+    priority: must
+    status: backlog
+    source: prd.md 1.8 item 5, Appendix C (AI evaluation)
+
+  # ---------------------------------------------------------------------------
+  # Should
+  # ---------------------------------------------------------------------------
+
+  - id: S-040
+    title: Capture a recipe from a photo (JPEG, PNG, HEIC up to 10 MB)
+    epic: Capture
+    priority: should
+    status: backlog
+    journey: J2
+    source: prd.md J2, 1.5A
+
+  - id: S-041
+    title: "@ mentions in chat to force recipes into context"
+    epic: Ask
+    priority: should
+    status: backlog
+    journey: J6
+    source: prd.md J6, 1.5B
+
+  - id: S-042
+    title: Catalog management: rename and merge ingredients and categories
+    epic: Recipes
+    priority: should
+    status: backlog
+    journey: J3
+    source: prd.md J3, Appendix A
+
+  - id: S-043
+    title: Semantic search in the recipe list
+    epic: Recipes
+    priority: should
+    status: backlog
+    source: prd.md Appendix C, 1.5F
+
+  - id: S-044
+    title: API key management UI on the account page (generate, copy, revoke)
+    epic: MCP
+    priority: should
+    status: backlog
+    journey: J0
+    source: prd.md J0 API Key Management, 1.3.1
+
+  - id: S-045
+    title: Edit shopping list items while the list is active
+    epic: Cart
+    priority: should
+    status: backlog
+    source: prd.md Appendix A (ShoppingListItem)
+
+  # ---------------------------------------------------------------------------
+  # Later or not in v1
+  # ---------------------------------------------------------------------------
+
+  - id: S-050
+    title: Ingredient ML tagger (e.g. Hugging Face model)
+    epic: Capture
+    priority: later
+    status: backlog
+    source: prd.md Appendix C (Later)
+
+  - id: S-051
+    title: Public recipe sharing
+    epic: Recipes
+    priority: later
+    status: backlog
+    source: prd.md Appendix C (Later), 4
+
+  - id: S-052
+    title: Offline mode
+    epic: Platform
+    priority: later
+    status: backlog
+    source: prd.md Appendix C (Later)
+
+  - id: S-053
+    title: Account deletion in the UI (REST endpoint exists)
+    epic: Account
+    priority: later
+    status: backlog
+    source: prd.md Appendix A (User), Appendix D
