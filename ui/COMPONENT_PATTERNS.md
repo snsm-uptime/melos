@@ -7,102 +7,7 @@ This document establishes patterns and standards for building reusable component
 ### Overview
 All custom SVG icons are centralized in `/app/icons/` to improve maintainability, reduce duplication, and make it easier to track icon usage across the application.
 
-**Single source of truth:** Every icon has one definition. Update it in one place, and all uses reflect the change.
-
-### Icon File Structure
-```
-app/icons/
-├── SaveIcon.tsx          # Individual icon component
-├── SendIcon.tsx
-├── CloseIcon.tsx
-├── PlusIcon.tsx
-├── DotsIcon.tsx
-├── ShareIcon.tsx
-├── PieChartIcon.tsx
-├── EyeIcon.tsx
-├── index.ts              # Central export point
-├── README.md             # Detailed icon reference
-├── QUICK_REFERENCE.md    # Developer quick guide
-└── MIGRATION.md          # Migration history
-```
-
-### Creating a New Icon
-
-1. **Create the component file** in `/app/icons/NameIcon.tsx`:
-
-```tsx
-import type { SVGProps } from "react";
-
-export function NameIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      {...props}
-    >
-      {/* SVG paths and content */}
-      <path d="..." />
-    </svg>
-  );
-}
-```
-
-2. **Export from `index.ts`**:
-```tsx
-export { NameIcon } from "./NameIcon";
-```
-
-3. **Document in `README.md`**:
-   - Add to the icons table
-   - Include use case and design notes
-   - Note viewBox dimensions if non-standard
-
-### Using Icons
-
-**Import from centralized location:**
-```tsx
-import { SaveIcon, SendIcon, CloseIcon } from "@/app/icons";
-```
-
-**Apply styles via className:**
-```tsx
-<SaveIcon className={styles.icon} />
-```
-
-**Or via inline styles:**
-```tsx
-<ShareIcon style={{ width: "24px", height: "24px" }} />
-```
-
-**Or via SVG props:**
-```tsx
-<PlusIcon aria-label="Add item" title="Add new item" />
-```
-
-### Icon Design Standards
-
-All icons follow these conventions to ensure consistency:
-
-- **Color inheritance:** Use `currentColor` for strokes/fills — icons inherit color from parent CSS
-- **Accessibility:** Include `aria-hidden="true"` (assume icons are decorative or paired with aria-labels)
-- **Responsiveness:** Use `viewBox` (e.g., `viewBox="0 0 24 24"`) for scaling without explicit dimensions
-- **Stroke width:** Typically 2 or 2.2 for visual consistency
-- **Flexibility:** Accept `className`, inline `style`, and any SVG element attributes via props spread
-
-### Available Icons
-
-See `/app/icons/README.md` for the complete icon reference and `/app/icons/QUICK_REFERENCE.md` for a developer quick start.
-
-Current icons:
-- **SaveIcon** — Document with save indicator; persist/save actions
-- **SendIcon** — Arrow/send shape; submit/send actions (invitations, etc.)
-- **CloseIcon** — X shape; close/dismiss buttons in modals and overlays
-- **PlusIcon** — Plus sign; add/create actions
-- **DotsIcon** — Vertical three dots; menu triggers (note: 16x16 viewBox)
-- **ShareIcon** — Connected circles; invite/share actions
-- **PieChartIcon** — Pie chart visualization; split settings and analytics
-- **EyeIcon** — Open/closed eye; password visibility toggle (requires `open` boolean prop)
+**Single source of truth:** Every icon has one definition, and all icon documentation lives in [`app/icons/README.md`](./app/icons/README.md): the catalog, usage, design standards, and how to add an icon. Do not duplicate icon docs elsewhere.
 
 ### Icon Usage Rules
 
@@ -207,7 +112,7 @@ export function FormIconSubmit({ variant = "save", label, ...rest }: FormIconSub
 
 ## Related References
 
-- **Icon quick reference:** `app/icons/QUICK_REFERENCE.md`
+- **Icon reference:** `app/icons/README.md`
 - **Styling guide:** `README.md` Styling section
 - **Project architecture:** See `/architecture/ARCHITECTURE-SPINE.md` in planning artifacts
 - **Tailwind config:** `tailwind.config.ts`

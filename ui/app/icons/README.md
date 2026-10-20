@@ -1,6 +1,23 @@
 # SVG Icons
 
-Centralized location for all custom SVG icon components used throughout the UI.
+Centralized location for all custom SVG icon components used throughout the UI. This file is the only icon reference: catalog, usage, standards, and how to add an icon.
+
+## Quick Reference
+
+| Icon | Use case | Notes |
+|------|----------|-------|
+| `SaveIcon` | Persist/save actions | Document with save indicator |
+| `SendIcon` | Submit/send actions | Arrow/send shape |
+| `CloseIcon` | Close/dismiss buttons | X shape |
+| `PlusIcon` | Add/create actions | Plus sign |
+| `DotsIcon` | Menu triggers | Vertical dots, 16×16 viewBox |
+| `ShareIcon` | Invite/share actions | Connected circles |
+| `PieChartIcon` | Analytics/split settings | Pie chart |
+| `EyeIcon` | Password visibility | Requires `open` boolean prop |
+| `HashtagIcon` | Exact-amount split | Slanted hash |
+| `PercentageIcon` | Percentage split | Two circles + slash |
+
+Full descriptions for each icon are under [Icons](#icons).
 
 ## Icons
 
@@ -134,7 +151,77 @@ A wallet body with a folded flap tucked into its top edge and a clasp dot cut ou
 - Style: Fill-based
 - Accepts: className, SVG element props
 
-> Not yet documented above: `HomeIcon`, `UploadIcon`, `SpinnerIcon`, `UserIcon`, `SunIcon`, `MoonIcon`, `SystemIcon`, `ArrowIcon`, `TrashIcon`.
+### HomeIcon
+
+A house outline with a door. Used for the Home tab in the app's tab bar.
+
+- ViewBox: `0 0 24 24`
+- Style: Stroke-based
+- Accepts: className, SVG element props
+
+### UploadIcon
+
+An arrow pointing up out of a tray line. Currently unused in the UI.
+
+- ViewBox: `0 0 24 24`
+- Style: Stroke-based
+- Accepts: className, SVG element props
+
+### SpinnerIcon
+
+A faint ring with a quarter arc, for loading states. Consumers add `animate-spin` through className to rotate it.
+
+- ViewBox: `0 0 24 24`
+- Style: Stroke-based, shared stroke width (`ICON_STROKE`)
+- Accepts: className, SVG element props
+
+### UserIcon
+
+A head and shoulders silhouette outline. Currently unused in the UI.
+
+- ViewBox: `0 0 24 24`
+- Style: Stroke-based
+- Accepts: className, SVG element props
+
+### SunIcon
+
+A sun with eight rays. Used for the light theme option in the account menu.
+
+- ViewBox: `0 0 24 24`
+- Style: Stroke-based, shared stroke width (`ICON_STROKE`)
+- Accepts: className, SVG element props
+
+### MoonIcon
+
+A crescent moon. Used for the dark theme option in the account menu.
+
+- ViewBox: `0 0 24 24`
+- Style: Stroke-based, shared stroke width (`ICON_STROKE`)
+- Accepts: className, SVG element props
+
+### SystemIcon
+
+A monitor with a stand. Used for the follow-system theme option in the account menu.
+
+- ViewBox: `0 0 24 24`
+- Style: Stroke-based, shared stroke width (`ICON_STROKE`)
+- Accepts: className, SVG element props
+
+### ArrowIcon
+
+A left-pointing arrow. Points left by default; rotate 180° through className for a right arrow. Currently unused in the UI.
+
+- ViewBox: `0 0 24 24`
+- Style: Stroke-based
+- Accepts: className, SVG element props
+
+### TrashIcon
+
+A trash can with a lid and two inner lines. Used for delete actions (account menu and kitchen list).
+
+- ViewBox: `0 0 24 24`
+- Style: Stroke-based
+- Accepts: className, SVG element props
 
 ## Usage
 
@@ -153,6 +240,33 @@ function MyComponent() {
   );
 }
 ```
+
+## Adding an Icon
+
+1. Create `NameIcon.tsx` in this directory:
+
+   ```tsx
+   import type { SVGProps } from "react";
+
+   export function NameIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
+     return (
+       <svg
+         className={className}
+         viewBox="0 0 24 24"
+         aria-hidden="true"
+         {...props}
+       >
+         {/* SVG paths and content */}
+       </svg>
+     );
+   }
+   ```
+
+2. Export it from `index.ts`: `export { NameIcon } from "./NameIcon";`
+3. Add an entry under [Icons](#icons) with its use case, viewBox, style, and props. Add a row to the [Quick Reference](#quick-reference) if it is a commonly used icon.
+4. Note the viewBox if it is not `0 0 24 24`.
+
+Reuse an existing icon before creating a new one, and never define inline SVG icons in components.
 
 ## Styling
 
