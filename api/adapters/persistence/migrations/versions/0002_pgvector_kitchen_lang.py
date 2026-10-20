@@ -9,9 +9,8 @@ Revises: 0001_melos_baseline
 Create Date: 2026-10-19
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision: str = "0002_pgvector_kitchen_lang"
 down_revision: str | None = "0001_melos_baseline"

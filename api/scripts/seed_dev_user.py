@@ -27,8 +27,8 @@ from adapters.persistence.repositories import (
     SqlAlchemySignupRepository,
 )
 from application.kitchens import CreateOwnedKitchenCommand, CreateOwnedKitchenService
-from application.preferences import SetAliasCommand, SetAliasService
 from application.ports import NewMembershipRecord
+from application.preferences import SetAliasCommand, SetAliasService
 from application.signup import SignupCommand, SignUpService
 from domain.signup import normalize_email
 
