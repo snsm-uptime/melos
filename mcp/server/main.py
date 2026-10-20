@@ -4,8 +4,9 @@ Provides tools for recipe management, cart operations, and AI-assisted features.
 Runs as a separate service on port 9000 for security isolation.
 """
 import os
+from datetime import datetime, timezone
+
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
 
 app = FastAPI(title="Melos MCP", version="0.1.0")
 
@@ -16,7 +17,7 @@ async def health():
     return {
         "status": "healthy",
         "service": "mcp",
-        "timestamp": __import__("datetime").datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
