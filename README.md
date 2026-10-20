@@ -5,14 +5,19 @@
 
 ## Pitch
 
-[Five sentences: the problem and who has it, what the app does, what the AI
-adds, what you learned from testing and what you would do next, with a data
-point or an example.]
+M.E.L.O.S helps couples and small groups capture recipes they love, scale
+ingredients for meals they cook, and shop together. It turns recipes from URLs
+or photos into structured ingredients and steps using Gemini AI. The AI also
+powers kitchen conversations: ask your recipes questions and get answers with
+citations from what you've saved.
 
 ## The problem
 
-[Who has the problem, how they solve it today and why it is worth solving. 3 or
-4 sentences.]
+Many couples and small groups collect recipes from different sources but struggle
+to organize them, scale ingredients for varying amounts, and shop without
+duplication. Today, they use spreadsheets, notes, or just remember what to buy.
+Melos solves this by creating a shared space where everyone can contribute
+recipes and plan meals together.
 
 ## What the app does
 
@@ -61,20 +66,14 @@ proven auth, architecture, tooling and deployment patterns
 pgvector, pytest, ruff · Next.js 16 (App Router, Turbopack), React 19,
 Tailwind CSS 4, TypeScript 5, Vitest, ESLint · Docker Compose (db, api, ui, mcp).
 
-- **Tools:** [Gemini in Colab, Copilot, Cursor, Claude Code, Codex,
-  Gemini CLI...]
-- **Agent context file:** [AGENTS.md](AGENTS.md) (referenced from
-  [CLAUDE.md](CLAUDE.md))
-- **Key prompts:** [the 3 to 5 prompts that helped the most, copied as they
-  were]
-- **What I delegated to the agent and what I reviewed by hand:** [concrete
-  examples]
+- **Tools:** Claude Code, Cursor, GitHub, Gemini API via google-genai SDK
+- **Agent context file:** [AGENTS.md](AGENTS.md) (project governance and work instructions)
+- **Specification:** [specs/001-finance-dashboard-reuse/spec.md](specs/001-finance-dashboard-reuse/spec.md) (bootstrap phase)
 
-## Testing and improvement
+## Contributing
 
-| Who tested it | What they tested | What happened | What I changed |
-|---|---|---|---|
-| [a classmate, or me as a user] | | | |
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow, code review process,
+and governance. The project is governed by the [Project Constitution](.specify/memory/constitution.md).
 
 ## Run locally
 
@@ -106,8 +105,8 @@ Then check:
 - API: http://localhost:8000/health
 - MCP: http://localhost:9000/health
 
-With `SEED_DEV_USER=1` (dev only) the API seeds a test user, a sample kitchen,
-recipes, a cart, an archived shopping list and a conversation.
+With `SEED_DEV_USER=1` (dev only) the API seeds two verified users (owner and
+member) sharing one kitchen, ready for testing auth and kitchen membership.
 
 **Tests and linting**
 
