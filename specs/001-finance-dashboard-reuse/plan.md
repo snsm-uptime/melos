@@ -95,7 +95,7 @@ api/
 │   └── persistence/ # models, repositories, sessions, password_*, kitchen_invite, db, base
 │       └── migrations/versions/
 │           ├── 0001_melos_baseline.py
-│           └── ➕ 0002_pgvector_and_kitchen_language.py
+│           └── ➕ 0002_pgvector_kitchen_lang.py
 ├── api/             # app.py, deps.py, settings.py, routes/{auth,kitchens,invites,health}.py, schemas/
 ├── scripts/         # entrypoint.py (alembic upgrade head → seed → uvicorn), seed_dev_user.py
 └── tests/           # domain/application/integration tests (reused + kitchen)
@@ -142,7 +142,7 @@ ui/
 1. **Naming (D1, D2, spec FR1.1):** update `docker-compose.yml` (`name:`, pgdata/pdfs sources, `SESSION_COOKIE_NAME` and `AUTH_CLIENT_IP_HEADER` defaults), `docker-compose.prod.yml`, `.env.example` (incl. DB name `melos`), `.github/workflows/ci.yml` (DB name, PDF path), `scripts/compose-lib.sh`, `compose-{up,down,restart,wipe-db}.sh`, `scripts/worktree/*` and `scripts/README.md`. Rename the `fh_session`/`X-FH-Client-IP` fallbacks in `api/api/settings.py`, `ui/proxy.ts`, `ui/app/api/auth/sign-out/route.ts`, `ui/lib/authBff.ts`, the "Finance Helper" title, and every api/ui test fixture. Done when quickstart A1 returns nothing.
 1a. **Dev seed (D7):** extend `seed_dev_user.py` to create the member user (`SEED_DEV_MEMBER_*`) and one shared kitchen (`SEED_DEV_USER_KITCHEN`, default "Dev Kitchen") with owner and member memberships. Add the new variables to `docker-compose.yml` and `.env.example` (placeholders only).
 2. **UI adaptations (D3, FR5.2):** update `PreferencesProvider.tsx` (keys, no `setLanguage`, `en` only), `AccountMenu.tsx` (no language selector), `app/account/page.tsx` (no language section), `app/home/page.tsx` and `app/kitchens/[kitchenId]/page.tsx` (cookie key), and the tests they affect.
-3. **Schema (D4):** add `0002_pgvector_and_kitchen_language.py`. Add `content_language` to the SQLAlchemy model, the kitchen domain value set and the kitchens schema/routes (create and rename take an optional `content_language`).
+3. **Schema (D4):** add `0002_pgvector_kitchen_lang.py`. Add `content_language` to the SQLAlchemy model, the kitchen domain value set and the kitchens schema/routes (create and rename take an optional `content_language`).
 4. **Health (D6):** align `api/api/routes/health.py`, `ui/app/health/route.ts` and `mcp/server/main.py` with the contract (timezone-aware UTC). Update `api/tests/test_health.py` and add one mcp health test.
 5. **MCP packaging:** add `mcp/uv.lock` and `.python-version` (uv only), and make sure the image installs from the lock file.
 6. **Verification (existing tasks T050–T089b):** run the Compose stack, auth flow, lint, tests and secret scan, following the quickstart.

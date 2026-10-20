@@ -102,7 +102,7 @@ These come from checking the current code against the spec while planning. Each 
 - **Rationale:** FR5.2 and FR6. Tasks T021–T023 are still open.
 
 ### D4 · Bootstrap schema scope
-- **Decision:** Add Alembic revision `0002_pgvector_and_kitchen_language`: `CREATE EXTENSION IF NOT EXISTS vector` and `kitchens.content_language VARCHAR(2) NOT NULL DEFAULT 'en'` with a check constraint for `en`/`es`. The recipe, catalog, cart, shopping-list, conversation and embedding tables are each created by the feature spec that owns them.
+- **Decision:** Add Alembic revision `0002_pgvector_kitchen_lang`: `CREATE EXTENSION IF NOT EXISTS vector` and `kitchens.content_language VARCHAR(2) NOT NULL DEFAULT 'en'` with a check constraint for `en`/`es`. The recipe, catalog, cart, shopping-list, conversation and embedding tables are each created by the feature spec that owns them.
 - **Rationale:** The PRD v0 milestone is "scaffold, auth, kitchens, health checks". The kitchen entity in PRD §1.6 includes `content_language`, and J1 needs it. Enabling the extension now proves the pgvector image works (FR2) before any embedding code depends on it.
 - **Alternatives considered:** One migration with all 21 tables, as worded in T044. Rejected because it builds future features without specs. The approved squash and prune on 19/10 already narrowed the baseline to auth and kitchens.
 

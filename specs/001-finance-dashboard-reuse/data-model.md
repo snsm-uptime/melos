@@ -73,7 +73,7 @@
 
 - ➕ `vector` (pgvector), enabled in `0002` with `CREATE EXTENSION IF NOT EXISTS vector` (D4). No vector columns exist until the recipes/embeddings feature.
 
-## Migration `0002_pgvector_and_kitchen_language`
+## Migration `0002_pgvector_kitchen_lang`
 
 | Step | Upgrade | Downgrade |
 |------|---------|-----------|

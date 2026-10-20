@@ -135,7 +135,7 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 
 ### Schema (plan D4)
 
-- [x] T045 Add Alembic revision `0002_pgvector_and_kitchen_language`: `CREATE EXTENSION IF NOT EXISTS vector`; `kitchens.content_language VARCHAR(2) NOT NULL DEFAULT 'en'` with CHECK in (`en`,`es`); downgrade drops both ([data-model.md](data-model.md)). Migration `0001_melos_baseline` does **not** enable pgvector, so this replaces the earlier wrong tick
+- [x] T045 Add Alembic revision `0002_pgvector_kitchen_lang`: `CREATE EXTENSION IF NOT EXISTS vector`; `kitchens.content_language VARCHAR(2) NOT NULL DEFAULT 'en'` with CHECK in (`en`,`es`); downgrade drops both ([data-model.md](data-model.md)). Migration `0001_melos_baseline` does **not** enable pgvector, so this replaces the earlier wrong tick
 - [x] T108 Add `content_language` to the SQLAlchemy model, the value set in `domain/kitchens.py`, and the kitchens schemas/routes (create and rename take an optional `content_language`; owner only). Domain + integration tests
 
 ### Health (plan D6)
@@ -174,7 +174,7 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 - [x] T048 Create `ui/app/health/route.ts` (GET /health for the ui service; does not proxy to the api). Contract shape: T109
 - [x] T049 Create MCP health endpoint (GET /health on port 9000). Contract shape: T109
 - [ ] T050 Test Docker Compose startup: `./scripts/compose-up.sh -d` (all 4 services healthy within 30s; quickstart A3) [READY: run in dev environment]
-- [ ] T051 Verify database auto-migrations: `docker compose exec api uv run alembic current` shows `0002_pgvector_and_kitchen_language (head)`; `\dx vector` lists the extension (quickstart A5, A6) [READY: run in dev environment]
+- [ ] T051 Verify database auto-migrations: `docker compose exec api uv run alembic current` shows `0002_pgvector_kitchen_lang (head)`; `\dx vector` lists the extension (quickstart A5, A6) [READY: run in dev environment]
 - [ ] T052 Verify API health: `curl http://localhost:8000/health` returns 200 with `"service":"api"` and no `version` (quickstart A4) [READY: run in dev environment]
 - [ ] T053 Verify UI loads: Open http://localhost:3000 (sign-in page) and `curl http://localhost:3000/health` returns `"service":"ui"` [READY: run in dev environment]
 - [ ] T054 Verify MCP health: `curl http://localhost:9000/health` returns 200 with `"service":"mcp"` [READY: run in dev environment]

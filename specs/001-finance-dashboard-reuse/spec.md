@@ -523,7 +523,7 @@ melos/
 │   │   └── kitchens.py, kitchen_access.py, signup.py, …
 │   ├── adapters/
 │   │   ├── persistence/           # Reused: SQLAlchemy models, repositories, sessions
-│   │   │   └── migrations/versions/  # 0001_melos_baseline, 0002_pgvector_and_kitchen_language
+│   │   │   └── migrations/versions/  # 0001_melos_baseline, 0002_pgvector_kitchen_lang
 │   │   ├── email/                 # Reused from finance: aiosmtplib
 │   │   └── llm/, web/, pdf/       # (later features: Gemini, page fetcher, WeasyPrint)
 │   ├── api/

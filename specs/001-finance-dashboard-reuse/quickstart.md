@@ -561,7 +561,7 @@ Run these from the repo root. They check the plan decisions D1–D7 ([plan.md](p
 | A2 | Compose project and data path (D1) | `docker compose config \| grep -E '^name:\|/pgdata'` | `name: melos` (or your `MELOS_COMPOSE_NAME`), source under `$MELOS_DATA/pgdata` |
 | A3 | Four services, all healthy | `./scripts/compose-up.sh -d && docker compose ps` | `db`, `api`, `ui`, `mcp` all `healthy` |
 | A4 | Health contract (D6) | `for p in 8000 3000 9000; do curl -s localhost:$p/health; echo; done` | each returns `"status":"healthy"` with its own `"service"` ([contracts/health.md](contracts/health.md)) |
-| A5 | Migrations at head, pgvector on (D4) | `docker compose exec api uv run alembic current` · `docker compose exec db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\dx vector'` | `0002_pgvector_and_kitchen_language (head)` · one `vector` row |
+| A5 | Migrations at head, pgvector on (D4) | `docker compose exec api uv run alembic current` · `docker compose exec db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\dx vector'` | `0002_pgvector_kitchen_lang (head)` · one `vector` row |
 | A6 | Kitchen language (D4) | `docker compose exec db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\d kitchens'` | `content_language` with default `'en'` and a check for `en`/`es` |
 | A7 | Cookie name (D2) | sign in at <http://localhost:3000>, then check DevTools → Cookies | `melos_session`, httpOnly, SameSite=Lax |
 | A8 | English-only UI (D3) | open the account menu and `/account` | no language selector; localStorage has `melos_theme_cache` only |
