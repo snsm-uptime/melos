@@ -127,8 +127,8 @@ def test_non_member_and_non_owner_rename_denied(client: TestClient, db_session: 
     client.post("/auth/sign-out")
     _register(client, "stranger@example.com")
     denied_stranger = client.patch(f"/kitchens/{kitchen_id}", json={"name": "Hacked"})
-    assert denied_stranger.status_code == 403
-    assert denied_stranger.json()["code"] == "not_kitchen_member"
+    assert denied_stranger.status_code == 404
+    assert denied_stranger.json()["code"] == "kitchen_not_found"
 
     db_session.expire_all()
     row = db_session.get(KitchenModel, kitchen_id)
@@ -191,15 +191,15 @@ def test_non_owner_and_non_member_archive_denied(client: TestClient, db_session:
     client.post("/auth/sign-out")
     _register(client, "archivestranger@example.com")
     denied_stranger = client.post(f"/kitchens/{kitchen_id}/archive")
-    assert denied_stranger.status_code == 403
-    assert denied_stranger.json()["code"] == "not_kitchen_member"
+    assert denied_stranger.status_code == 404
+    assert denied_stranger.json()["code"] == "kitchen_not_found"
 
 
 def test_archive_unknown_kitchen_same_as_non_member(client: TestClient) -> None:
     _register(client, "archiveprober@example.com")
     response = client.post(f"/kitchens/{uuid4()}/archive")
-    assert response.status_code == 403
-    assert response.json()["code"] == "not_kitchen_member"
+    assert response.status_code == 404
+    assert response.json()["code"] == "kitchen_not_found"
 
 
 def test_archiving_preserves_membership(client: TestClient, db_session: Session) -> None:
@@ -329,15 +329,15 @@ def test_non_member_hide_denied(client: TestClient, db_session: Session) -> None
     client.post("/auth/sign-out")
     _register(client, "hidestranger@example.com")
     response = client.post(f"/kitchens/{kitchen_id}/hide")
-    assert response.status_code == 403
-    assert response.json()["code"] == "not_kitchen_member"
+    assert response.status_code == 404
+    assert response.json()["code"] == "kitchen_not_found"
 
 
 def test_hide_unknown_kitchen_same_as_non_member(client: TestClient) -> None:
     _register(client, "hideprober@example.com")
     response = client.post(f"/kitchens/{uuid4()}/hide")
-    assert response.status_code == 403
-    assert response.json()["code"] == "not_kitchen_member"
+    assert response.status_code == 404
+    assert response.json()["code"] == "kitchen_not_found"
 
 
 def test_owner_unhide_rejected(client: TestClient) -> None:
@@ -518,10 +518,9 @@ def test_set_last_opened_kitchen_member_and_non_member(client: TestClient) -> No
     client.post("/auth/sign-out")
     _register(client, "nosy@example.com")
     denied = client.patch("/auth/me", json={"last_opened_kitchen_id": kitchen_id})
-    assert denied.status_code == 403
-    assert denied.json()["code"] == "not_kitchen_member"
+    assert denied.status_code == 404
+    assert denied.json()["code"] == "kitchen_not_found"
 
     missing = client.patch("/auth/me", json={"last_opened_kitchen_id": str(uuid4())})
-    assert missing.status_code == 403
-    assert missing.json()["code"] == "not_kitchen_member"
-    assert missing.json()["detail"] == "You do not have access to this kitchen."
+    assert missing.status_code == 404
+    assert missing.json()["code"] == "kitchen_not_found"

@@ -109,8 +109,8 @@ def test_failed_combined_patch_does_not_leave_set_once_alias(client: TestClient)
         "/auth/me",
         json={"alias": "gina", "last_opened_kitchen_id": foreign_kitchen},
     )
-    assert failed.status_code == 403, failed.text
-    assert failed.json()["code"] == "not_kitchen_member"
+    assert failed.status_code == 404, failed.text
+    assert failed.json()["code"] == "kitchen_not_found"
     assert client.get("/auth/me").json()["alias"] is None
 
     # Claim still works on a clean follow-up.

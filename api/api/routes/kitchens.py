@@ -234,7 +234,7 @@ def invite_member(
             content={"detail": str(exc), "code": "already_kitchen_member"},
         )
     except (KitchenNotFoundError, NotKitchenMemberError):
-        return _access_denied()
+        return _kitchen_not_found()
     except NotKitchenOwnerError as exc:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -284,7 +284,7 @@ def rename_kitchen(
             content={"detail": str(exc), "code": "invalid_kitchen_name"},
         )
     except (KitchenNotFoundError, NotKitchenMemberError):
-        return _access_denied()
+        return _kitchen_not_found()
     except NotKitchenOwnerError as exc:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -306,7 +306,7 @@ def archive_kitchen(
             ArchiveKitchenCommand(actor_user_id=user_id, kitchen_id=kitchen_id)
         )
     except (KitchenNotFoundError, NotKitchenMemberError):
-        return _access_denied()
+        return _kitchen_not_found()
     except NotKitchenOwnerError as exc:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -328,7 +328,7 @@ def unarchive_kitchen(
             UnarchiveKitchenCommand(actor_user_id=user_id, kitchen_id=kitchen_id)
         )
     except (KitchenNotFoundError, NotKitchenMemberError):
-        return _access_denied()
+        return _kitchen_not_found()
     except NotKitchenOwnerError as exc:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -348,7 +348,7 @@ def hide_kitchen(
     try:
         service.execute(HideKitchenCommand(actor_user_id=user_id, kitchen_id=kitchen_id))
     except (KitchenNotFoundError, NotKitchenMemberError):
-        return _access_denied()
+        return _kitchen_not_found()
     except CannotHideOwnedKitchenError as exc:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -368,7 +368,7 @@ def unhide_kitchen(
     try:
         service.execute(UnhideKitchenCommand(actor_user_id=user_id, kitchen_id=kitchen_id))
     except (KitchenNotFoundError, NotKitchenMemberError):
-        return _access_denied()
+        return _kitchen_not_found()
     except CannotHideOwnedKitchenError as exc:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -388,7 +388,7 @@ def delete_kitchen(
     try:
         service.execute(DeleteKitchenCommand(actor_user_id=user_id, kitchen_id=kitchen_id))
     except (KitchenNotFoundError, NotKitchenMemberError):
-        return _access_denied()
+        return _kitchen_not_found()
     except NotKitchenOwnerError as exc:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,

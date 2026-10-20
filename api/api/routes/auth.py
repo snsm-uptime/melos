@@ -64,6 +64,7 @@ from domain.errors import (
     InvalidSignupError,
     InvalidVerificationTokenError,
     InviteEmailMismatchError,
+    KitchenNotFoundError,
     NotKitchenMemberError,
     PrincipalNotFoundError,
     RateLimitedError,
@@ -283,10 +284,10 @@ def patch_current_user(
             result = SetAliasService(prefs).execute(
                 SetAliasCommand(user_id=user_id, alias=body.alias)
             )
-    except NotKitchenMemberError:
+    except (KitchenNotFoundError, NotKitchenMemberError):
         return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content={"detail": NotKitchenMemberError.MESSAGE, "code": "not_kitchen_member"},
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": KitchenNotFoundError.MESSAGE, "code": "kitchen_not_found"},
         )
     except InvalidAliasError as exc:
         return JSONResponse(
