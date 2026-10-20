@@ -41,8 +41,29 @@ As a code reviewer, I want to know which patterns come from finance-dashboard so
 - `scripts/` folder with compose management scripts is copied and reused as-is
 - `.github/workflows/ci.yml` is copied and reused as-is
 - `.cursor/worktrees.json` is copied and reused as-is
-- Environment prefix changes from `FH_` to `MELOS_`
-- Data directory path changes from `~/finance-dashboard` to `~/melos`
+- Every finance-dashboard name in code becomes a Melos name (FR1.1)
+- Data directory path changes from `~/finance-helper` to `~/melos`
+
+#### FR1.1: Naming Rule
+
+Code, configuration, tests and scripts use Melos names only. No identifier, environment variable, cookie or storage key, HTTP header, Compose project or container name, database name, data path or UI label keeps a finance-dashboard name.
+
+| Finance-dashboard name | Melos name |
+|---|---|
+| `FH_*` env vars (e.g. `FH_COMPOSE_NAME`) | `MELOS_*` (e.g. `MELOS_COMPOSE_NAME`) |
+| `FINANCE_HELPER_DATA` (default `~/finance-helper`) | `MELOS_DATA` (default `~/melos`) |
+| cookie `fh_session` | `melos_session` |
+| storage keys `fh_theme_cache`, `fh_lang_cache` | `melos_theme_cache`, `melos_lang_cache` |
+| header `X-FH-Client-IP` | `X-Melos-Client-IP` |
+| Compose project `finance-helper`, worktree names `fh-<slug>` | `melos`, `melos-<slug>` |
+| worktree data `~/finance-helper-wt/`, checkouts `../finance-dashboard-wt-<slug>` | `~/melos-wt/`, `../melos-wt-<slug>` |
+| database `finance_helper` (`.env.example`, CI) | `melos` |
+| UI title "Finance Helper" | "Melos" |
+
+- The rule covers the auth layer too (FR5.1–FR5.3). Renaming is the only edit made to those files, and their logic stays the same.
+- There are no exceptions. The `fh_session` and `X-FH-Client-IP` fallback defaults in `api/api/settings.py` become `melos_session` and `X-Melos-Client-IP`.
+- The rule covers names, not attribution. Comments, docstrings and docs **may** name finance-dashboard as the source of reused code (SC-1).
+- **Pass condition:** `git grep -nE 'FH_|fh_|fh-|X-FH-|FINANCE_HELPER|finance[-_]helper|Finance Helper'` outside `specs/` and `dev/` returns nothing. Mentions of `finance-dashboard` in comments and docs are allowed.
 
 ### FR2: Docker Compose Configuration Reuse
 - Base `docker-compose.yml` is copied and reused with these services:
@@ -51,10 +72,11 @@ As a code reviewer, I want to know which patterns come from finance-dashboard so
   - **ui**: Next.js service (Dockerfile builds from `./ui`, port 3000; Dockerfile reused as-is)
   - **mcp** (new for Melos): FastAPI MCP service (separate container for security, port 9000)
 - **Overlay files:**
-  - `docker-compose.dev.yml` (reused from finance with adaptations: Gemini/pgvector environment variables injected; port bindings changed to `API_HOST_PORT` and `MELOS_COMPOSE_NAME`)
-  - `docker-compose.prod.yml` (reused as-is)
+  - `docker-compose.dev.yml` (reused from finance with adaptations: Gemini/pgvector environment variables injected; Compose project named by `MELOS_COMPOSE_NAME`; host ports set by `API_HOST_PORT`, `UI_HOST_PORT` and `MCP_HOST_PORT`)
+  - `docker-compose.prod.yml` (reused; `mcp` is defined in the base file, so it runs in every overlay, prod included)
   - `docker-compose.test.yml` (reused as-is)
   - `docker-compose.worktree.yml`, `docker-compose.worktree-lite.yml` (reused for parallel Cursor development)
+- **No `version` field:** No Compose file declares or depends on a top-level `version:` key (Compose v2 ignores it). No healthcheck, health response or other Docker configuration requires a version field either (see FR6.5 step 7).
 - Environment variables reused from finance-dashboard:
   - `POSTGRES_*` (database credentials)
   - `SESSION_SECRET`, `SESSION_COOKIE_*` (auth)
@@ -65,8 +87,9 @@ As a code reviewer, I want to know which patterns come from finance-dashboard so
 - **Melos additions (environment):**
   - `GEMINI_API_KEY`, `GEMINI_CHAT_MODEL`, `GEMINI_EMBED_MODEL`, `GEMINI_EMBED_DIM` (AI/LLM integration; injected into all environments including dev)
   - `MELOS_COMPOSE_NAME`, `MELOS_DATA` (namespace and data location, replacing `FINANCE_HELPER_*`)
-  - Environment prefix changes from `FH_` to `MELOS_` (e.g., session cookie name, client IP header, rate limit headers)
-  - **Dev-specific additions** (docker-compose.dev.yml): `SEED_DEV_USER`, `SEED_DEV_USER_EMAIL`, `SEED_DEV_USER_PASSWORD`, `SEED_DEV_USER_ALIAS` for pre-seeding test users
+  - `API_HOST_PORT`, `UI_HOST_PORT`, `MCP_HOST_PORT` (host ports; worktrees give each stack its own)
+  - All finance-dashboard names change per FR1.1 (e.g., session cookie `melos_session`, client IP header `X-Melos-Client-IP`). Standard response headers such as `Retry-After` keep their names.
+  - **Dev-specific additions** (docker-compose.dev.yml): `SEED_DEV_USER`, `SEED_DEV_USER_EMAIL`, `SEED_DEV_USER_PASSWORD`, `SEED_DEV_USER_ALIAS`, `SEED_DEV_MEMBER_EMAIL`, `SEED_DEV_MEMBER_PASSWORD`, `SEED_DEV_MEMBER_ALIAS`, `SEED_DEV_USER_KITCHEN` for the dev seed (see "Development Seeding")
 
 ### FR3: Scripts and Build Tools Reuse
 - Compose management scripts (`compose-up.sh`, `compose-down.sh`, `compose-restart.sh`, `compose-wipe-db.sh`) are copied and reused
@@ -112,11 +135,13 @@ As a code reviewer, I want to know which patterns come from finance-dashboard so
 - Rate limiting (per IP and per user) is reused with same status codes and headers
 - Profile management (alias, photo, theme) is reused
 - API endpoints remain: `/auth/register`, `/auth/sign-in`, `/auth/sign-out`, `/auth/session`, `/auth/me`, password reset and verification endpoints
-- The auth layer is **not modified** without explicit approval
+- The auth layer's logic is **not modified** without explicit approval. The FR1.1 renames are approved (2026-10-19) and are the only edits.
 
 #### FR5.1: Auth Layer File Inventory
 
-All auth files listed below are copied from `finance-dashboard/api/` to `melos/api/` unchanged. No file-level customizations are made (environment variable prefixes are handled via `.env` and `api/settings.py`, not by modifying individual auth files).
+All auth files listed below are copied from `finance-dashboard/api/` to `melos/api/` with their logic unchanged. The only file-level edits are the FR1.1 renames (for example the `fh_session` and `X-FH-Client-IP` fallback defaults in `api/api/settings.py`).
+
+Paths are relative to `api/`. The FastAPI package is `api/api/`, so `api/routes/auth.py` lives at `api/api/routes/auth.py`. Alembic revisions live in `api/adapters/persistence/migrations/versions/`.
 
 | File Path | Module Purpose | Handles |
 |-----------|---|---|
@@ -134,7 +159,7 @@ All auth files listed below are copied from `finance-dashboard/api/` to `melos/a
 | `adapters/persistence/password_reset.py` | Password reset storage | SQLAlchemy table and queries for password reset tokens |
 | `adapters/persistence/email_verification.py` | Email verification storage | SQLAlchemy table and queries for email verification tokens |
 | `adapters/persistence/repositories.py` | Data access | `SqlAlchemyAuthUserRepository`, `SqlAlchemySignupRepository` (user CRUD, credential lookup) |
-| `adapters/persistence/models.py` | Database models | SQLAlchemy models: `User`, `Session`, `PasswordResetToken`, `EmailVerification` |
+| `adapters/persistence/models.py` | Database models | SQLAlchemy models for `users`, `sessions`, `password_reset_tokens`, `email_verification_tokens` (preferences are columns on `users`) |
 | `adapters/email/smtp.py` | Email sending | SMTP adapter for password reset and verification emails |
 | `adapters/email/settings.py` | Email config | Environment variables: `SMTP_*`, `PUBLIC_APP_URL`, email template defaults |
 
@@ -145,10 +170,8 @@ All auth files listed below are copied from `finance-dashboard/api/` to `melos/a
 4. Copy all files under `application/` that relate to auth (email_verification.py, password_reset.py, preferences.py, rate_limit.py)
 5. Copy entire `adapters/persistence/` directory as-is (includes all auth models and repositories)
 6. Copy entire `adapters/email/` directory as-is
-7. **Do not customize the core auth logic in any of these files.** Config differences (e.g., `FH_` → `MELOS_` prefix, new Gemini vars) are handled via:
-   - `.env` environment file (defines all variable values)
-   - `api/settings.py` Settings class (loads variables via `os.getenv()`; already exists in finance-dashboard)
-   - **Clarification:** `settings.py` is copied as-is from finance-dashboard. The Settings class already has a mechanism to load environment variables. Verify that `SESSION_SECRET`, `AUTH_RATE_LIMIT_*`, `TRUSTED_PROXY_IPS`, and new Melos vars (`GEMINI_*`, `MELOS_DATA`) can be loaded via existing `os.getenv()` calls. Do NOT add new environment variable loading code to auth files; the Settings class pattern handles this.
+7. **Do not change the core auth logic in any of these files.** The only edits are the FR1.1 renames (`fh_`/`FH_` → `melos_`/`MELOS_`, `X-FH-Client-IP` → `X-Melos-Client-IP`), including in the auth tests. Values come from `.env` and are read through `load_auth_settings()` in `api/api/settings.py`.
+   - `settings.py` does not load `GEMINI_*` or `MELOS_DATA` in the bootstrap. Compose passes those through only (plan D5). The feature that first uses them adds them to the settings.
 8. **Do not remove or rename any of these files**, as they are a dependency of other layers.
 
 #### FR5.2: Frontend Auth Components to Copy
@@ -159,7 +182,7 @@ All frontend auth files listed below are copied from `finance-dashboard/ui/` to 
 |-----------|------|---------|-----|
 | `app/sign-in/page.tsx` | Page | Sign-in page entry point | None |
 | `app/sign-in/SignInForm.tsx` | Component | Login form with email/password fields | None |
-| `app/sign-in/SignInChrome.tsx` | Component | Sign-in layout wrapper | None |
+| `app/sign-in/SignInChrome.tsx` | Component | Sign-in layout wrapper | Header title "Finance Helper" → "Melos" |
 | `app/sign-in/signInClient.ts` | Utility | Client-side sign-in logic | None |
 | `app/sign-up/page.tsx` | Page | Sign-up page entry point | None |
 | `app/forgot-password/page.tsx` | Page | Forgot password entry point | None |
@@ -176,13 +199,13 @@ All frontend auth files listed below are copied from `finance-dashboard/ui/` to 
 | `components/AccountMenu.test.tsx` | Test | AccountMenu tests | Update snapshot if language selector removed |
 | `components/RedirectIfAuthenticated.tsx` | Component | Route guard redirecting authenticated users | None |
 | `lib/session.ts` | Utility | Session utilities and types | None |
-| `lib/authBff.ts` | Utility | BFF auth proxy (cookie forwarding, IP header validation) | None |
+| `lib/authBff.ts` | Utility | BFF auth proxy (cookie forwarding, IP header validation) | Default header `X-FH-Client-IP` → `X-Melos-Client-IP` |
 | `lib/authBff.test.ts` | Test | BFF auth tests | None |
 | `app/api/auth/sign-in/route.ts` | BFF Route | Proxy to POST /auth/sign-in backend | None |
 | `app/api/auth/sign-in/route.test.ts` | Test | Sign-in route tests | None |
 | `app/api/auth/register/route.ts` | BFF Route | Proxy to POST /auth/register backend | None |
 | `app/api/auth/register/route.test.ts` | Test | Register route tests | None |
-| `app/api/auth/sign-out/route.ts` | BFF Route | Proxy to POST /auth/sign-out backend | None |
+| `app/api/auth/sign-out/route.ts` | BFF Route | Proxy to POST /auth/sign-out backend | Default cookie name `fh_session` → `melos_session` |
 | `app/api/auth/sign-out/route.test.ts` | Test | Sign-out route tests | None |
 | `app/api/auth/session/route.ts` | BFF Route | Proxy to GET /auth/session backend | None |
 | `app/api/auth/session/route.test.ts` | Test | Session route tests | None |
@@ -207,18 +230,22 @@ All frontend auth files listed below are copied from `finance-dashboard/ui/` to 
 4. Edit `app/account/page.tsx`:
    - Remove language selection UI section
    - Keep alias, theme, photo management UI
-5. No environment variable renaming needed (authBff.ts uses `AUTH_CLIENT_IP_HEADER` and `API_INTERNAL_URL`, not FH_-prefixed vars)
-6. **Do not customize BFF routes** — they proxy directly to the FastAPI backend; configuration is in the backend's `api/settings.py`
+5. Apply the FR1.1 renames everywhere in `ui/`, tests included:
+   - `fh_session` default in `app/api/auth/sign-out/route.ts` and `proxy.ts`
+   - `X-FH-Client-IP` default in `lib/authBff.ts`
+   - `fh_lang_cache` reads in `app/home/page.tsx` and `app/kitchens/[kitchenId]/page.tsx`
+   - "Finance Helper" title in `app/sign-in/SignInChrome.tsx`
+6. **Do not customize BFF route logic.** The routes proxy directly to the FastAPI backend, and configuration lives in the backend's `api/api/settings.py`. FR1.1 renames are the only edits.
 
 #### FR5.3: Minimal Customization Scope
 
 The auth layer is copied as-is from finance-dashboard and is **not modified** without explicit written approval from Sebastián. This section defines the strict boundaries for what may be changed without approval and how developers should handle the manual copy process.
 
 **Off-Limits (Require Pre-Approval):**
-- Session cookie behavior: httpOnly flag, Secure flag, SameSite policy, cookie name, cookie lifetime
+- Session cookie behavior: httpOnly flag, Secure flag, SameSite policy, cookie lifetime. The cookie name is fixed as `melos_session` (approved 2026-10-19).
 - Password hashing algorithm and configuration: argon2-cffi parameters, salt rounds, memory/time cost settings
 - Rate limit policy thresholds: limits per IP, limits per user, window duration, status codes returned
-- Database schema for auth tables: `user`, `session`, `password_reset_token`, `email_verification`, `preferences` table structure, column types, constraints
+- Database schema for auth tables: `users`, `sessions`, `password_reset_tokens`, `email_verification_tokens` table structure, column types, constraints (preferences are columns on `users`)
 - API endpoint signatures: `/auth/*` paths, HTTP method, parameter names, response structure
 
 **Permitted Without Pre-Approval (Code Review Sufficient):**
@@ -236,32 +263,19 @@ The auth layer is copied as-is from finance-dashboard and is **not modified** wi
 
 **Common Mistakes to Avoid:**
 
-Do not perform a naive find-and-replace of environment variable prefixes (e.g., `FH_` → `MELOS_`) in auth files. The configuration layer handles this for you:
-
-1. **Environment variable names in code** (e.g., `os.getenv("FH_SESSION_SECRET")`):
-   - These reference environment variables defined in `.env`
-   - The `.env` file contains `SESSION_SECRET=<value>` (no prefix in the variable name itself)
-   - The `api/settings.py` file loads these variables and does NOT need manual renaming
-   - **Do not edit individual auth files to rename `FH_` → `MELOS_`**; this breaks the code
-
-2. **Settings class attributes** (e.g., in `api/settings.py`):
-   - Attributes like `session_secret`, `auth_rate_limit_register_max` are already prefix-agnostic
-   - Environment variable loading is centralized in `settings.py`
-   - **Do not edit settings.py unless you are updating the application-wide configuration schema** (requires pre-approval)
-
-3. **Database column names** (e.g., `fh_session_id`, `fh_user_id`):
-   - If column names contain `fh_` prefix, they are part of the schema and cannot be changed without a migration
-   - **Do not rename columns in the schema; request pre-approval if this is necessary**
+1. **Leaving finance-dashboard names behind.** FR1.1 renames are required in auth files as well: `fh_`/`FH_` become `melos_`/`MELOS_`, and `X-FH-Client-IP` becomes `X-Melos-Client-IP`. Rename the names and defaults only, not the logic around them.
+2. **Changing behaviour while renaming.** A rename must not touch cookie flags or lifetime, hashing parameters, rate limit thresholds or endpoint signatures. Those stay off-limits.
+3. **Reading configuration outside the settings loader.** Auth code reads configuration from `load_auth_settings()` in `api/api/settings.py`, never with `os.environ`/`os.getenv()` in routes or use cases.
+4. **Changing the schema outside Alembic.** Any column or table rename goes through a new Alembic revision and needs pre-approval for auth tables.
 
 **Example:**
 ```python
-# ❌ WRONG: Do not do this in api/routes/auth.py
-settings = Settings()
-cookie_secret = os.getenv("MELOS_SESSION_SECRET")  # <-- Manually renamed prefix
+# ❌ WRONG: bypasses the settings loader and keeps the finance-dashboard name
+cookie_name = os.getenv("SESSION_COOKIE_NAME", "fh_session")
 
-# ✅ RIGHT: Settings class handles prefix-agnostic loading
-settings = Settings()
-cookie_secret = settings.session_secret  # <-- Use the settings object
+# ✅ RIGHT: the settings loader reads the value; its fallback uses the Melos name
+settings = load_auth_settings()
+cookie_name = settings.session_cookie_name  # "melos_session" unless .env overrides it
 ```
 
 ### FR6: UI Shell and Component Reuse
@@ -293,7 +307,7 @@ cookie_secret = settings.session_secret  # <-- Use the settings object
    - `POSTGRES_PASSWORD` (generate a secure password)
    - `SESSION_SECRET` (generate a random string)
    - `GEMINI_API_KEY` (obtain from Google AI Studio)
-   - `SMTP_*` (optional for local dev; leave blank or fill for testing email)
+   - `SMTP_*` (required in dev too: use a real SMTP provider, e.g. a Gmail app password, so reset, verification and invite emails reach real inboxes)
 3. Create the data directory outside the repo:
    - `mkdir -p "${MELOS_DATA:-$HOME/melos}/pgdata"` (PostgreSQL data persists here)
 4. Install Python dependencies:
@@ -306,9 +320,10 @@ cookie_secret = settings.session_secret  # <-- Use the settings object
    - **API entrypoint auto-runs `alembic upgrade head`** before starting FastAPI (reused from finance-dashboard)
    - Developers do NOT need to run migrations manually
 7. Verify all services are healthy:
-   - UI: http://localhost:3000 (should show login page)
-   - API: http://localhost:8000/health (should return 200 with status)
-   - MCP: http://localhost:9000/health (should return 200 with MCP status)
+   - UI: http://localhost:3000 (should show login page) and http://localhost:3000/health
+   - API: http://localhost:8000/health
+   - MCP: http://localhost:9000/health
+   - Each `/health` returns `200 {"status":"healthy","service":"<api|ui|mcp>","timestamp":"<ISO-8601 UTC>"}` ([contracts/health.md](contracts/health.md)). There is no `version` field.
    - All services run locally for end-to-end testing of external AI integrations before deployment
 
 **Ongoing Python workflow** (from api/ directory):
@@ -333,6 +348,8 @@ cookie_secret = settings.session_secret  # <-- Use the settings object
   - `MELOS_COMPOSE_NAME` isolates container names (prevents collisions)
   - `API_HOST_PORT` assigns a different port per worktree (e.g., 8001, 8002)
   - `UI_HOST_PORT` assigns a different UI port (e.g., 3001, 3002)
+  - `MCP_HOST_PORT` assigns a different MCP port (e.g., 9001, 9002)
+  - `MELOS_DATA` points at `~/melos-wt/<compose-name>` so each worktree has its own Postgres data
 - This allows multiple developers to run isolated instances simultaneously
 
 **CI/CD** (GitHub Actions):
@@ -341,8 +358,8 @@ cookie_secret = settings.session_secret  # <-- Use the settings object
 
 ### FR7: List/Kitchen Conceptual Reuse
 - Membership model (kitchen_id, user_id, role as owner|member) is reused
-- Access control patterns (non-members get 404, not 403) are reused
-- Invite-by-email flow is reused
+- Access control: one rule for every kitchen-scoped endpoint, reads and writes alike. No session → `401`. Kitchen missing or caller not a member → `404 kitchen_not_found` (same body, so kitchen existence is never revealed). Member but the action is owner-only → `403 not_kitchen_owner`. Non-members never get `403`. Full table in [contracts/kitchen-membership-api.md](contracts/kitchen-membership-api.md) §Access Control
+- Invite-by-email flow is reused: the owner invites an email. Existing accounts get a `join` link (`/invites/accept?token=`, sign in, then `POST /invites/accept`). New people get a `signup` link (`/signup?invite=`, then `POST /auth/register` with `invite_token`). `GET /invites/preview` is public. Invalid, expired or used tokens return `410`. Tokens are single-use, email-bound and last 7 days. The API never redirects; routing is the UI's job
 - Kitchen replaces "list" concept in code, database and UI
 
 ### FR8: What Is NOT Reused
@@ -375,9 +392,23 @@ Clarifications made during minimal customization scope definition:
 - **Q4: Developer Guidance** → **A:** Add "Common Mistakes" subsection to FR5.3 showing examples of what NOT to do (e.g., naive find-replace of FH_ → MELOS_ in auth files), with corrected examples and explanation of how settings.py handles config.
 - **Q5: Approval Process** → **A:** Code review approval sufficient for permitted changes (tests, docs, formatting, non-critical fixes). Explicit pre-approval from Sebastián required only for off-limits areas before opening a PR.
 
+### Session 2026-10-19 (Plan review, checklist `checklists/bootstrap.md`)
+
+Decisions by the owner after `/speckit-plan`. They supersede earlier answers where they differ.
+
+- **Q1: Finance-dashboard names in code** → **A:** None remain. Every `fh_`/`FH_`/`finance-helper` name becomes `melos_`/`MELOS_`/`melos`, auth files included (FR1.1). This supersedes the earlier "no file-level find-replace" guidance (FR5.3 Clarification Q3/Q4).
+- **Q2: `fh_session` fallback in `settings.py`** → **A:** Not allowed. It becomes `melos_session`. The plan's proposed exception is withdrawn.
+- **Q3: Source attribution** → **A:** Comments and docs keep naming finance-dashboard as the source (SC-1). Only names in code change.
+- **Q4: Dev seed** → **A:** Seed only users and one kitchen: two verified users, an owner and a member, sharing one kitchen. No recipe, cart, shopping-list or conversation data. Credentials come from `.env` only.
+- **Q5: Version fields** → **A:** No Docker configuration ever requires a `version` field: no top-level `version:` in Compose files, and no `version` in `/health` responses.
+- **Q7: SMTP in dev** → **A:** Dev has SMTP configured with a real provider. That is how emails are tested (reset, verification, invites to the seeded users).
+- **Q8: 404 vs 403 for kitchens** → **A:** 404 everywhere for non-members, writes included. 403 only for a member attempting an owner-only action. This changes the reused write routes (today they return `403 not_kitchen_member`), including the `last_opened_kitchen_id` check in `PATCH /auth/me`. The owner approved that auth-route status change on 2026-10-19 (FR5.3).
+- **Q9: Invite acceptance when signed out** → **A:** The contract documents the code's flow: public preview, then accept with a session or register with `invite_token`. `410` for bad tokens. Redirects belong to the UI. Checked: new invitees get a `/signup?invite=` link, so they are offered sign-up. No change needed.
+- **Q6: Spec vs plan** → **A:** The plan (D1–D7) is authoritative for bootstrap scope. The spec is updated to match: staged seed, bootstrap-only tables, real source paths.
+
 ## Success Criteria
 
-1. **Codebase Consistency**: All reused code from finance-dashboard is clearly documented with comments indicating origin and any adaptations
+1. **Codebase Consistency**: All reused code from finance-dashboard is clearly documented with comments indicating origin and any adaptations. Comments may name finance-dashboard, but identifiers follow FR1.1.
 2. **Bootstrap Speed**: A developer can set up the Melos codebase for the first time in under 15 minutes using the reused patterns
 3. **Pattern Adherence**: All new features follow the established patterns (hexagonal architecture, port/adapter, naming conventions) with no deviations without approval
 4. **No Secrets Exposure**: No finance-dashboard credentials or Melos secrets appear in code, the repo, .env.example or documentation
@@ -386,62 +417,56 @@ Clarifications made during minimal customization scope definition:
 
 ## Key Entities & Data Structures
 
-**Reused Database Entities:**
-- `user` (auth tables)
-- `session` (auth)
-- `password_reset_token` (auth)
-- `email_verification` (auth)
-- `preferences` (auth, for theme/locale)
-- `kitchen` (replaces "list")
-- `membership` (kitchen_id, user_id, role)
-- `invite` (kitchen_id, email, token_hash)
+Full definitions are in [data-model.md](data-model.md).
 
-**Melos-Specific Entities:**
-- `ingredient`
-- `category`
-- `recipe`
-- `recipe_ingredient`
-- `step`
-- `cart`
-- `cart_item`
-- `shopping_list`
-- `shopping_list_item`
-- `conversation`
-- `message`
-- `recipe_embedding`
-- `source`
+**Tables this feature owns (bootstrap):**
+- `users` (auth; preferences such as alias, theme and photo are columns here)
+- `sessions` (auth)
+- `password_reset_tokens` (auth)
+- `email_verification_tokens` (auth)
+- `kitchens` (replaces "list"; gains `content_language`, `en`/`es`, default `en`, in revision `0002`)
+- `kitchen_memberships` (kitchen_id, user_id, role)
+- `kitchen_invite_tokens` (kitchen_id, email, token_hash)
+- The `vector` (pgvector) extension, enabled in revision `0002`. No vector columns yet.
+
+**Melos-specific entities (deferred, not created by this feature):**
+Each is created by an Alembic revision in the feature spec that owns it (plan D4):
+- `ingredient`, `category`, `source`, `recipe`, `recipe_ingredient`, `recipe_category`, `step`, `recipe_embedding` (capture + recipes)
+- `cart`, `cart_item` (plan)
+- `shopping_list`, `shopping_list_item` (shop)
+- `conversation`, `message` (ask)
+- `api_key` (MCP service)
 
 ## Implementation Boundaries
 
 ### API Layer Separation (Hexagonal Architecture)
+
+This is the target v1 layout. The bootstrap builds only auth, kitchens, invites and `/health`. Items marked *(later)* arrive with their own feature specs.
+
 - **domain/**: Pure business logic (no I/O, no framework dependencies)
-  - `recipe.py` (Unit, Size, Dimension, validation rules)
-  - `cart.py` (scaling, consolidation)
-  - `ingredient_catalog.py` (name normalization)
-  - `toon.py` (object encoding for LLM prompts)
-  - `render.py` (Markdown/embed text generation)
-  - `kitchen.py`, `membership.py`, `invite.py` (reused from finance-dashboard)
+  - `recipe.py` (Unit, Size, Dimension, validation rules) *(later)*
+  - `cart.py` (scaling, consolidation) *(later)*
+  - `ingredient_catalog.py` (name normalization) *(later)*
+  - `toon.py` (object encoding for LLM prompts) *(later)*
+  - `render.py` (Markdown/embed text generation) *(later)*
+  - `kitchens.py`, `kitchen_access.py`, `kitchen_invite.py` (reused from finance-dashboard; `kitchens.py` validates `content_language`)
 - **application/**: Use cases and port definitions
-  - `ports.py`: RecipeExtractor, Embedder, ChatModel, PageFetcher, PdfRenderer, repositories (abstractions for external services)
-  - Use cases: `capture_recipe`, `recipes`, `ingredients`, `categories`, `carts`, `shopping_list`, `conversations`, `exports`, `kitchens`, `invites` + reused auth
-  - All kitchen-scoped queries enforce membership checks here
+  - `ports.py`: repositories now; RecipeExtractor, Embedder, ChatModel, PageFetcher, PdfRenderer *(later)*
+  - Use cases: `kitchens`, `kitchen_access`, `kitchen_invite`, `kitchen_invite_accept` + reused auth; `capture_recipe`, `recipes`, `ingredients`, `categories`, `carts`, `shopping_list`, `conversations`, `exports` *(later)*
+  - All kitchen-scoped queries enforce membership checks here (`kitchen_access.py`, non-members get 404)
 - **adapters/**: Concrete implementations of ports
-  - `llm/gemini.py` (Gemini API via google-genai SDK)
-  - `web/page_fetcher.py`, `web/jsonld.py` (URL fetching with SSRF protection)
-  - `pdf/weasyprint.py` + `templates/`, `fonts/` (PDF generation with Unicode fonts)
-  - `persistence/` (SQLAlchemy, Alembic, pgvector)
+  - `llm/gemini.py` (Gemini API via google-genai SDK) *(later)*
+  - `web/page_fetcher.py`, `web/jsonld.py` (URL fetching with SSRF protection) *(later)*
+  - `pdf/weasyprint.py` + `templates/`, `fonts/` (PDF generation with Unicode fonts) *(later)*
+  - `persistence/` (SQLAlchemy, Alembic migrations, pgvector)
   - `email/` (aiosmtplib — reused from finance)
-- **api/**: FastAPI application layer
-  - `main.py` (FastAPI app entry point)
+- **api/api/**: FastAPI application layer
+  - `app.py` (FastAPI app entry point)
   - `routes/` (HTTP endpoints):
-    - `auth.*` (reused from finance-dashboard)
-    - `kitchens.py`, `members.py`, `invites.py` (kitchen management)
-    - `recipes.py`, `drafts.py` (recipe capture, CRUD)
-    - `ingredients.py`, `categories.py` (catalog)
-    - `carts.py`, `shopping_list.py` (cart and shopping list)
-    - `conversations.py`, `messages.py` (chat)
-    - `exports.py` (PDF/Markdown generation)
+    - `auth.py` (reused from finance-dashboard)
+    - `kitchens.py`, `invites.py` (kitchen and member management)
     - `health.py` (health check endpoint)
+    - `recipes.py`, `drafts.py`, `ingredients.py`, `categories.py`, `carts.py`, `shopping_list.py`, `conversations.py`, `messages.py`, `exports.py` *(later)*
   - `schemas/` (Pydantic request/response models)
   - `deps.py` (dependency injection: auth, session, kitchen access)
   - `settings.py` (environment configuration)
@@ -461,42 +486,45 @@ melos/
 ├── .github/workflows/ci.yml         # Reused from finance-dashboard (test, lint, build steps)
 ├── .cursor/worktrees.json          # Reused for Cursor worktree management
 ├── .gitignore                       # Standard Python/Node ignores (added: .env, node_modules/, .venv/)
-├── docker-compose.yml              # Reused (db, api, ui services; adapted: db image → pgvector, env prefix → MELOS_)
+├── docker-compose.yml              # Reused (db, api, ui, mcp; adapted: db image → pgvector, names per FR1.1; no `version:` key)
 ├── docker-compose.{dev,prod,test,worktree,worktree-lite}.yml  # All overlays reused
-├── .env.example                    # Adapted: new Gemini vars, MELOS_ prefix, no finance credentials
+├── .env.example                    # Adapted: new Gemini vars, MELOS_ names, invented placeholder values only
 ├── .env                            # LOCAL ONLY (never committed) — copy from .env.example
 ├── api/
-│   ├── pyproject.toml             # Reused structure; Gemini/pgvector libs added
+│   ├── pyproject.toml             # Reused structure; feature libs (google-genai, weasyprint) arrive with their features
 │   ├── uv.lock                    # Locked dependencies (commit this, never edit by hand)
 │   ├── Dockerfile, alembic.ini    # Reused
 │   ├── domain/                    # Pure business logic (reused structure, Melos rules)
-│   │   ├── recipe.py, cart.py, ingredient_catalog.py, toon.py, render.py
-│   │   └── kitchen.py, membership.py, invite.py  # From finance-dashboard
+│   │   ├── kitchens.py, kitchen_access.py, kitchen_invite.py  # From finance-dashboard ("lists" renamed)
+│   │   └── recipe.py, cart.py, …  # (later features)
 │   ├── application/               # Use cases + ports (reused pattern)
 │   │   ├── ports.py
-│   │   └── use_cases/  # Melos-specific: capture_recipe, shopping_list, conversations
+│   │   └── kitchens.py, kitchen_access.py, signup.py, …
 │   ├── adapters/
-│   │   ├── llm/gemini.py          # NEW: Gemini integration
-│   │   ├── web/                   # NEW: Page fetcher, JSON-LD
-│   │   ├── pdf/                   # NEW: WeasyPrint renderer
-│   │   ├── persistence/           # Reused: SQLAlchemy, Alembic, pgvector
+│   │   ├── persistence/           # Reused: SQLAlchemy models, repositories, sessions
+│   │   │   └── migrations/versions/  # 0001_melos_baseline, 0002_pgvector_and_kitchen_language
 │   │   ├── email/                 # Reused from finance: aiosmtplib
-│   │   └── auth/                  # Reused from finance
+│   │   └── llm/, web/, pdf/       # (later features: Gemini, page fetcher, WeasyPrint)
 │   ├── api/
-│   │   ├── main.py               # FastAPI app setup
-│   │   ├── routes/               # HTTP endpoints (auth: reused; rest: Melos-specific)
+│   │   ├── app.py                # FastAPI app setup
+│   │   ├── routes/               # auth.py (reused), kitchens.py, invites.py, health.py
 │   │   ├── schemas/              # Pydantic models (reused pattern)
 │   │   ├── deps.py               # Dependency injection
 │   │   └── settings.py           # Environment config
 │   ├── tests/                    # pytest suite (reused structure)
-│   └── scripts/                  # Seeding, migrations (reused pattern)
+│   └── scripts/                  # entrypoint.py (migrate → seed → uvicorn), seed_dev_user.py
+├── mcp/
+│   ├── Dockerfile, pyproject.toml, uv.lock, .python-version
+│   ├── server/main.py            # FastAPI app: /health only in the bootstrap
+│   └── tools/                    # Empty; tools arrive with the MCP feature spec
 ├── ui/
 │   ├── package.json              # Reused; dependencies locked (npm install)
 │   ├── Dockerfile, Dockerfile.dev # Reused
 │   ├── app/                      # Next.js App Router structure (reused)
 │   │   ├── layout.tsx            # Root layout (AppShell)
-│   │   ├── api/                  # BFF routes (proxy /api/* to FastAPI)
-│   │   └── [kitchen]/            # Kitchen-scoped pages (recipes, carts, conversations)
+│   │   ├── api/                  # BFF routes (proxy to FastAPI)
+│   │   ├── health/route.ts       # /health for the ui service
+│   │   └── kitchens/[kitchenId]/ # Kitchen-scoped pages
 │   ├── components/               # Reusable React components (reused + Melos-specific)
 │   ├── styles/                   # Global styles (Tailwind)
 │   ├── lib/                      # Utilities, API client wrappers
@@ -509,8 +537,8 @@ melos/
 │   ├── docs/prd.md              # Product specification
 │   ├── skills/                  # Procedures and work states
 │   └── memory/                  # Decision history
+├── specs/                        # Feature specifications (planning & tracking)
 └── .specify/                     # Spec Kit configuration (planning)
-    ├── specs/                   # Feature specifications (planning & tracking)
     ├── memory/constitution.md   # Project constitution (principles, boundaries)
     └── templates/               # Spec templates
 ```
@@ -522,14 +550,15 @@ melos/
 | Category | Variables | Purpose |
 |----------|-----------|---------|
 | **Database** | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | PostgreSQL credentials |
-| **Session** | `SESSION_SECRET`, `SESSION_COOKIE_NAME`, `SESSION_COOKIE_SECURE`, `SESSION_COOKIE_SAMESITE` | Session cookie config (httpOnly, Secure in prod, SameSite=Lax) |
+| **Compose** | `MELOS_COMPOSE_NAME`, `API_HOST_PORT`, `UI_HOST_PORT`, `MCP_HOST_PORT` | Project name (default `melos`) and host ports (defaults 8000/3000/9000) |
+| **Session** | `SESSION_SECRET`, `SESSION_COOKIE_NAME`, `SESSION_COOKIE_SECURE`, `SESSION_COOKIE_SAMESITE` | Session cookie config (name `melos_session`, httpOnly, Secure in prod, SameSite=Lax) |
 | **Auth Rate Limits** | `AUTH_RATE_LIMIT_REGISTER_MAX`, `AUTH_RATE_LIMIT_REGISTER_WINDOW_SECONDS`, `AUTH_RATE_LIMIT_SIGN_IN_MAX`, `AUTH_RATE_LIMIT_SIGN_IN_WINDOW_SECONDS`, `AUTH_RATE_LIMIT_PASSWORD_RESET_REQUEST_MAX`, `AUTH_RATE_LIMIT_VERIFY_REQUEST_MAX` | Rate limiting per IP and per user |
 | **Email** | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_USE_TLS`, `SMTP_STARTTLS`, `SMTP_TIMEOUT_SECONDS` | Outbound email via SMTP (fail loudly if misconfigured) |
 | **App URLs** | `PUBLIC_APP_URL` | Where the app is reachable (for reset links, invites) |
-| **Network** | `TRUSTED_PROXY_IPS`, `AUTH_CLIENT_IP_HEADER` | IP headers trusted from BFF (Compose: 172.16.0.0/12, localhost) |
+| **Network** | `TRUSTED_PROXY_IPS`, `AUTH_CLIENT_IP_HEADER` | IP headers trusted from BFF (Compose: 172.16.0.0/12, localhost); header default `X-Melos-Client-IP` |
 | **Auth** | `EMAIL_VERIFICATION_REQUIRED` | Gate email verification on sign-up (default false) |
 | **Storage** | `PDF_STORAGE_PATH`, `MELOS_DATA` | File storage locations (outside repo) |
-| **Dev Seeds** | `SEED_DEV_USER`, `SEED_DEV_USER_EMAIL`, `SEED_DEV_USER_PASSWORD`, `SEED_DEV_USER_ALIAS`, `SEED_DEV_USER_KITCHEN` | Pre-verified test users with sample data (dev/worktree only) |
+| **Dev Seeds** | `SEED_DEV_USER`, `SEED_DEV_USER_EMAIL`, `SEED_DEV_USER_PASSWORD`, `SEED_DEV_USER_ALIAS`, `SEED_DEV_MEMBER_EMAIL`, `SEED_DEV_MEMBER_PASSWORD`, `SEED_DEV_MEMBER_ALIAS`, `SEED_DEV_USER_KITCHEN` | Two pre-verified users (owner, member) sharing one kitchen (dev/worktree only) |
 | **Gemini (Melos)** | `GEMINI_API_KEY`, `GEMINI_CHAT_MODEL`, `GEMINI_EMBED_MODEL`, `GEMINI_EMBED_DIM` | LLM configuration |
 
 **Secrets Management** (strict reuse):
@@ -541,36 +570,29 @@ melos/
 
 ## Development Seeding (Test Data)
 
-When `SEED_DEV_USER=1`, the API bootstrap script (`api/scripts/seed_dev_user.py`) creates:
+When `SEED_DEV_USER=1`, the API bootstrap script (`api/scripts/seed_dev_user.py`) creates **exactly two users and one shared kitchen**. Nothing else is seeded.
 
-**User Account:**
-- Email: `$SEED_DEV_USER_EMAIL` (e.g., `dev@example.com`)
-- Password: `$SEED_DEV_USER_PASSWORD` (pre-hashed, bypasses reset flow)
-- Alias: `$SEED_DEV_USER_ALIAS` (display name)
-- Email verified: `true` (if `EMAIL_VERIFICATION_REQUIRED=true`)
+**Users** (both go through the normal sign-up use case, with the email marked verified):
 
-**Sample Kitchen:**
-- Name: "Dev Kitchen" or `$SEED_DEV_USER_KITCHEN` (if specified)
-- Content language: English (en)
-- User is owner
+| Role | Email | Password | Alias |
+|------|-------|----------|-------|
+| Owner | `$SEED_DEV_USER_EMAIL` | `$SEED_DEV_USER_PASSWORD` | `$SEED_DEV_USER_ALIAS` (optional) |
+| Member | `$SEED_DEV_MEMBER_EMAIL` | `$SEED_DEV_MEMBER_PASSWORD` | `$SEED_DEV_MEMBER_ALIAS` (optional) |
 
-**Sample Data (for immediate testing without manual data entry):**
-- **Recipes**: 3–5 realistic recipes (e.g., pasta, curry, soup) with:
-  - Title, base servings, categories
-  - Ingredient lines with units (grams, cups, tbsp, units)
-  - Step-by-step instructions
-  - Source: marked as "dev seed" (not from a URL or upload)
-- **Ingredients**: ~15 auto-created from recipe ingredients (normalized, lower-case, singular)
-- **Categories**: ~8 auto-created from recipes (produce, grains, proteins, etc.)
-- **Cart**: Pre-populated with 2 recipes at different meal counts (1 meal each) for 2 people
-- **Shopping List**: One archived/finalized shopping list (closing_date set) with items from past recipes, for testing chat history queries
-- **Conversation**: One conversation with 4–6 messages testing:
-  - Simple question answered by recipes
-  - Question not covered by recipes (found=false)
-  - Citation of specific recipes
-  - Shopping list history query
+- The four email and password variables are required when `SEED_DEV_USER=1`. If any is missing, the seed logs a warning and creates nothing.
+- The real values live only in the local `.env`. `.env.example`, the spec, tests and docs show invented placeholders only (constitution §4).
 
-**Purpose:** Developers can sign in and immediately see the UI with realistic data, test cart consolidation, run chat queries, and verify PDF/Markdown export without manual setup.
+**Shared kitchen:**
+- Name: `$SEED_DEV_USER_KITCHEN`, default "Dev Kitchen"
+- Content language: `en`
+- The owner user has role `owner`. The member user has role `member`.
+- Sign-up still gives each user their personal "My kitchen", the same as for any real user. The seed adds no other kitchens.
+
+**Idempotency:** If the owner's email already exists, the seed does nothing. Re-running never duplicates users, kitchens or memberships.
+
+**Purpose:** Developers can sign in as either user straight away and check membership behaviour (owner-only actions, member access, non-member 404) without manual setup.
+
+**Later features:** Recipes, cart, shopping-list and conversation sample data are **not** part of this feature. Each later feature decides whether to extend the seed in the same PR that creates its tables (plan D7).
 
 **Note:** Seeding is **dev/worktree only**. Production (`SEED_DEV_USER=0`) never auto-creates test users.
 
@@ -578,7 +600,7 @@ When `SEED_DEV_USER=1`, the API bootstrap script (`api/scripts/seed_dev_user.py`
 
 1. **Source of truth**: Finance-dashboard is the authoritative source for auth, UI patterns and deploy structure
 2. **Versions fixed at start**: Python 3.12, Node versions specified in `.python-version` and `package.json` are locked for reproducibility
-3. **Email delivery**: SMTP must be configured (fail loudly if not); there is no local mock for outbound mail
+3. **Email delivery**: SMTP is configured in every environment, dev included; there is no local mock for outbound mail. A misconfigured SMTP fails loudly: the request that sends email returns `503` with `code: "smtp_config_error"` (or `smtp_send_error`), and the error is logged. The API still boots so `/health` keeps answering
 4. **Secrets management**: `.env` is never committed; production secrets come from the server environment, not the repo
 5. **Team size**: Small team (implied from the project) means coordination is fast; patterns can be enforced via code review rather than heavy process
 
@@ -605,6 +627,10 @@ When `SEED_DEV_USER=1`, the API bootstrap script (`api/scripts/seed_dev_user.py`
 - [ ] Document all adaptations with comments in code
 - [ ] Verify test structure matches finance-dashboard patterns
 - [ ] Verify no finance-dashboard credentials leaked
+- [ ] Rename every finance-dashboard name in code per FR1.1 (auth layer and `settings.py` fallbacks included)
+- [ ] Add migration `0002` (pgvector extension + `kitchens.content_language`)
+- [ ] Seed two users (owner, member) and one shared kitchen
+- [ ] Align `/health` on api, ui and mcp with [contracts/health.md](contracts/health.md) (no `version` field)
 
 ## Tech Stack Summary Table
 

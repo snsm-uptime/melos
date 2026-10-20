@@ -51,7 +51,7 @@ GEMINI_CHAT_MODEL=gemini-2.0-flash-exp
 GEMINI_EMBED_MODEL=text-embedding-004
 GEMINI_EMBED_DIM=768
 
-# Email (optional for dev, but required if testing password reset)
+# Email (required in dev too: emails go to real inboxes)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=<your_email>
@@ -64,11 +64,15 @@ SMTP_TIMEOUT_SECONDS=10
 # App URL
 PUBLIC_APP_URL=http://localhost:3000
 
-# Dev Seeding (pre-populate test data)
+# Dev Seeding: two users (owner + member) sharing one kitchen
 SEED_DEV_USER=1
-SEED_DEV_USER_EMAIL=dev@example.com
-SEED_DEV_USER_PASSWORD=Password123!
-SEED_DEV_USER_ALIAS=Developer
+SEED_DEV_USER_EMAIL=<owner_email>
+SEED_DEV_USER_PASSWORD=<owner_password>
+SEED_DEV_USER_ALIAS=<owner_alias>          # optional
+SEED_DEV_MEMBER_EMAIL=<member_email>
+SEED_DEV_MEMBER_PASSWORD=<member_password>
+SEED_DEV_MEMBER_ALIAS=<member_alias>       # optional
+SEED_DEV_USER_KITCHEN=Dev Kitchen          # optional, default "Dev Kitchen"
 ```
 
 **Security note:** `.env` is in `.gitignore` and never committed. Keep secrets safe.
@@ -150,10 +154,12 @@ curl -s http://localhost:8000/health | jq .
 ```json
 {
   "status": "healthy",
-  "timestamp": "2026-10-19T12:00:00Z",
-  "version": "1.0.0"
+  "service": "api",
+  "timestamp": "2026-10-19T12:00:00+00:00"
 }
 ```
+
+No `version` field ([contracts/health.md](contracts/health.md)).
 
 ### 3.2 UI Health (Browser)
 
@@ -170,7 +176,9 @@ curl -s http://localhost:9000/health | jq .
 **Expected response:**
 ```json
 {
-  "status": "healthy"
+  "status": "healthy",
+  "service": "mcp",
+  "timestamp": "2026-10-19T12:00:00+00:00"
 }
 ```
 
@@ -240,18 +248,19 @@ docker compose logs api | grep "kitchen\|POST"
 
 ### 5.2 Verify Seeded Data (If SEED_DEV_USER=1)
 
-If you enabled `SEED_DEV_USER`, the dev user is pre-created with sample recipes:
+If you enabled `SEED_DEV_USER`, two verified users share one kitchen:
 
-1. Sign in with `SEED_DEV_USER_EMAIL` (from .env)
-2. You should see a kitchen with 3–5 recipes
-3. Recipes have ingredients, categories, and steps
+1. Sign in with `SEED_DEV_USER_EMAIL`. You see "My kitchen" and the shared kitchen (`SEED_DEV_USER_KITCHEN`, default "Dev Kitchen"), where you are the owner.
+2. Sign out, then sign in with `SEED_DEV_MEMBER_EMAIL`. You see "My kitchen" and the shared kitchen, where you are a member. Owner-only actions (rename, invite, delete) are not offered.
+3. There is no recipe, cart, shopping-list or conversation data. Later features add it.
 
 **Database check:**
 ```bash
-docker compose exec db psql -U postgres -d melos -c "SELECT COUNT(*) FROM recipe;"
+docker compose exec db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
+  "SELECT k.name, m.role FROM kitchens k JOIN kitchen_memberships m ON m.kitchen_id = k.id ORDER BY k.name, m.role;"
 ```
 
-Should return: `3` or more recipes.
+Expect the shared kitchen twice (`member`, `owner`) and one `owner` row for each "My kitchen".
 
 ---
 
@@ -536,3 +545,25 @@ chmod +x scripts/validate-bootstrap.sh
 ./scripts/validate-bootstrap.sh
 ```
 
+
+---
+
+## Bootstrap Acceptance Checks (added by `/speckit-plan`, 2026-10-19)
+
+Run these from the repo root. They check the plan decisions D1–D7 ([plan.md](plan.md), [research.md](research.md)). Each line states what passing looks like.
+
+**Existing `.env` from before the rename:** rename `FH_COMPOSE_NAME` → `MELOS_COMPOSE_NAME` and `FINANCE_HELPER_DATA` → `MELOS_DATA`, set `SESSION_COOKIE_NAME=melos_session` and `AUTH_CLIENT_IP_HEADER=X-Melos-Client-IP`, and add the `SEED_DEV_MEMBER_*` variables. If your data lived under `~/finance-helper`, move it or point `MELOS_DATA` at it.
+
+| # | Check | Command | Pass |
+|---|-------|---------|------|
+| A1 | No finance names left (D1–D3, spec FR1.1) | `git grep -nE 'FH_\|fh_\|fh-\|X-FH-\|FINANCE_HELPER\|finance[-_]helper\|Finance Helper' -- ':!specs' ':!dev'` | no output. No exceptions; `finance-dashboard` may still appear in comments and docs |
+| A1b | No Compose `version:` key | `grep -nE '^version:' docker-compose*.yml` | no output |
+| A2 | Compose project and data path (D1) | `docker compose config \| grep -E '^name:\|/pgdata'` | `name: melos` (or your `MELOS_COMPOSE_NAME`), source under `$MELOS_DATA/pgdata` |
+| A3 | Four services, all healthy | `./scripts/compose-up.sh -d && docker compose ps` | `db`, `api`, `ui`, `mcp` all `healthy` |
+| A4 | Health contract (D6) | `for p in 8000 3000 9000; do curl -s localhost:$p/health; echo; done` | each returns `"status":"healthy"` with its own `"service"` ([contracts/health.md](contracts/health.md)) |
+| A5 | Migrations at head, pgvector on (D4) | `docker compose exec api uv run alembic current` · `docker compose exec db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\dx vector'` | `0002_pgvector_and_kitchen_language (head)` · one `vector` row |
+| A6 | Kitchen language (D4) | `docker compose exec db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\d kitchens'` | `content_language` with default `'en'` and a check for `en`/`es` |
+| A7 | Cookie name (D2) | sign in at <http://localhost:3000>, then check DevTools → Cookies | `melos_session`, httpOnly, SameSite=Lax |
+| A8 | English-only UI (D3) | open the account menu and `/account` | no language selector; localStorage has `melos_theme_cache` only |
+| A9 | Seed (D7) | with `SEED_DEV_USER=1`, sign in as `$SEED_DEV_USER_EMAIL`, then as `$SEED_DEV_MEMBER_EMAIL` | each sees "My kitchen" plus the shared kitchen (owner vs member). No recipe data, as expected (§5.2) |
+| A10 | Tests | `docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api` · `cd ui && npm test && npm run lint && npm run typecheck` | all green, including `test_health` |

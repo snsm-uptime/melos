@@ -312,117 +312,120 @@ Remove a member from a kitchen (owner only).
 
 ## Invitations
 
+Invites are bound to one email address. The raw token is only ever in the email link; the database stores its SHA-256 hash. A token is single-use and expires **7 days** after creation (`INVITE_TOKEN_TTL` in `domain/kitchen_invite.py`; not configurable).
+
 ### POST /kitchens/{kitchen_id}/invites
 
-Create an invite link (owner only).
+Invite someone by email (owner only). Sends one of two emails:
+
+| Invitee | `template_kind` | Link in the email |
+|---------|-----------------|-------------------|
+| Already has an account | `join` | `{PUBLIC_APP_URL}/invites/accept?token=<raw>` |
+| No account yet | `signup` | `{PUBLIC_APP_URL}/signup?invite=<raw>` |
 
 **Request:**
 ```json
-{
-  "email": "guest@example.com"
-}
+{ "email": "guest@example.com" }
 ```
 
 **Response (201 Created):**
 ```json
-{
-  "id": "uuid",
-  "kitchen_id": "uuid",
-  "email": "guest@example.com",
-  "token": "<random_invite_token>",
-  "invite_url": "http://localhost:3000/invites/accept?token=<token>",
-  "created_at": "2026-10-19T12:00:00Z",
-  "expires_at": "2026-10-26T12:00:00Z"
-}
+{ "status": "sent", "template_kind": "join", "invite_id": "uuid" }
 ```
 
-**Email:** If guest's email is in the system, an invitation email is sent automatically.
+The response never contains the raw token or the link.
 
-**Error (403 Forbidden):**
-```json
-{
-  "detail": "Only the owner can create invites"
-}
-```
+**Errors:**
 
----
+| Status | `code` | When |
+|--------|--------|------|
+| 401 | — | No session |
+| 404 | `kitchen_not_found` | Kitchen missing, or caller is not a member |
+| 403 | `not_kitchen_owner` | Caller is a member but not the owner |
+| 409 | `already_kitchen_member` | Invitee is already a member |
+| 422 | `invalid_invite_email` | Email is not a valid address |
+| 503 | `smtp_config_error` / `smtp_send_error` | SMTP misconfigured or send failed (logged; see [error-responses.md](error-responses.md)) |
 
-### GET /kitchens/{kitchen_id}/invites
+Listing or revoking pending invites is not part of the bootstrap.
 
-List pending invites (owner only).
+### GET /invites/preview?token=<raw>
+
+Public (no session). Lets the UI show the invite before the user signs in or signs up.
 
 **Response (200 OK):**
 ```json
-{
-  "invites": [
-    {
-      "id": "uuid",
-      "email": "guest@example.com",
-      "created_at": "2026-10-19T12:00:00Z",
-      "expires_at": "2026-10-26T12:00:00Z",
-      "status": "pending"
-    }
-  ]
-}
+{ "kitchen_name": "Dev Kitchen", "email_hint": "g***t@example.com", "path": "join" }
 ```
 
----
+`path` is `"join"` when the invited email has an account, otherwise `"signup"`.
+
+**Error (410 Gone):** `{"detail": "...", "code": "invalid_invite_token"}` when the token is empty, unknown, expired or already used.
 
 ### POST /invites/accept
 
-Accept an invite (any user, or anonymous if invitation creates account).
+Accept an invite as a signed-in user (`path` = `join`).
 
 **Request:**
 ```json
-{
-  "token": "<invite_token>"
-}
+{ "token": "<raw>" }
 ```
 
 **Response (200 OK):**
 ```json
-{
-  "kitchen_id": "uuid",
-  "kitchen_name": "Weeknight Dinners",
-  "detail": "Invitation accepted"
-}
+{ "kitchen_id": "uuid" }
 ```
 
-**Behavior:** If user is authenticated, adds them to the kitchen. If not authenticated, redirects to sign-up (which then adds them on completion).
+Accepting again when already a member returns 200 with the same body (idempotent).
 
-**Error (400 Bad Request):**
-```json
-{
-  "detail": "Invitation invalid or expired"
-}
-```
+**Errors:**
 
-**Token Expiry:** 7 days from creation.
+| Status | `code` | When |
+|--------|--------|------|
+| 401 | — | No session. The API never redirects |
+| 410 | `invalid_invite_token` | Token unknown, expired or already used |
+| 403 | `invite_email_mismatch` | Signed in with a different email than the one invited |
+| 403 | `email_not_verified` | `EMAIL_VERIFICATION_REQUIRED=true` and the caller's email is not verified |
+
+### POST /auth/register with `invite_token` (new invitees)
+
+Someone without an account (`path` = `signup`) signs up and joins in one call: the usual `/auth/register` body plus `"invite_token": "<raw>"` ([auth-api.md](auth-api.md)). The user gets their personal "My kitchen" and a `member` membership in the inviting kitchen. When `EMAIL_VERIFICATION_REQUIRED=true`, the account and personal kitchen are created but joining waits until the email is verified and the invite is accepted.
+
+Extra errors: `410 invalid_invite_token`, `403 invite_email_mismatch` (sign-up email differs from the invited email).
+
+### Invite flow (UI)
+
+The API never redirects; the UI routes the user:
+
+1. **Existing account** (`join` email) → `/invites/accept?token=…`. Signed out: the page offers **Sign in**, which returns to the same URL. Signed in: the page calls `POST /invites/accept`, then lands in the kitchen. `email_not_verified` sends the user to `/verify` and back.
+2. **New account** (`signup` email) → `/signup?invite=…`. The form calls `/invites/preview`, shows the kitchen name, and submits `/auth/register` with `invite_token`. If the preview says `join` (the person registered meanwhile), the page redirects to `/invites/accept`. A signed-in visitor is redirected to `/invites/accept` too.
+3. Invalid or expired token → the page shows the "invite expired" message (from the `410`).
 
 ---
 
 ## Access Control
 
-**Kitchen Ownership:**
-- Kitchen owner can: view, update, delete kitchen; manage members; create invites
-- Kitchen member can: view kitchen; view/create recipes, carts, shopping lists, conversations
-- Non-member: receives 404 on all kitchen endpoints (no permission distinction)
+One rule for every kitchen-scoped endpoint, reads and writes alike (spec FR7, constitution §3), checked in order:
 
-**Application Layer Enforcement:**
-All endpoints check membership in `application/kitchens.py` and `application/invites.py` before returning data. No endpoint returns 403; non-members always see 404.
+| Order | Condition | Response |
+|-------|-----------|----------|
+| 1 | No session | `401` |
+| 2 | Kitchen missing **or** caller not a member | `404 {"code": "kitchen_not_found"}`. Same body in both cases, so nobody can tell whether a kitchen exists |
+| 3 | Member, but the action is owner-only | `403 {"code": "not_kitchen_owner"}` |
+| 4 | Request problems | `409` / `422` |
+
+- Owner-only actions: rename (incl. `content_language`), archive/unarchive, delete, invite.
+- Member actions: view the kitchen and its members, hide/unhide it for themselves, and (later features) work with recipes, carts, lists and conversations.
+- `403` is never used for non-members. The only other `403`s are invite-specific (`invite_email_mismatch`, `email_not_verified`).
+- Setting `last_opened_kitchen_id` (`PATCH /auth/me`) to a kitchen the user is not a member of follows the same rule: `404 kitchen_not_found`.
+
+Enforcement lives in `application/kitchen_access.py`.
 
 ---
 
 ## Configuration & Defaults
 
-```bash
-# Invite Expiry (not configurable, hardcoded)
-INVITE_EXPIRY_DAYS=7
-
-# Email Templates
-INVITE_EMAIL_SUBJECT="You're invited to join {kitchen_name} on Melos"
-INVITE_EMAIL_TEMPLATE=<based_on PUBLIC_APP_URL>
-```
+- Invite token lifetime: 7 days, a domain constant (not an environment variable).
+- Invite emails use `PUBLIC_APP_URL` for links and are sent over SMTP, which is configured in every environment, dev included.
 
 ---
 

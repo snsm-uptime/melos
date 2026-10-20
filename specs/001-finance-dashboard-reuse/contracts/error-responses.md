@@ -95,44 +95,19 @@ If the request body fails Pydantic validation, FastAPI returns:
 
 ## Health Check Endpoint
 
-### GET /health
-
-**Response (200 OK):**
-```json
-{
-  "status": "healthy",
-  "timestamp": "2026-10-19T12:00:00Z",
-  "version": "1.0.0"
-}
-```
-
-**Response (503 Service Unavailable):**
-```json
-{
-  "status": "unhealthy",
-  "reason": "Database connection failed",
-  "timestamp": "2026-10-19T12:00:00Z"
-}
-```
-
-**Checks:**
-- Database connectivity (Postgres)
-- API runtime (FastAPI app)
-- External service availability (Gemini API optional; warn if unavailable)
+> **Superseded:** the health contract is [health.md](health.md) (plan decision D6): liveness only, `200 {"status":"healthy","service":…,"timestamp":…}`, and no `version` field.
 
 ---
 
 ## SMTP Misconfiguration (Fails Loudly)
 
-If SMTP is misconfigured (missing host, wrong port, auth failure), the API **does not silently fail**. Instead:
+SMTP is configured in every environment, dev included (spec Assumption 3). If SMTP is misconfigured (missing host, bad port or timeout, auth failure) or the send fails, the API **does not silently fail**:
 
-1. API startup fails with a clear error message
-2. No email is sent without visibility
-3. Logs include the SMTP error details
+1. The request that sends email (password reset, verification, invite) returns `503 Service Unavailable` with `{"detail": "<reason>", "code": "smtp_config_error"}` or `"code": "smtp_send_error"`.
+2. The error is logged with the SMTP details, never the password.
+3. The API still boots, so `/health` and flows that don't send email keep working.
 
-**Environment variables checked at startup:**
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`
-- If any are missing, API fails on boot with error message
+SMTP settings are read when an email is sent (`adapters/email/settings.py`, `load_smtp_settings()`), not at startup.
 
 ---
 
