@@ -135,12 +135,12 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 
 ### Schema (plan D4)
 
-- [ ] T045 Add Alembic revision `0002_pgvector_and_kitchen_language`: `CREATE EXTENSION IF NOT EXISTS vector`; `kitchens.content_language VARCHAR(2) NOT NULL DEFAULT 'en'` with CHECK in (`en`,`es`); downgrade drops both ([data-model.md](data-model.md)). Migration `0001_melos_baseline` does **not** enable pgvector, so this replaces the earlier wrong tick
-- [ ] T108 Add `content_language` to the SQLAlchemy model, the value set in `domain/kitchens.py`, and the kitchens schemas/routes (create and rename take an optional `content_language`; owner only). Domain + integration tests
+- [x] T045 Add Alembic revision `0002_pgvector_and_kitchen_language`: `CREATE EXTENSION IF NOT EXISTS vector`; `kitchens.content_language VARCHAR(2) NOT NULL DEFAULT 'en'` with CHECK in (`en`,`es`); downgrade drops both ([data-model.md](data-model.md)). Migration `0001_melos_baseline` does **not** enable pgvector, so this replaces the earlier wrong tick
+- [x] T108 Add `content_language` to the SQLAlchemy model, the value set in `domain/kitchens.py`, and the kitchens schemas/routes (create and rename take an optional `content_language`; owner only). Domain + integration tests
 
 ### Health (plan D6)
 
-- [ ] T109 [P] Align `/health` on `api/api/routes/health.py`, `ui/app/health/route.ts` and `mcp/server/main.py` with [contracts/health.md](contracts/health.md): `200 {"status":"healthy","service":"<api|ui|mcp>","timestamp":"<tz-aware UTC>"}`, no `version` field. Update `api/tests/test_health.py`; add one mcp health test
+- [x] T109 [P] Align `/health` on `api/api/routes/health.py`, `ui/app/health/route.ts` and `mcp/server/main.py` with [contracts/health.md](contracts/health.md): `200 {"status":"healthy","service":"<api|ui|mcp>","timestamp":"<tz-aware UTC>"}`, no `version` field. Update `api/tests/test_health.py`; add one mcp health test
 
 ### MCP Packaging
 
