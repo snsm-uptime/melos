@@ -87,33 +87,34 @@ def seed() -> None:
             member_email = _member_email(owner_email)
             member_exists = signup_repo.email_exists(normalize_email(member_email))
             if not member_exists:
-                member = SignUpService(signup_repo, Argon2PasswordHasher()).execute(
+                member_signup = SignUpService(signup_repo, Argon2PasswordHasher()).execute(
                     SignupCommand(email=member_email, password=owner_password)
                 )
-                email_repo.mark_email_verified(member.user_id, verified_at=datetime.now(UTC))
-                logger.info("Seeded member user_id=%s", member.user_id)
+                member_user_id = member_signup.user_id
+                email_repo.mark_email_verified(member_user_id, verified_at=datetime.now(UTC))
+                logger.info("Seeded member user_id=%s", member_user_id)
             else:
                 member_user = auth_repo.get_by_email(member_email)
                 if member_user is None:
                     raise RuntimeError(f"Member {member_email} exists but not found")
-                member = member_user
-                logger.info("Member user already exists user_id=%s", member.id)
+                member_user_id = member_user.id
+                logger.info("Member user already exists user_id=%s", member_user_id)
 
             # Add member to kitchen — idempotent
-            membership = kitchen_repo.get_membership(shared_kitchen.id, member.id)
+            membership = kitchen_repo.get_membership(shared_kitchen.id, member_user_id)
             if membership is None:
                 kitchen_repo.add_membership(
                     NewMembershipRecord(
                         id=uuid4(),
                         kitchen_id=shared_kitchen.id,
-                        user_id=member.id,
+                        user_id=member_user_id,
                         role="member",
                     )
                 )
                 logger.info(
                     "Added member to shared kitchen kitchen_id=%s user_id=%s",
                     shared_kitchen.id,
-                    member.id,
+                    member_user_id,
                 )
             else:
                 logger.info("Member already in shared kitchen")
