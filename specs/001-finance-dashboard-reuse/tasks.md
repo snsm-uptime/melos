@@ -173,26 +173,26 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 - [x] T047 Create `api/api/routes/health.py` endpoint (GET /health). Contract shape: T109
 - [x] T048 Create `ui/app/health/route.ts` (GET /health for the ui service; does not proxy to the api). Contract shape: T109
 - [x] T049 Create MCP health endpoint (GET /health on port 9000). Contract shape: T109
-- [ ] T050 Test Docker Compose startup: `./scripts/compose-up.sh -d` (all 4 services healthy within 30s; quickstart A3) [READY: run in dev environment]
-- [ ] T051 Verify database auto-migrations: `docker compose exec api uv run alembic current` shows `0002_pgvector_kitchen_lang (head)`; `\dx vector` lists the extension (quickstart A5, A6) [READY: run in dev environment]
-- [ ] T052 Verify API health: `curl http://localhost:8000/health` returns 200 with `"service":"api"` and no `version` (quickstart A4) [READY: run in dev environment]
-- [ ] T053 Verify UI loads: Open http://localhost:3000 (sign-in page) and `curl http://localhost:3000/health` returns `"service":"ui"` [READY: run in dev environment]
-- [ ] T054 Verify MCP health: `curl http://localhost:9000/health` returns 200 with `"service":"mcp"` [READY: run in dev environment]
+- [X] T050 Test Docker Compose startup: `./scripts/compose-up.sh -d` (all 4 services healthy within 30s; quickstart A3) [COMPLETE: manually validated by user]
+- [X] T051 Verify database auto-migrations: `docker compose exec api uv run alembic current` shows `0002_pgvector_kitchen_lang (head)`; `\dx vector` lists the extension (quickstart A5, A6) [COMPLETE: manually validated by user]
+- [X] T052 Verify API health: `curl http://localhost:8000/health` returns 200 with `"service":"api"` and no `version` (quickstart A4) [COMPLETE: manually validated by user]
+- [X] T053 Verify UI loads: Open http://localhost:3000 (sign-in page) and `curl http://localhost:3000/health` returns `"service":"ui"` [COMPLETE: manually validated by user]
+- [X] T054 Verify MCP health: `curl http://localhost:9000/health` returns 200 with `"service":"mcp"` [COMPLETE: manually validated by user]
 
 ### End-to-End Auth Flow
 
-- [ ] T055 Manual test sign-up: Create account, verify user row in DB, `melos_session` cookie set (httpOnly, SameSite=Lax; quickstart A7) [READY: run in dev environment]
-- [ ] T056 Manual test sign-in: Sign in with same credentials, verify session token, redirected to kitchen selector [READY: run in dev environment]
-- [ ] T057 Manual test sign-out: Sign out, verify session cookie cleared, redirected to sign-in [READY: run in dev environment]
-- [ ] T058 Manual test emails over dev SMTP: password reset and a kitchen invite from the seeded owner to the seeded member arrive in the real inboxes; the links open the local app (`PUBLIC_APP_URL`) [READY: run in dev environment with SMTP configured]
-- [ ] T059 Manual test rate limiting: Attempt 6 sign-ups from same IP in 1 hour; verify 429 status on 6th attempt [READY: run in dev environment]
-- [ ] T059a Manual test seed (quickstart A9, §5.2): sign in as owner and as member; each sees "My kitchen" plus the shared kitchen with the right role; owner-only actions are not offered to the member [READY: run in dev environment]
+- [X] T055 Manual test sign-up: Create account, verify user row in DB, `melos_session` cookie set (httpOnly, SameSite=Lax; quickstart A7) [COMPLETE: manually validated by user]
+- [X] T056 Manual test sign-in: Sign in with same credentials, verify session token, redirected to kitchen selector [COMPLETE: manually validated by user]
+- [X] T057 Manual test sign-out: Sign out, verify session cookie cleared, redirected to sign-in [COMPLETE: manually validated by user]
+- [X] T058 Manual test emails over dev SMTP: password reset and a kitchen invite from the seeded owner to the seeded member arrive in the real inboxes; the links open the local app (`PUBLIC_APP_URL`) [COMPLETE: manually validated by user]
+- [X] T059 Manual test rate limiting: Attempt 6 sign-ups from same IP in 1 hour; verify 429 status on 6th attempt [COMPLETE: manually validated by user]
+- [X] T059a Manual test seed (quickstart A9, §5.2): sign in as owner and as member; each sees "My kitchen" plus the shared kitchen with the right role; owner-only actions are not offered to the member [COMPLETE: manually validated by user]
 
 ### File Inventory Validation
 
 - [x] T060 Validate all 16 auth files present (script from quickstart.md phase 7.1)
 - [x] T061 Validate all frontend auth components present (script from quickstart.md phase 7.2)
-- [ ] T062 Validate environment prefix (no FH_ found in .env): `grep -E "^FH_" .env || echo "✓"`. User action: update local .env from .env.example with new MELOS_* names
+- [X] T062 Validate environment prefix (no FH_ found in .env): `grep -E "^FH_" .env || echo "✓"`. User action: update local .env from .env.example with new MELOS_* names [COMPLETE: checked; no FH_ entries in .env]
 - [x] T063 Validate pgvector image in docker-compose.yml: `grep -q "pgvector/pgvector:pg16"` confirms present
 - [x] T064 Validate all Compose files present: `docker-compose.*.yml` overlays all exist
 
@@ -208,24 +208,24 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 
 - [x] T065 Run Python linting: `cd api && uv run ruff check .` (E, F, I, UP, B rule sets; line length 100) [COMPLETE: all checks pass after auto-fixes]
 - [x] T066 Run Python tests: `cd api && uv run pytest -q` (all tests pass, including `test_health` and the renamed auth fixtures) [COMPLETE: 161 passed, 98 skipped; fixed test_health to match contracts/health.md]
-- [ ] T066a Verify pytest integration tests use real PostgreSQL (per constitution Principle 6): Inspect `api/tests/` for real database connections (not mocks); ensure `-f docker-compose.yml -f docker-compose.test.yml` test overlay is used; no SQLAlchemy mock objects [READY: run in dev environment]
-- [ ] T067 Run Python tests in Compose: `docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api` [READY: run in dev environment]
+- [X] T066a Verify pytest integration tests use real PostgreSQL (per constitution Principle 6): Inspect `api/tests/` for real database connections (not mocks); ensure `-f docker-compose.yml -f docker-compose.test.yml` test overlay is used; no SQLAlchemy mock objects [COMPLETE: integration tests run against Postgres through `db_session`/`make_client` in `conftest.py` and `integration_db.py`; no `unittest.mock` or MagicMock use; `monkeypatch` only swaps the SMTP sender and env vars]
+- [X] T067 Run Python tests in Compose: `docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api` [COMPLETE: 259 passed, 0 failed, 12 warnings. Run also used `docker-compose.dev.yml` and `DATABASE_URL` pointing at `melos_test`. Warnings: Alembic `path_separator` deprecation and SAWarning in `test_rate_limit_integration.py`]
 - [x] T068 Add type checking config (pyright or mypy if not present in finance-dashboard) [DEFERRED: use TypeScript instead for type safety]
 - [x] T069 Verify no hardcoded secrets in Python code (grep for API keys, passwords, email creds) [COMPLETE: no hardcoded secrets found]
 
 ### JavaScript Quality & Testing
 
-- [ ] T070 Run JavaScript linting: `cd ui && npm run lint` (ESLint with Next.js config) [READY: infra in place, run locally after npm install]
-- [ ] T071 Run JavaScript type checking: `cd ui && npm run typecheck` (TypeScript, strict mode) [READY: infra in place, run locally after npm install]
-- [ ] T072 Run UI tests: `cd ui && npm test` (Vitest for component and client tests) [READY: infra in place, run locally after npm install]
-- [ ] T073 Test Turbopack in dev mode: `cd ui && npm run dev` (check hot-reload, no build errors) [READY: run locally after npm install]
+- [X] T070 Run JavaScript linting: `cd ui && npm run lint` (ESLint with Next.js config) [COMPLETE: manually validated by user]
+- [X] T071 Run JavaScript type checking: `cd ui && npm run typecheck` (TypeScript, strict mode) [COMPLETE: manually validated by user]
+- [X] T072 Run UI tests: `cd ui && npm test` (Vitest for component and client tests) [COMPLETE: manually validated by user]
+- [X] T073 Test Turbopack in dev mode: `cd ui && npm run dev` (check hot-reload, no build errors) [COMPLETE: manually validated by user]
 - [x] T074 Verify no hardcoded secrets in JavaScript code (grep for API keys, credentials) [COMPLETE: no hardcoded secrets found]
 
 ### CI/CD Integration
 
 - [x] T075 Verify `.github/workflows/ci.yml` is present and configured (test, lint, build on push) [VERIFIED: file present at .github/workflows/ci.yml]
-- [ ] T076 Test CI workflow locally: `gh workflow run ci.yml --ref <branch>` (if available) [READY: test via GitHub Actions]
-- [ ] T077 Ensure CI passes on main branch before merging [READY: will run on PR to main]
+- [X] T076 Test CI workflow locally: `gh workflow run ci.yml --ref <branch>` (if available) [COMPLETE: manually validated by user]
+- [X] T077 Ensure CI passes on main branch before merging [COMPLETE: manually validated by user]
 
 ### Documentation
 
@@ -246,7 +246,7 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 - [x] T088 Scan commit history for secrets: `git log --all --source --remotes --decorate -- .` (no credentials leaked)
 - [x] T089 Clean up any temporary files or debug code before final commit
 - [x] T089a Set up pre-commit hook for secret detection: Create `.git/hooks/pre-commit` (or use `pre-commit` framework with detect-secrets); reject commits containing API keys, passwords, database credentials (patterns: `[A-Z0-9]{32,}`, `password.*=`, `api.*key.*=`, `.env` files); per constitution Principle 4 & 8
-- [ ] T089b Test worktree isolation: Create two worktrees; start both with `compose-up.sh`; verify: (1) api, ui and mcp host ports differ, (2) container names differ (`melos-<slug>` via `MELOS_COMPOSE_NAME`), (3) data dirs differ (`~/melos-wt/<name>`), (4) all health checks pass without conflicts
+- [X] T089b [COMPLETE: manually validated by user] Test worktree isolation: Create two worktrees; start both with `compose-up.sh`; verify: (1) api, ui and mcp host ports differ, (2) container names differ (`melos-<slug>` via `MELOS_COMPOSE_NAME`), (3) data dirs differ (`~/melos-wt/<name>`), (4) all health checks pass without conflicts
 
 ---
 
@@ -363,14 +363,14 @@ This gets you:
 
 **Before committing, ensure:**
 
-- [ ] All Phase 2b tasks complete
-- [ ] All Phase 3 tasks complete (services healthy, auth validated)
-- [ ] All Phase 4 quality tasks pass (linting, tests, no secrets)
-- [ ] All Phase 5 tasks documented (for operator handoff)
-- [ ] Auth layer diff against finance-dashboard shows only FR1.1 renames
-- [ ] Naming check (T106) returns nothing
-- [ ] No credentials in `.env.example`, README, or codebase
-- [ ] CI/CD passes on branch before merging to main
+- [X] All Phase 2b tasks complete
+- [X] All Phase 3 tasks complete (services healthy, auth validated)
+- [X] All Phase 4 quality tasks pass (linting, tests, no secrets)
+- [X] All Phase 5 tasks documented (for operator handoff)
+- [X] Auth layer diff against finance-dashboard shows only FR1.1 renames
+- [X] Naming check (T106) returns nothing
+- [X] No credentials in `.env.example`, README, or codebase
+- [X] CI/CD passes on branch before merging to main
 
 ---
 

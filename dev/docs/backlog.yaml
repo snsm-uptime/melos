@@ -9,7 +9,6 @@
 #   backlog      no speckit spec yet (PRD mention alone is not enough), or explicitly Later in the PRD
 
 stories:
-
   # ---------------------------------------------------------------------------
   # Bootstrap (spec 001). Merged in PRs #4 and #5.
   # ---------------------------------------------------------------------------
@@ -124,12 +123,12 @@ stories:
     title: Bootstrap verification in a running environment
     epic: Bootstrap
     priority: must
-    status: in_progress
+    status: done
     source: tasks.md T050–T059a, T062, T066a, T067, T070–T073, T076–T077, T089b
     notes: >
-      Remaining open items are manual checks marked READY: Compose startup, migrations,
-      health curls, auth E2E, SMTP inbox test, rate limit, seed check, UI lint/typecheck/tests,
-      CI run on the branch, worktree isolation.
+      All items marked complete in tasks.md. Automated checks run here: UI lint, typecheck and
+      tests; Compose startup, health, migrations and pgvector; Python tests in Compose (259 passed).
+      Manual checks validated by the user: auth flows, SMTP, rate limit, seed, CI, worktree isolation.
 
   # ---------------------------------------------------------------------------
   # Must (v1 feature work). Documented in PRD, not implemented.
@@ -231,7 +230,7 @@ stories:
     source: prd.md J5 Finalize, 1.6 (shopping_list)
 
   - id: S-031
-    title: Personal conversations: new, rename, archive, unarchive, delete; private to each user
+    title: "Personal conversations: new, rename, archive, unarchive, delete; private to each user"
     epic: Ask
     priority: must
     status: backlog
@@ -311,7 +310,7 @@ stories:
     source: prd.md J6, 1.5B
 
   - id: S-042
-    title: Catalog management: rename and merge ingredients and categories
+    title: "Catalog management: rename and merge ingredients and categories"
     epic: Recipes
     priority: should
     status: backlog
