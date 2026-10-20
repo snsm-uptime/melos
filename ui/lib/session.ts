@@ -8,7 +8,7 @@ export type SessionInfo = {
 };
 
 /**
- * Server-side session check via api (forwards fh_session cookie).
+ * Server-side session check via api (forwards melos_session cookie).
  * Returns null when unauthenticated or upstream unreachable.
  */
 export async function fetchSession(): Promise<SessionInfo | null> {

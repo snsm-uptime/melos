@@ -2,7 +2,7 @@
 
 import type { NextRequest } from "next/server";
 
-const DEFAULT_CLIENT_IP_HEADER = "X-FH-Client-IP";
+const DEFAULT_CLIENT_IP_HEADER = "X-Melos-Client-IP";
 
 export function authClientIpHeaderName(): string {
   const configured = (process.env.AUTH_CLIENT_IP_HEADER || "").trim();

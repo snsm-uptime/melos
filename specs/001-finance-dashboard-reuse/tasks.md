@@ -127,7 +127,7 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 - [x] T103 [P] Rename test fixtures: every `fh_session` / `X-FH-Client-IP` in `api/tests/` (partial) and `ui/**/*.test.ts(x)` (auth, kitchens, invites, proxy, authBff, alias)
 - [x] T104 [P] Rename env and CI names: `.env.example` (`MELOS_COMPOSE_NAME`, `MELOS_DATA`, `POSTGRES_DB=melos`, `SESSION_COOKIE_NAME=melos_session`, `AUTH_CLIENT_IP_HEADER=X-Melos-Client-IP`), `.github/workflows/ci.yml` (DB/user `melos`)
 - [x] T105 [P] Rename the UI title "Finance Helper" → "Melos" in `ui/app/sign-in/SignInChrome.tsx` and `ui/components/AppShell.test.tsx`
-- [ ] T106 Run naming checks: quickstart A1 (check for stray finance references in code) and A1b (no `version:` key in `docker-compose*.yml`). Update your local `.env` keys per the quickstart migration note. (Remaining references are test/comment only)
+- [x] T106 Run naming checks: quickstart A1 (check for stray finance references in code) and A1b (no `version:` key in `docker-compose*.yml`). Update your local `.env` keys per the quickstart migration note. (Remaining references are test/comment only)
 
 ### Dev Seed (plan D7)
 

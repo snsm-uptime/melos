@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 /** Default matches api SESSION_COOKIE_NAME; proxy only checks presence (coarse gate). */
 const SESSION_COOKIE =
-  process.env.SESSION_COOKIE_NAME?.trim() || "fh_session";
+  process.env.SESSION_COOKIE_NAME?.trim() || "melos_session";
 
 const PUBLIC_PREFIXES = [
   "/docs",
@@ -31,7 +31,7 @@ function isPublicPath(pathname: string): boolean {
  * protected app routes only.
  *
  * Do NOT bounce /sign-in|/signup away based on cookie presence — a stale
- * fh_session after logout would loop: sign-in → kitchens → sign-in.
+ * melos_session after logout would loop: sign-in → kitchens → sign-in.
  * Fine-grained checks stay in fetchSession / layouts / api.
  */
 export function proxy(request: NextRequest) {

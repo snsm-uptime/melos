@@ -83,7 +83,7 @@ This:
 ==> Primary checkout: /path/to/melos
 ==> Worktree:         /path/to/melos-wt-2-3-invite
 ==> Worktree Compose: name=melos-2-3-invite api=:8040 ui=:3040
-==> Postgres data: ~/finance-helper-wt/melos-2-3-invite/pgdata
+==> Postgres data: ~/melos-wt/melos-2-3-invite/pgdata
 
 Worktree ready: /path/to/melos-wt-2-3-invite
 UI:  http://localhost:3040

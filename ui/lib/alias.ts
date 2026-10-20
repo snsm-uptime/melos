@@ -11,7 +11,7 @@ export type MeAccount = {
 };
 
 /**
- * Server-side account read via api (forwards fh_session cookie).
+ * Server-side account read via api (forwards melos_session cookie).
  * Returns null when unauthenticated or upstream unreachable.
  */
 export async function fetchMe(): Promise<MeAccount | null> {

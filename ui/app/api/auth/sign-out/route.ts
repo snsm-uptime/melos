@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getApiInternalUrl } from "@/lib/api";
 
 const SESSION_COOKIE =
-  process.env.SESSION_COOKIE_NAME?.trim() || "fh_session";
+  process.env.SESSION_COOKIE_NAME?.trim() || "melos_session";
 
 function sessionSameSite(): "lax" | "strict" | "none" {
   const raw = (process.env.SESSION_COOKIE_SAMESITE || "lax").trim().toLowerCase();
@@ -12,7 +12,7 @@ function sessionSameSite(): "lax" | "strict" | "none" {
 }
 
 function clearSessionCookie(response: NextResponse) {
-  // Explicit expire — match issued-cookie attributes so browsers drop fh_session.
+  // Explicit expire — match issued-cookie attributes so browsers drop melos_session.
   response.cookies.set({
     name: SESSION_COOKIE,
     value: "",
@@ -26,7 +26,7 @@ function clearSessionCookie(response: NextResponse) {
 
 /**
  * Same-origin BFF: browser → ui /api/auth/sign-out → api /auth/sign-out.
- * Always clears fh_session even if upstream fetch fails.
+ * Always clears melos_session even if upstream fetch fails.
  */
 export async function POST(request: NextRequest) {
   const cookieHeader = request.headers.get("cookie") ?? "";

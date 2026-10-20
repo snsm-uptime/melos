@@ -75,7 +75,7 @@ Stops the Compose stack and removes containers.
 ```
 
 **Flags:**
-- `--wipe` — Remove named volumes (e.g., `ui_node_modules`). Does NOT delete Postgres bind data under `FINANCE_HELPER_DATA`.
+- `--wipe` — Remove named volumes (e.g., `ui_node_modules`). Does NOT delete Postgres bind data under `MELOS_DATA`.
 - `--help` — Show help text.
 - `--` — Pass remaining arguments to `docker compose down`.
 
@@ -112,10 +112,10 @@ when you need an actually clean database.
 
 **What it does:**
 1. Stops this checkout's Compose stack (`docker compose down`).
-2. Deletes `FINANCE_HELPER_DATA/pgdata` as resolved from this checkout's `.env`.
+2. Deletes `MELOS_DATA/pgdata` as resolved from this checkout's `.env`.
 3. Starts the stack back up (unless `--no-up`).
 
-Resolves `FINANCE_HELPER_DATA` from this checkout's own `.env`, so it only
+Resolves `MELOS_DATA` from this checkout's own `.env`, so it only
 wipes the database belonging to this worktree — other worktrees and the main
 checkout are unaffected.
 
@@ -178,7 +178,7 @@ Each script automatically selects the right docker-compose files for your checko
 - `docker-compose.worktree.yml` — per-branch isolation (cursor worktree integration)
 
 Worktree detection checks your `.env` file:
-- Looks for `FH_COMPOSE_NAME=fh-*` (indicates a worktree checkout)
+- Looks for `MELOS_COMPOSE_NAME=melos-*` (indicates a worktree checkout)
 - Looks for a generated marker comment (`# --- cursor worktree overrides (generated) ---`)
 
 ### Validation
