@@ -311,8 +311,8 @@ describe("AccountMenu", () => {
       const btn = findButton(host, "Password reset");
       return Boolean(btn && !btn.disabled);
     });
-    localStorage.setItem("fh_lang_cache", "es");
-    localStorage.setItem("fh_theme_cache", "dark");
+    localStorage.setItem("melos_lang_cache", "es");
+    localStorage.setItem("melos_theme_cache", "dark");
 
     const resetBtn = findButton(host, "Password reset");
     expect(resetBtn).toBeTruthy();
@@ -325,8 +325,8 @@ describe("AccountMenu", () => {
       expect.objectContaining({ method: "POST" }),
     );
     expect(assign).toHaveBeenCalledWith("/forgot-password");
-    expect(localStorage.getItem("fh_lang_cache")).toBeNull();
-    expect(localStorage.getItem("fh_theme_cache")).toBeNull();
+    expect(localStorage.getItem("melos_lang_cache")).toBeNull();
+    expect(localStorage.getItem("melos_theme_cache")).toBeNull();
     unmount();
   });
 

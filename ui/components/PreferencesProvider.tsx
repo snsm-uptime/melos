@@ -17,8 +17,8 @@ import {
   type ThemePreference,
 } from "@/lib/i18n/locale";
 
-const THEME_CACHE_KEY = "fh_theme_cache";
-const LANG_CACHE_KEY = "fh_lang_cache";
+const THEME_CACHE_KEY = "melos_theme_cache";
+const LANG_CACHE_KEY = "melos_lang_cache";
 
 /** Bumped on sign-out / password-reset so in-flight GET refresh cannot rewrite cache. */
 let prefsSessionEpoch = 0;
@@ -49,7 +49,6 @@ type PreferencesContextValue = {
   locale: Locale;
   theme: ThemePreference;
   me: MePreferences | null;
-  setLanguage: (language: Locale) => Promise<void>;
   setTheme: (theme: ThemePreference) => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -207,50 +206,6 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener("change", onChange);
   }, [theme, locale]);
 
-  const setLanguage = useCallback(async (language: Locale) => {
-    refreshGen.current += 1;
-    const response = await fetch("/api/auth/me", {
-      method: "PATCH",
-      credentials: "same-origin",
-      cache: "no-store",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ language }),
-    });
-    if (!response.ok) {
-      throw new Error("Failed to save language");
-    }
-    const data = (await response.json()) as {
-      language?: string | null;
-      theme?: string | null;
-      user_id?: string;
-      email?: string;
-      alias?: string | null;
-      photo_base64?: string | null;
-    };
-    const nextLocale = resolveLocale(data.language);
-    const nextTheme = resolveTheme(data.theme);
-    setLocale(nextLocale);
-    setThemeState(nextTheme);
-    setMe({
-      user_id: data.user_id ?? "",
-      email: data.email ?? "",
-      language:
-        data.language === "es" || data.language === "en" ? data.language : null,
-      theme:
-        data.theme === "light" ||
-        data.theme === "dark" ||
-        data.theme === "system"
-          ? data.theme
-          : null,
-      alias: typeof data.alias === "string" && data.alias ? data.alias : null,
-      photo_base64:
-        typeof data.photo_base64 === "string" && data.photo_base64 ? data.photo_base64 : null,
-    });
-    applyDom(nextLocale, nextTheme);
-  }, []);
 
   const setTheme = useCallback(async (next: ThemePreference) => {
     refreshGen.current += 1;
@@ -303,11 +258,10 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       locale,
       theme,
       me,
-      setLanguage,
       setTheme,
       refresh,
     }),
-    [ready, locale, theme, me, setLanguage, setTheme, refresh],
+    [ready, locale, theme, me, setTheme, refresh],
   );
 
   return (

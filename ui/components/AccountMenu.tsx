@@ -23,8 +23,8 @@ import { Tooltip } from "./Tooltip";
 export function AccountMenu() {
   // NOTE: SSR hydration mismatch — server renders with default theme; client may hydrate with different theme.
   // This can cause brief light→dark flicker on page load. Mitigation: ensure initial HTML theme matches system preference.
-  const { locale, theme, setLanguage, setTheme, ready, me, refresh } = usePreferences();
-  const t = accountCopy(locale);
+  const { theme, setTheme, ready, me, refresh } = usePreferences();
+  const t = accountCopy("en");
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -41,18 +41,6 @@ export function AccountMenu() {
     onBack: () => router.back(),
     title: t.title,
   });
-
-  async function onLanguage(next: Locale) {
-    setPending(true);
-    setError(null);
-    try {
-      await setLanguage(next);
-    } catch {
-      setError(t.saveLanguageFailed);
-    } finally {
-      setPending(false);
-    }
-  }
 
   async function onTheme(next: ThemePreference) {
     setPending(true);
@@ -187,34 +175,7 @@ export function AccountMenu() {
         </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
-        <section aria-labelledby="account-language" className="flex flex-col gap-2">
-          <h2 id="account-language" className="m-0 text-[0.7rem] font-semibold text-muted uppercase tracking-[0.04rem]">
-            {t.language}
-          </h2>
-          {/* TODO: Add RTL-aware layout (dir attribute on parent or logical CSS properties) */}
-          <div className="flex flex-wrap gap-2" role="group" aria-label={t.language}>
-            <button
-              type="button"
-              className={locale === "en" ? choiceButtonActiveClass : choiceButtonClass}
-              aria-pressed={locale === "en"}
-              disabled={controlsDisabled}
-              onClick={() => void onLanguage("en")}
-            >
-              {t.en}
-            </button>
-            <button
-              type="button"
-              className={locale === "es" ? choiceButtonActiveClass : choiceButtonClass}
-              aria-pressed={locale === "es"}
-              disabled={controlsDisabled}
-              onClick={() => void onLanguage("es")}
-            >
-              {t.es}
-            </button>
-          </div>
-        </section>
-
+      <div className="mb-6">
         <section aria-labelledby="account-theme" className="flex flex-col gap-2">
           <h2 id="account-theme" className="m-0 text-[0.7rem] font-semibold text-muted uppercase tracking-[0.04rem]">
             {t.theme}
@@ -231,7 +192,6 @@ export function AccountMenu() {
             ]}
           />
         </section>
-
       </div>
 
       <section aria-labelledby="account-session" className="flex items-center justify-between gap-2 pt-5 border-t border-border">

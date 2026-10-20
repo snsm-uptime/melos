@@ -68,7 +68,7 @@ export default async function KitchenDetailPage({
   await requireAlias(`/kitchens/${kitchenId}`);
 
   const jar = await cookies();
-  const locale = resolvePageLocale(jar.get("fh_lang_cache")?.value);
+  const locale = resolvePageLocale(jar.get("melos_lang_cache")?.value);
   const t = kitchensMessages[locale];
   const header = await cookieHeader();
   const requestInit: RequestInit = {

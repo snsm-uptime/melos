@@ -78,9 +78,9 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 - [x] T018 [P] Copy auth pages from finance-dashboard/ui/: `app/sign-in/`, `app/sign-up/`, `app/forgot-password/`, `app/reset-password/`, `app/verify/`. The `SignInChrome.tsx` title rename is T105
 - [x] T019 [P] Copy BFF routes: `app/api/auth/sign-in/`, `app/api/auth/register/`, `app/api/auth/sign-out/`, `app/api/auth/session/`, `app/api/auth/me/`, `app/api/auth/verify/`, `app/api/auth/password-reset/` (proxy to FastAPI backend)
 - [x] T020 [P] Copy session utilities: `ui/lib/session.ts`, `ui/lib/authBff.ts`, `ui/lib/authBff.test.ts`. The default header rename is T102
-- [ ] T021 Adapt `ui/components/PreferencesProvider.tsx`: rename localStorage keys (fh_theme_cache → melos_theme_cache, fh_lang_cache → melos_lang_cache); remove setLanguage(); default locale to "en". Also rename the `fh_lang_cache` reads in `ui/app/home/page.tsx` and `ui/app/kitchens/[kitchenId]/page.tsx`, and update `ui/components/AccountMenu.test.tsx` keys (plan D3)
-- [ ] T022 Adapt `ui/components/AccountMenu.tsx`: Remove language selector dropdown UI; keep theme toggle, profile link, sign-out button
-- [ ] T023 Adapt `ui/app/account/page.tsx`: Remove language selection UI section; keep alias, theme, photo management UI
+- [x] T021 Adapt `ui/components/PreferencesProvider.tsx`: rename localStorage keys (fh_theme_cache → melos_theme_cache, fh_lang_cache → melos_lang_cache); remove setLanguage(); default locale to "en". Also rename the `fh_lang_cache` reads in `ui/app/home/page.tsx` and `ui/app/kitchens/[kitchenId]/page.tsx`, and update `ui/components/AccountMenu.test.tsx` keys (plan D3)
+- [x] T022 Adapt `ui/components/AccountMenu.tsx`: Remove language selector dropdown UI; keep theme toggle, profile link, sign-out button
+- [x] T023 Adapt `ui/app/account/page.tsx`: Remove language selection UI section; keep alias, theme, photo management UI
 - [x] T024 [P] Copy UI shell components: `ui/components/AppShell.tsx`, `ui/components/AppShell.test.tsx`, `ui/components/RedirectIfAuthenticated.tsx`
 - [x] T025 [P] Copy reusable UI components: `ui/components/ActionDialog.tsx`, `ui/components/Chip.tsx`, `ui/components/ChipPicker.tsx`, `ui/components/IconButton.tsx`, `ui/components/Disclosure.tsx`, `ui/components/CopyButton.tsx` (no modifications)
 - [x] T026 [P] Copy UI testing setup: update `ui/vitest.config.ts` (jsdom environment, test utils)

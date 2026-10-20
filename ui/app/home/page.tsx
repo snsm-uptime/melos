@@ -57,7 +57,7 @@ export default async function Home() {
   const me = await requireAlias("/home");
 
   const jar = await cookies();
-  const locale = resolvePageLocale(jar.get("fh_lang_cache")?.value);
+  const locale = resolvePageLocale(jar.get("melos_lang_cache")?.value);
   const t = kitchensMessages[locale];
   const loaded = await fetchMembershipKitchens();
 

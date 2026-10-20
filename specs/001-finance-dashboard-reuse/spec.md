@@ -263,12 +263,17 @@ The auth layer is copied as-is from finance-dashboard and is **not modified** wi
 
 **Common Mistakes to Avoid:**
 
-1. **Leaving finance-dashboard names behind.** FR1.1 renames are required in auth files as well: `fh_`/`FH_` become `melos_`/`MELOS_`, and `X-FH-Client-IP` becomes `X-Melos-Client-IP`. Rename the names and defaults only, not the logic around them.
-2. **Changing behaviour while renaming.** A rename must not touch cookie flags or lifetime, hashing parameters, rate limit thresholds or endpoint signatures. Those stay off-limits.
+1. **Leaving finance-dashboard names behind.** FR1.1 renames are required in auth files as well: `fh_`/`FH_` become `melos_`/`MELOS_`, and `X-FH-Client-IP` becomes `X-Melos-Client-IP`. Rename the identifiers only; don't change the logic surrounding them.
+
+2. **Sneaking behavior changes into a rename.** Renaming is a **text substitution only**—change `fh_session` to `melos_session`, nothing else. Do not use a rename as an opportunity to "fix" or improve the auth code. Changes to session cookie flags (httpOnly, Secure, SameSite), password hashing parameters, rate limit thresholds, or API endpoint signatures are off-limits and require pre-approval (see above).
+   - ❌ **WRONG:** While renaming, also change `SameSite=Lax` to `SameSite=Strict` or update the rate limit window from 1 hour to 30 minutes.
+   - ✅ **RIGHT:** Rename `fh_session` → `melos_session` in the file. Leave the cookie flags and logic unchanged. If you notice the limit is too generous or too strict, ask for pre-approval in a separate issue.
+
 3. **Reading configuration outside the settings loader.** Auth code reads configuration from `load_auth_settings()` in `api/api/settings.py`, never with `os.environ`/`os.getenv()` in routes or use cases.
+
 4. **Changing the schema outside Alembic.** Any column or table rename goes through a new Alembic revision and needs pre-approval for auth tables.
 
-**Example:**
+**Examples:**
 ```python
 # ❌ WRONG: bypasses the settings loader and keeps the finance-dashboard name
 cookie_name = os.getenv("SESSION_COOKIE_NAME", "fh_session")
@@ -276,6 +281,22 @@ cookie_name = os.getenv("SESSION_COOKIE_NAME", "fh_session")
 # ✅ RIGHT: the settings loader reads the value; its fallback uses the Melos name
 settings = load_auth_settings()
 cookie_name = settings.session_cookie_name  # "melos_session" unless .env overrides it
+
+# ❌ WRONG: sneaking a behavior change into a rename
+# (In api/api/settings.py)
+def load_auth_settings():
+    return AuthSettings(
+        session_cookie_name="melos_session",
+        session_cookie_samesite="Strict",  # ← Changed from Lax! Needs pre-approval.
+    )
+
+# ✅ RIGHT: rename only
+# (In api/api/settings.py)
+def load_auth_settings():
+    return AuthSettings(
+        session_cookie_name="melos_session",  # ← Only change here
+        session_cookie_samesite="Lax",  # ← Leave unchanged
+    )
 ```
 
 ### FR6: UI Shell and Component Reuse
