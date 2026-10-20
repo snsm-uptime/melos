@@ -51,6 +51,9 @@ def seed() -> None:
         return
     owner_alias = (os.environ.get("SEED_DEV_USER_ALIAS") or "").strip()
     kitchen_name = (os.environ.get("SEED_DEV_USER_KITCHEN") or "").strip()
+    member_email = (os.environ.get("SEED_DEV_MEMBER_EMAIL") or "").strip()
+    member_password = (os.environ.get("SEED_DEV_MEMBER_PASSWORD") or "").strip()
+    member_alias = (os.environ.get("SEED_DEV_MEMBER_ALIAS") or "").strip()
 
     session = get_session_factory()()
     try:
@@ -84,14 +87,24 @@ def seed() -> None:
             logger.info("Created shared kitchen kitchen_id=%s", shared_kitchen.id)
 
             # Create member user — idempotent
-            member_email = _member_email(owner_email)
+            # Use SEED_DEV_MEMBER_EMAIL if set, otherwise derive from owner email
+            if not member_email:
+                member_email = _member_email(owner_email)
+            # Use SEED_DEV_MEMBER_PASSWORD if set, otherwise use owner password
+            if not member_password:
+                member_password = owner_password
+
             member_exists = signup_repo.email_exists(normalize_email(member_email))
             if not member_exists:
                 member_signup = SignUpService(signup_repo, Argon2PasswordHasher()).execute(
-                    SignupCommand(email=member_email, password=owner_password)
+                    SignupCommand(email=member_email, password=member_password)
                 )
                 member_user_id = member_signup.user_id
                 email_repo.mark_email_verified(member_user_id, verified_at=datetime.now(UTC))
+                if member_alias:
+                    SetAliasService(auth_repo).execute(
+                        SetAliasCommand(user_id=member_user_id, alias=member_alias)
+                    )
                 logger.info("Seeded member user_id=%s", member_user_id)
             else:
                 member_user = auth_repo.get_by_email(member_email)
