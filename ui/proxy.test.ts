@@ -1,0 +1,65 @@
+import { describe, expect, it } from "vitest";
+import { NextRequest } from "next/server";
+
+import { proxy } from "./proxy";
+
+function makeRequest(path: string, cookie?: string): NextRequest {
+  const headers = new Headers();
+  if (cookie) {
+    headers.set("cookie", cookie);
+  }
+  return new NextRequest(new URL(path, "http://localhost:3000"), { headers });
+}
+
+describe("proxy auth gate", () => {
+  it("redirects unauthenticated /kitchens to /sign-in with returnTo", () => {
+    const response = proxy(makeRequest("/kitchens"));
+    expect(response.status).toBe(307);
+    const location = response.headers.get("location");
+    expect(location).toContain("/sign-in");
+    expect(location).toContain("returnTo=%2Fkitchens");
+  });
+
+  it("allows /kitchens when melos_session cookie is present", () => {
+    const response = proxy(makeRequest("/kitchens", "melos_session=opaque-token"));
+    expect(response.status).toBe(200);
+  });
+
+  it("allows public /sign-in without cookie", () => {
+    const response = proxy(makeRequest("/sign-in"));
+    expect(response.status).toBe(200);
+  });
+
+  it("allows /sign-in even when a stale cookie is present (no bounce loop)", () => {
+    const response = proxy(makeRequest("/sign-in", "melos_session=stale-token"));
+    expect(response.status).toBe(200);
+  });
+
+  it("allows public /forgot-password, /reset-password, and /verify without cookie", () => {
+    expect(proxy(makeRequest("/forgot-password")).status).toBe(200);
+    expect(proxy(makeRequest("/reset-password?token=abc")).status).toBe(200);
+    expect(proxy(makeRequest("/verify?token=abc")).status).toBe(200);
+  });
+
+  it("allows public /invites and /api/invites without cookie", () => {
+    expect(proxy(makeRequest("/invites/accept?token=abc")).status).toBe(200);
+    expect(proxy(makeRequest("/api/invites/preview?token=abc")).status).toBe(200);
+    expect(proxy(makeRequest("/sign-up?invite=abc")).status).toBe(200);
+  });
+
+  it("allows public /docs without cookie", () => {
+    expect(proxy(makeRequest("/docs")).status).toBe(200);
+  });
+
+  it("allows /docs when melos_session cookie is present", () => {
+    expect(proxy(makeRequest("/docs", "melos_session=opaque-token")).status).toBe(
+      200,
+    );
+  });
+
+  it("redirects unauthenticated /upload to /sign-in", () => {
+    const response = proxy(makeRequest("/upload"));
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toContain("/sign-in");
+  });
+});

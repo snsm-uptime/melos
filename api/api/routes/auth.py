@@ -1,0 +1,782 @@
+# Reused from finance-dashboard/api/routes/auth.py
+# (Adapted: rename FH_ → MELOS_ in env defaults and references)
+"""Auth routes — register, sign-in/out, password-reset, email verification (AD-8 cookies)."""
+
+from __future__ import annotations
+
+import logging
+import uuid
+
+from adapters.email import SmtpEmailSender, load_smtp_settings
+from adapters.persistence.email_verification import SqlAlchemyEmailVerificationRepository
+from adapters.persistence.kitchen_invite import SqlAlchemyKitchenInviteTokenRepository
+from adapters.persistence.password_reset import SqlAlchemyPasswordResetTokenRepository
+from adapters.persistence.repositories import (
+    SqlAlchemyAuthUserRepository,
+    SqlAlchemyKitchenRepository,
+    SqlAlchemySignupRepository,
+)
+from adapters.persistence.sessions import SESSION_COOKIE_MAX_AGE
+from application.email_verification import (
+    ConfirmEmailVerificationCommand,
+    ConfirmEmailVerificationService,
+    EnsureEmailVerifiedCommand,
+    EnsureEmailVerifiedService,
+    RequestEmailVerificationCommand,
+    RequestEmailVerificationService,
+)
+from application.kitchen_invite_accept import (
+    SignUpWithInviteCommand,
+    SignUpWithInviteService,
+)
+from application.kitchens import (
+    SetLastOpenedKitchenCommand,
+    SetLastOpenedKitchenService,
+)
+from application.password_reset import (
+    CompletePasswordResetCommand,
+    CompletePasswordResetService,
+    RequestPasswordResetCommand,
+    RequestPasswordResetService,
+)
+from application.ports import PasswordHasher, PreferencesRepository, SessionStore
+from application.preferences import (
+    GetMePreferencesCommand,
+    GetMePreferencesService,
+    SetAliasCommand,
+    SetAliasService,
+    UpdatePreferencesCommand,
+    UpdatePreferencesService,
+)
+from application.rate_limit import RateLimitPolicy, SlidingWindowRateLimiter
+from application.signin import SignInCommand, SignInService
+from application.signup import SignupCommand, SignUpService
+from domain.errors import (
+    AliasAlreadySetError,
+    AliasTakenError,
+    DuplicateEmailError,
+    EmailNotVerifiedError,
+    InvalidAliasError,
+    InvalidCredentialsError,
+    InvalidInviteTokenError,
+    InvalidPhotoError,
+    InvalidPreferencesError,
+    InvalidResetPasswordError,
+    InvalidResetTokenError,
+    InvalidSignupError,
+    InvalidVerificationTokenError,
+    InviteEmailMismatchError,
+    KitchenNotFoundError,
+    NotKitchenMemberError,
+    PrincipalNotFoundError,
+    RateLimitedError,
+    SmtpConfigurationError,
+    SmtpSendError,
+    VerificationNotRequiredError,
+)
+from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
+
+from api.deps import (
+    get_auth_settings,
+    get_db,
+    get_password_hasher,
+    get_preferences_repository,
+    get_rate_limiter,
+    get_session_store,
+    require_authenticated_user,
+    resolve_request_client_ip,
+)
+from api.schemas.auth import (
+    GatedFlowStubResponse,
+    MeResponse,
+    PasswordResetConfirmBody,
+    PasswordResetConfirmResponse,
+    PasswordResetRequestBody,
+    PasswordResetRequestResponse,
+    PatchMeBody,
+    RegisterRequest,
+    RegisterResponse,
+    SessionResponse,
+    SignInRequest,
+    SignInResponse,
+    VerifyConfirmBody,
+    VerifyConfirmResponse,
+    VerifyRequestResponse,
+)
+from api.settings import AuthSettings
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+_GENERIC_CREDENTIALS_CODE = "invalid_credentials"
+_RESET_ACK = PasswordResetRequestResponse().detail
+_VERIFY_ACK = VerifyRequestResponse().detail
+_VERIFY_ALREADY = "Email is already verified."
+_VERIFY_NOT_REQUIRED = VerificationNotRequiredError.MESSAGE
+
+
+def _set_session_cookie(response: Response, settings: AuthSettings, token: str) -> None:
+    response.set_cookie(
+        key=settings.session_cookie_name,
+        value=token,
+        httponly=True,
+        secure=settings.session_cookie_secure,
+        samesite=settings.session_cookie_samesite,  # type: ignore[arg-type]
+        path="/",
+        max_age=SESSION_COOKIE_MAX_AGE,
+    )
+
+
+def _clear_session_cookie(response: Response, settings: AuthSettings) -> None:
+    # Explicit expiry so browsers drop the cookie even when attributes differ slightly.
+    response.set_cookie(
+        key=settings.session_cookie_name,
+        value="",
+        max_age=0,
+        expires=0,
+        path="/",
+        httponly=True,
+        secure=settings.session_cookie_secure,
+        samesite=settings.session_cookie_samesite,  # type: ignore[arg-type]
+    )
+
+
+def _me_response(result) -> MeResponse:
+    return MeResponse(
+        authenticated=True,
+        user_id=result.user_id,
+        email=result.email,
+        alias=result.alias,
+        photo_base64=result.photo_base64,
+        language=result.language,
+        theme=result.theme,
+        last_opened_kitchen_id=result.last_opened_kitchen_id,
+    )
+
+
+def _credentials_error_response() -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content={
+            "detail": InvalidCredentialsError.MESSAGE,
+            "code": _GENERIC_CREDENTIALS_CODE,
+        },
+    )
+
+
+def _smtp_error_response(exc: SmtpConfigurationError | SmtpSendError) -> JSONResponse:
+    code = "smtp_config_error" if isinstance(exc, SmtpConfigurationError) else "smtp_send_error"
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"detail": str(exc), "code": code},
+    )
+
+
+def _rate_limited_response(retry_after: int) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        content={"detail": RateLimitedError.MESSAGE, "code": RateLimitedError.CODE},
+        headers={"Retry-After": str(max(1, int(retry_after)))},
+    )
+
+
+def _consume_ip_rate_limit(
+    request: Request,
+    settings: AuthSettings,
+    limiter: SlidingWindowRateLimiter,
+    *,
+    bucket: str,
+    policy: RateLimitPolicy,
+) -> JSONResponse | None:
+    identity = resolve_request_client_ip(request, settings)
+    allowed, retry_after = limiter.check_and_consume(f"{bucket}:{identity}", policy)
+    if not allowed:
+        return _rate_limited_response(retry_after)
+    return None
+
+
+def _consume_user_rate_limit(
+    limiter: SlidingWindowRateLimiter,
+    *,
+    bucket: str,
+    user_id: uuid.UUID,
+    policy: RateLimitPolicy,
+) -> JSONResponse | None:
+    allowed, retry_after = limiter.check_and_consume(f"{bucket}:{user_id}", policy)
+    if not allowed:
+        return _rate_limited_response(retry_after)
+    return None
+
+
+@router.get("/session", response_model=SessionResponse)
+def session_status(
+    request: Request,
+    sessions: SessionStore = Depends(get_session_store),
+    settings: AuthSettings = Depends(get_auth_settings),
+) -> SessionResponse | JSONResponse:
+    token = request.cookies.get(settings.session_cookie_name)
+    user_id = sessions.resolve_user_id(token)
+    if user_id is None:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Not authenticated.", "code": "unauthenticated"},
+        )
+    return SessionResponse(authenticated=True, user_id=user_id)
+
+
+@router.get("/me", response_model=MeResponse)
+def current_user(
+    prefs: PreferencesRepository = Depends(get_preferences_repository),
+    user_id: uuid.UUID = Depends(require_authenticated_user),
+) -> MeResponse | JSONResponse:
+    """Current account + stored language/theme (null when unset)."""
+    try:
+        result = GetMePreferencesService(prefs).execute(GetMePreferencesCommand(user_id=user_id))
+    except PrincipalNotFoundError:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Not authenticated.", "code": "unauthenticated"},
+        )
+    return _me_response(result)
+
+
+@router.patch("/me", response_model=MeResponse)
+def patch_current_user(
+    body: PatchMeBody,
+    prefs: PreferencesRepository = Depends(get_preferences_repository),
+    user_id: uuid.UUID = Depends(require_authenticated_user),
+    db: Session = Depends(get_db),
+) -> MeResponse | JSONResponse:
+    """Persist language/theme/last-opened/initial alias/photo on the account (server SoT)."""
+    # `photo_base64` distinguishes "not sent" (untouched) from an explicit
+    # `null` (clear the column) — both parse to None on the model, so the
+    # wire-set membership is the only signal for "clear".
+    photo_field_set = "photo_base64" in body.model_fields_set
+    clear_photo = photo_field_set and body.photo_base64 is None
+    wrote_prefs = body.language is not None or body.theme is not None or photo_field_set
+    try:
+        # Prefs / last-opened first; claim alias last so a later failure cannot
+        # leave a set-once alias under an error JSON response (get_db commits on
+        # return). Do not session.rollback() here — integration tests share an
+        # outer transaction, and unique races already use a nested savepoint.
+        if body.last_opened_kitchen_id is not None:
+            SetLastOpenedKitchenService(
+                SqlAlchemyKitchenRepository(db),
+                prefs,
+            ).execute(
+                SetLastOpenedKitchenCommand(
+                    actor_user_id=user_id,
+                    kitchen_id=body.last_opened_kitchen_id,
+                )
+            )
+        result = UpdatePreferencesService(prefs).execute(
+            UpdatePreferencesCommand(
+                user_id=user_id,
+                language=body.language,
+                theme=body.theme,
+                photo_base64=body.photo_base64,
+                clear_photo=clear_photo,
+            )
+        )
+        if body.alias is not None:
+            # Initial claim only — SetAliasService refuses a change once stored.
+            result = SetAliasService(prefs).execute(
+                SetAliasCommand(user_id=user_id, alias=body.alias)
+            )
+    except (KitchenNotFoundError, NotKitchenMemberError):
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": KitchenNotFoundError.MESSAGE, "code": "kitchen_not_found"},
+        )
+    except InvalidAliasError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={"detail": str(exc), "code": InvalidAliasError.CODE},
+        )
+    except InvalidPhotoError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={"detail": str(exc), "code": InvalidPhotoError.CODE},
+        )
+    except AliasTakenError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"detail": str(exc), "code": AliasTakenError.CODE},
+        )
+    except AliasAlreadySetError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"detail": str(exc), "code": AliasAlreadySetError.CODE},
+        )
+    except InvalidPreferencesError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"detail": str(exc), "code": "invalid_preferences"},
+        )
+    except PrincipalNotFoundError:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Not authenticated.", "code": "unauthenticated"},
+        )
+    if body.alias is not None:
+        logger.info("user_alias_set user_id=%s", user_id)
+    if wrote_prefs or body.last_opened_kitchen_id is not None:
+        logger.info("user_preferences_updated user_id=%s", user_id)
+    return _me_response(result)
+
+
+@router.post(
+    "/register",
+    response_model=RegisterResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def register(
+    body: RegisterRequest,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    sessions: SessionStore = Depends(get_session_store),
+    hasher: PasswordHasher = Depends(get_password_hasher),
+    settings: AuthSettings = Depends(get_auth_settings),
+    limiter: SlidingWindowRateLimiter = Depends(get_rate_limiter),
+) -> RegisterResponse | JSONResponse:
+    if not settings.session_secret:
+        logger.error("SESSION_SECRET is not configured")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": "Server configuration error.", "code": "config_error"},
+        )
+
+    limited = _consume_ip_rate_limit(
+        request,
+        settings,
+        limiter,
+        bucket="register",
+        policy=settings.rate_limit_register,
+    )
+    if limited is not None:
+        return limited
+
+    service = SignUpService(SqlAlchemySignupRepository(db), hasher)
+    invite_token = (body.invite_token or "").strip() or None
+
+    try:
+        if invite_token:
+            invite_result = SignUpWithInviteService(
+                service,
+                SqlAlchemyKitchenInviteTokenRepository(db),
+                SqlAlchemyAuthUserRepository(db),
+                SqlAlchemyKitchenRepository(db),
+                SqlAlchemyEmailVerificationRepository(db),
+            ).execute(
+                SignUpWithInviteCommand(
+                    email=body.email,
+                    password=body.password,
+                    raw_token=invite_token,
+                    email_verification_required=settings.email_verification_required,
+                )
+            )
+            result_user_id = invite_result.user_id
+            result_email = invite_result.email
+            result_kitchen_id = invite_result.personal_kitchen_id
+            result_kitchen_name = invite_result.personal_kitchen_name
+            inviting_kitchen_id = invite_result.inviting_kitchen_id
+            requires_verify = invite_result.requires_email_verification
+        else:
+            plain = service.execute(
+                SignupCommand(
+                    email=body.email,
+                    password=body.password,
+                    email_verification_required=settings.email_verification_required,
+                )
+            )
+            result_user_id = plain.user_id
+            result_email = plain.email
+            result_kitchen_id = plain.kitchen_id
+            result_kitchen_name = plain.kitchen_name
+            inviting_kitchen_id = None
+            requires_verify = False
+    except InvalidSignupError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"detail": str(exc), "code": "invalid_signup"},
+        )
+    except DuplicateEmailError:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={
+                "detail": "An account with this email already exists.",
+                "code": "duplicate_email",
+            },
+        )
+    except InvalidInviteTokenError:
+        return JSONResponse(
+            status_code=status.HTTP_410_GONE,
+            content={
+                "detail": InvalidInviteTokenError.MESSAGE,
+                "code": InvalidInviteTokenError.CODE,
+            },
+        )
+    except InviteEmailMismatchError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"detail": str(exc), "code": InviteEmailMismatchError.CODE},
+        )
+
+    if settings.email_verification_required and not invite_token:
+        try:
+            mailer = SmtpEmailSender(load_smtp_settings())
+            RequestEmailVerificationService(
+                SqlAlchemyAuthUserRepository(db),
+                SqlAlchemyEmailVerificationRepository(db),
+                mailer,
+                public_app_url=settings.public_app_url,
+            ).execute(
+                RequestEmailVerificationCommand(
+                    user_id=result_user_id,
+                    email_verification_required=True,
+                )
+            )
+        except (SmtpConfigurationError, SmtpSendError) as exc:
+            # Fail loud: do not leave a registered account that was promised a verify email.
+            db.rollback()
+            logger.error(
+                "register_verification_smtp_failed code=%s",
+                type(exc).__name__,
+            )
+            return _smtp_error_response(exc)
+
+    if settings.email_verification_required and invite_token and requires_verify:
+        # Partial success: session set + 403 so UI retains invite token → /verify → accept.
+        try:
+            mailer = SmtpEmailSender(load_smtp_settings())
+            RequestEmailVerificationService(
+                SqlAlchemyAuthUserRepository(db),
+                SqlAlchemyEmailVerificationRepository(db),
+                mailer,
+                public_app_url=settings.public_app_url,
+            ).execute(
+                RequestEmailVerificationCommand(
+                    user_id=result_user_id,
+                    email_verification_required=True,
+                )
+            )
+        except (SmtpConfigurationError, SmtpSendError) as exc:
+            db.rollback()
+            logger.error(
+                "register_invite_verification_smtp_failed code=%s",
+                type(exc).__name__,
+            )
+            return _smtp_error_response(exc)
+
+        sessions.revoke_all_for_user(result_user_id)
+        token = sessions.create(result_user_id)
+        logger.info(
+            "user_registered_invite_pending_verify user_id=%s kitchen_id=%s",
+            result_user_id,
+            result_kitchen_id,
+        )
+        # Cookies must be set on the returned response — a separate JSONResponse
+        # does not inherit Set-Cookie from the injected Response parameter.
+        pending = JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                "detail": EmailNotVerifiedError.MESSAGE,
+                "code": "email_not_verified",
+                "user_id": str(result_user_id),
+                "kitchen_id": str(result_kitchen_id),
+                "invite_token_retained": True,
+            },
+        )
+        _set_session_cookie(pending, settings, token)
+        return pending
+
+    sessions.revoke_all_for_user(result_user_id)
+    token = sessions.create(result_user_id)
+    _set_session_cookie(response, settings, token)
+    logger.info(
+        "user_registered user_id=%s kitchen_id=%s inviting_kitchen_id=%s",
+        result_user_id,
+        result_kitchen_id,
+        inviting_kitchen_id,
+    )
+    return RegisterResponse(
+        user_id=result_user_id,
+        email=result_email,
+        kitchen_id=result_kitchen_id,
+        kitchen_name=result_kitchen_name,
+        inviting_kitchen_id=inviting_kitchen_id,
+    )
+
+
+@router.post("/sign-in", response_model=SignInResponse)
+async def sign_in(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+    sessions: SessionStore = Depends(get_session_store),
+    hasher: PasswordHasher = Depends(get_password_hasher),
+    settings: AuthSettings = Depends(get_auth_settings),
+    limiter: SlidingWindowRateLimiter = Depends(get_rate_limiter),
+) -> SignInResponse | JSONResponse:
+    if not settings.session_secret:
+        logger.error("SESSION_SECRET is not configured")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": "Server configuration error.", "code": "config_error"},
+        )
+
+    try:
+        payload = await request.json()
+    except Exception:
+        return _credentials_error_response()
+    if not isinstance(payload, dict):
+        return _credentials_error_response()
+    email = payload.get("email") if isinstance(payload.get("email"), str) else ""
+    password = payload.get("password") if isinstance(payload.get("password"), str) else ""
+    body = SignInRequest(email=email, password=password)
+
+    limited = _consume_ip_rate_limit(
+        request,
+        settings,
+        limiter,
+        bucket="sign_in",
+        policy=settings.rate_limit_sign_in,
+    )
+    if limited is not None:
+        return limited
+
+    service = SignInService(SqlAlchemyAuthUserRepository(db), hasher)
+    try:
+        result = service.execute(SignInCommand(email=body.email, password=body.password))
+    except InvalidCredentialsError:
+        return _credentials_error_response()
+
+    sessions.revoke_all_for_user(result.user_id)
+    token = sessions.create(result.user_id)
+    _set_session_cookie(response, settings, token)
+    logger.info("user_signed_in user_id=%s", result.user_id)
+    return SignInResponse(user_id=result.user_id, email=result.email)
+
+
+@router.post("/sign-out", status_code=status.HTTP_204_NO_CONTENT)
+def sign_out(
+    request: Request,
+    response: Response,
+    sessions: SessionStore = Depends(get_session_store),
+    settings: AuthSettings = Depends(get_auth_settings),
+) -> Response:
+    token = request.cookies.get(settings.session_cookie_name)
+    sessions.revoke(token)
+    _clear_session_cookie(response, settings)
+    logger.info("user_signed_out")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/password-reset/request",
+    response_model=PasswordResetRequestResponse,
+)
+def request_password_reset(
+    body: PasswordResetRequestBody,
+    request: Request,
+    db: Session = Depends(get_db),
+    settings: AuthSettings = Depends(get_auth_settings),
+    limiter: SlidingWindowRateLimiter = Depends(get_rate_limiter),
+) -> PasswordResetRequestResponse | JSONResponse:
+    limited = _consume_ip_rate_limit(
+        request,
+        settings,
+        limiter,
+        bucket="password_reset_request",
+        policy=settings.rate_limit_password_reset_request,
+    )
+    if limited is not None:
+        return limited
+
+    try:
+        mailer = SmtpEmailSender(load_smtp_settings())
+        service = RequestPasswordResetService(
+            SqlAlchemyAuthUserRepository(db),
+            SqlAlchemyPasswordResetTokenRepository(db),
+            mailer,
+            public_app_url=settings.public_app_url,
+        )
+        service.execute(RequestPasswordResetCommand(email=body.email))
+    except (SmtpConfigurationError, SmtpSendError) as exc:
+        # Persist-before-send: roll back staged token so SMTP failure is never "sent".
+        db.rollback()
+        logger.error("password_reset_request_smtp_failed code=%s", type(exc).__name__)
+        return _smtp_error_response(exc)
+
+    logger.info("password_reset_requested")
+    return PasswordResetRequestResponse(detail=_RESET_ACK)
+
+
+@router.post(
+    "/password-reset/confirm",
+    response_model=PasswordResetConfirmResponse,
+)
+def confirm_password_reset(
+    body: PasswordResetConfirmBody,
+    db: Session = Depends(get_db),
+    hasher: PasswordHasher = Depends(get_password_hasher),
+) -> PasswordResetConfirmResponse | JSONResponse:
+    service = CompletePasswordResetService(
+        SqlAlchemyAuthUserRepository(db),
+        SqlAlchemyPasswordResetTokenRepository(db),
+        hasher,
+    )
+    try:
+        result = service.execute(
+            CompletePasswordResetCommand(token=body.token, new_password=body.new_password)
+        )
+    except InvalidResetTokenError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"detail": str(exc), "code": "invalid_reset_token"},
+        )
+    except InvalidResetPasswordError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"detail": str(exc), "code": "invalid_reset_password"},
+        )
+
+    logger.info("password_reset_completed user_id=%s", result.user_id)
+    return PasswordResetConfirmResponse(
+        detail="Password updated. You can sign in with your new password.",
+        user_id=result.user_id,
+    )
+
+
+@router.post("/verify/request", response_model=VerifyRequestResponse)
+def request_email_verification(
+    db: Session = Depends(get_db),
+    settings: AuthSettings = Depends(get_auth_settings),
+    user_id: uuid.UUID = Depends(require_authenticated_user),
+    limiter: SlidingWindowRateLimiter = Depends(get_rate_limiter),
+) -> VerifyRequestResponse | JSONResponse:
+    # Gate-off 404 may still consume this user's verify quota (documented; acceptable).
+    limited = _consume_user_rate_limit(
+        limiter,
+        bucket="verify_request",
+        user_id=user_id,
+        policy=settings.rate_limit_verify_request,
+    )
+    if limited is not None:
+        return limited
+
+    if not settings.email_verification_required:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": _VERIFY_NOT_REQUIRED, "code": "verification_not_required"},
+        )
+
+    try:
+        mailer = SmtpEmailSender(load_smtp_settings())
+        service = RequestEmailVerificationService(
+            SqlAlchemyAuthUserRepository(db),
+            SqlAlchemyEmailVerificationRepository(db),
+            mailer,
+            public_app_url=settings.public_app_url,
+        )
+        result = service.execute(
+            RequestEmailVerificationCommand(
+                user_id=user_id,
+                email_verification_required=settings.email_verification_required,
+            )
+        )
+    except VerificationNotRequiredError:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": _VERIFY_NOT_REQUIRED, "code": "verification_not_required"},
+        )
+    except PrincipalNotFoundError:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Not authenticated.", "code": "unauthenticated"},
+        )
+    except (SmtpConfigurationError, SmtpSendError) as exc:
+        db.rollback()
+        logger.error("email_verification_request_smtp_failed code=%s", type(exc).__name__)
+        return _smtp_error_response(exc)
+
+    if result.already_verified:
+        return VerifyRequestResponse(detail=_VERIFY_ALREADY, already_verified=True)
+
+    logger.info("email_verification_requested user_id=%s", user_id)
+    return VerifyRequestResponse(detail=_VERIFY_ACK, already_verified=False)
+
+
+@router.post("/verify/confirm", response_model=VerifyConfirmResponse)
+def confirm_email_verification(
+    body: VerifyConfirmBody,
+    db: Session = Depends(get_db),
+    settings: AuthSettings = Depends(get_auth_settings),
+) -> VerifyConfirmResponse | JSONResponse:
+    if not settings.email_verification_required:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": _VERIFY_NOT_REQUIRED, "code": "verification_not_required"},
+        )
+
+    service = ConfirmEmailVerificationService(
+        SqlAlchemyAuthUserRepository(db),
+        SqlAlchemyEmailVerificationRepository(db),
+    )
+    try:
+        result = service.execute(
+            ConfirmEmailVerificationCommand(
+                token=body.token,
+                email_verification_required=settings.email_verification_required,
+            )
+        )
+    except VerificationNotRequiredError:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": _VERIFY_NOT_REQUIRED, "code": "verification_not_required"},
+        )
+    except InvalidVerificationTokenError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"detail": str(exc), "code": "invalid_verification_token"},
+        )
+
+    logger.info("email_verification_completed user_id=%s", result.user_id)
+    return VerifyConfirmResponse(
+        detail="Email verified. You can continue with gated actions.",
+        user_id=result.user_id,
+    )
+
+
+@router.post(
+    "/gated-flows/invite-accept-stub",
+    response_model=GatedFlowStubResponse,
+)
+def invite_accept_stub(
+    db: Session = Depends(get_db),
+    settings: AuthSettings = Depends(get_auth_settings),
+    user_id: uuid.UUID = Depends(require_authenticated_user),
+) -> GatedFlowStubResponse | JSONResponse:
+    """Thin gated-flow probe until Epic 2 invite acceptance exists.
+
+    Calls the same EnsureEmailVerifiedService port Epic 2 will use.
+    """
+    service = EnsureEmailVerifiedService(SqlAlchemyEmailVerificationRepository(db))
+    try:
+        service.execute(
+            EnsureEmailVerifiedCommand(
+                user_id=user_id,
+                email_verification_required=settings.email_verification_required,
+            )
+        )
+    except EmailNotVerifiedError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"detail": str(exc), "code": "email_not_verified"},
+        )
+
+    return GatedFlowStubResponse(detail="Gated flow allowed.", user_id=user_id)

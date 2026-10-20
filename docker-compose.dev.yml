@@ -1,0 +1,93 @@
+# Dev overlay — hot reload for api + ui (not for production).
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# Source is bind-mounted from the host. Production images remain the default
+# `docker compose up` / prod overlay path.
+
+services:
+  db:
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  api:
+    environment:
+      DEV_RELOAD: "true"
+      LOG_LEVEL: "DEBUG"
+      # Dev default: seed a pre-verified account + kitchen so a fresh stack is
+      # testable immediately. Set SEED_DEV_USER=0 in .env to opt out.
+      SEED_DEV_USER: ${SEED_DEV_USER:-1}
+    volumes:
+      - ./api/domain:/app/domain
+      - ./api/application:/app/application
+      - ./api/adapters:/app/adapters
+      - ./api/api:/app/api
+      - ./api/scripts:/app/scripts
+      - ./api/tests:/app/tests
+      - ./api/alembic.ini:/app/alembic.ini
+    # Watchdog needs write for reload child processes
+    user: "0:0"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile.dev
+    environment:
+      API_INTERNAL_URL: ${API_INTERNAL_URL}
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    # Bypasses `npm run dev` to invoke node directly with --inspect as a real
+    # CLI flag (not NODE_OPTIONS): jest-worker strips --inspect/--debug from
+    # execArgv before forking its child processes, but NOT from inherited env
+    # vars, so NODE_OPTIONS would leak --inspect into every jest-worker child
+    # and crash them on a port collision. See JS-DAP.md.
+    # Must bind 0.0.0.0 — the container's loopback isn't reachable from the host.
+    #
+    # `next dev`'s CLI process (PID 1 here) only supervises — it forks a second
+    # process ("next-server", running start-server.js) that actually executes
+    # route handlers/server components. Next detects the inherited --inspect
+    # on PID 1 and auto-starts a second inspector on port+1 (9230) for that
+    # child, bound to the same host. Breakpoints in app code only bind on
+    # that child's inspector, so 9230 must be published too. See JS-DAP.md.
+    # --turbopack, not --webpack: webpack's `eval-*` dev devtool crashes
+    # importing pdfjs-dist's ESM build (react-pdf, ParseComparisonPanel.tsx)
+    # with "Object.defineProperty called on non-object" — a confirmed
+    # webpack bug (webpack/webpack#20095, fixed in 5.103.0, not yet bundled
+    # by this Next.js version) that Next.js dev mode can't work around
+    # (overriding `devtool` is hard-blocked and reverted). Turbopack isn't
+    # affected. JS-DAP.md already documents Turbopack-specific chunk
+    # layout/skipFiles handling, so this debug setup expects Turbopack to
+    # work — but verify breakpoints still resolve after switching.
+    command: ["node", "--inspect=0.0.0.0:9229", "node_modules/next/dist/bin/next", "dev", "--turbopack", "-H", "0.0.0.0", "-p", "3000"]
+    ports:
+      - "${UI_DEBUG_PORT:-9229}:9229"
+      - "${UI_DEBUG_WORKER_PORT:-9230}:9230"
+    volumes:
+      - ./ui:/app
+      - ui_node_modules:/app/node_modules
+      # Bind mount, not a named volume: js-debug-adapter runs on the HOST and
+      # reads .js.map sidecar files straight off local disk for file:// script
+      # URLs (it never fetches them over the CDP connection). A named volume
+      # keeps .next container-only, so every source-map read 404s. See
+      # JS-DAP.md. Already gitignored (ui/.gitignore).
+      - ./ui/.next:/app/.next
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 1h
+      timeout: 5s
+      retries: 15
+      start_period: 45s
+
+volumes:
+  ui_node_modules:

@@ -1,0 +1,280 @@
+/** @vitest-environment jsdom */
+
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { act, createRef } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { SHOW_DELAY_MS } from "@/components/Tooltip";
+
+import { IconButton } from "./IconButton";
+
+describe("IconButton", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+
+  afterEach(() => {
+    act(() => {
+      root.unmount();
+    });
+    container.remove();
+    vi.useRealTimers();
+  });
+
+  it("defaults to a compact ghost button: type=button, no fill/border classes", async () => {
+    await act(async () => {
+      root.render(<IconButton icon={<span />} label="Close" />);
+    });
+    const button = container.querySelector("button") as HTMLButtonElement;
+
+    expect(button.getAttribute("type")).toBe("button");
+    expect(button.getAttribute("aria-label")).toBe("Close");
+
+    const classList = button.className.split(/\s+/);
+    // Compact ghost chrome present.
+    expect(classList).toContain("inline-flex");
+    expect(classList).toContain("flex-shrink-0");
+    expect(classList).toContain("border-0");
+    expect(classList).toContain("bg-transparent");
+    // Does not stretch by default.
+    expect(classList).not.toContain("w-full");
+    expect(classList).not.toContain("min-w-0");
+  });
+
+  it("stretches to fill a width-constrained parent when fill is set", async () => {
+    await act(async () => {
+      root.render(
+        <div style={{ width: "300px" }}>
+          <IconButton icon={<span />} label="Save" fill />
+        </div>,
+      );
+    });
+    const button = container.querySelector("button") as HTMLButtonElement;
+    const classList = button.className.split(/\s+/);
+
+    // jsdom has no real layout engine, so we assert on the utility classes
+    // that produce full-width stretching rather than a measured pixel width.
+    expect(classList).toContain("!w-full");
+    expect(classList).toContain("min-w-0");
+    // flex-shrink-0 is kept (not neutralized) so the button never shrinks
+    // below its full-width basis in a future multi-child flex row.
+    expect(classList).toContain("flex-shrink-0");
+    expect(classList).not.toContain("!flex-shrink");
+    // Still a real button, still labeled/typed the same as compact mode.
+    expect(button.getAttribute("type")).toBe("button");
+    expect(button.getAttribute("aria-label")).toBe("Save");
+  });
+
+  it("keeps default (non-fill) callers unaffected by the fill code path", async () => {
+    await act(async () => {
+      root.render(<IconButton icon={<span />} label="Share" variant="muted" />);
+    });
+    const button = container.querySelector("button") as HTMLButtonElement;
+    const classList = button.className.split(/\s+/);
+
+    expect(classList).not.toContain("!w-full");
+    expect(classList).not.toContain("!flex-shrink");
+    expect(classList).toContain("flex-shrink-0");
+  });
+
+  it("renders an optional caption under the icon without changing the accessible name", async () => {
+    await act(async () => {
+      root.render(
+        <IconButton
+          icon={<span data-testid="icon" />}
+          label="Add to Personal"
+          caption="Personal"
+          variant="ghost"
+        />,
+      );
+    });
+    const button = container.querySelector("button") as HTMLButtonElement;
+    const classList = button.className.split(/\s+/);
+
+    expect(button.getAttribute("aria-label")).toBe("Add to Personal");
+    expect(button.textContent).toContain("Personal");
+    expect(classList).toContain("flex-col");
+    expect(container.querySelector("[aria-hidden]")?.textContent).toBe("Personal");
+  });
+
+  it("omits caption layout when caption is not passed", async () => {
+    await act(async () => {
+      root.render(<IconButton icon={<span />} label="Close" />);
+    });
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.className.split(/\s+/)).not.toContain("flex-col");
+    expect(button.querySelector("[aria-hidden]")).toBeNull();
+  });
+
+  it("applies the ghost variant class for icon-only chrome", async () => {
+    await act(async () => {
+      root.render(<IconButton icon={<span />} label="Add expense" variant="ghost" />);
+    });
+    const button = container.querySelector("button") as HTMLButtonElement;
+    const classList = button.className.split(/\s+/);
+
+    expect(classList).toContain("border-0");
+    expect(classList).toContain("bg-transparent");
+    expect(button.getAttribute("aria-label")).toBe("Add expense");
+  });
+
+  it("allows type to be overridden via rest props (e.g. type=submit)", async () => {
+    await act(async () => {
+      root.render(<IconButton icon={<span />} label="Save" type="submit" />);
+    });
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.getAttribute("type")).toBe("submit");
+  });
+
+  it("still respects disabled and onClick regardless of fill", async () => {
+    let clicked = false;
+    await act(async () => {
+      root.render(
+        <IconButton
+          icon={<span />}
+          label="Save"
+          fill
+          disabled
+          onClick={() => {
+            clicked = true;
+          }}
+        />,
+      );
+    });
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+
+    await act(async () => {
+      button.click();
+    });
+    expect(clicked).toBe(false);
+  });
+
+  it("does not render a native title attribute (styled Tooltip replaces it)", async () => {
+    await act(async () => {
+      root.render(<IconButton icon={<span />} label="Close" />);
+    });
+    const button = container.querySelector("button") as HTMLButtonElement;
+    expect(button.hasAttribute("title")).toBe(false);
+    expect(button.getAttribute("aria-label")).toBe("Close");
+  });
+
+  it("renders the tooltip bubble on hover for a plain icon-only button", async () => {
+    await act(async () => {
+      root.render(<IconButton icon={<span />} label="Close" />);
+    });
+    const button = container.querySelector("button") as HTMLButtonElement;
+    await act(async () => {
+      button.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+      vi.advanceTimersByTime(SHOW_DELAY_MS);
+    });
+    expect(
+      document.querySelector('[data-testid="tooltip-bubble"]')?.textContent,
+    ).toBe("Close");
+  });
+
+  it("suppresses the tooltip when disabled", async () => {
+    await act(async () => {
+      root.render(<IconButton icon={<span />} label="Close" disabled />);
+    });
+    const button = container.querySelector("button") as HTMLButtonElement;
+    await act(async () => {
+      button.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    });
+    expect(document.querySelector('[data-testid="tooltip-bubble"]')).toBeNull();
+  });
+
+  it("suppresses the tooltip when caption is set", async () => {
+    await act(async () => {
+      root.render(
+        <IconButton icon={<span />} label="Add to Personal" caption="Personal" />,
+      );
+    });
+    const button = container.querySelector("button") as HTMLButtonElement;
+    await act(async () => {
+      button.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    });
+    expect(document.querySelector('[data-testid="tooltip-bubble"]')).toBeNull();
+  });
+
+  it("suppresses the tooltip when aria-expanded is true", async () => {
+    await act(async () => {
+      root.render(
+        <IconButton icon={<span />} label="Menu" aria-expanded={true} />,
+      );
+    });
+    const button = container.querySelector("button") as HTMLButtonElement;
+    await act(async () => {
+      button.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    });
+    expect(document.querySelector('[data-testid="tooltip-bubble"]')).toBeNull();
+  });
+
+  it("keeps the tooltip when aria-expanded is false", async () => {
+    await act(async () => {
+      root.render(
+        <IconButton icon={<span />} label="Menu" aria-expanded={false} />,
+      );
+    });
+    const button = container.querySelector("button") as HTMLButtonElement;
+    await act(async () => {
+      button.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+      vi.advanceTimersByTime(SHOW_DELAY_MS);
+    });
+    expect(
+      document.querySelector('[data-testid="tooltip-bubble"]'),
+    ).not.toBeNull();
+  });
+
+  it("renders the button itself as IconButton's root — no wrapper element inserted", async () => {
+    await act(async () => {
+      root.render(<IconButton icon={<span />} label="Save" fill />);
+    });
+    // IconButton's root rendered node is the <button> itself: it's the
+    // render container's direct/only child, not nested inside a wrapper.
+    expect(container.children).toHaveLength(1);
+    const button = container.firstElementChild as HTMLButtonElement;
+    expect(button.tagName).toBe("BUTTON");
+    const classList = button.className.split(/\s+/);
+    expect(classList).toContain("flex-shrink-0");
+    expect(classList).toContain("!w-full");
+    expect(classList).toContain("min-w-0");
+  });
+
+  it("resolves a forwarded ref to the actual <button> DOM node through Tooltip's ref-merge", async () => {
+    const ref = createRef<HTMLButtonElement>();
+    await act(async () => {
+      root.render(<IconButton ref={ref} icon={<span />} label="Save" />);
+    });
+
+    expect(ref.current).toBeInstanceOf(HTMLButtonElement);
+    expect(ref.current).toBe(container.querySelector("button"));
+  });
+});
+
+describe("IconButton.module.scss ghost variant", () => {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const css = readFileSync(join(here, "IconButton.module.scss"), "utf8");
+
+  it("keeps hover and rest chrome off the plate — color only on the glyph", () => {
+    expect(css).toContain(".ghost:not(:disabled):hover,");
+    expect(css).toContain("background: transparent !important;");
+    expect(css).toContain(
+      "color: color-mix(in srgb, var(--muted) 90%, var(--foreground)) !important;",
+    );
+    expect(css).not.toMatch(
+      /\.ghost:not\(:disabled\):hover \{[^}]*background: color-mix/,
+    );
+    expect(css).toContain('.ghost[aria-current="page"]');
+  });
+});

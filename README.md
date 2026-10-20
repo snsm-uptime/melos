@@ -5,58 +5,121 @@
 
 ## Pitch
 
-[Five sentences: the problem and who has it, what the app does, what the AI
-adds, what you learned from testing and what you would do next, with a data
-point or an example.]
+M.E.L.O.S helps couples and small groups capture recipes they love, scale
+ingredients for meals they cook, and shop together. It turns recipes from URLs
+or photos into structured ingredients and steps using Gemini AI. The AI also
+powers kitchen conversations: ask your recipes questions and get answers with
+citations from what you've saved.
 
 ## The problem
 
-10/16/26, 12:33 AM Document
-Page 5 of 13<https://learn.obsbusiness.school/ultra/courses/_248910_1/document/_11288207_1?view=content&state=view>
-[Who has the problem, how they solve it today and why it is worth solving. 3 or
-4 sentences.]
+Many couples and small groups collect recipes from different sources but struggle
+to organize them, scale ingredients for varying amounts, and shop without
+duplication. Today, they use spreadsheets, notes, or just remember what to buy.
+Melos solves this by creating a shared space where everyone can contribute
+recipes and plan meals together.
 
 ## What the app does
 
-[What the user can do, step by step.]
+Melos is organized around **kitchens**: shared spaces where members collect
+recipes, plan meals and shop together.
+
+1. Sign up (or get invited by email) and join a kitchen as owner or member.
+2. Capture recipes from a URL, an upload or by hand; the AI extracts title,
+   servings, ingredients and steps into a draft you review.
+3. Browse recipes with a normalized ingredient catalog and categories.
+4. Add recipes to a cart with a number of meals and people; ingredients are
+   scaled and consolidated.
+5. Turn the cart into a shopping list, then archive it when you are done.
+6. Chat with your kitchen: ask questions answered from your own recipes (with
+   citations) and from past shopping lists.
+7. Export recipes and lists to PDF or Markdown.
 
 ## The AI part
 
-- **What it uses:** [Gemini API with the model ..., a Hugging Face model ...,
-a RAG over ...]
+- **What it uses:** Gemini API via the `google-genai` SDK (chat model and
+  embedding model, configured with `GEMINI_CHAT_MODEL`, `GEMINI_EMBED_MODEL`,
+  `GEMINI_EMBED_DIM`), plus a RAG over the kitchen's recipes stored as vectors
+  in PostgreSQL with `pgvector`. An MCP service (separate container, port 9000)
+  exposes Melos to external AI clients.
 - **Why this option:** [one or two sentences]
-- **What happens if it fails:** [how the app responds if the quota runs out or
-there is no connection]
+- **What happens if it fails:** every external call (Gemini, web fetch, SMTP)
+  goes through a port in `application/ports.py` and maps errors to domain errors
+  (e.g. `AIUnavailable`, `PageFetchFailed`). Raw SDK exceptions never reach the
+  user; the app reports that the AI is unavailable and manual entry keeps
+  working.
 
 ## How I built it
 
-- **Tools:** [Gemini in Colab, Copilot, Cursor, Claude Code, Codex,
-Gemini CLI...]
-- **Agent context file:** [link to your AGENTS.md, CLAUDE.md or GEMINI.md]
-- **Key prompts:** [the 3 to 5 prompts that helped the most, copied as they
-were]
-- **What I delegated to the agent and what I reviewed by hand:** [concrete
-examples]
+Melos bootstraps from my earlier **finance-dashboard** project, reusing its
+proven auth, architecture, tooling and deployment patterns
+(see [specs/001-finance-dashboard-reuse/spec.md](specs/001-finance-dashboard-reuse/spec.md)).
 
-## Testing and improvement
+| | What | Notes |
+|---|---|---|
+| **Reused as-is** | Hexagonal `api/` layout, `ui/` shell, `scripts/` compose helpers, CI workflow, Dockerfiles, auth layer (sessions, argon2, password reset, email verification, rate limiting) | Auth layer is not modified without explicit approval |
+| **Adapted** | Docker Compose (`pgvector/pgvector:pg16`, new `mcp` service), env prefix `FH_` → `MELOS_`, data dir `~/melos`, list → kitchen, UI English-only (language toggle removed) | Config changes go through `.env` and `api/settings.py`, never per-file renames |
+| **New** | Gemini integration, recipe capture, cart/shopping list, conversations, embeddings, PDF export, MCP service | |
+| **Not reused** | All finance domain code (cards, statements, budgets, FX, bank adapters) and finance seed credentials | |
 
-| Who tested it | What they tested | What happened | What I changed |
-|---|---|---|---|
-| [a classmate, or me as a user] | | | |
+**Stack:** Python 3.12 + `uv`, FastAPI, SQLAlchemy + Alembic, PostgreSQL 16 +
+pgvector, pytest, ruff · Next.js 16 (App Router, Turbopack), React 19,
+Tailwind CSS 4, TypeScript 5, Vitest, ESLint · Docker Compose (db, api, ui, mcp).
 
-## Run locally (optional)
+- **Tools:** Claude Code, Cursor, GitHub, Gemini API via google-genai SDK
+- **Agent context file:** [AGENTS.md](AGENTS.md) (project governance and work instructions)
+- **Specification:** [specs/001-finance-dashboard-reuse/spec.md](specs/001-finance-dashboard-reuse/spec.md) (bootstrap phase)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow, code review process,
+and governance. The project is governed by the [Project Constitution](.specify/memory/constitution.md).
+
+## Run locally
+
+Prerequisites: Docker, `uv`, Node.js / npm.
 
 ```bash
-pip install -r requirements.txt
-# Option A: put the key in .streamlit/secrets.toml and run
-streamlit run app.py
-# Option B: export the key and run
-export GEMINI_API_KEY="..." && python app.py
+# 1. Configure secrets (never commit .env)
+cp .env.example .env
+#    fill in POSTGRES_PASSWORD, SESSION_SECRET, GEMINI_API_KEY, SMTP_*
+#    SMTP is required for email verification, password reset, and kitchen invites.
+#    Use a real provider (e.g., Gmail app password) — misconfigured SMTP returns 503
+#    on the sending request and is logged. For dev: SMTP_HOST, SMTP_USER, SMTP_PASSWORD,
+#    SMTP_FROM (RFC5322 format like "Melos <noreply@example.com>"), SMTP_STARTTLS=true
+
+# 2. Create the data directory outside the repo
+mkdir -p "${MELOS_DATA:-$HOME/melos}/pgdata"
+
+# 3. Install dependencies
+(cd api && uv sync --group dev)
+(cd ui && npm install)
+
+# 4. Start db, api, ui and mcp (migrations run automatically on api start)
+./scripts/compose-up.sh        # add -d to run in the background
 ```
+
+Then check:
+
+- UI: http://localhost:3000 (login page)
+- API: http://localhost:8000/health
+- MCP: http://localhost:9000/health
+
+With `SEED_DEV_USER=1` (dev only) the API seeds two verified users (owner and
+member) sharing one kitchen, ready for testing auth and kitchen membership.
+
+**Tests and linting**
+
+```bash
+cd api && uv run ruff check . && uv run pytest -q
+cd ui && npm run lint && npm run typecheck && npm test
+```
+
+Parallel work: `./scripts/worktree/worktree-add.sh <slug> <branch>` gives each
+worktree its own Compose stack (`MELOS_COMPOSE_NAME`, `API_HOST_PORT`,
+`UI_HOST_PORT`).
 
 ## Screenshots
 
-10/16/26, 12:33 AM Document
-Page 6 of 13<https://learn.obsbusiness.school/ultra/courses/_248910_1/document/_11288207_1?view=content&state=view>
 [The app running, the app facing an edge case, a moment of your work with the AI
 and the testing. Without any key in view.]

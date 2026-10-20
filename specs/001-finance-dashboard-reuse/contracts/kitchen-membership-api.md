@@ -19,11 +19,11 @@ Kitchens are shared spaces where users collaborate on recipes, shopping lists, a
 | Field | Type | Notes |
 |-------|------|-------|
 | `id` | UUID | Primary key |
-| `name` | String | Human-readable name (e.g., "Weeknight Dinners") |
+| `name` | varchar(200) | Required; human-readable name (e.g., "Weeknight Dinners") |
 | `owner_id` | UUID | Foreign key to user; cannot be changed |
-| `description` | String | Optional; kitchen metadata |
+| `is_archived` | Boolean | Default false; hides kitchen from owner's list |
+| `content_language` | varchar(2) | Default `'en'`; CHECK constraint: `'en'` or `'es'`. Sets canonical ingredient/category language |
 | `created_at` | Timestamp | Creation time |
-| `updated_at` | Timestamp | Last modification time |
 
 ### Membership
 
@@ -32,10 +32,11 @@ Kitchens are shared spaces where users collaborate on recipes, shopping lists, a
 | `id` | UUID | Primary key |
 | `kitchen_id` | UUID | Foreign key to kitchen |
 | `user_id` | UUID | Foreign key to user |
-| `role` | Enum | "owner" or "member" |
-| `joined_at` | Timestamp | When user joined |
+| `role` | Enum | `'owner'` or `'member'` |
+| `is_hidden` | Boolean | Per-user hide (member-only; owner cannot hide their own kitchen) |
+| `created_at` | Timestamp | When user joined |
 
-**Constraint:** One membership per (kitchen_id, user_id) pair.
+**Constraint:** Unique (kitchen_id, user_id) pair.
 
 ---
 
@@ -54,20 +55,32 @@ List all kitchens where the authenticated user is a member or owner.
     {
       "id": "uuid-1",
       "name": "Weeknight Dinners",
-      "description": "Quick meals for work nights",
       "owner_id": "uuid-owner",
       "role": "owner",
-      "member_count": 3,
-      "created_at": "2026-10-01T10:00:00Z"
+      "is_archived": false,
+      "content_language": "en",
+      "members": [
+        {
+          "user_id": "uuid-owner",
+          "alias": "John Doe",
+          "photo_base64": null
+        }
+      ]
     },
     {
       "id": "uuid-2",
       "name": "Sunday Brunch",
-      "description": "Shared brunch recipes",
       "owner_id": "uuid-other",
       "role": "member",
-      "member_count": 2,
-      "created_at": "2026-10-05T14:30:00Z"
+      "is_archived": false,
+      "content_language": "en",
+      "members": [
+        {
+          "user_id": "uuid-other",
+          "alias": "Jane Smith",
+          "photo_base64": null
+        }
+      ]
     }
   ]
 }
@@ -84,13 +97,13 @@ List all kitchens where the authenticated user is a member or owner.
 
 ### POST /kitchens
 
-Create a new kitchen.
+Create a new kitchen owned by the authenticated user.
 
 **Request:**
 ```json
 {
   "name": "Holiday Recipes",
-  "description": "Recipes for holiday meals"
+  "content_language": "en"
 }
 ```
 
@@ -99,11 +112,9 @@ Create a new kitchen.
 {
   "id": "uuid",
   "name": "Holiday Recipes",
-  "description": "Recipes for holiday meals",
   "owner_id": "<authenticated_user_id>",
-  "role": "owner",
-  "member_count": 1,
-  "created_at": "2026-10-19T12:00:00Z"
+  "is_archived": false,
+  "content_language": "en"
 }
 ```
 
@@ -134,24 +145,8 @@ Get kitchen details (only if user is a member or owner).
 {
   "id": "uuid",
   "name": "Weeknight Dinners",
-  "description": "Quick meals",
   "owner_id": "uuid-owner",
-  "role": "member",
-  "members": [
-    {
-      "user_id": "uuid-owner",
-      "alias": "John Doe",
-      "role": "owner",
-      "joined_at": "2026-10-01T10:00:00Z"
-    },
-    {
-      "user_id": "uuid-member",
-      "alias": "Jane Smith",
-      "role": "member",
-      "joined_at": "2026-10-15T14:30:00Z"
-    }
-  ],
-  "created_at": "2026-10-01T10:00:00Z"
+  "is_archived": false
 }
 ```
 
@@ -175,13 +170,13 @@ Get kitchen details (only if user is a member or owner).
 
 ### PATCH /kitchens/{kitchen_id}
 
-Update kitchen details (owner only).
+Update kitchen name or content_language (owner only).
 
 **Request:**
 ```json
 {
   "name": "Weeknight Dinners (Updated)",
-  "description": "Easy recipes for busy weeknights"
+  "content_language": "es"
 }
 ```
 
@@ -190,11 +185,9 @@ Update kitchen details (owner only).
 {
   "id": "uuid",
   "name": "Weeknight Dinners (Updated)",
-  "description": "Easy recipes for busy weeknights",
   "owner_id": "uuid-owner",
-  "role": "owner",
-  "created_at": "2026-10-01T10:00:00Z",
-  "updated_at": "2026-10-19T15:45:00Z"
+  "is_archived": false,
+  "content_language": "es"
 }
 ```
 
@@ -209,6 +202,124 @@ Update kitchen details (owner only).
 ```json
 {
   "detail": "Only the kitchen owner can update settings"
+}
+```
+
+**Error (404 Not Found):**
+```json
+{
+  "detail": "Kitchen not found"
+}
+```
+
+---
+
+### POST /kitchens/{kitchen_id}/archive
+
+Archive a kitchen (owner only). Archived kitchens are hidden from the owner's list.
+
+**Request:** (uses session cookie)
+
+**Response (200 OK):**
+```json
+{
+  "id": "uuid",
+  "name": "Weeknight Dinners",
+  "owner_id": "uuid-owner",
+  "is_archived": true,
+  "content_language": "en"
+}
+```
+
+**Error (403 Forbidden):**
+```json
+{
+  "detail": "Only the kitchen owner can archive the kitchen",
+  "code": "not_kitchen_owner"
+}
+```
+
+**Error (404 Not Found):**
+```json
+{
+  "detail": "Kitchen not found"
+}
+```
+
+---
+
+### POST /kitchens/{kitchen_id}/unarchive
+
+Unarchive a kitchen (owner only).
+
+**Request:** (uses session cookie)
+
+**Response (200 OK):**
+```json
+{
+  "id": "uuid",
+  "name": "Weeknight Dinners",
+  "owner_id": "uuid-owner",
+  "is_archived": false,
+  "content_language": "en"
+}
+```
+
+**Error (403 Forbidden):**
+```json
+{
+  "detail": "Only the kitchen owner can unarchive the kitchen",
+  "code": "not_kitchen_owner"
+}
+```
+
+**Error (404 Not Found):**
+```json
+{
+  "detail": "Kitchen not found"
+}
+```
+
+---
+
+### POST /kitchens/{kitchen_id}/hide
+
+Hide a kitchen from the authenticated user's list (member only; owner cannot hide their own kitchen).
+
+**Request:** (uses session cookie)
+
+**Response (204 No Content)**
+
+**Error (403 Forbidden):**
+```json
+{
+  "detail": "Kitchen owner cannot hide their own kitchen",
+  "code": "cannot_hide_owned_kitchen"
+}
+```
+
+**Error (404 Not Found):**
+```json
+{
+  "detail": "Kitchen not found"
+}
+```
+
+---
+
+### POST /kitchens/{kitchen_id}/unhide
+
+Unhide a kitchen in the authenticated user's list.
+
+**Request:** (uses session cookie)
+
+**Response (204 No Content)**
+
+**Error (403 Forbidden):**
+```json
+{
+  "detail": "Kitchen owner cannot hide their own kitchen",
+  "code": "cannot_hide_owned_kitchen"
 }
 ```
 
@@ -267,16 +378,12 @@ List all members of a kitchen (any member can view).
     {
       "user_id": "uuid-owner",
       "alias": "John Doe",
-      "email": "john@example.com",
-      "role": "owner",
-      "joined_at": "2026-10-01T10:00:00Z"
+      "photo_base64": null
     },
     {
       "user_id": "uuid-member",
       "alias": "Jane Smith",
-      "email": "jane@example.com",
-      "role": "member",
-      "joined_at": "2026-10-15T14:30:00Z"
+      "photo_base64": null
     }
   ]
 }
@@ -286,143 +393,126 @@ List all members of a kitchen (any member can view).
 
 ### DELETE /kitchens/{kitchen_id}/members/{user_id}
 
-Remove a member from a kitchen (owner only).
-
-**Request:** (uses session cookie)
-
-**Response (204 No Content)**
-
-**Error (403 Forbidden):**
-```json
-{
-  "detail": "Only the owner can remove members"
-}
-```
-
-**Error (400 Bad Request):**
-```json
-{
-  "detail": "Cannot remove the owner"
-}
-```
-
-**Note:** Owner cannot remove self via this endpoint (use kitchen deletion instead).
+**Status:** Not in bootstrap scope. Will be added in a future phase.
 
 ---
 
 ## Invitations
 
+Invites are bound to one email address. The raw token is only ever in the email link; the database stores its SHA-256 hash. A token is single-use and expires **7 days** after creation (`INVITE_TOKEN_TTL` in `domain/kitchen_invite.py`; not configurable).
+
 ### POST /kitchens/{kitchen_id}/invites
 
-Create an invite link (owner only).
+Invite someone by email (owner only). Sends one of two emails:
+
+| Invitee | `template_kind` | Link in the email |
+|---------|-----------------|-------------------|
+| Already has an account | `join` | `{PUBLIC_APP_URL}/invites/accept?token=<raw>` |
+| No account yet | `signup` | `{PUBLIC_APP_URL}/signup?invite=<raw>` |
 
 **Request:**
 ```json
-{
-  "email": "guest@example.com"
-}
+{ "email": "guest@example.com" }
 ```
 
 **Response (201 Created):**
 ```json
-{
-  "id": "uuid",
-  "kitchen_id": "uuid",
-  "email": "guest@example.com",
-  "token": "<random_invite_token>",
-  "invite_url": "http://localhost:3000/invites/accept?token=<token>",
-  "created_at": "2026-10-19T12:00:00Z",
-  "expires_at": "2026-10-26T12:00:00Z"
-}
+{ "status": "sent", "template_kind": "join", "invite_id": "uuid" }
 ```
 
-**Email:** If guest's email is in the system, an invitation email is sent automatically.
+The response never contains the raw token or the link.
 
-**Error (403 Forbidden):**
-```json
-{
-  "detail": "Only the owner can create invites"
-}
-```
+**Errors:**
 
----
+| Status | `code` | When |
+|--------|--------|------|
+| 401 | — | No session |
+| 404 | `kitchen_not_found` | Kitchen missing, or caller is not a member |
+| 403 | `not_kitchen_owner` | Caller is a member but not the owner |
+| 409 | `already_kitchen_member` | Invitee is already a member |
+| 422 | `invalid_invite_email` | Email is not a valid address |
+| 503 | `smtp_config_error` / `smtp_send_error` | SMTP misconfigured or send failed (logged; see [error-responses.md](error-responses.md)) |
 
-### GET /kitchens/{kitchen_id}/invites
+Listing or revoking pending invites is not part of the bootstrap.
 
-List pending invites (owner only).
+### GET /invites/preview?token=<raw>
+
+Public (no session). Lets the UI show the invite before the user signs in or signs up.
 
 **Response (200 OK):**
 ```json
-{
-  "invites": [
-    {
-      "id": "uuid",
-      "email": "guest@example.com",
-      "created_at": "2026-10-19T12:00:00Z",
-      "expires_at": "2026-10-26T12:00:00Z",
-      "status": "pending"
-    }
-  ]
-}
+{ "kitchen_name": "Dev Kitchen", "email_hint": "g***t@example.com", "path": "join" }
 ```
 
----
+`path` is `"join"` when the invited email has an account, otherwise `"signup"`.
+
+**Error (410 Gone):** `{"detail": "...", "code": "invalid_invite_token"}` when the token is empty, unknown, expired or already used.
 
 ### POST /invites/accept
 
-Accept an invite (any user, or anonymous if invitation creates account).
+Accept an invite as a signed-in user (`path` = `join`).
 
 **Request:**
 ```json
-{
-  "token": "<invite_token>"
-}
+{ "token": "<raw>" }
 ```
 
 **Response (200 OK):**
 ```json
-{
-  "kitchen_id": "uuid",
-  "kitchen_name": "Weeknight Dinners",
-  "detail": "Invitation accepted"
-}
+{ "kitchen_id": "uuid" }
 ```
 
-**Behavior:** If user is authenticated, adds them to the kitchen. If not authenticated, redirects to sign-up (which then adds them on completion).
+Accepting again when already a member returns 200 with the same body (idempotent).
 
-**Error (400 Bad Request):**
-```json
-{
-  "detail": "Invitation invalid or expired"
-}
-```
+**Errors:**
 
-**Token Expiry:** 7 days from creation.
+| Status | `code` | When |
+|--------|--------|------|
+| 401 | — | No session. The API never redirects |
+| 410 | `invalid_invite_token` | Token unknown, expired or already used |
+| 403 | `invite_email_mismatch` | Signed in with a different email than the one invited |
+| 403 | `email_not_verified` | `EMAIL_VERIFICATION_REQUIRED=true` and the caller's email is not verified |
+
+### POST /auth/register with `invite_token` (new invitees)
+
+Someone without an account (`path` = `signup`) signs up and joins in one call: the usual `/auth/register` body plus `"invite_token": "<raw>"` ([auth-api.md](auth-api.md)). The user gets their personal "My kitchen" and a `member` membership in the inviting kitchen. When `EMAIL_VERIFICATION_REQUIRED=true`, the account and personal kitchen are created but joining waits until the email is verified and the invite is accepted.
+
+Extra errors: `410 invalid_invite_token`, `403 invite_email_mismatch` (sign-up email differs from the invited email).
+
+### Invite flow (UI)
+
+The API never redirects; the UI routes the user:
+
+1. **Existing account** (`join` email) → `/invites/accept?token=…`. Signed out: the page offers **Sign in**, which returns to the same URL. Signed in: the page calls `POST /invites/accept`, then lands in the kitchen. `email_not_verified` sends the user to `/verify` and back.
+2. **New account** (`signup` email) → `/signup?invite=…`. The form calls `/invites/preview`, shows the kitchen name, and submits `/auth/register` with `invite_token`. If the preview says `join` (the person registered meanwhile), the page redirects to `/invites/accept`. A signed-in visitor is redirected to `/invites/accept` too.
+3. Invalid or expired token → the page shows the "invite expired" message (from the `410`).
 
 ---
 
 ## Access Control
 
-**Kitchen Ownership:**
-- Kitchen owner can: view, update, delete kitchen; manage members; create invites
-- Kitchen member can: view kitchen; view/create recipes, carts, shopping lists, conversations
-- Non-member: receives 404 on all kitchen endpoints (no permission distinction)
+One rule for every kitchen-scoped endpoint, reads and writes alike (spec FR7, constitution §3), checked in order:
 
-**Application Layer Enforcement:**
-All endpoints check membership in `application/kitchens.py` and `application/invites.py` before returning data. No endpoint returns 403; non-members always see 404.
+| Order | Condition | Response |
+|-------|-----------|----------|
+| 1 | No session | `401` |
+| 2 | Kitchen missing **or** caller not a member | `404 {"code": "kitchen_not_found"}`. Same body in both cases, so nobody can tell whether a kitchen exists |
+| 3 | Member, but the action is owner-only | `403 {"code": "not_kitchen_owner"}` |
+| 4 | Request problems | `409` / `422` |
+
+- Owner-only actions: rename (incl. `content_language`), archive/unarchive, delete, invite.
+- Member actions: view the kitchen and its members, hide/unhide it for themselves, and (later features) work with recipes, carts, lists and conversations.
+- `403` is never used for non-members. The only other `403`s are invite-specific (`invite_email_mismatch`, `email_not_verified`).
+- Setting `last_opened_kitchen_id` (`PATCH /auth/me`) to a kitchen the user is not a member of follows the same rule: `404 kitchen_not_found`.
+
+Enforcement lives in `application/kitchen_access.py`.
 
 ---
 
 ## Configuration & Defaults
 
-```bash
-# Invite Expiry (not configurable, hardcoded)
-INVITE_EXPIRY_DAYS=7
-
-# Email Templates
-INVITE_EMAIL_SUBJECT="You're invited to join {kitchen_name} on Melos"
-INVITE_EMAIL_TEMPLATE=<based_on PUBLIC_APP_URL>
-```
+- Invite token lifetime: 7 days, a domain constant (not an environment variable).
+- Invite emails use `PUBLIC_APP_URL` for links and are sent over SMTP, which is configured in every environment, dev included.
 
 ---
 
