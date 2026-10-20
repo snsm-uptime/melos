@@ -80,7 +80,7 @@ The MCP service is a separate container that exposes tools for external AI provi
 |---|---|
 | API key generation | Each user can generate and revoke API keys from their account page. Keys are hashed in the database and never displayed again. |
 | MCP authentication | All MCP requests include `Authorization: Bearer <api_key>` header. The MCP server validates the key, identifies the user, and enforces kitchen access control (a user can only interact with kitchens they're a member of). |
-| MCP access control | A user's API key grants read/write/delete access only to content (recipes, cart items, conversations) they own or that belong to kitchens they're a member of. Kitchen-level access checks happen in `application/`, same as REST API. |
+| MCP access control | A user's API key grants read/write/delete access only to content they own (recipes, conversations) and to the cart items of kitchens they're a member of, plus recipes shared into those kitchens (read only, unless they own the recipe). Kitchen-level access checks happen in `application/`, same as REST API. |
 | Rate limiting | Per API key. `429` with `Retry-After` on quota exceeded. |
 
 ### 1.4 API layers
@@ -149,9 +149,10 @@ membership(kitchen_id, user_id, role: owner|member, created_at)       pk(kitchen
 invite(id, kitchen_id, email, token_hash, invited_by, expires_at, accepted_at)
 ingredient(id, kitchen_id, name, created_at)                          unique(kitchen_id, name)
 category(id, kitchen_id, name)                                        unique(kitchen_id, name)
-source(id, kitchen_id, type: text|url|photo, url, raw_text, created_at)
-recipe(id, kitchen_id, source_id?, title, base_servings ≥ 1, servings_estimated,
-       created_by, created_at, updated_at)
+source(id, user_id, type: text|url|photo, url, raw_text, created_at)
+recipe(id, user_id, source_id?, title, base_servings ≥ 1, servings_estimated,
+       created_at, updated_at)                                        user_id = owner
+recipe_share(kitchen_id, recipe_id, shared_at, cart_add_count)        pk(kitchen_id, recipe_id)
 recipe_ingredient(id, recipe_id, ingredient_id, quantity?, unit?, size?, preparation?,
                   vague_note?, position)
 recipe_category(recipe_id, category_id)
@@ -188,6 +189,13 @@ message(id, conversation_id, role: user|assistant, content, found?, cited_recipe
 - The ingredient catalog is per kitchen: no leaking between households, no moderation needed.
 - `content_language` on the kitchen fixes the language of canonical names, so ingredients merge on the shopping list.
 - The cart is shared per kitchen. Conversations are personal per user.
+- A recipe belongs to one user and is shared into kitchens through `recipe_share`. The kitchen shows the owner's alias as the author (an inner join on the owner). If the owner removes the recipe, shares of it remain and the alias reads "unknown".
+- Cloning a shared recipe creates a new recipe owned by the cloner, with no link to the original. This is the only way a recipe moves between owners.
+
+**Decided (open items from clarify session 002)**
+- **✓ Names of a shared recipe:** the recipe stores its ingredient and category names as confirmed when it enters a kitchen. Gemini normalizes each name against the kitchen's existing ingredients and categories, and the draft shows every change made. A recipe therefore reads the same in every kitchen it is shared into.
+- **✓ Preview images:** a recipe may have a preview image, stored as base64 text on the recipe. When it has none, the card shows the default cooking-pot icon. Captured source photos are still not stored (§4).
+- **✓ Cart frequency:** the count is the number of additions to the kitchen's cart. Removing a recipe from the cart does not lower it. The count is kept on `recipe_share.cart_add_count`.
 
 ### 1.7 AI integration, errors and safety
 
@@ -239,6 +247,13 @@ The user's input (text, URL or photo) is never lost on error.
 
 ---
 
+### 1.10 Shared UI components
+
+- **Add-recipe call to action** (`AddRecipeCallToAction`). A rounded-corner placeholder rectangle with a plus icon at its centre. Every page that lets a user add a recipe uses it; the first use is the kitchen's recipes page (J2). Tapping it opens the add-recipe options dialog: a vertical list separated by dividers, with no confirm or cancel buttons, in this order: URL (disabled, not implemented yet), Picture (disabled, "coming soon", until S-040), Text (opens the text sheet). The option list lives in this component only.
+- Built on the existing `ActionDialog` (its confirm and cancel props become optional) and `Sheet`. The picture sheet, when built (S-040), has an inner dashed border of about 2rem with the text "Upload file or drag and drop".
+
+---
+
 ## 2. Customer journey
 
 Each stage lists what the user does, the rules, the edge cases and the acceptance criteria (AC).
@@ -264,14 +279,15 @@ The user signs up, signs in, signs out, resets their password by email and edits
 - **AC1.2** An invitee who signs up through the link sees the inviting kitchen first.
 
 ### J2 · Capture a recipe
-- **Input**, one of three tabs:
-  - **Text:** a free description.
-  - **URL:** a link to one recipe page.
-  - **Photo:** one image of a cookbook page (JPEG/PNG/HEIC, up to 10 MB).
+- **Entry:** on the kitchen's recipes page, a placeholder image rectangle (standard rounded corners) below the page header shows a plus icon at its centre. Tapping it opens an options dialog with no confirm or cancel buttons: a vertical list separated by dividers, in this order:
+  - **URL:** a link to one recipe page. Shown but disabled until built.
+  - **Picture:** one image of a cookbook page (JPEG/PNG/HEIC, up to 10 MB). Shown but disabled, marked "coming soon", until S-040. The upload sheet has an inner dashed border (about 2rem thick) with the text "Upload file or drag and drop".
+  - **Text:** a free description. Opens a text sheet with the paste input and submit control.
 - **Output:** a **draft review screen**:
   - Title, base servings (with an "estimated" badge when Gemini guessed), categories as chips, and the ingredient table and steps, all editable.
   - Each ingredient shows either "matched: *onion*" or "new ingredient", and the user can change the match.
-- **Save** creates the recipe and the confirmed new catalog entries, then embeds the recipe. **Discard** saves nothing.
+  - Gemini may match a name to an existing kitchen entry (e.g. "onions" to "onion") or to an existing category. The draft lists every such change, so the member can see it and undo it before save.
+- **Save** creates the recipe, owned by the member who saved it and shared into the kitchen where it was captured, together with the confirmed new catalog entries, then embeds the recipe. **Discard** saves nothing.
 - **Extraction rules** (prompt in Appendix B):
   - Canonical names in the kitchen's language: singular, lower-case, preparation in its own field.
   - Vague amounts ("to taste", "a pinch") → `vague_note`.
@@ -292,12 +308,15 @@ The user signs up, signs in, signs out, resets their password by email and edits
 - **AC2.5** If Gemini fails, the typed text is still in the box.
 
 ### J3 · Browse and manage recipes
-- **List:** cards with title, ingredient count and category chips. Filter by text (title or ingredient) and by category. Each card has a checkbox, "Add to cart".
-- **Detail:** ingredients, steps, source link, **Edit**, **Delete** (with confirmation) and **Download PDF**.
-- Editing re-embeds the recipe. Deleting removes it from the cart and from vector search; past conversation citations show "deleted recipe".
+- **List:** cards for the kitchen's shared recipes, each with a preview image (or a default cooking-pot icon), the title, the author alias as a chip, the ingredient count and category chips. Filter by text (title or ingredient), by category, by ingredient and by author. Sort by frequency: how many times the recipe has been added to this kitchen's cart, ascending or descending. Removing it from the cart does not lower the count. Each card has a checkbox, "Add to cart".
+- **Detail:** ingredients, steps, source link, **Edit**, **Delete** (with confirmation) and **Download PDF** for recipes the user owns; **Clone to my account** for recipes owned by someone else.
+- Editing re-embeds the recipe. The change shows in every kitchen the recipe is shared into and in every cart that holds it.
+- Deleting a recipe from its owner's account does not remove it from the kitchens it was shared into or from their carts. There its author alias reads "unknown". Past conversation citations still resolve.
+- **Clone** (*Should*): copy a recipe shared into a kitchen to one's own account, to use it there. The copy is owned by the cloner and has no link to the original or its author.
 - **Catalog management** (*Should*): a page listing ingredients and categories with rename and **merge** ("red pepper" → "pepper"). Deleting an ingredient that is still used is blocked; merge it instead.
 - **AC3.1** The recipe PDF shows á, é, ñ, ¿, ½ and ⅓ correctly.
-- **AC3.2** After deleting a recipe, it doesn't appear in the list, the cart or chat results.
+- **AC3.2** After its owner deletes a shared recipe, it stays in the kitchen's list and cart with author "unknown", and past chat citations still resolve.
+- **AC3.3** Cloning a shared recipe creates a copy in the cloner's account; editing the copy does not change the original.
 
 ### J4 · Plan (cart)
 - Selected recipes go to the kitchen's cart, which members share.
@@ -356,7 +375,7 @@ The user signs up, signs in, signs out, resets their password by email and edits
 | Role | Who | Can |
 |---|---|---|
 | **Visitor** | Not signed in | Landing page, sign up, sign in, password reset, open an invite link |
-| **Member** | Belongs to a kitchen | Full CRUD on the kitchen's recipes, ingredients, categories, sources and cart. CRUD on **their own** conversations. Leave the kitchen |
+| **Member** | Belongs to a kitchen | Full CRUD on **their own** recipes and conversations. Shares their recipes into the kitchen, and clones recipes shared by others into their own account. Full CRUD on the kitchen's ingredients, categories and cart. Leave the kitchen |
 | **Owner** | Created the kitchen, or was promoted | Everything a Member can do, plus: rename the kitchen, change `content_language`, invite and remove members, promote/demote, delete the kitchen |
 
 - Roles are per kitchen: the same user can be an Owner in one kitchen and a Member in another.
@@ -370,8 +389,9 @@ The user signs up, signs in, signs out, resets their password by email and edits
 **Product**
 - The assistant never answers from outside the kitchen's data. No web search, no general cooking, nutrition, allergy or health advice. It never says a recipe is safe for an allergy.
 - No crawling. A URL import fetches exactly the one page the user gave.
-- Imported recipes are private to the kitchen and keep their source link. No public sharing.
-- Photos are not stored; only the extracted text is kept.
+- Imported recipes belong to the user who imported them and keep their source link. A recipe is visible in a kitchen only when its owner shares it there. No public sharing.
+- Author history is out of scope. A shared recipe shows its owner's alias as the author. If the owner removes the recipe from their account, the kitchen keeps it and the alias reads "unknown". The system keeps no record of past owners.
+- Captured source photos are not stored; only the extracted text is kept. A recipe's preview image may be stored as base64 text on the recipe.
 - No conversion between units or between mass and volume. No carry-over ("1 cup + 20 tbsp" stays as is).
 - An AI draft is never saved without the user confirming it.
 - Messages are never edited after they are sent.
@@ -397,11 +417,12 @@ Every entity has full CRUD in the API. The UI only exposes what the journey need
 
 | Entity | Create | Read | Update | Delete | In the v1 UI | MCP v1 | Notes |
 |---|---|---|---|---|---|---|---|
-| User (auth) | register | `/auth/me` | profile; password via reset | `DELETE /auth/me` | all but delete | — | Deleting the account removes memberships and conversations; kitchens it alone owns are deleted |
-| Kitchen | ✓ | ✓ | name, language | owner only | ✓ | ✓ | Cascades to all its data |
+| User (auth) | register | `/auth/me` | profile; password via reset | `DELETE /auth/me` | all but delete | — | Deleting the account removes memberships and conversations; kitchens it alone owns are deleted; recipes it owned stay in the kitchens they were shared into, with author "unknown" |
+| Kitchen | ✓ | ✓ | name, language | owner only | ✓ | ✓ | Cascades to its ingredients, categories, shares and cart. Recipes are not deleted |
 | Membership | via invite | ✓ | role (owner) | leave / remove | ✓ | — | Last owner protected |
 | Invite | owner | owner | resend | revoke | ✓ | — | |
-| Recipe | via draft confirm | ✓ | ✓ | ✓ | ✓ | capture (✓), read (✓), update (—), delete (—) | Update re-embeds |
+| Recipe | via draft confirm (owner = creator) | ✓ | owner | owner | ✓ | capture (✓), read (✓), update (—), delete (—) | Owned by a user; shared into kitchens. Update re-embeds. Delete keeps it in shared kitchens with author "unknown" |
+| RecipeShare | owner shares into a kitchen | ✓ | — | owner unshares | ✓ | — | Kitchen-scoped |
 | Draft | `POST /drafts` | — | — | — | ✓ | ✓ | Not stored; the response holds the draft |
 | RecipeIngredient, Step | nested in Recipe | ✓ | ✓ | ✓ | inside recipe edit | — | Also addressable at `/recipes/{id}/ingredients`, `/steps` |
 | Ingredient | ✓ | ✓ | rename, merge | only if unused | *Should* | — | `409` if used |
@@ -495,8 +516,8 @@ steps[3]: "Fry the garlic in oil.","Add the tomato and cook 5 minutes.","Add the
 
 | Priority | Items |
 |---|---|
-| **Must** | Scaffold + auth reuse · kitchens + invites · capture from text and URL with draft review · ingredient catalog matching · recipe CRUD + PDF · cart + shopping list + PDF/Markdown · conversations with history, archive and delete · **MCP service** with per-user API keys, capture tool, recipe read, cart ops, shopping list ops · deployed on the server |
-| **Should** | Photo capture · `@` mentions · catalog management (rename/merge) · semantic search in the recipe list · API key management UI (generate, view, copy, revoke) |
+| **Must** | Scaffold + auth reuse · kitchens + invites · Gemini extraction adapter · capture from text and URL with draft review · ingredient catalog matching · recipe CRUD, sharing into kitchens + PDF · cart + shopping list + PDF/Markdown · conversations with history, archive and delete · **MCP service** with per-user API keys, capture tool, recipe read, cart ops, shopping list ops · deployed on the server |
+| **Should** | Photo capture · `@` mentions · catalog management (rename/merge) · semantic search in the recipe list · API key management UI (generate, view, copy, revoke) · recipe cards with ingredient and author filters and cart-frequency sort · clone a shared recipe into one's own account |
 | **Later** | A recipe ML model (e.g. a Hugging Face ingredient tagger) · public sharing · offline mode |
 
 | Dates | Milestone |
