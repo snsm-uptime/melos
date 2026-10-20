@@ -1,3 +1,4 @@
+# Reused from finance-dashboard/api/adapters/persistence/repositories.py
 """SQLAlchemy signup / auth user / kitchen repositories."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+# Reused from finance-dashboard/api/routes/auth.py (Adapted: rename FH_ → MELOS_ in env defaults and references)
 """Auth routes — register, sign-in/out, password-reset, email verification (AD-8 cookies)."""
 
 from __future__ import annotations

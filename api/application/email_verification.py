@@ -1,3 +1,4 @@
+# Reused from finance-dashboard/api/application/email_verification.py
 """Email verification use-cases: gate, request mail, confirm token."""
 
 from __future__ import annotations

@@ -1,3 +1,4 @@
+// Reused from finance-dashboard/ui/components/AppShell.tsx
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";

@@ -1,3 +1,4 @@
+# Reused from finance-dashboard/api/adapters/email/smtp.py
 """SMTP email adapter (aiosmtplib) — transactional mail only from api."""
 
 from __future__ import annotations

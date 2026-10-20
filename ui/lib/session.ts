@@ -1,3 +1,4 @@
+// Reused from finance-dashboard/ui/lib/session.ts
 import { cookies } from "next/headers";
 
 import { getApiInternalUrl } from "@/lib/api";

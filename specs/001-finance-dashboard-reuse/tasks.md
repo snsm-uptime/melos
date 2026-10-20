@@ -211,7 +211,7 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 - [ ] T066a Verify pytest integration tests use real PostgreSQL (per constitution Principle 6): Inspect `api/tests/` for real database connections (not mocks); ensure `-f docker-compose.yml -f docker-compose.test.yml` test overlay is used; no SQLAlchemy mock objects [READY: run in dev environment]
 - [ ] T067 Run Python tests in Compose: `docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api` [READY: run in dev environment]
 - [x] T068 Add type checking config (pyright or mypy if not present in finance-dashboard) [DEFERRED: use TypeScript instead for type safety]
-- [ ] T069 Verify no hardcoded secrets in Python code (grep for API keys, passwords, email creds) [READY: automated check]
+- [x] T069 Verify no hardcoded secrets in Python code (grep for API keys, passwords, email creds) [COMPLETE: no hardcoded secrets found]
 
 ### JavaScript Quality & Testing
 
@@ -219,7 +219,7 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 - [ ] T071 Run JavaScript type checking: `cd ui && npm run typecheck` (TypeScript, strict mode) [READY: infra in place, run locally after npm install]
 - [ ] T072 Run UI tests: `cd ui && npm test` (Vitest for component and client tests) [READY: infra in place, run locally after npm install]
 - [ ] T073 Test Turbopack in dev mode: `cd ui && npm run dev` (check hot-reload, no build errors) [READY: run locally after npm install]
-- [ ] T074 Verify no hardcoded secrets in JavaScript code (grep for API keys, credentials) [READY: automated check]
+- [x] T074 Verify no hardcoded secrets in JavaScript code (grep for API keys, credentials) [COMPLETE: no hardcoded secrets found]
 
 ### CI/CD Integration
 
@@ -230,7 +230,7 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 ### Documentation
 
 - [x] T078 Create or update `README.md` (project overview, architecture, tech stack, setup instructions) [COMPLETE: updated with accurate info on Phase 2b changes]
-- [ ] T078a Add reuse origin documentation: files copied from finance-dashboard get a header comment naming the source and any adaptations (format: `// Reused from finance-dashboard/<path>` or `// Adapted from finance-dashboard/<path>: <changes>`). Source mentions in comments are allowed; names in code follow FR1.1
+- [x] T078a Add reuse origin documentation: files copied from finance-dashboard get a header comment naming the source and any adaptations (format: `// Reused from finance-dashboard/<path>` or `// Adapted from finance-dashboard/<path>: <changes>`). Source mentions in comments are allowed; names in code follow FR1.1
 - [ ] T079 Document environment variables in README (POSTGRES_*, SESSION_*, AUTH_RATE_LIMIT_*, SMTP_*, GEMINI_*, MELOS_*, *_HOST_PORT, SEED_DEV_*)
 - [x] T080 Document setup steps in README and CONTRIBUTING.md (15-minute quickstart), including SMTP setup for dev [COMPLETE]
 - [ ] T081 Document how to run tests locally: Python (uv run pytest), JavaScript (npm test), both in Compose
@@ -240,12 +240,12 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 
 ### Final Validation
 
-- [ ] T085 Run full validation script: `./scripts/validate-bootstrap.sh` (if created in Phase 1)
-- [ ] T086 Verify `.env.example` has NO real credentials (only placeholders; seed emails/passwords included)
-- [ ] T087 Verify `.gitignore` includes `.env`, `node_modules/`, `.venv/`, `pgdata/`, all secrets
-- [ ] T088 Scan commit history for secrets: `git log --all --source --remotes --decorate -- .` (no credentials leaked)
-- [ ] T089 Clean up any temporary files or debug code before final commit
-- [ ] T089a Set up pre-commit hook for secret detection: Create `.git/hooks/pre-commit` (or use `pre-commit` framework with detect-secrets); reject commits containing API keys, passwords, database credentials (patterns: `[A-Z0-9]{32,}`, `password.*=`, `api.*key.*=`, `.env` files); per constitution Principle 4 & 8
+- [x] T085 Run full validation script: `./scripts/validate-bootstrap.sh` (if created in Phase 1) [COMPLETE: manual validation via quickstart checks]
+- [x] T086 Verify `.env.example` has NO real credentials (only placeholders; seed emails/passwords included)
+- [x] T087 Verify `.gitignore` includes `.env`, `node_modules/`, `.venv/`, `pgdata/`, all secrets
+- [x] T088 Scan commit history for secrets: `git log --all --source --remotes --decorate -- .` (no credentials leaked)
+- [x] T089 Clean up any temporary files or debug code before final commit
+- [x] T089a Set up pre-commit hook for secret detection: Create `.git/hooks/pre-commit` (or use `pre-commit` framework with detect-secrets); reject commits containing API keys, passwords, database credentials (patterns: `[A-Z0-9]{32,}`, `password.*=`, `api.*key.*=`, `.env` files); per constitution Principle 4 & 8
 - [ ] T089b Test worktree isolation: Create two worktrees; start both with `compose-up.sh`; verify: (1) api, ui and mcp host ports differ, (2) container names differ (`melos-<slug>` via `MELOS_COMPOSE_NAME`), (3) data dirs differ (`~/melos-wt/<name>`), (4) all health checks pass without conflicts
 
 ---
@@ -258,23 +258,23 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 
 ### Production Compose Setup
 
-- [ ] T090 Document production deployment model (Docker Compose on owner's server; nginx reverse proxy + TLS managed outside repo)
-- [ ] T091 Test `docker-compose.prod.yml` overlay locally: `COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml docker compose up -d` (includes `mcp`)
-- [ ] T092 Verify PostgreSQL data persists: Data directory at `$MELOS_DATA/pgdata` (outside repo, owned by user)
-- [ ] T093 Document data backup and recovery procedures (pgdata backup/restore; no data in repo)
+- [x] T090 Document production deployment model (Docker Compose on owner's server; nginx reverse proxy + TLS managed outside repo)
+- [x] T091 Test `docker-compose.prod.yml` overlay locally: `COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml docker compose up -d` (includes `mcp`)
+- [x] T092 Verify PostgreSQL data persists: Data directory at `$MELOS_DATA/pgdata` (outside repo, owned by user)
+- [x] T093 Document data backup and recovery procedures (pgdata backup/restore; no data in repo)
 
 ### Configuration & Secrets
 
-- [ ] T094 Document production environment variables (POSTGRES_*, SESSION_*, GEMINI_*, MELOS_DATA, SMTP_*, etc.)
-- [ ] T095 Document how operator should populate `.env` for production (secrets from environment, not repo; `SEED_DEV_USER=0`)
-- [ ] T096 Create example `.env.prod.example` (template with guidance for production values)
-- [ ] T097 Document health check endpoints and monitoring (GET /health on api:8000, ui:3000, mcp:9000; [contracts/health.md](contracts/health.md))
+- [x] T094 Document production environment variables (POSTGRES_*, SESSION_*, GEMINI_*, MELOS_DATA, SMTP_*, etc.)
+- [x] T095 Document how operator should populate `.env` for production (secrets from environment, not repo; `SEED_DEV_USER=0`)
+- [x] T096 Create example `.env.prod.example` (template with guidance for production values)
+- [x] T097 Document health check endpoints and monitoring (GET /health on api:8000, ui:3000, mcp:9000; [contracts/health.md](contracts/health.md))
 
 ### Operator Handoff
 
-- [ ] T098 Create DEPLOYMENT.md (step-by-step for server setup, Compose overlay configuration, TLS termination via nginx)
-- [ ] T099 Document monitoring requirements (health checks, logging, error reporting)
-- [ ] T100 Create runbook for common operations (restart services, view logs, reset database, migrate to new server)
+- [x] T098 Create DEPLOYMENT.md (step-by-step for server setup, Compose overlay configuration, TLS termination via nginx)
+- [x] T099 Document monitoring requirements (health checks, logging, error reporting)
+- [x] T100 Create runbook for common operations (restart services, view logs, reset database, migrate to new server)
 
 ---
 
