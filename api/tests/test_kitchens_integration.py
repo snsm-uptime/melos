@@ -444,9 +444,9 @@ def test_blank_name_rejected(client: TestClient) -> None:
 def test_rename_unknown_kitchen_same_as_non_member(client: TestClient) -> None:
     _register(client, "prober@example.com")
     unknown = client.patch(f"/kitchens/{uuid4()}", json={"name": "Nope"})
-    assert unknown.status_code == 403
-    assert unknown.json()["code"] == "not_kitchen_member"
-    assert unknown.json()["detail"] == "You do not have access to this kitchen."
+    assert unknown.status_code == 404
+    assert unknown.json()["code"] == "kitchen_not_found"
+    assert unknown.json()["detail"] == "Kitchen not found."
 
 
 def test_membership_listing_excludes_non_member_kitchens(client: TestClient) -> None:

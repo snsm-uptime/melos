@@ -16,7 +16,11 @@ services:
       - ./api/tests:/app/tests
     # replaces CMD — do not invoke scripts.entrypoint / uvicorn
     command: ["pytest", "-q"]
-    # DATABASE_URL already @db:5432 from base compose
+    # Never the dev database (POSTGRES_DB). Integration tests write committed
+    # rows that collide with dev seed data (e.g. owner@example.com).
+    # Requires the melos_test database: docker compose exec db createdb -U $POSTGRES_USER melos_test
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/melos_test
     healthcheck:
       disable: true
 
