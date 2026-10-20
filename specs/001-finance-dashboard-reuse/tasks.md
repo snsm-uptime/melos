@@ -206,7 +206,7 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 
 ### Python Quality & Testing
 
-- [ ] T065 Run Python linting: `cd api && uv run ruff check .` (E, F, I, UP, B rule sets; line length 100) [READY: infra in place, run locally]
+- [x] T065 Run Python linting: `cd api && uv run ruff check .` (E, F, I, UP, B rule sets; line length 100) [COMPLETE: all checks pass after auto-fixes]
 - [ ] T066 Run Python tests: `cd api && uv run pytest -q` (all tests pass, including `test_health` and the renamed auth fixtures) [READY: infra in place, run locally]
 - [ ] T066a Verify pytest integration tests use real PostgreSQL (per constitution Principle 6): Inspect `api/tests/` for real database connections (not mocks); ensure `-f docker-compose.yml -f docker-compose.test.yml` test overlay is used; no SQLAlchemy mock objects [READY: run in dev environment]
 - [ ] T067 Run Python tests in Compose: `docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api` [READY: run in dev environment]
@@ -229,14 +229,14 @@ This bootstrap phase integrates Melos with proven patterns, components, and infr
 
 ### Documentation
 
-- [ ] T078 Create or update `README.md` (project overview, architecture, tech stack, setup instructions)
+- [x] T078 Create or update `README.md` (project overview, architecture, tech stack, setup instructions) [COMPLETE: updated with accurate info on Phase 2b changes]
 - [ ] T078a Add reuse origin documentation: files copied from finance-dashboard get a header comment naming the source and any adaptations (format: `// Reused from finance-dashboard/<path>` or `// Adapted from finance-dashboard/<path>: <changes>`). Source mentions in comments are allowed; names in code follow FR1.1
 - [ ] T079 Document environment variables in README (POSTGRES_*, SESSION_*, AUTH_RATE_LIMIT_*, SMTP_*, GEMINI_*, MELOS_*, *_HOST_PORT, SEED_DEV_*)
-- [ ] T080 Document setup steps in README (15-minute quickstart from quickstart.md), including SMTP setup for dev
+- [x] T080 Document setup steps in README and CONTRIBUTING.md (15-minute quickstart), including SMTP setup for dev [COMPLETE]
 - [ ] T081 Document how to run tests locally: Python (uv run pytest), JavaScript (npm test), both in Compose
-- [ ] T082 Document git workflow (branching strategy, PR requirements, commit message style)
-- [ ] T083 Document known issues and troubleshooting (port conflicts, SMTP config, Alembic migrations, etc.)
-- [ ] T084 Create CONTRIBUTING.md (reference AGENTS.md, constitution.md, code review checklist)
+- [x] T082 Document git workflow (branching strategy, PR requirements, commit message style) [COMPLETE: documented in CONTRIBUTING.md]
+- [x] T083 Document known issues and troubleshooting (port conflicts, SMTP config, Alembic migrations, etc.) [COMPLETE: documented in CONTRIBUTING.md]
+- [x] T084 Create CONTRIBUTING.md (reference AGENTS.md, constitution.md, code review checklist) [COMPLETE: comprehensive guide created]
 
 ### Final Validation
 
