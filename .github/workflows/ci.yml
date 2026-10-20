@@ -17,7 +17,7 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_USER: melos
-          POSTGRES_PASSWORD: finance_ci
+          POSTGRES_PASSWORD: melos_ci
           POSTGRES_DB: melos
         ports:
           - 5432:5432
@@ -27,7 +27,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql+psycopg://melos:finance_ci@localhost:5432/melos
+      DATABASE_URL: postgresql+psycopg://melos:melos_ci@localhost:5432/melos
       SESSION_SECRET: ci-session-secret-not-for-prod
       SESSION_COOKIE_SECURE: "false"
       EMAIL_VERIFICATION_REQUIRED: "false"
