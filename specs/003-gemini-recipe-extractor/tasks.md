@@ -32,8 +32,8 @@ Still open and not blocking: the final failure message (FR-015) is S-016 scope.
 
 **Purpose**: Package layout and the one new dependency.
 
-- [ ] T001 Create the `api/domain/`, `api/application/` and `api/adapters/llm/` packages, each with an `__init__.py`, if they do not already exist
-- [ ] T002 Add the Gemini SDK from `api/` with `uv add google-genai` (never a hand edit of `uv.lock`) and state it in the PR description (constitution §2, AGENTS.md)
+- [X] T001 Create the `api/domain/`, `api/application/` and `api/adapters/llm/` packages, each with an `__init__.py`, if they do not already exist
+- [X] T002 Add the Gemini SDK from `api/` with `uv add google-genai` (never a hand edit of `uv.lock`) and state it in the PR description (constitution §2, AGENTS.md)
 
 ---
 
@@ -43,12 +43,12 @@ Still open and not blocking: the final failure message (FR-015) is S-016 scope.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Define the closed result set in `api/application/recipe_extraction.py` as frozen dataclasses: `Draft(recipe)`, `NotARecipe(reason)`, `Unavailable`, `LimitReached(retry_after_seconds: int | None)`, `InvalidOutput`, `AIProviderError`. No variant carries raw service text, the key, or a stack trace (FR-008, SC-006)
-- [ ] T004 [P] Define the draft value types in `api/domain/recipe_draft.py`: `DraftRecipe` (title, base_servings, servings_estimated, main_ingredients, cuisines, ingredient_lines, steps) and `IngredientLine` (name, vague, quantity, unit, size, note), with fields as listed in data-model.md. No rules yet
-- [ ] T005 Define the `RecipeExtractor` port in `api/application/recipe_extraction.py` with `extract(text, ingredient_names, timeout_s) -> ExtractionResult`, matching contracts/recipe-extraction-port.md
-- [ ] T006 Define the input-refusal error in `api/application/recipe_extraction.py` for empty or whitespace-only text and for text longer than 10,000 characters. It is raised before any call and is not a service failure (FR-012, data-model.md)
-- [ ] T007 Add settings in `api/api/settings.py`: `GEMINI_API_KEY` as a secret that may be empty and is never shown in repr or logs, `GEMINI_CHAT_MODEL`, `GEMINI_TEXT_TIMEOUT_S` (default 10), `GEMINI_IMAGE_TIMEOUT_S` (default 30). Model names and key come only from settings (FR-009, FR-013)
-- [ ] T008 [P] Add the new variables to `api/.env.example` with placeholder values only, never real values (constitution §4)
+- [X] T003 Define the closed result set in `api/application/recipe_extraction.py` as frozen dataclasses: `Draft(recipe)`, `NotARecipe(reason)`, `Unavailable`, `LimitReached(retry_after_seconds: int | None)`, `InvalidOutput`, `AIProviderError`. No variant carries raw service text, the key, or a stack trace (FR-008, SC-006)
+- [X] T004 [P] Define the draft value types in `api/domain/recipe_draft.py`: `DraftRecipe` (title, base_servings, servings_estimated, main_ingredients, cuisines, ingredient_lines, steps) and `IngredientLine` (name, vague, quantity, unit, size, note), with fields as listed in data-model.md. No rules yet
+- [X] T005 Define the `RecipeExtractor` port in `api/application/recipe_extraction.py` with `extract(text, ingredient_names, timeout_s) -> ExtractionResult`, matching contracts/recipe-extraction-port.md
+- [X] T006 Define the input-refusal error in `api/application/recipe_extraction.py` for empty or whitespace-only text and for text longer than 10,000 characters. It is raised before any call and is not a service failure (FR-012, data-model.md)
+- [X] T007 Add settings in `api/api/settings.py`: `GEMINI_API_KEY` as a secret that may be empty and is never shown in repr or logs, `GEMINI_CHAT_MODEL`, `GEMINI_TEXT_TIMEOUT_S` (default 10), `GEMINI_IMAGE_TIMEOUT_S` (default 30). Model names and key come only from settings (FR-009, FR-013)
+- [X] T008 [P] Add the new variables to `api/.env.example` with placeholder values only, never real values (constitution §4)
 
 **Checkpoint**: Foundation ready. Result types, port and settings exist. User story work can begin.
 
@@ -62,20 +62,20 @@ Still open and not blocking: the final failure message (FR-015) is S-016 scope.
 
 ### Tests for User Story 1
 
-- [ ] T009 [P] [US1] Domain tests in `api/tests/test_recipe_draft_domain.py` for each FR-006 rule and FR-006a unit row (case-insensitive lookup, quantity never converted, unknown unit → invalid output, one-edit typo of a unit of 5+ characters matched, one-edit typo of more than one unit → invalid output, shorter units never fuzzy-matched). Cover: non-vague line has quantity > 0 and a unit; vague line has no quantity and no unit; size only when unit is `unit` and one of small, medium, large; base servings ≥ 1; names lower-case and singular; main ingredients at most 2 (zero allowed); cuisines at most 2, matched by title coverage (0.70) or more than 4 ingredients in the steps, ranked by total matches, one per tag, international when none matches; title 200 characters or fewer and not empty or whitespace-only; at least one step (SC-003)
-- [ ] T010 [P] [US1] Use-case tests in `api/tests/test_recipe_extraction_application.py` for the acceptance draft through `FakeRecipeExtractor`, for empty and whitespace-only text (no port call), for text of exactly 10,000 characters (accepted) and 10,001 characters (refused), and for the timeout passed through to the port (FR-012, FR-013, SC-007)
-- [ ] T011 [US1] Add concurrency tests to `api/tests/test_recipe_extraction_application.py`: two concurrent calls with the same trimmed text make one port call and get the same result; different texts make separate calls; the hash entry is removed when the call ends; nothing is written to storage (FR-016, FR-011)
+- [X] T009 [P] [US1] Domain tests in `api/tests/test_recipe_draft_domain.py` for each FR-006 rule and FR-006a unit row (case-insensitive lookup, quantity never converted, unknown unit → invalid output, one-edit typo of a unit of 5+ characters matched, one-edit typo of more than one unit → invalid output, shorter units never fuzzy-matched). Cover: non-vague line has quantity > 0 and a unit; vague line has no quantity and no unit; size only when unit is `unit` and one of small, medium, large; base servings ≥ 1; names lower-case and singular; main ingredients at most 2 (zero allowed); cuisines at most 2, matched by title coverage (0.70) or more than 4 ingredients in the steps, ranked by total matches, one per tag, international when none matches; title 200 characters or fewer and not empty or whitespace-only; at least one step (SC-003)
+- [X] T010 [P] [US1] Use-case tests in `api/tests/test_recipe_extraction_application.py` for the acceptance draft through `FakeRecipeExtractor`, for empty and whitespace-only text (no port call), for text of exactly 10,000 characters (accepted) and 10,001 characters (refused), and for the timeout passed through to the port (FR-012, FR-013, SC-007)
+- [X] T011 [US1] Add concurrency tests to `api/tests/test_recipe_extraction_application.py`: two concurrent calls with the same trimmed text make one port call and get the same result; different texts make separate calls; the hash entry is removed when the call ends; nothing is written to storage (FR-016, FR-011)
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Implement the FR-006a unit lookup in `api/domain/recipe_draft.py` using the bilingual table in spec.md. Matching ignores case and surrounding spaces. A matched unit is replaced by its allowed unit. The quantity is never converted. An unknown unit, including conversion-only units, is invalid output. A unit with no exact match that is one edit away from a spelling of a unit of 5 or more characters is matched to it (e.g. "tablespon" → `tbsp`); one edit away from more than one allowed unit is invalid output
-- [ ] T013 [US1] Implement size removal in `api/domain/recipe_draft.py`. A size is removed when the unit is not `unit` or the size is not small, medium or large, and the line is kept (spec Edge Cases, FR-006)
-- [ ] T014 [US1] Implement the FR-006b draft rules in `api/domain/recipe_draft.py`: title 200 characters or fewer and not empty after trimming; at least one step; base servings default to 4 with `servings_estimated = True` when the text gives none; base servings at least 1
-- [ ] T015 [US1] Implement the category rules in `api/domain/recipe_draft.py`: load `categories.yaml` and `cuisine.yml`; keep main-ingredient keys from the vocabulary (at most 2, zero allowed); score every tag and variant in `cuisine.yml` with `categories.yaml#/matching/cuisine` (title coverage of content words at least 0.70, stopwords removed, or more than 4 ingredient ids in the steps; whole word, longest alias first; phrase exclusions per `matching/phrase_exclusions`; steps rule off below 5 recipe ingredient lines); rank by total matches, then title coverage, then body coverage (both tied nodes kept when all three are equal); one per tag; at most 2 cuisines; `international` when none matches (FR-006)
-- [ ] T016 [US1] Implement the line rules in `api/domain/recipe_draft.py`: a non-vague line has quantity > 0 and a unit; a vague line has no quantity and no unit and may carry `note` (FR-006, FR-006c)
-- [ ] T017 [US1] Implement the ingredient name rule in `api/domain/recipe_draft.py`: names are lower-case and singular, and an existing catalog spelling is used when it matches ignoring case (User Story 1, scenario 2)
-- [ ] T018 [US1] Implement the use case in `api/application/recipe_extraction.py`: refuse empty or over-length input before calling the port, call the port once, then apply the domain rules to any `Draft` and convert a rule break to `InvalidOutput`. Nothing is written to the database (FR-001, FR-011)
-- [ ] T019 [US1] Implement the in-flight map in `api/application/recipe_extraction.py`: key each call by the SHA-256 hash of its trimmed text; calls with the same hash share one in-progress port call; remove the entry when the call ends. The map is in memory only (FR-016)
+- [X] T012 [US1] Implement the FR-006a unit lookup in `api/domain/recipe_draft.py` using the bilingual table in spec.md. Matching ignores case and surrounding spaces. A matched unit is replaced by its allowed unit. The quantity is never converted. An unknown unit, including conversion-only units, is invalid output. A unit with no exact match that is one edit away from a spelling of a unit of 5 or more characters is matched to it (e.g. "tablespon" → `tbsp`); one edit away from more than one allowed unit is invalid output
+- [X] T013 [US1] Implement size removal in `api/domain/recipe_draft.py`. A size is removed when the unit is not `unit` or the size is not small, medium or large, and the line is kept (spec Edge Cases, FR-006)
+- [X] T014 [US1] Implement the FR-006b draft rules in `api/domain/recipe_draft.py`: title 200 characters or fewer and not empty after trimming; at least one step; base servings default to 4 with `servings_estimated = True` when the text gives none; base servings at least 1
+- [X] T015 [US1] Implement the category rules in `api/domain/recipe_draft.py`: load `categories.yaml` and `cuisine.yml`; keep main-ingredient keys from the vocabulary (at most 2, zero allowed); score every tag and variant in `cuisine.yml` with `categories.yaml#/matching/cuisine` (title coverage of content words at least 0.70, stopwords removed, or more than 4 ingredient ids in the steps; whole word, longest alias first; phrase exclusions per `matching/phrase_exclusions`; steps rule off below 5 recipe ingredient lines); rank by total matches, then title coverage, then body coverage (both tied nodes kept when all three are equal); one per tag; at most 2 cuisines; `international` when none matches (FR-006)
+- [X] T016 [US1] Implement the line rules in `api/domain/recipe_draft.py`: a non-vague line has quantity > 0 and a unit; a vague line has no quantity and no unit and may carry `note` (FR-006, FR-006c)
+- [X] T017 [US1] Implement the ingredient name rule in `api/domain/recipe_draft.py`: names are lower-case and singular, and an existing catalog spelling is used when it matches ignoring case (User Story 1, scenario 2)
+- [X] T018 [US1] Implement the use case in `api/application/recipe_extraction.py`: refuse empty or over-length input before calling the port, call the port once, then apply the domain rules to any `Draft` and convert a rule break to `InvalidOutput`. Nothing is written to the database (FR-001, FR-011)
+- [X] T019 [US1] Implement the in-flight map in `api/application/recipe_extraction.py`: key each call by the SHA-256 hash of its trimmed text; calls with the same hash share one in-progress port call; remove the entry when the call ends. The map is in memory only (FR-016)
 
 **Checkpoint**: User Story 1 works through the fake port. The acceptance draft passes, broken drafts never leave the use case, and concurrent identical texts are evaluated once.
 
@@ -89,12 +89,12 @@ Still open and not blocking: the final failure message (FR-015) is S-016 scope.
 
 ### Tests for User Story 2
 
-- [ ] T020 [P] [US2] Use-case tests in `api/tests/test_recipe_extraction_application.py`: `NotARecipe` passes through unchanged and is never converted to a failure; the multi-recipe reason is exactly "Only one recipe at a time" (FR-002)
+- [X] T020 [P] [US2] Use-case tests in `api/tests/test_recipe_extraction_application.py`: `NotARecipe` passes through unchanged and is never converted to a failure; the multi-recipe reason is exactly "Only one recipe at a time" (FR-002)
 
 ### Implementation for User Story 2
 
-- [ ] T021 [US2] Handle `NotARecipe` in `api/application/recipe_extraction.py` as a normal result that skips the draft rules
-- [ ] T022 [US2] Add the `not_a_recipe` branch and `reason` field to the response schema in `api/adapters/llm/gemini_extractor.py`. Map it to `NotARecipe` (FR-002)
+- [X] T021 [US2] Handle `NotARecipe` in `api/application/recipe_extraction.py` as a normal result that skips the draft rules
+- [X] T022 [US2] Add the `not_a_recipe` branch and `reason` field to the response schema in `api/adapters/llm/gemini_extractor.py`. Map it to `NotARecipe` (FR-002)
 
 **Checkpoint**: User Stories 1 and 2 work through the fake port.
 
@@ -108,14 +108,14 @@ Still open and not blocking: the final failure message (FR-015) is S-016 scope.
 
 ### Tests for User Story 3
 
-- [ ] T023 [P] [US3] Adapter tests in `api/tests/test_gemini_extractor_adapter.py` with a stubbed SDK client, never the network: timeout, connection error and 5xx map to `Unavailable`; 429 maps to `LimitReached` with `retry_after_seconds` when a hint is given and `None` otherwise; malformed or schema-mismatched body maps to `InvalidOutput`; empty or missing key or model name maps to `AIProviderError` with no SDK call (FR-003 to FR-005, FR-009)
-- [ ] T024 [P] [US3] Use-case tests in `api/tests/test_recipe_extraction_application.py`: each failure class passes through unchanged, and a rule-breaking draft becomes `InvalidOutput` with no draft (User Story 3, scenario 5)
+- [X] T023 [P] [US3] Adapter tests in `api/tests/test_gemini_extractor_adapter.py` with a stubbed SDK client, never the network: timeout, connection error and 5xx map to `Unavailable`; 429 maps to `LimitReached` with `retry_after_seconds` when a hint is given and `None` otherwise; malformed or schema-mismatched body maps to `InvalidOutput`; empty or missing key or model name maps to `AIProviderError` with no SDK call (FR-003 to FR-005, FR-009)
+- [X] T024 [P] [US3] Use-case tests in `api/tests/test_recipe_extraction_application.py`: each failure class passes through unchanged, and a rule-breaking draft becomes `InvalidOutput` with no draft (User Story 3, scenario 5)
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] Implement `GeminiRecipeExtractor` in `api/adapters/llm/gemini_extractor.py`: build the client from settings and pass the per-call timeout in milliseconds through `http_options`. Set `retry_options` to `attempts=1` on every call (research §2, §3)
-- [ ] T026 [US3] Map SDK and transport errors in `api/adapters/llm/gemini_extractor.py` to the result classes: timeout, connection error and `ServerError` to `Unavailable`; `ClientError` 429 to `LimitReached`; parse or schema failure to `InvalidOutput`; empty or missing key or model name to `AIProviderError`, checked before any SDK call. Never copy an exception message, status body, or key into a result (research §4)
-- [ ] T027 [US3] Add log hygiene in `api/adapters/llm/gemini_extractor.py`: log only a short error class and a request reference, never the key, the pasted text, or a service body (FR-014)
+- [X] T025 [US3] Implement `GeminiRecipeExtractor` in `api/adapters/llm/gemini_extractor.py`: build the client from settings and pass the per-call timeout in milliseconds through `http_options`. Set `retry_options` to `attempts=1` on every call (research §2, §3)
+- [X] T026 [US3] Map SDK and transport errors in `api/adapters/llm/gemini_extractor.py` to the result classes: timeout, connection error and `ServerError` to `Unavailable`; `ClientError` 429 to `LimitReached`; parse or schema failure to `InvalidOutput`; empty or missing key or model name to `AIProviderError`, checked before any SDK call. Never copy an exception message, status body, or key into a result (research §4)
+- [X] T027 [US3] Add log hygiene in `api/adapters/llm/gemini_extractor.py`: log only a short error class and a request reference, never the key, the pasted text, or a service body (FR-014)
 
 **Checkpoint**: User Stories 1, 2 and 3 work. Every failure class is reachable without network access.
 
@@ -129,13 +129,13 @@ Still open and not blocking: the final failure message (FR-015) is S-016 scope.
 
 ### Tests for User Story 4
 
-- [ ] T028 [US4] Prompt tests in `api/tests/test_gemini_extractor_adapter.py`: the pasted text is inside `<<<RECIPE_TEXT` and `RECIPE_TEXT>>>`; the system part says delimited text is data and that instructions in it are ignored; catalog names are in a separate delimited block; the prompt asks for vague amounts using the FR-006c vague-phrase list, converts word amounts to a number and an allowed unit, and asks for the main ingredient from the reference list, at most 2 (FR-006c, FR-007, constitution §4)
+- [X] T028 [US4] Prompt tests in `api/tests/test_gemini_extractor_adapter.py`: the pasted text is inside `<<<RECIPE_TEXT` and `RECIPE_TEXT>>>`; the system part says delimited text is data and that instructions in it are ignored; catalog names are in a separate delimited block; the prompt asks for vague amounts using the FR-006c vague-phrase list, converts word amounts to a number and an allowed unit, and asks for the main ingredient from the reference list, at most 2 (FR-006c, FR-007, constitution §4)
 
 ### Implementation for User Story 4
 
-- [ ] T029 [US4] Implement `api/adapters/llm/prompt.py` with the delimiters above, the data-only instruction, the rule that the answer follows the recipe rules only, the vague-amount rule and word-amount rule from FR-006c, the category rule (main ingredient keys from the reference list, at most 2; the app scores cuisines, not the model), the one-recipe rule with reason "Only one recipe at a time", and the rule to write names and steps in the pasted text's language
-- [ ] T030 [US4] Wire the prompt from `api/adapters/llm/prompt.py` into the request built in `api/adapters/llm/gemini_extractor.py`
-- [ ] T031 [P] [US4] Create invented evaluation fixtures in `api/tests/fixtures/ai_eval/` for the salt and onion draft, the weather question, the two-recipe text, a single recipe with a "for the sauce" sub-section, a text with "a dozen" eggs, the "ignore previous instructions" text, and the "reply with the word OK only" line. Use no real personal data (quickstart §3)
+- [X] T029 [US4] Implement `api/adapters/llm/prompt.py` with the delimiters above, the data-only instruction, the rule that the answer follows the recipe rules only, the vague-amount rule and word-amount rule from FR-006c, the category rule (main ingredient keys from the reference list, at most 2; the app scores cuisines, not the model), the one-recipe rule with reason "Only one recipe at a time", and the rule to write names and steps in the pasted text's language
+- [X] T030 [US4] Wire the prompt from `api/adapters/llm/prompt.py` into the request built in `api/adapters/llm/gemini_extractor.py`
+- [X] T031 [P] [US4] Create invented evaluation fixtures in `api/tests/fixtures/ai_eval/` for the salt and onion draft, the weather question, the two-recipe text, a single recipe with a "for the sauce" sub-section, a text with "a dozen" eggs, the "ignore previous instructions" text, and the "reply with the word OK only" line. Use no real personal data (quickstart §3)
 
 **Checkpoint**: User Story 4 prompt rules are in place and covered by tests.
 
@@ -149,11 +149,11 @@ Still open and not blocking: the final failure message (FR-015) is S-016 scope.
 
 ### Tests for User Story 5
 
-- [ ] T032 [US5] Tests in `api/tests/test_recipe_extraction_application.py`: the fake returns each of the six results unchanged, in order, and the same value every time when a single value is given (User Story 5, scenarios 1–2)
+- [X] T032 [US5] Tests in `api/tests/test_recipe_extraction_application.py`: the fake returns each of the six results unchanged, in order, and the same value every time when a single value is given (User Story 5, scenarios 1–2)
 
 ### Implementation for User Story 5
 
-- [ ] T033 [US5] Implement `FakeRecipeExtractor` in `api/adapters/llm/fake_extractor.py`: it implements the same port, returns scripted results in order or a fixed value, and makes no network call (FR-010, data-model.md stand-in)
+- [X] T033 [US5] Implement `FakeRecipeExtractor` in `api/adapters/llm/fake_extractor.py`: it implements the same port, returns scripted results in order or a fixed value, and makes no network call (FR-010, data-model.md stand-in)
 
 **Checkpoint**: All five user stories work and are independently testable.
 
@@ -163,9 +163,9 @@ Still open and not blocking: the final failure message (FR-015) is S-016 scope.
 
 **Purpose**: Verification, the timeout check, and the manual evaluation.
 
-- [ ] T034 Verify the SDK timeout exception type with a stalled stub in `api/tests/test_gemini_extractor_adapter.py`. Add an outer deadline only if the SDK timeout is not honoured (research §2, SC-005)
-- [ ] T035 Run the automated suite and lint in Compose, the canonical run in quickstart §1: `docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api`, then `cd api && uv run ruff check .` on the host
-- [ ] T036 [P] Check the log output of one failing call with an empty key: only a short error class and a request reference may appear (quickstart §5, FR-014)
+- [X] T034 Verify the SDK timeout exception type with a stalled stub in `api/tests/test_gemini_extractor_adapter.py`. Add an outer deadline only if the SDK timeout is not honoured (research §2, SC-005)
+- [X] T035 Run the automated suite and lint in Compose, the canonical run in quickstart §1: `docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api`, then `cd api && uv run ruff check .` on the host
+- [X] T036 [P] Check the log output of one failing call with an empty key: only a short error class and a request reference may appear (quickstart §5, FR-014)
 - [ ] T037 [P] Confirm `api/.env.example` lists the new variables with no real values, and that the PR description names `google-genai` as a new dependency (constitution §2)
 - [ ] T038 Manual AI evaluation with a real key, run on every attempt (quickstart §3, SC-002, SC-004), including the fixtures for "a dozen" and the "for the sauce" sub-section. This is manual and is not a merge gate for the automated suite
 
