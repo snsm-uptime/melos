@@ -1,0 +1,549 @@
+# Hand-curated layer merged onto the Wikipedia taxonomy by tools/build_cuisine.py.
+# Source of signals: cheatsheets.davidveksler.com/global_cuisine_guide.html
+# Keys that exist in the Wikipedia tree are merged (overlay wins); new keys must declare kind + parents.
+# Signal tiers are editorial judgment; the cheatsheet doesn't rank ingredients.
+
+# ── tags: full cheatsheet sections ─────────────────────────────────────────────
+chinese:
+  role: tag
+  label: {en: Chinese, es: China}
+  aliases: [china, chino]
+  cheatsheet: {section: Chinese Cuisine, depth: full}
+  summary: Ancient tradition centered on balancing flavors and textures; wok stir-frying, steaming, braising.
+  flavor_profile: [sweet, sour, salty, bitter, umami]
+  signals:
+    ingredients:
+      defining: [sichuan_peppercorn, five_spice, star_anise]
+      characteristic: [soy_sauce, rice_vinegar, sesame_oil, scallion, noodles]
+      common: [ginger, garlic, rice, chili]
+    techniques: [wok, stir-fry, stir fry, salteado al wok]
+    dishes: [dumpling]
+
+french:
+  role: tag
+  label: {en: French, es: Francesa}
+  aliases: [francesa, frances]
+  cheatsheet: {section: French Cuisine, depth: full}
+  summary: Technique-first cuisine built on the mother sauces, braising, poaching and pastry.
+  flavor_profile: [rich]
+  signals:
+    ingredients:
+      defining: [tarragon, camembert, shallot]
+      characteristic: [butter, cream, wine, thyme]
+      common: [onion, garlic, cheese, rosemary, parsley]
+    techniques: [poach, pochar, poche, bechamel, veloute, espagnole, hollandaise, holandesa]
+    dishes: [coq au vin, bourguignon, bourguignonne]
+
+indian:
+  role: tag
+  label: {en: Indian, es: India}
+  aliases: [indio]
+  cheatsheet: {section: Indian Cuisine, depth: full}
+  summary: Layered spice blending, a deep vegetarian tradition, tempering, slow-simmered curries and tandoor cooking.
+  flavor_profile: [spicy, aromatic, rich]
+  signals:
+    ingredients:
+      defining: [garam_masala, ghee, turmeric, cardamom]
+      characteristic: [cumin, coriander_seed, clove, lentils, chickpeas, yogurt]
+      common: [rice, wheat_flour, ginger, garlic, chili]
+    techniques: [tadka, tarka, tandoor, curry]
+    dishes: [tikka masala, dal, naan, roti, tandoori]
+
+italian:
+  role: tag
+  label: {en: Italian, es: Italiana}
+  aliases: [italiana, italiano]
+  cheatsheet: {section: Italian Cuisine, depth: full}
+  summary: Few high-quality seasonal ingredients handled simply; strongly regional, rooted in cucina povera.
+  flavor_profile: [fresh]
+  signals:
+    ingredients:
+      defining: [parmesan, pecorino, mozzarella, cured_ham, polenta]
+      characteristic: [pasta, basil, oregano]
+      common: [olive_oil, tomato, garlic, parsley, wine]
+    techniques: []
+    dishes: [pizza, risotto]
+
+japanese:
+  role: tag
+  label: {en: Japanese, es: Japonesa}
+  aliases: [japonesa, japones, washoku]
+  cheatsheet: {section: Japanese Cuisine, depth: full}
+  summary: Seasonal, minimalist cooking that lets ingredients speak; umami-driven, sea-heavy, careful presentation.
+  flavor_profile: [umami, delicate, fresh]
+  signals:
+    ingredients:
+      defining: [miso, dashi, mirin, sake, kombu, nori, short_grain_rice]
+      characteristic: [soy_sauce]
+      common: [fish, seafood, rice]
+    techniques: [tempura]
+    dishes: [sushi, sashimi, tempura, tsukemono, natto, kaiseki]
+
+korean:
+  role: tag
+  label: {en: Korean, es: Coreana}
+  aliases: [coreana, coreano]
+  cheatsheet: {section: Korean Cuisine, depth: full}
+  summary: Bold, savory food built on fermented pastes and kimchi, served with shared banchan.
+  flavor_profile: [pungent, fermented, spicy, umami]
+  signals:
+    ingredients:
+      defining: [gochujang, doenjang, gochugaru, kimchi]
+      characteristic: [sesame_oil, soy_sauce]
+      common: [garlic, ginger]
+    techniques: [ferment, fermentar, fermentado]
+    dishes: [kimchi, bibimbap, banchan, gogi-gui]
+
+levantine:
+  role: tag
+  label: {en: Levantine, es: Levantina}
+  aliases: [levantina, levantino]
+  cheatsheet: {section: Lebanese/Levantine Cuisine, depth: full}
+  summary: Fresh, mezze-centered food anchored on olive oil, lemon and garlic, with tangy sumac and za'atar.
+  flavor_profile: [fresh, tangy, herbal]
+  signals:
+    ingredients:
+      defining: [sumac, zaatar, tahini]
+      characteristic: [chickpeas, mint, parsley, lemon]
+      common: [olive_oil, garlic, tomato]
+    techniques: []
+    dishes: [hummus, humus, tabbouleh, tabule, baba ghanoush, baba ganoush, mezze, kebab]
+
+mexican:
+  role: tag
+  label: {en: Mexican, es: Mexicana}
+  aliases: [mexicana, mexicano]
+  cheatsheet: {section: Mexican Cuisine, depth: full}
+  summary: Mesoamerican corn, beans and chili fused with Spanish ingredients; moles and nixtamalized masa.
+  flavor_profile: [spicy]
+  signals:
+    ingredients:
+      defining: [epazote, achiote]
+      characteristic: [corn, beans, avocado, cilantro, lime, chocolate]
+      common: [chili, tomato, pork, beef, chicken, cheese]
+    techniques: [nixtamal, nixtamalization, nixtamalizacion]
+    dishes: [taco, tamal, tamale, mole, carne asada, cochinita pibil]
+
+spanish:
+  role: tag
+  label: {en: Spanish, es: Española}
+  aliases: [espanola, espanol]
+  cheatsheet: {section: Spanish Cuisine, depth: full}
+  summary: Tapas culture, rice dishes and cured pork on a sofrito base; Roman, Moorish and New World layers.
+  flavor_profile: [smoky, aromatic]
+  signals:
+    ingredients:
+      defining: [saffron, sherry_vinegar, paprika, cured_ham]
+      characteristic: [bell_pepper, seafood]
+      common: [olive_oil, garlic, tomato, almond, rice]
+    techniques: [a la plancha, sofrito, socarrat]
+    dishes: [paella, tapas, gazpacho, pintxo, pincho]
+
+thai:
+  role: tag
+  label: {en: Thai, es: Tailandesa}
+  aliases: [tailandesa, tailandes]
+  cheatsheet: {section: Thai Cuisine, depth: full}
+  summary: Every dish balances sweet, sour, salty, spicy and savory, often around pounded fresh curry pastes.
+  flavor_profile: [sweet, sour, salty, spicy, aromatic]
+  signals:
+    ingredients:
+      defining: [galangal, kaffir_lime_leaf, thai_basil, jasmine_rice, curry_paste]
+      characteristic: [lemongrass, fish_sauce, coconut_milk]
+      common: [chili, cilantro, lime, peanut, bean_sprouts]
+    techniques: [mortar and pestle, mortero]
+    dishes: [pad thai, green curry, curry verde]
+
+vietnamese:
+  role: tag
+  label: {en: Vietnamese, es: Vietnamita}
+  aliases: [vietnamita]
+  cheatsheet: {section: Vietnamese Cuisine, depth: full}
+  summary: Light, herb-forward cooking around broths, rice noodles and fish sauce, with French-era bread and coffee.
+  flavor_profile: [fresh, herbal]
+  signals:
+    ingredients:
+      defining: [rice_paper]
+      characteristic: [fish_sauce, lemongrass, noodles, thai_basil, mint]
+      common: [cilantro, chili, rice, lime]
+    techniques: []
+    dishes: [pho, banh mi, spring roll, rollito de primavera, rollo de primavera]
+
+american:
+  role: tag
+  label: {en: American, es: Estadounidense}
+  aliases: [americana, estadounidense]
+  cheatsheet: {section: American Cuisine, depth: full}
+  summary: Immigrant melting pot; barbecue and smoking, frying, baking and generous comfort food.
+  flavor_profile: [smoky, hearty]
+  signals:
+    ingredients:
+      defining: [maple_syrup, cranberry, pecan, cheddar]
+      characteristic: [beef, pork, corn, potato]
+      common: [tomato, wheat_flour, bell_pepper]
+    techniques: [smoker, ahumador, dry rub]
+    dishes: [bbq, barbecue, brisket, ribs, coleslaw, casserole]
+
+# ── tags: brief cheatsheet entries ("Further Culinary Exploration") ────────────
+greek:
+  role: tag
+  label: {en: Greek, es: Griega}
+  aliases: [griega, griego]
+  cheatsheet: {section: Greek Cuisine, depth: brief}
+  summary: Mediterranean-diet staple of olive oil, feta, yogurt, vegetables and grilled meat or seafood.
+  flavor_profile: [fresh]
+  signals:
+    ingredients: {defining: [feta], characteristic: [yogurt], common: [olive_oil, fish, seafood]}
+    techniques: []
+    dishes: []
+
+peruvian:
+  role: tag
+  label: {en: Peruvian, es: Peruana}
+  aliases: [peruana, peruano]
+  cheatsheet: {section: Peruvian Cuisine, depth: brief}
+  summary: Indigenous, Spanish, African and Japanese fusion; ceviche and ají peppers.
+  flavor_profile: [sour, spicy]
+  signals:
+    ingredients: {defining: [aji_amarillo], characteristic: [], common: [fish, lime]}
+    techniques: []
+    dishes: [ceviche, cebiche]
+
+moroccan:
+  role: tag
+  label: {en: Moroccan, es: Marroquí}
+  aliases: [marroqui]
+  cheatsheet: {section: Moroccan Cuisine, depth: brief}
+  summary: North African slow-cooked tagines and ras el hanout, mixing sweet with savory.
+  flavor_profile: [sweet, aromatic]
+  signals:
+    ingredients: {defining: [ras_el_hanout], characteristic: [], common: []}
+    techniques: []
+    dishes: [tagine, tajine]          # not "tajín": Mexican chili-lime seasoning
+
+turkish:
+  role: tag
+  label: {en: Turkish, es: Turca}
+  aliases: [turca, turco]
+  cheatsheet: {section: Turkish Cuisine, depth: brief}
+  summary: Bridge between Middle East and Europe; kebabs, meze and pastries like baklava.
+  flavor_profile: []
+  signals:
+    ingredients: {defining: [], characteristic: [], common: []}
+    techniques: []
+    dishes: [baklava, meze]
+
+ethiopian:
+  role: tag
+  label: {en: Ethiopian, es: Etíope}
+  aliases: [etiope]
+  cheatsheet: {section: Ethiopian Cuisine, depth: brief}
+  summary: Spicy stews (wats) eaten with injera, a sour flatbread that serves as plate and utensil.
+  flavor_profile: [spicy, sour]
+  signals:
+    ingredients: {defining: [], characteristic: [], common: []}
+    techniques: []
+    dishes: [injera, wat, wot]
+
+argentine:
+  role: tag
+  label: {en: Argentine, es: Argentina}
+  aliases: [argentinian, argentina, argentino]
+  cheatsheet: {section: Argentinian Cuisine, depth: brief}
+  summary: Grilling capital of the world; asado of quality beef with chimichurri.
+  flavor_profile: [smoky]
+  signals:
+    ingredients: {defining: [chimichurri], characteristic: [beef], common: []}
+    techniques: [parrilla]
+    dishes: [asado argentino, parrillada]   # bare "asado" = any roast in Spanish
+
+brazilian:
+  role: tag
+  label: {en: Brazilian, es: Brasileña}
+  aliases: [brasilena, brasileno]
+  cheatsheet: {section: Brazilian Cuisine, depth: brief}
+  summary: Portuguese, African and indigenous fusion; feijoada, grilled meats and tropical fruit.
+  flavor_profile: []
+  signals:
+    ingredients: {defining: [], characteristic: [tropical_fruit], common: [beef, pork]}
+    techniques: []
+    dishes: [feijoada]
+
+russian:
+  role: tag
+  label: {en: Russian, es: Rusa}
+  aliases: [rusa, ruso]
+  cheatsheet: {section: Russian Cuisine, depth: brief}
+  summary: Hearty winter comfort food and preserves; borscht, stroganoff, blini.
+  flavor_profile: [hearty]
+  signals:
+    ingredients: {defining: [], characteristic: [beet], common: []}
+    techniques: []
+    dishes: [borscht, borsch, stroganoff, strogonoff, blini]
+
+jamaican:
+  role: tag
+  label: {en: Jamaican, es: Jamaiquina}
+  aliases: [jamaiquina, jamaiquino]
+  cheatsheet: {section: Jamaican Cuisine, depth: brief}
+  summary: Bold Caribbean jerk spicing, scotch bonnet heat and tropical fruit.
+  flavor_profile: [spicy]
+  signals:
+    ingredients: {defining: [jerk_seasoning, scotch_bonnet], characteristic: [tropical_fruit], common: []}
+    techniques: []
+    dishes: [jerk chicken, pollo jerk]
+
+nordic:
+  role: tag
+  label: {en: Nordic, es: Nórdica}
+  aliases: [scandinavian, escandinava, escandinavo, nordica, nordico]
+  cheatsheet: {section: Scandinavian Cuisine, depth: brief}
+  summary: Simple food of preserved fish, root vegetables and berries; home of New Nordic.
+  flavor_profile: []
+  signals:
+    ingredients: {defining: [preserved_fish], characteristic: [root_vegetables, berries], common: []}
+    techniques: []
+    dishes: []
+
+polish:
+  role: tag
+  label: {en: Polish, es: Polaca}
+  aliases: [polaca, polaco]
+  cheatsheet: {section: Polish Cuisine, depth: brief}
+  summary: Central European comfort food; pierogi, kielbasa, bigos and seasonal preserving.
+  flavor_profile: [hearty]
+  signals:
+    ingredients: {defining: [kielbasa], characteristic: [], common: []}
+    techniques: []
+    dishes: [pierogi, bigos]
+
+indonesian:
+  role: tag
+  label: {en: Indonesian, es: Indonesia}
+  aliases: [indonesio]
+  cheatsheet: {section: Indonesian Cuisine, depth: brief}
+  summary: Archipelago cooking on complex spice pastes; rendang, nasi goreng, satay.
+  flavor_profile: [spicy, aromatic]
+  signals:
+    ingredients: {defining: [], characteristic: [], common: []}
+    techniques: []
+    dishes: [rendang, nasi goreng, satay, sate]
+
+# ── variants: cheatsheet "Regions & Causal Factors", attached to Wikipedia nodes ─
+sichuan:
+  role: variant
+  label: {en: Sichuan, es: Sichuan}
+  aliases: [szechuan]
+  cheatsheet: {section: Chinese Cuisine, depth: region}
+  flavor_profile: [spicy, numbing, pungent]
+  signals: {ingredients: {characteristic: [chili, garlic, sichuan_peppercorn]}}
+
+cantonese:
+  role: variant
+  label: {en: Cantonese, es: Cantonesa}
+  aliases: [cantones]
+  cheatsheet: {section: Chinese Cuisine, depth: region}
+  flavor_profile: [mild, fresh]
+  signals: {techniques: [steamed, al vapor]}
+
+north_indian:
+  role: variant
+  label: {en: North Indian, es: India del norte}
+  cheatsheet: {section: Indian Cuisine, depth: region}
+  flavor_profile: [rich]
+  signals: {ingredients: {characteristic: [wheat_flour, cream, ghee, yogurt]}}
+
+south_indian:
+  role: variant
+  label: {en: South Indian, es: India del sur}
+  cheatsheet: {section: Indian Cuisine, depth: region}
+  flavor_profile: [spicy]
+  signals: {ingredients: {characteristic: [rice, coconut_milk, chili]}}
+
+oaxacan:
+  role: variant
+  label: {en: Oaxacan, es: Oaxaqueña}
+  aliases: [oaxaca, oaxaqueno]
+  cheatsheet: {section: Mexican Cuisine, depth: region}
+  signals: {dishes: [mole]}               # source: "seven distinct mole sauces"
+
+andalusian:
+  role: variant
+  label: {en: Andalusian, es: Andaluza}
+  aliases: [andaluz, andalucia]
+  cheatsheet: {section: Spanish Cuisine, depth: region}
+  signals: {ingredients: {characteristic: [tomato, olive_oil, sherry_vinegar]}, dishes: [gazpacho]}
+
+basque:
+  role: variant
+  label: {en: Basque, es: Vasca}
+  aliases: [vasco, pais vasco]
+  cheatsheet: {section: Spanish Cuisine, depth: region}
+  signals: {ingredients: {characteristic: [seafood, fish]}, dishes: [pintxo]}
+
+catalan:
+  role: variant
+  label: {en: Catalan, es: Catalana}
+  aliases: [catalunya, cataluna]
+  cheatsheet: {section: Spanish Cuisine, depth: region}
+  signals: {dishes: [mar i muntanya]}
+
+southern_thai:
+  role: variant
+  label: {en: Southern Thai, es: Tailandesa del sur}
+  cheatsheet: {section: Thai Cuisine, depth: region}
+  flavor_profile: [spicy]
+  signals: {ingredients: {characteristic: [coconut_milk, turmeric]}}
+
+southern_american:
+  role: variant
+  label: {en: Southern American, es: Sureña estadounidense}
+  aliases: [southern, surena, sureno]
+  cheatsheet: {section: American Cuisine, depth: region}
+  signals: {ingredients: {characteristic: [chicken, wheat_flour, pork]}, dishes: [fried chicken, pollo frito, biscuit]}
+
+# ── variants with no Wikipedia node (cheatsheet-only) ──────────────────────────
+burgundy:
+  role: variant
+  kind: region
+  parents: [french]
+  label: {en: Burgundy, es: Borgoña}
+  aliases: [borgona, bourgogne]
+  cheatsheet: {section: French Cuisine, depth: region}
+  signals: {ingredients: {characteristic: [wine]}}
+
+provence:
+  role: variant
+  kind: region
+  parents: [french]
+  label: {en: Provence, es: Provenza}
+  aliases: [provenzal, provencal]
+  cheatsheet: {section: French Cuisine, depth: region}
+  signals: {ingredients: {characteristic: [olive_oil, garlic, thyme, rosemary]}}
+
+normandy:
+  role: variant
+  kind: region
+  parents: [french]
+  label: {en: Normandy, es: Normandía}
+  aliases: [normanda, normando, normande]
+  cheatsheet: {section: French Cuisine, depth: region}
+  signals: {ingredients: {characteristic: [apple, cream, camembert]}}
+
+northern_italian:
+  role: variant
+  kind: region
+  parents: [italian]
+  label: {en: Northern Italian, es: Italiana del norte}
+  cheatsheet: {section: Italian Cuisine, depth: region}
+  flavor_profile: [rich]
+  signals: {ingredients: {characteristic: [butter, cream, polenta]}, dishes: [risotto]}
+
+central_italian:
+  role: variant
+  kind: region
+  parents: [italian]
+  label: {en: Central Italian, es: Italiana central}
+  cheatsheet: {section: Italian Cuisine, depth: region}
+  signals: {ingredients: {characteristic: [beans, cured_ham, olive_oil]}}
+
+southern_italian:
+  role: variant
+  kind: region
+  parents: [italian]
+  label: {en: Southern Italian, es: Italiana del sur}
+  cheatsheet: {section: Italian Cuisine, depth: region}
+  signals: {ingredients: {characteristic: [tomato, olive_oil, pasta]}}
+
+kanto:
+  role: variant
+  kind: region
+  parents: [japanese]
+  label: {en: Kanto, es: Kanto}
+  aliases: [tokyo]
+  cheatsheet: {section: Japanese Cuisine, depth: region}
+  flavor_profile: [salty]
+  signals: {ingredients: {characteristic: [soy_sauce]}}
+
+kansai:
+  role: variant
+  kind: region
+  parents: [japanese]
+  label: {en: Kansai, es: Kansai}
+  aliases: [osaka, kyoto]
+  cheatsheet: {section: Japanese Cuisine, depth: region}
+  flavor_profile: [delicate]
+  signals: {dishes: [kaiseki]}
+
+yucatecan:
+  role: variant
+  kind: region
+  parents: [mexican]
+  label: {en: Yucatecan, es: Yucateca}
+  aliases: [yucatan, yucateco]
+  cheatsheet: {section: Mexican Cuisine, depth: region}
+  signals: {ingredients: {characteristic: [achiote, pork, lime]}, dishes: [cochinita pibil]}
+
+baja_californian:
+  role: variant
+  kind: region
+  parents: [mexican]
+  label: {en: Baja Californian, es: Bajacaliforniana}
+  aliases: [baja california, bajacaliforniano]
+  cheatsheet: {section: Mexican Cuisine, depth: region}
+  signals: {ingredients: {characteristic: [seafood, fish, corn]}, dishes: [fish taco, taco de pescado, taco de camaron]}
+
+central_thai:
+  role: variant
+  kind: region
+  parents: [thai]
+  label: {en: Central Thai, es: Tailandesa central}
+  aliases: [thai royal cuisine]
+  cheatsheet: {section: Thai Cuisine, depth: region}
+  flavor_profile: [sweet, mild]
+  signals: {ingredients: {characteristic: [curry_paste, coconut_milk]}, dishes: [green curry, curry verde]}
+
+southern_vietnamese:
+  role: variant
+  kind: region
+  parents: [vietnamese]
+  label: {en: Southern Vietnamese, es: Vietnamita del sur}
+  cheatsheet: {section: Vietnamese Cuisine, depth: region}
+  flavor_profile: [sweet, fresh]
+  signals: {ingredients: {characteristic: [coconut_milk]}}
+
+# ── taxonomy nodes: Spanish names only, so names resolve and roll up ────────────
+lebanese:     {label: {en: Lebanese, es: Libanesa}, aliases: [libanes, libano]}
+syrian:       {label: {en: Syrian, es: Siria}, aliases: [sirio]}
+jordanian:    {label: {en: Jordanian, es: Jordana}, aliases: [jordano]}
+israeli:      {label: {en: Israeli, es: Israelí}}
+neapolitan:   {label: {en: Neapolitan, es: Napolitana}, aliases: [napolitano]}
+sicilian:     {label: {en: Sicilian, es: Siciliana}, aliases: [siciliano]}
+tuscan:       {label: {en: Tuscan, es: Toscana}, aliases: [toscano]}
+swedish:      {label: {en: Swedish, es: Sueca}, aliases: [sueco]}
+norwegian:    {label: {en: Norwegian, es: Noruega}, aliases: [noruego]}
+danish:       {label: {en: Danish, es: Danesa}, aliases: [danes]}
+cajun:        {label: {en: Cajun, es: Cajún}}
+tex_mex:
+  label: {en: Tex-Mex, es: Tex-Mex}
+  parents: [texan, mexican_american]      # reorder: cheatsheet files Tex-Mex under American (Southwest)
+west_indian:  {label: {en: West Indian, es: India occidental}}   # Wikipedia: western India, NOT Caribbean
+african:      {label: {en: African, es: Africana}, aliases: [africano]}
+americas:     {label: {en: Americas, es: Americana (continente)}}
+asian:        {label: {en: Asian, es: Asiática}, aliases: [asiatico]}
+european:     {label: {en: European, es: Europea}, aliases: [europeo]}
+oceanic:      {label: {en: Oceanic, es: Oceánica}, aliases: [oceanico]}
+latin_american: {label: {en: Latin American, es: Latinoamericana}, aliases: [latinoamericano, latina]}
+central_american: {label: {en: Central American, es: Centroamericana}, aliases: [centroamericano]}
+south_american: {label: {en: South American, es: Sudamericana}, aliases: [sudamericano, suramericana]}
+caribbean:    {label: {en: Caribbean, es: Caribeña}, aliases: [caribeno]}
+costa_rican:  {label: {en: Costa Rican, es: Costarricense}, aliases: [tica, tico]}
+
+# ── fallback ───────────────────────────────────────────────────────────────────
+international:
+  role: tag
+  kind: fallback
+  parents: []
+  label: {en: International, es: Internacional}
+  aliases: [fusion internacional]
+  signals: {}

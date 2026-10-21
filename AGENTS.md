@@ -44,8 +44,9 @@ Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
 - Only the owner edits, deletes, shares or unshares a recipe. Members clone a
   shared recipe into their own account; the copy has no link to the original.
 - Author history is out of scope. Never store past owners.
-- A recipe stores its ingredient and category names as confirmed when it enters
-  a kitchen, so it reads the same in every kitchen it is shared into.
+- A recipe stores its ingredient names as confirmed when it enters a kitchen, so
+  it reads the same in every kitchen it is shared into. Its categories come only
+  from the controlled lists in `dev/docs/categories.yaml` and `dev/docs/cuisine.yml`.
 - When Gemini matches a name to an existing kitchen entry (e.g. "onions" to
   "onion"), the app tells the member which changes were made, before save.
 - Recipe preview images are stored as base64 text on the recipe. Captured
