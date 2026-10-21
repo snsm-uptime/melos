@@ -403,3 +403,20 @@ stories:
     priority: later
     status: backlog
     source: prd.md Appendix A (User), Appendix D
+
+  - id: S-054
+    title: Trial units for unknown ingredient units, promoted to allowed units by repeated use
+    epic: Capture
+    priority: later
+    status: backlog
+    source: user decision in spec 003 review (unit mapping contradiction, FR-006 vs FR-006a)
+    notes: >
+      S-015 keeps unknown units as invalid output (FR-006a). This story is the deferred alternative.
+      Needs: (1) a lookup from the extractor that returns "unknown unit" without writing anything;
+      (2) a trial_unit table written by a separate job, never by the extraction (FR-011, SC-007);
+      (3) a promotion rule, with "mention" defined (per recipe or per line) and counted by distinct
+      user, not by raw count, so one account cannot promote a unit for everyone; the threshold is
+      more than 3 mentions as proposed; (4) a maintainer review step before a trial unit becomes
+      allowed; (5) Spanish and English forms for each promoted unit; (6) a rule for how a promoted
+      unit scales and displays, since it has no conversion. Check the constitution's privacy rules
+      before any cross-user count is designed.
