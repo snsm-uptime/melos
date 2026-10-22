@@ -265,7 +265,7 @@ def test_429_without_hint_is_limit_reached_with_none() -> None:
 
 @pytest.mark.parametrize(
     ("header", "expected"),
-    [("30", 30), ("2.6", 3), ("0", None), ("-5", None), ("soon", None)],
+    [("30", 30), ("2.6", 3), ("0", None), ("0.4", None), ("-5", None), ("soon", None)],
 )
 def test_429_retry_after_header_becomes_whole_seconds(header: str, expected: int | None) -> None:
     response_ = httpx.Response(429, headers={"retry-after": header})

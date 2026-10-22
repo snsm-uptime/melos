@@ -240,3 +240,11 @@ Task: "Use-case tests in api/tests/test_recipe_extraction_application.py"
 - [Story] labels map each task to a user story for traceability
 - FR-015 (the final failure message) is S-016 scope and has no task here
 - Verify tests fail before implementing each story
+
+## Phase 8: Convergence
+
+- [X] T039 Make a cuisine match on at least 4 ingredient ids found in the steps, per the amended FR-006 (session 2026-10-22): `min_ingredients` is 4 in both copies of `categories.yaml`, `score_cuisines` in `api/domain/recipe_draft.py` compares with `>=`, and boundary tests at 3 and 4 matched ingredients are in `api/tests/test_recipe_draft_domain.py` per FR-006 (contradicts)
+- [ ] T040 (deferred until after MVP; the domain keeps lower-case only and singular stays with the prompt) Enforce the lower-case singular ingredient-name rule in `_check_name` in `api/domain/recipe_draft.py` so a plural name is invalid output, with tests in `api/tests/test_recipe_draft_domain.py`; if no reliable singular check exists without a word list, report that instead of guessing per FR-006 (partial)
+- [X] T041 Add a test in `api/tests/test_recipe_draft_domain.py` that fails when `api/domain/categories.yaml` or `api/domain/cuisine.yml` differs from `dev/docs/categories.yaml` or `dev/docs/cuisine.yml`, skipped when `dev/docs/` is absent (the container image does not include it), and sync any drift it finds per the category-source assumption in spec.md (partial)
+- [X] T042 Return None from `_retry_after_seconds` in `api/adapters/llm/gemini_extractor.py` when the rounded wait hint is zero, so a positive hint under half a second is null, and add a test in `api/tests/test_gemini_extractor_adapter.py` per FR-004 (partial)
+- [X] T043 Use the root `.env.example` for the Gemini variables instead of creating `api/.env.example`: `GEMINI_TEXT_TIMEOUT_S` and `GEMINI_IMAGE_TIMEOUT_S` are there with placeholder values, and Compose loads that file; plan.md's `api/.env.example` path is superseded (missing)

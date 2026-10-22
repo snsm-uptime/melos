@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
-from adapters.llm.vocabulary import load_vocabulary
+from adapters.llm.vocabulary import VOCABULARY_DIR, load_vocabulary
 from domain.recipe_draft import (
     DraftRecipe,
     IngredientLine,
@@ -229,3 +231,41 @@ def test_cuisines_are_at_most_two_and_one_per_tag() -> None:
     result = cuisines("Ethiopian Moroccan fusion", ["Cook."], 2)
     assert len(result) <= 2
     assert len(set(result)) == len(result)
+
+
+# ── steps rule boundary and vocabulary copies (FR-006, Assumptions) ─────────
+
+
+def _node_aliases(cuisine_id: str, count: int) -> list[str]:
+    """Distinct ingredient aliases, each naming one ingredient of the cuisine node."""
+    node = next(n for n in VOCABULARY.cuisine_nodes if n.id == cuisine_id)
+    picked: list[str] = []
+    used_ids: set[str] = set()
+    for alias, ids in VOCABULARY.matching.ingredient_items:
+        if len(alias) < 4 or len(ids) != 1 or ids[0] not in node.ingredient_ids:
+            continue
+        if ids[0] in used_ids or any(alias in other or other in alias for other in picked):
+            continue
+        picked.append(alias)
+        used_ids.add(ids[0])
+        if len(picked) == count:
+            return picked
+    raise AssertionError(f"{cuisine_id} has fewer than {count} distinct ingredient aliases")
+
+
+def test_cuisine_steps_rule_does_not_match_at_three_ingredients() -> None:
+    three = _node_aliases("mexican", 3)
+    assert cuisines("Zzqx plate", [", ".join(three) + "."], 5) == ("international",)
+
+
+def test_cuisine_steps_rule_matches_at_four_ingredients() -> None:
+    four = _node_aliases("mexican", 4)
+    assert "mexican" in cuisines("Zzqx plate", [", ".join(four) + "."], 5)
+
+
+@pytest.mark.parametrize("name", ["categories.yaml", "cuisine.yml"])
+def test_vocabulary_copies_in_domain_match_dev_docs(name: str) -> None:
+    source = Path(__file__).resolve().parents[2] / "dev" / "docs" / name
+    if not source.exists():
+        pytest.skip("dev/docs is not in the container image")
+    assert (VOCABULARY_DIR / name).read_bytes() == source.read_bytes()

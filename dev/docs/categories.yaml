@@ -55,7 +55,7 @@ matching:
     title:
       min_coverage: 0.7              # share of content words in the title (stopwords excluded) covered by the node's dish names, labels and aliases
     steps:
-      min_ingredients: 5             # distinct ingredient ids of the node (defining, characteristic, common) found in the steps; more than 4
+      min_ingredients: 4             # distinct ingredient ids of the node (defining, characteristic, common) found in the steps; at least 4
       min_recipe_ingredients: 5      # recipes with fewer ingredient lines lack context: the steps rule is off and the title decides alone
     rank: total_matches              # matched title phrases + matched step ingredients (title phrases only when the steps rule is off); ties: see tiebreak
     # tiebreak: title coverage, then body coverage (distinct ingredient ids and techniques of the node found in the steps; 0 when the steps rule is off).

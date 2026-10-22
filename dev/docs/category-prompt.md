@@ -78,7 +78,7 @@ The recipe itself goes in the user content between `<recipe_input>` tags, as in 
 4. **Stopwords.** Words in `matching.stopwords` (English and Spanish, for example "and", "the", "with", "y", "de") are not counted as title words. They add no context.
 5. **Phrase exclusions.** A phrase in `matching.phrase_exclusions` removes its span from the matches of the listed ingredient ids only. "for the sake of" does not count as sake; "peanut butter" does not count as butter; the other words in the phrase still count.
 6. **Title rule.** Collect the node's dish names, English and Spanish labels, and aliases that occur in the title. Coverage is the share of content words (stopwords excluded) covered by those phrases. **Title match:** coverage is at least 0.70.
-7. **Steps rule.** Count the distinct ingredient ids of the node (defining, characteristic and common lists) with at least one alias in the steps, after phrase exclusions. **Steps match:** more than 4 ids, so at least 5. The steps rule is off when the recipe has fewer than 5 ingredient lines. Then only the title decides.
+7. **Steps rule.** Count the distinct ingredient ids of the node (defining, characteristic and common lists) with at least one alias in the steps, after phrase exclusions. **Steps match:** at least 4 ids. The steps rule is off when the recipe has fewer than 5 ingredient lines. Then only the title decides.
 8. A node matches when either rule holds.
 9. **Total matches** = matched title phrases + matched step ingredients (title phrases only when the steps rule is off).
 10. Rank matches by total matches, highest first. Ties go to higher title coverage. If still tied, to higher body coverage: the number of distinct ingredient ids and techniques of the node found in the steps (0 when the steps rule is off). If still tied, every tied node is kept, up to two.
@@ -102,7 +102,7 @@ The recipe itself goes in the user content between `<recipe_input>` tags, as in 
 **Decided:**
 - **D1. Controlled vocabulary.** Free labels and the kitchen-first rule are gone. This resolves CHK012. The port no longer takes `category_names`.
 - **D2. Zero main ingredients.** Allowed.
-- **D3. Cuisine matching.** Every node is scored. Title rule: coverage of content words at least 0.70. Steps rule: more than 4 ingredient ids, only with at least 5 recipe ingredient lines. Matches are ranked by total matches.
+- **D3. Cuisine matching.** Every node is scored. Title rule: coverage of content words at least 0.70. Steps rule: at least 4 ingredient ids, only with at least 5 recipe ingredient lines. Matches are ranked by total matches.
 - **D4. Chip language.** The pasted text's language.
 - **D5. Avocado.** Moved from `vegetables` to `fruit`.
 - **D6. No match.** The cuisine is `international`.

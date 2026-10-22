@@ -162,9 +162,10 @@ def _retry_after_seconds(exc: APIError) -> int | None:
     if match is None:
         return None
     seconds = float(match.group(1))
-    if not math.isfinite(seconds) or seconds <= 0:
+    if not math.isfinite(seconds):
         return None
-    return round(seconds)
+    whole = round(seconds)
+    return whole if whole > 0 else None
 
 
 class GeminiRecipeExtractor:
