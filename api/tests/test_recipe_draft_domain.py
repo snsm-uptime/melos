@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
-from adapters.llm.vocabulary import load_vocabulary
+from adapters.llm.vocabulary import VOCABULARY_DIR, load_vocabulary
 from domain.recipe_draft import (
     DraftRecipe,
     IngredientLine,
@@ -229,3 +231,14 @@ def test_cuisines_are_at_most_two_and_one_per_tag() -> None:
     result = cuisines("Ethiopian Moroccan fusion", ["Cook."], 2)
     assert len(result) <= 2
     assert len(set(result)) == len(result)
+
+
+# ── vocabulary copies (Assumptions: category lists) ─────────────────────────
+
+
+@pytest.mark.parametrize("name", ["categories.yaml", "cuisine.yml"])
+def test_vocabulary_copies_in_domain_match_dev_docs(name: str) -> None:
+    source = Path(__file__).resolve().parents[2] / "dev" / "docs" / name
+    if not source.exists():
+        pytest.skip("dev/docs is not in the container image")
+    assert (VOCABULARY_DIR / name).read_bytes() == source.read_bytes()
