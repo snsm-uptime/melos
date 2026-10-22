@@ -138,7 +138,7 @@ stories:
     title: Gemini extraction adapter (RecipeExtractor port, google-genai wiring, error mapping to PRD §1.7)
     epic: Capture
     priority: must
-    status: backlog
+    status: done
     source: prd.md 1.4, 1.7 (error mapping), Appendix C; prerequisite for S-016 (clarify session 002, Q1 = B)
     notes: Built and tested with a fake extractor first. S-016 consumes the port and does not implement it.
 
@@ -150,7 +150,7 @@ stories:
     title: Capture a recipe from pasted text into a draft review screen
     epic: Capture
     priority: must
-    status: backlog
+    status: in_design
     journey: J2
     source: prd.md J2, 1.5A, Appendix B.1
     acceptance: [AC2.1, AC2.4, AC2.5]
