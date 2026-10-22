@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cuisine.schema.json",
+  "title": "Cuisine registry",
+  "description": "All metadata for cuisines: Wikipedia 'List of cuisines' taxonomy (DAG) + Veksler cheatsheet matching signals. Ingredient ids reference categories.yaml#/ingredients. children are derived from parents and never stored.",
+  "type": "object",
+  "required": ["schema_version", "sources", "ingredient_vocabulary", "flavor_vocabulary", "resolution", "cuisines"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "sources": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/sourceDoc" }
+    },
+    "ingredient_vocabulary": { "type": "string", "description": "Pointer to the ingredient id vocabulary (file#/path)." },
+    "flavor_vocabulary": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "excluded_wikipedia_sections": { "type": "array", "items": { "type": "string" } },
+    "resolution": {
+      "type": "object",
+      "description": "How a matched node becomes a tag.",
+      "required": ["primary_parent", "rollup", "fallback"],
+      "additionalProperties": false,
+      "properties": {
+        "primary_parent": { "const": "parents[0]" },
+        "rollup": { "const": "nearest_tag_on_primary_chain" },
+        "fallback": { "type": "string" }
+      }
+    },
+    "cuisines": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/id" },
+      "additionalProperties": { "$ref": "#/$defs/cuisine" }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(_[a-z0-9]+)*$" },
+    "sourceDoc": {
+      "type": "object",
+      "required": ["title", "url", "retrieved"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "retrieved": { "type": "string", "format": "date" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "local_copy": { "type": "string" }
+      }
+    },
+    "idList": { "type": "array", "items": { "$ref": "#/$defs/id" }, "uniqueItems": true },
+    "strList": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+    "signals": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ingredients": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "defining": { "$ref": "#/$defs/idList" },
+            "characteristic": { "$ref": "#/$defs/idList" },
+            "common": { "$ref": "#/$defs/idList" }
+          }
+        },
+        "techniques": { "$ref": "#/$defs/strList", "description": "Matched against recipe steps." },
+        "dishes": { "$ref": "#/$defs/strList", "description": "Matched against recipe title." }
+      }
+    },
+    "cuisine": {
+      "type": "object",
+      "required": ["label", "kind", "role", "parents"],
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "object",
+          "required": ["en"],
+          "additionalProperties": false,
+          "properties": { "en": { "type": "string" }, "es": { "type": "string" } }
+        },
+        "kind": {
+          "enum": ["macro_region", "region", "group", "cuisine", "fallback"],
+          "description": "macro_region/region come from Wikipedia ===/==== headings; group = plural list entry ('Nordic cuisines')."
+        },
+        "role": {
+          "enum": ["tag", "variant", "taxonomy"],
+          "description": "tag: assignable to a recipe. variant: refines its nearest tag (e.g. Chinese · Sichuan). taxonomy: hierarchy + name resolution only."
+        },
+        "parents": { "$ref": "#/$defs/idList", "description": "All Wikipedia parents in order of first appearance. parents[0] is the primary parent." },
+        "aliases": { "$ref": "#/$defs/strList", "description": "Extra names beyond label.en/label.es. Unique across the registry after normalization." },
+        "wiki": { "type": "string", "description": "Wikipedia article title the list entry links to." },
+        "cheatsheet": {
+          "type": "object",
+          "required": ["section", "depth"],
+          "additionalProperties": false,
+          "properties": {
+            "section": { "type": "string" },
+            "depth": { "enum": ["full", "brief", "region"] }
+          }
+        },
+        "summary": { "type": "string", "maxLength": 200 },
+        "flavor_profile": { "$ref": "#/$defs/strList" },
+        "signals": { "$ref": "#/$defs/signals" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "role": { "enum": ["tag", "variant"] } } },
+          "then": { "required": ["signals", "label"], "properties": { "label": { "required": ["en", "es"] } } }
+        },
+        {
+          "if": { "properties": { "role": { "const": "tag" } }, "not": { "properties": { "kind": { "const": "fallback" } } } },
+          "then": { "required": ["summary", "cheatsheet"] }
+        }
+      ]
+    }
+  }
+}

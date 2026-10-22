@@ -1,0 +1,231 @@
+# categories.yaml — controlled vocabulary for recipe tagging
+# Cuisine source: https://cheatsheets.davidveksler.com/global_cuisine_guide.html
+#   depth: full  → section has Key Ingredients / Practices / Regions
+#   depth: brief → "Further Culinary Exploration" one-liner only (thin signals)
+# Signal tiers (defining/characteristic/common) are editorial judgment, not from the source.
+
+schema_version: 1
+
+matching:
+  normalize: [lowercase, strip_accents, collapse_whitespace]
+  # alias matches a text token exactly, or alias+"s" / alias+"es" (plurals). No prefix match:
+  # "ajo" must not hit "ajonjoli", "lima" must not hit "limon".
+  token_match: whole_word_with_plurals
+  longest_alias_first: true        # "queso feta" → feta, not cheese; "pimenton ahumado" → paprika
+  fields:
+    ingredients: [ingredients.name]  # main ingredient and aliases match names only; cuisine also reads steps (below)
+    dishes: [title]
+  stopwords:                       # ignored when counting title words for coverage; they add no context
+    en: [a, an, and, as, at, by, for, from, in, into, is, it, its, of, on, or, over, the, this, that, to, with]
+    es: [a, al, con, de, del, e, el, en, la, las, lo, los, o, para, por, sin, u, un, una, unas, unos, y]
+  phrase_exclusions:               # the phrase's words do not count for the listed ingredient ids; other words still count
+    - {phrase: "for the sake of", blocks: [sake]}
+    - {phrase: "cloves of garlic", blocks: [clove]}
+    - {phrase: "clove of garlic", blocks: [clove]}
+    - {phrase: "garlic clove", blocks: [clove]}
+    - {phrase: "ice cream", blocks: [cream]}
+    - {phrase: "coconut cream", blocks: [cream]}
+    - {phrase: "peanut butter", blocks: [butter]}
+    - {phrase: "almond butter", blocks: [butter]}
+    - {phrase: "cocoa butter", blocks: [butter]}
+    - {phrase: "wine vinegar", blocks: [wine]}
+    - {phrase: "cider vinegar", blocks: [apple]}
+    - {phrase: "egg noodle", blocks: [egg]}
+    - {phrase: "rice noodle", blocks: [rice]}
+    - {phrase: "rice paper", blocks: [rice]}
+    - {phrase: "rice flour", blocks: [rice, wheat_flour]}
+    - {phrase: "corn flour", blocks: [wheat_flour]}
+    - {phrase: "almond flour", blocks: [wheat_flour]}
+    - {phrase: "coconut flour", blocks: [wheat_flour]}
+    - {phrase: "lemon grass", blocks: [lemon]}
+    - {phrase: "mantequilla de mani", blocks: [butter]}
+    - {phrase: "mantequilla de cacahuate", blocks: [butter]}
+    - {phrase: "pasta de", blocks: [pasta]}
+    - {phrase: "salsa de pescado", blocks: [fish]}
+    - {phrase: "vinagre de vino", blocks: [wine]}
+    - {phrase: "vinagre de sidra", blocks: [apple]}
+    - {phrase: "harina de maiz", blocks: [wheat_flour]}
+    - {phrase: "harina de arroz", blocks: [rice, wheat_flour]}
+    - {phrase: "harina de almendra", blocks: [wheat_flour]}
+    - {phrase: "harina de coco", blocks: [wheat_flour]}
+    - {phrase: "col de bruselas", blocks: [vegetables]}
+    - {phrase: "col rizada", blocks: [vegetables]}
+  cuisine:
+    # Every tag and variant is scored. A node matches when either rule holds. Matches are then ranked.
+    title:
+      min_coverage: 0.7              # share of content words in the title (stopwords excluded) covered by the node's dish names, labels and aliases
+    steps:
+      min_ingredients: 5             # distinct ingredient ids of the node (defining, characteristic, common) found in the steps; more than 4
+      min_recipe_ingredients: 5      # recipes with fewer ingredient lines lack context: the steps rule is off and the title decides alone
+    rank: total_matches              # matched title phrases + matched step ingredients (title phrases only when the steps rule is off); ties: see tiebreak
+    # tiebreak: title coverage, then body coverage (distinct ingredient ids and techniques of the node found in the steps; 0 when the steps rule is off).
+    # Still tied: every tied node is kept, up to max_results.
+    tiebreak: [title_coverage, body_coverage]
+    max_results: 2                   # one per tag: a variant and its tag never both count
+    # fallback (international) and name rollup live in cuisine.yml#/resolution
+  main_ingredient:
+    min_results: 0
+    max_results: 2
+    max_results: 2
+    rule: >-
+      The ingredient that defines the dish (named in title, or largest share by weight).
+      Aromatics, fats, sauces and spices are never the main ingredient.
+
+# Alias → several canonical ids. Matcher credits every listed id.
+# These strings must NOT appear in any ingredients[*] list.
+ambiguous_aliases:
+  limon: [lemon, lime]               # CR "limón" = lime; ES "limón" = lemon
+  coriander: [cilantro, coriander_seed]
+  pimenton: [paprika, bell_pepper]   # ES paprika; CO/VE bell pepper
+
+# Canonical ingredient vocabulary: id → aliases (en + es, singular form).
+ingredients:
+  # aromatics
+  garlic: [garlic, ajo, diente de ajo]
+  onion: [onion, cebolla]
+  shallot: [shallot, chalota, echalote, echalota]
+  scallion: [scallion, green onion, spring onion, cebollino, cebolleta, cebollin, cebolla de verdeo]
+  ginger: [ginger, jengibre, kion]
+  lemongrass: [lemongrass, hierba limon, zacate de limon, limoncillo, te de limon]
+  galangal: [galangal, galanga]
+  chili: [chili, chile, chili pepper, aji, guindilla, jalapeno, serrano, chile picante]
+  scotch_bonnet: [scotch bonnet, chile panameno]
+  aji_amarillo: [aji amarillo, aji panca, aji limo, rocoto]
+  bell_pepper: [bell pepper, chile dulce, pimiento, pimiento morron]
+  # herbs
+  cilantro: [cilantro, culantro, coriander leaf]
+  basil: [basil, albahaca]
+  thai_basil: [thai basil, albahaca tailandesa, albahaca morada]
+  mint: [mint, menta, hierbabuena]
+  parsley: [parsley, perejil]
+  oregano: [oregano]
+  thyme: [thyme, tomillo]
+  rosemary: [rosemary, romero]
+  tarragon: [tarragon, estragon]
+  epazote: [epazote]
+  kaffir_lime_leaf: [kaffir lime leaf, makrut lime leaf, lime leaf, hoja de lima kaffir, hoja de lima]
+  # spices & blends
+  cumin: [cumin, comino]
+  coriander_seed: [coriander seed, ground coriander, semilla de cilantro, cilantro en grano, coriandro]
+  turmeric: [turmeric, curcuma]
+  cardamom: [cardamom, cardamomo]
+  clove: [clavo de olor, clavo, ground clove, whole clove]   # bare "clove" omitted: garlic cloves
+  garam_masala: [garam masala, masala]
+  sichuan_peppercorn: [sichuan peppercorn, szechuan pepper, sichuan pepper, pimienta de sichuan]
+  star_anise: [star anise, anis estrellado, anis estrella]
+  five_spice: [five-spice, five spice, cinco especias]
+  paprika: [paprika, pimenton dulce, pimenton ahumado, pimenton de la vera, smoked paprika]
+  saffron: [saffron, azafran]
+  sumac: [sumac, zumaque, sumaq]
+  zaatar: ["za'atar", zaatar, zatar]
+  ras_el_hanout: [ras el hanout]
+  gochugaru: [gochugaru, chile coreano en polvo]
+  achiote: [achiote, annatto, recado rojo]
+  jerk_seasoning: [jerk seasoning, jerk, sazonador jerk]
+  # sauces, condiments, ferments
+  soy_sauce: [soy sauce, salsa de soya, salsa de soja, shoyu, ganjang]
+  fish_sauce: [fish sauce, salsa de pescado, nam pla, nuoc mam]
+  rice_vinegar: [rice vinegar, vinagre de arroz]
+  sherry_vinegar: [sherry vinegar, vinagre de jerez]
+  sesame_oil: [sesame oil, aceite de sesamo, aceite de ajonjoli]
+  miso: [miso]
+  doenjang: [doenjang]
+  gochujang: [gochujang, pasta de chile coreana]
+  dashi: [dashi, katsuobushi, bonito flake]
+  mirin: [mirin]
+  sake: [sake]
+  kombu: [kombu, alga kombu]
+  nori: [nori, alga nori]
+  tahini: [tahini, tahina, pasta de sesamo]
+  chimichurri: [chimichurri]
+  kimchi: [kimchi]
+  curry_paste: [curry paste, red curry paste, green curry paste, pasta de curry]
+  wine: [wine, vino, red wine, white wine, vino tinto, vino blanco]
+  # fats & dairy
+  olive_oil: [olive oil, aceite de oliva]
+  butter: [butter, mantequilla]               # "manteca" omitted: lard in ES/MX
+  ghee: [ghee, mantequilla clarificada]
+  cream: [cream, heavy cream, crema, nata, crema de leche]
+  yogurt: [yogurt, yoghurt, yogur]
+  cheese: [cheese, queso]
+  cheddar: [cheddar, queso cheddar]
+  parmesan: [parmesan, parmigiano, parmesano, queso parmesano]
+  pecorino: [pecorino]
+  mozzarella: [mozzarella, queso mozzarella]
+  feta: [feta, queso feta]
+  camembert: [camembert]
+  coconut_milk: [coconut milk, leche de coco, crema de coco, coconut cream]
+  # fruit, nuts, produce
+  lemon: [lemon, limon amarillo, limon real]
+  lime: [lime, lima, limon mesino, limon acido]
+  tomato: [tomato, tomate, jitomate]
+  avocado: [avocado, aguacate, palta]
+  apple: [apple, manzana, cider, sidra]
+  cranberry: [cranberry, arandano rojo]
+  berries: [berry, lingonberry, blueberry, raspberry, arandano, frambuesa, mora]
+  tropical_fruit: [mango, papaya, pineapple, pina, maracuya, passion fruit, guava, guayaba]
+  maple_syrup: [maple syrup, sirope de arce, jarabe de arce, miel de maple]
+  pecan: [pecan, pecana, nuez pecana]
+  almond: [almond, almendra]
+  peanut: [peanut, mani, cacahuate, cacahuete]
+  chocolate: [chocolate, cacao]
+  bean_sprouts: [bean sprout, brote de soya, germinado de soja]
+  eggplant: [eggplant, aubergine, berenjena]
+  beet: [beet, beetroot, remolacha, betabel]
+  root_vegetables: [turnip, nabo, parsnip, chirivia, rutabaga]
+  mushroom: [mushroom, hongo, champinon, seta]
+  green_beans: [green bean, judia verde, ejote, vainica, chaucha]
+  vegetables: [zucchini, calabacin, zapallo, spinach, espinaca, cauliflower, coliflor, broccoli, brocoli, cabbage, repollo, col]
+  # starches
+  rice: [rice, arroz]
+  jasmine_rice: [jasmine rice, arroz jazmin]
+  short_grain_rice: [short-grain rice, sushi rice, arroz de grano corto, arroz para sushi]
+  pasta: [pasta, spaghetti, espagueti, penne, fettuccine, linguine, lasagna, lasana, macarron, rigatoni]
+  noodles: [noodle, fideo, rice noodle, fideo de arroz, ramen, udon, soba, vermicelli]
+  rice_paper: [rice paper, papel de arroz]
+  corn: [corn, maiz, elote, choclo, masa harina, masa de maiz, corn tortilla, tortilla de maiz]  # bare "tortilla"/"masa" omitted
+  polenta: [polenta]
+  potato: [potato, papa, patata]
+  wheat_flour: [flour, harina, harina de trigo, wheat]
+  # legumes & soy
+  lentils: [lentil, lenteja, dal, dhal]
+  chickpeas: [chickpea, garbanzo]
+  beans: [bean, frijol, judia, alubia, poroto, habichuela, black bean, frijol negro]
+  tofu: [tofu]
+  # proteins
+  chicken: [chicken, pollo]
+  turkey: [turkey, pavo]
+  duck: [duck, pato]
+  beef: [beef, res, carne de res, ternera, vacuno, steak, bistec, brisket, carne molida, ground beef]
+  pork: [pork, cerdo, chancho, puerco, cochinita, pork belly, panceta, tocino, bacon, chorizo, jamon]
+  cured_ham: [jamon serrano, jamon iberico, jamon curado, prosciutto]
+  kielbasa: [kielbasa]
+  lamb: [lamb, cordero]
+  fish: [fish, pescado, salmon, tuna, atun, cod, bacalao, tilapia, corvina]
+  preserved_fish: [herring, arenque, gravlax, smoked salmon, salmon ahumado, lox]
+  seafood: [seafood, marisco, shrimp, camaron, gamba, langostino, prawn, squid, calamar, octopus, pulpo, mussel, mejillon, clam, almeja, crab, cangrejo]
+  egg: [egg, huevo]
+
+categories:
+
+  main_ingredient:
+    cardinality: {min: 0, max: 2}
+    values:
+      poultry:    {label: {en: Poultry, es: Aves},             group: protein, match: [chicken, turkey, duck]}
+      beef:       {label: {en: Beef, es: Res},                 group: protein, match: [beef]}
+      pork:       {label: {en: Pork, es: Cerdo},               group: protein, match: [pork, cured_ham, kielbasa]}
+      lamb:       {label: {en: Lamb, es: Cordero},             group: protein, match: [lamb]}
+      fish:       {label: {en: Fish, es: Pescado},             group: protein, match: [fish, preserved_fish]}
+      seafood:    {label: {en: Seafood, es: Mariscos},         group: protein, match: [seafood]}
+      egg:        {label: {en: Egg, es: Huevo},                group: protein, match: [egg]}
+      legumes:    {label: {en: Legumes, es: Legumbres},        group: protein, match: [lentils, chickpeas, beans, tofu]}
+      pasta:      {label: {en: Pasta & noodles, es: Pasta y fideos}, group: starch, match: [pasta, noodles]}
+      rice:       {label: {en: Rice, es: Arroz},               group: starch, match: [rice, jasmine_rice, short_grain_rice]}
+      corn:       {label: {en: Corn, es: Maíz},                group: starch, match: [corn, polenta]}
+      potato:     {label: {en: Potato, es: Papa},              group: starch, match: [potato]}
+      vegetables: {label: {en: Vegetables, es: Vegetales},     group: produce, match: [vegetables, eggplant, beet, root_vegetables, mushroom, green_beans]}
+      fruit:      {label: {en: Fruit, es: Fruta},              group: produce, match: [tropical_fruit, apple, berries, cranberry, avocado]}
+
+  cuisine:
+    cardinality: {min: 0, max: 2}
+    values_from: cuisine.yml#/cuisines      # role: tag nodes are assignable; see cuisine.yml#/resolution

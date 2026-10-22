@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from application.rate_limit import MAX_ATTEMPTS_CAP, RateLimitPolicy, parse_trusted_proxy_ips
 
@@ -127,4 +127,36 @@ def load_auth_settings() -> AuthSettings:
         ),
         auth_client_ip_header=header,
         trusted_proxy_ips=trusted,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class GeminiSettings:
+    """Gemini service settings. The key is never shown in repr or logs (FR-009, FR-013)."""
+
+    api_key: str = field(repr=False)
+    chat_model: str
+    text_timeout_s: float
+    image_timeout_s: float
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = (os.environ.get(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a number, got {raw!r}") from exc
+    if value <= 0:
+        raise ValueError(f"{name} must be > 0, got {value}")
+    return value
+
+
+def load_gemini_settings() -> GeminiSettings:
+    return GeminiSettings(
+        api_key=(os.environ.get("GEMINI_API_KEY") or "").strip(),
+        chat_model=(os.environ.get("GEMINI_CHAT_MODEL") or "").strip(),
+        text_timeout_s=_env_float("GEMINI_TEXT_TIMEOUT_S", 10.0),
+        image_timeout_s=_env_float("GEMINI_IMAGE_TIMEOUT_S", 30.0),
     )
