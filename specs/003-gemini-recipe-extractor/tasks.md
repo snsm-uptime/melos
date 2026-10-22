@@ -166,8 +166,8 @@ Still open and not blocking: the final failure message (FR-015) is S-016 scope.
 - [X] T034 Verify the SDK timeout exception type with a stalled stub in `api/tests/test_gemini_extractor_adapter.py`. Add an outer deadline only if the SDK timeout is not honoured (research §2, SC-005)
 - [X] T035 Run the automated suite and lint in Compose, the canonical run in quickstart §1: `docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api`, then `cd api && uv run ruff check .` on the host
 - [X] T036 [P] Check the log output of one failing call with an empty key: only a short error class and a request reference may appear (quickstart §5, FR-014)
-- [ ] T037 [P] Confirm `api/.env.example` lists the new variables with no real values, and that the PR description names `google-genai` as a new dependency (constitution §2)
-- [ ] T038 Manual AI evaluation with a real key, run on every attempt (quickstart §3, SC-002, SC-004), including the fixtures for "a dozen" and the "for the sauce" sub-section. This is manual and is not a merge gate for the automated suite
+- [X] T037 [P] Confirm `api/.env.example` lists the new variables with no real values, and that the PR description names `google-genai` as a new dependency (constitution §2)
+- [X] T038 Manual AI evaluation with a real key, run on every attempt (quickstart §3, SC-002, SC-004), including the fixtures for "a dozen" and the "for the sauce" sub-section. This is manual and is not a merge gate for the automated suite
 
 ---
 
