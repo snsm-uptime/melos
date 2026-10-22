@@ -335,7 +335,7 @@ def score_cuisines(
     """Pick up to two cuisine tags or variants from cuisine.yml (FR-006).
 
     A node matches when its names cover at least the title's minimum share of
-    content words, or when more than four of its ingredients appear in the steps.
+    content words, or when at least four of its ingredients appear in the steps.
     The steps rule is off below the minimum recipe ingredient count.
     """
     rules = vocabulary.matching
@@ -352,7 +352,7 @@ def score_cuisines(
     for node in vocabulary.cuisine_nodes:
         title_matches, coverage = _title_coverage(title_norm, node.phrases, rules.stopwords)
         step_ids = node.ingredient_ids & found_ids if steps_on else set()
-        matched = coverage >= rules.min_coverage or len(step_ids) > rules.min_ingredients
+        matched = coverage >= rules.min_coverage or len(step_ids) >= rules.min_ingredients
         if not matched:
             continue
         techniques = (
