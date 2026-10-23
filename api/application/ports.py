@@ -7,6 +7,8 @@ from datetime import timedelta
 from typing import Protocol
 from uuid import UUID
 
+from domain.notebook import Notebook
+
 # Canonical session TTL (30d).
 # adapters.persistence.sessions re-exports this for SESSION_COOKIE_MAX_AGE.
 DEFAULT_SESSION_TTL = timedelta(days=30)
@@ -63,6 +65,35 @@ class KitchenAccessAuthorizer(Protocol):
         kitchen_id: UUID,
         action: str,
     ) -> KitchenAccessGrant: ...
+
+
+class NotebookRepository(Protocol):
+    def get(self, notebook_id: UUID) -> Notebook | None: ...
+
+    def for_kitchen(self, kitchen_id: UUID) -> Notebook | None: ...
+
+    def for_member(self, user_id: UUID) -> Notebook | None:
+        """The member's default notebook (users.default_notebook_id), or None when unset."""
+        ...
+
+    def create(self, notebook: Notebook) -> None:
+        """Insert a notebook. A second notebook for the same kitchen is skipped, not raised."""
+        ...
+
+
+class IngredientCatalogReader(Protocol):
+    def names_for_notebook(self, notebook_id: UUID) -> list[str]: ...
+
+
+class UserDefaultNotebook(Protocol):
+    def get_for_update(self, user_id: UUID) -> UUID | None:
+        """Lock the user row and return its default_notebook_id.
+
+        The lock serializes simultaneous first calls, so only one creates a notebook.
+        """
+        ...
+
+    def set(self, user_id: UUID, notebook_id: UUID) -> None: ...
 
 
 class PasswordHasher(Protocol):

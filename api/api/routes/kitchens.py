@@ -7,6 +7,7 @@ import uuid
 
 from adapters.email import SmtpEmailSender, load_smtp_settings
 from adapters.persistence.kitchen_invite import SqlAlchemyKitchenInviteTokenRepository
+from adapters.persistence.notebooks import SqlAlchemyNotebookRepository
 from adapters.persistence.repositories import (
     SqlAlchemyAuthUserRepository,
     SqlAlchemyKitchenRepository,
@@ -136,7 +137,9 @@ def create_kitchen(
     user_id: uuid.UUID = Depends(require_authenticated_user),
     db: Session = Depends(get_db),
 ) -> KitchenResponse | JSONResponse:
-    service = CreateOwnedKitchenService(SqlAlchemyKitchenRepository(db))
+    service = CreateOwnedKitchenService(
+        SqlAlchemyKitchenRepository(db), SqlAlchemyNotebookRepository(db)
+    )
     try:
         result = service.execute(CreateOwnedKitchenCommand(actor_user_id=user_id, name=body.name))
     except InvalidKitchenNameError as exc:

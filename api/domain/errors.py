@@ -220,6 +220,25 @@ class KitchenWriteError(DomainError):
         super().__init__(detail or self.MESSAGE)
 
 
+class InvalidNotebookOwnerError(DomainError):
+    """Raised when a notebook has both a kitchen and a member owner, or neither."""
+
+    MESSAGE = "A notebook belongs to exactly one kitchen or one member."
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class NotebookNotFoundError(DomainError):
+    """Raised for a missing notebook and for another member's notebook — same body."""
+
+    MESSAGE = "Notebook not found."
+    CODE = "notebook_not_found"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
 class InvalidInviteEmailError(DomainError):
     """Raised when an invite email fails shape validation."""
 

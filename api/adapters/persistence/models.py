@@ -1,4 +1,4 @@
-"""SQLAlchemy ORM models for users, kitchens, memberships, and sessions."""
+"""SQLAlchemy ORM models for users, kitchens, memberships, sessions, and notebooks."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -40,6 +41,13 @@ class UserModel(Base):
     theme: Mapped[str | None] = mapped_column(String(16), nullable=True)
     last_opened_kitchen_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("kitchens.id", ondelete="SET NULL"), nullable=True
+    )
+    # Null until the member first asks for their default notebook, and again
+    # after it is deleted. users and notebook reference each other: use_alter.
+    default_notebook_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("notebook.id", ondelete="SET NULL", use_alter=True),
+        nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -186,4 +194,48 @@ class KitchenInviteTokenModel(Base):
     inviter: Mapped[UserModel] = relationship(
         back_populates="sent_kitchen_invites",
         foreign_keys=[inviter_user_id],
+    )
+
+
+class NotebookModel(Base):
+    __tablename__ = "notebook"
+    __table_args__ = (
+        CheckConstraint("(kitchen_id IS NULL) <> (user_id IS NULL)", name="ck_notebook_one_owner"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    # One notebook per kitchen. No unique on user_id: a member may own many.
+    kitchen_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("kitchens.id", ondelete="CASCADE"),
+        nullable=True,
+        unique=True,
+    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class IngredientModel(Base):
+    __tablename__ = "ingredient"
+    __table_args__ = (UniqueConstraint("notebook_id", "name", name="uq_ingredient_notebook_name"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    notebook_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("notebook.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -12,6 +12,7 @@ from domain.errors import (
     NotKitchenOwnerError,
 )
 from domain.kitchens import validate_kitchen_name
+from domain.notebook import Notebook
 
 from application.kitchen_access import (
     AuthorizeKitchenAccessCommand,
@@ -21,6 +22,7 @@ from application.ports import (
     KitchenAccessGrant,
     NewKitchenRecord,
     NewMembershipRecord,
+    NotebookRepository,
     PreferencesRepository,
 )
 
@@ -204,10 +206,12 @@ class CreateOwnedKitchenService:
     """Create an additional named kitchen owned by the authenticated user.
 
     Same Kitchen entity as personal kitchens; the creator is the sole owner-member.
+    The kitchen's notebook is created in the same transaction (spec 055 FR-001).
     """
 
-    def __init__(self, repo: KitchenRepository) -> None:
+    def __init__(self, repo: KitchenRepository, notebooks: NotebookRepository) -> None:
         self._repo = repo
+        self._notebooks = notebooks
 
     def execute(self, command: CreateOwnedKitchenCommand) -> KitchenRecord:
         name = validate_kitchen_name(command.name)
@@ -224,6 +228,7 @@ class CreateOwnedKitchenService:
             role="owner",
         )
         self._repo.create_owned_kitchen(owned_kitchen=owned, membership=membership)
+        self._notebooks.create(Notebook(id=uuid4(), kitchen_id=kitchen_id))
         return KitchenRecord(id=kitchen_id, name=name, owner_id=command.actor_user_id)
 
 

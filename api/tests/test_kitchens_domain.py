@@ -32,6 +32,15 @@ from domain.errors import (
     NotKitchenOwnerError,
 )
 from domain.kitchens import validate_kitchen_name
+from domain.notebook import Notebook
+
+
+@dataclass
+class FakeNotebookRepo:
+    notebooks: list[Notebook] = field(default_factory=list)
+
+    def create(self, notebook: Notebook) -> None:
+        self.notebooks.append(notebook)
 
 
 @dataclass
@@ -144,7 +153,7 @@ def test_validate_kitchen_name_rejects_whitespace_only() -> None:
 def test_create_owned_kitchen_makes_creator_owner_and_member() -> None:
     repo = FakeKitchenRepo()
     actor = uuid4()
-    service = CreateOwnedKitchenService(repo)
+    service = CreateOwnedKitchenService(repo, FakeNotebookRepo())
 
     result = service.execute(CreateOwnedKitchenCommand(actor_user_id=actor, name="Household"))
 
@@ -155,6 +164,17 @@ def test_create_owned_kitchen_makes_creator_owner_and_member() -> None:
     assert repo.memberships[0].user_id == actor
     assert repo.memberships[0].role == "owner"
     assert repo.memberships[0].kitchen_id == result.id
+
+
+def test_create_owned_kitchen_creates_its_notebook() -> None:
+    notebooks = FakeNotebookRepo()
+    service = CreateOwnedKitchenService(FakeKitchenRepo(), notebooks)
+
+    result = service.execute(CreateOwnedKitchenCommand(actor_user_id=uuid4(), name="Household"))
+
+    assert len(notebooks.notebooks) == 1
+    assert notebooks.notebooks[0].kitchen_id == result.id
+    assert notebooks.notebooks[0].kind == "kitchen"
 
 
 def test_create_allows_multiple_owned_kitchens() -> None:
@@ -168,7 +188,7 @@ def test_create_allows_multiple_owned_kitchens() -> None:
             id=uuid4(), kitchen_id=personal_id, user_id=actor, role="owner"
         ),
     )
-    service = CreateOwnedKitchenService(repo)
+    service = CreateOwnedKitchenService(repo, FakeNotebookRepo())
 
     second = service.execute(CreateOwnedKitchenCommand(actor_user_id=actor, name="Trip"))
 
@@ -179,7 +199,7 @@ def test_create_allows_multiple_owned_kitchens() -> None:
 
 
 def test_create_rejects_blank_name() -> None:
-    service = CreateOwnedKitchenService(FakeKitchenRepo())
+    service = CreateOwnedKitchenService(FakeKitchenRepo(), FakeNotebookRepo())
     with pytest.raises(InvalidKitchenNameError):
         service.execute(CreateOwnedKitchenCommand(actor_user_id=uuid4(), name="  "))
 

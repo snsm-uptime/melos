@@ -8,7 +8,7 @@ from __future__ import annotations
 from uuid import UUID, uuid4
 
 import pytest
-from adapters.persistence.models import KitchenMembershipModel, KitchenModel
+from adapters.persistence.models import KitchenMembershipModel, KitchenModel, NotebookModel
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -74,6 +74,13 @@ def test_create_owned_kitchen_membership_and_multi_own(
     assert len(memberships) == 1
     assert memberships[0].role == "owner"
     assert str(memberships[0].user_id) == str(row.owner_id)
+
+    # Spec 055 FR-001: the kitchen's notebook is created with it.
+    notebooks = db_session.scalars(
+        select(NotebookModel).where(NotebookModel.kitchen_id == kitchen_id)
+    ).all()
+    assert len(notebooks) == 1
+    assert notebooks[0].user_id is None
 
 
 def test_owner_rename_persists(client: TestClient, db_session: Session) -> None:

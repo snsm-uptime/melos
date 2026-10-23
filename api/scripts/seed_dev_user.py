@@ -20,6 +20,7 @@ from uuid import uuid4
 
 from adapters.persistence.db import get_session_factory
 from adapters.persistence.email_verification import SqlAlchemyEmailVerificationRepository
+from adapters.persistence.notebooks import SqlAlchemyNotebookRepository
 from adapters.persistence.password_hasher import Argon2PasswordHasher
 from adapters.persistence.repositories import (
     SqlAlchemyAuthUserRepository,
@@ -81,9 +82,9 @@ def seed() -> None:
         # Shared kitchen with member — create if requested
         if kitchen_name:
             # Create owned kitchen
-            shared_kitchen = CreateOwnedKitchenService(kitchen_repo).execute(
-                CreateOwnedKitchenCommand(actor_user_id=owner.user_id, name=kitchen_name)
-            )
+            shared_kitchen = CreateOwnedKitchenService(
+                kitchen_repo, SqlAlchemyNotebookRepository(session)
+            ).execute(CreateOwnedKitchenCommand(actor_user_id=owner.user_id, name=kitchen_name))
             logger.info("Created shared kitchen kitchen_id=%s", shared_kitchen.id)
 
             # Create member user — idempotent
