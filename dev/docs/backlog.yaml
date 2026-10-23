@@ -155,7 +155,7 @@ stories:
     title: Notebooks for members and kitchens (entity, default notebook, read routes)
     epic: Recipes
     priority: must
-    status: in_design
+    status: in_progress
     source: prd.md 1.6 (notebook, users.default_notebook_id), specs/055-notebooks
     notes: >
       Prerequisite for S-016: build first. Creates the notebook and ingredient tables, a
@@ -164,6 +164,10 @@ stories:
       (ON DELETE SET NULL, so a deleted default is recreated silently). The schema allows many
       notebooks per member; the app creates one for now. Adds the two notebook read routes.
       The auth routes are not changed.
+    verification: >
+      Implemented on branch s16-notebooks-prerequisite, not merged. api suite green in Compose
+      (391 passed); migration 0003 backfill, downgrade and re-upgrade checked on a scratch
+      database. Signup's "My kitchen" gets its notebook on its first read (signup unchanged).
 
   - id: S-016
     title: Capture a recipe from pasted text into a draft review screen
