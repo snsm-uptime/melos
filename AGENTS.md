@@ -37,17 +37,35 @@ The architecture, structure, auth layer and tooling are reused from
 
 Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
 
-- A recipe belongs to one user, its owner. A kitchen sees a recipe only when
-  the owner shares it into that kitchen (`recipe_share`). The kitchen shows the
-  owner's alias as the author. If the owner removes the recipe, the kitchen
-  keeps it, carts keep it, and the alias reads "unknown".
-- Only the owner edits, deletes, shares or unshares a recipe. Members clone a
-  shared recipe into their own account; the copy has no link to the original.
-- Author history is out of scope. Never store past owners.
-- A recipe stores its ingredient names as confirmed when it enters a kitchen, so
-  it reads the same in every kitchen it is shared into. Its categories come only
-  from the controlled lists in `dev/docs/categories.yaml` and `dev/docs/cuisine.yml`.
-- When Gemini matches a name to an existing kitchen entry (e.g. "onions" to
+- Recipes live in notebooks. Each member has a private notebook with their own
+  recipes, and each kitchen has a shared notebook. A recipe is in exactly one
+  notebook.
+- A notebook is its own entity with an id, owned by exactly one member or one
+  kitchen: a kitchen has one notebook and a member has one for now (the schema
+  allows more; `users.default_notebook_id` points at the default). Recipes and
+  ingredients point at `notebook_id`. A copy finds its source and target by
+  notebook id. A notebook is created with its owner: a kitchen's with the kitchen,
+  and a member's on first use (the auth routes are not changed).
+- Ingredients belong to a notebook: each notebook has its own ingredient
+  catalog.
+- Recipes move between notebooks only by copying (PRD §1.5 flow G): "Use in a
+  kitchen" (member's notebook → kitchen) and "Copy to my notebook" (kitchen →
+  member's notebook, open to any kitchen member). A copy has no link to the
+  original, and the two drift apart: editing or deleting one never changes the
+  other.
+- A copy's ingredient names are normalized against the target notebook's
+  catalog, and the target's names take priority. The app tells the member which
+  changes were made, before they confirm.
+- A recipe captured in a kitchen is saved into the kitchen's notebook, with the
+  member as author, and also into the member's notebook.
+- A kitchen recipe belongs to the kitchen and records its author. The kitchen
+  shows the author's alias; if the author's account is deleted, it reads
+  "unknown". Author history is out of scope. Never store past owners or the
+  recipe a copy came from.
+- A recipe stores its categories as ids (no category table), editable on the
+  recipe. Categories come only from the controlled lists in `dev/docs/categories.yaml`
+  and `dev/docs/cuisine.yml`. They are never renamed or matched.
+- When Gemini matches a name to an existing catalog entry (e.g. "onions" to
   "onion"), the app tells the member which changes were made, before save.
 - Recipe preview images are stored as base64 text on the recipe. Captured
   source photos are not stored (PRD §4).
@@ -197,8 +215,8 @@ ALWAYS use `uv`. Never use `pip`, `python -m venv` or `requirements.txt`.
   input is never lost on error.
 - Every kitchen-scoped query checks membership in `application/`. A
   non-member gets `404`.
-- Every recipe query checks that the caller owns the recipe or that the recipe
-  is shared into a kitchen the caller belongs to. Otherwise `404`.
+- Every recipe query checks that the recipe is in the caller's own notebook or
+  in the notebook of a kitchen the caller belongs to. Otherwise `404`.
 - Schema changes go through Alembic migrations.
 - Small changes: one per request. When finished, explain what you changed and
   why.

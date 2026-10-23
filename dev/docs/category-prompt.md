@@ -87,7 +87,7 @@ The recipe itself goes in the user content between `<recipe_input>` tags, as in 
 13. If nothing matches, the cuisine is `international`.
 
 **Chips**
-14. Main-ingredient and cuisine labels are shown in the pasted text's language.
+14. Main-ingredient and cuisine labels are shown in the member's configured language (changed 2026-10-22).
 
 **Worked examples (run on the current reference files)**
 - "Pad thai" (6 ingredient lines), steps with fish sauce, galangal and lime: `thai` matches on the title (coverage 1.00).
@@ -103,7 +103,7 @@ The recipe itself goes in the user content between `<recipe_input>` tags, as in 
 - **D1. Controlled vocabulary.** Free labels and the kitchen-first rule are gone. This resolves CHK012. The port no longer takes `category_names`.
 - **D2. Zero main ingredients.** Allowed.
 - **D3. Cuisine matching.** Every node is scored. Title rule: coverage of content words at least 0.70. Steps rule: at least 4 ingredient ids, only with at least 5 recipe ingredient lines. Matches are ranked by total matches.
-- **D4. Chip language.** The pasted text's language.
+- **D4. Chip language.** The member's configured language (changed 2026-10-22; was the pasted text's language).
 - **D5. Avocado.** Moved from `vegetables` to `fruit`.
 - **D6. No match.** The cuisine is `international`.
 - **Stopwords and phrase exclusions** (re-specified 21/10/26). 22 English and 22 Spanish stopwords; 31 phrase exclusions, each blocking named ingredient ids. All blocked ids exist in `categories.yaml`.

@@ -33,6 +33,7 @@ returned to the caller. No table, no Alembic revision.
 | `unit` | enum or None | Allowed set: `g, kg, oz, lb, ml, l, cup, tbsp, tsp, unit`. Non-vague: required. Vague: must be None. A unit matched through the FR-006a table is replaced by its allowed unit without converting the quantity (e.g. "tablespoon" → "tbsp"). A unit with no exact match that is one edit away from a table spelling (e.g. "tablespon") and is 5 or more characters long is matched the same way; one edit away from the spellings of more than one allowed unit, or any other unknown unit, is invalid output. |
 | `size` | enum or None | One of `small, medium, large`, and only when `unit == "unit"`. Otherwise, or when the value is not one of those three, the size is removed and the line is kept (spec Edge Cases). |
 | `note` | str or None | Free text, used for vague notes (e.g. "to taste"). |
+| `preparation` | str or None | Added 2026-10-22 (spec 002 plan review). How the ingredient is cut or prepared ("chopped"). Trimmed; blank becomes None. Never part of `name`. No other rule. |
 
 **Validation (FR-006, enforced in domain)**:
 - A non-vague line has `quantity > 0` and a `unit`. An empty unit is invalid output.
