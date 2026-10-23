@@ -317,6 +317,23 @@ stories:
       (checklist CHK001, 2026-10-23): must be built before, or together with, account deletion
       (S-053). No DELETE /auth/me route exists today, so S-055 cannot leave an ownerless personal
       notebook until then.
+
+  - id: S-058
+    title: Create, rename and delete notebooks (personal by their owner, kitchen by any kitchen member)
+    epic: Recipes
+    priority: must
+    status: backlog
+    journey: J1a
+    source: prd.md 1.5H, 1.6 (notebook), J1a, Appendix A (Notebook); gap found by spec 055 on 2026-10-23
+    notes: >
+      Added 2026-10-23: S-055 makes only the default personal notebook, the kitchen notebook made
+      with a kitchen and the capture notebook, and no story covered the rest of PRD J1a. A person
+      creates more personal notebooks (they are the owner; the catalog starts from their personal
+      catalog); only the owner renames or deletes one. Any member of a kitchen adds an empty
+      kitchen notebook, renames or deletes one, while they belong to the kitchen. Deleting a
+      notebook deletes its recipes and catalog; a deleted default is recreated on next use
+      (S-055); snapshots made from it keep their recipes and lose the origin label. Must per PRD
+      Appendix C (notebooks), but not needed for the first full flow, so it comes after S-057.
   - id: S-018
     title: Embeddings and pgvector search pre-filtered by kitchen
     epic: Ask

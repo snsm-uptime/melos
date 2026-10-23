@@ -1,7 +1,7 @@
-# Specification Quality Checklist: Notebooks That Belong to People and Are Linked to Kitchens
+# Specification Quality Checklist: Personal and Kitchen Notebooks
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2026-10-23 (re-specification; replaces the checklist for the 2026-10-22 model)
+**Created**: 2026-10-23 (re-specification to the snapshot model; replaces the checklist for the kitchen-link model)
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -31,6 +31,8 @@
 
 ## Notes
 
-- 2026-10-23, iteration 1: spec rewritten to the 2026-10-23 model (PRD §1.5 flow H, §1.6, J1a). FR and SC ids are renumbered, so the existing `plan.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`, `tasks.md` and `checklists/requirements-quality.md` describe the replaced model and must be regenerated.
-- Route paths and answer shapes moved out of the requirements and into the plan's contracts. Data names stay because they follow PRD §1.6, which later stories build on (see Assumptions).
-- Iteration 2: the 3 questions were answered (Q1 A: created when the capture is saved; Q2 A: notebooks the member owns or is a member of count; Q3 B: the default notebook is linked to the signup kitchen). Added FR-020, FR-021 and SC-008. All items pass.
+- 2026-10-23, snapshot model, iteration 1: spec rewritten to PRD §1.5 flow H as changed at 14:08 (personal and kitchen notebooks, snapshots). Kitchen links, the ownerless kept-copies notebook, the "reader" access and the old FR-020 (default notebook linked to the signup kitchen) are gone. New: kitchen notebook made with the kitchen (FR-008), capture step for both contexts (FR-009 to FR-011), origin label stored but unset (FR-003). FR and SC ids are renumbered again.
+- Data names (`users.default_notebook_id`, `source_notebook_id`) stay because they follow PRD §1.6, which later stories build on (see Assumptions). Route paths and answer shapes are left to the plan's contracts.
+- No [NEEDS CLARIFICATION] markers: every open point was decided on 2026-10-23 (dev/memory/231026.md 13:52 to 14:08) or has a stated default in Assumptions (access label names, picker preselection belongs to S-016).
+- Gap found: no story covered creating more notebooks or renaming and deleting them (PRD J1a). Added to the backlog as S-058 and listed as out of scope.
+- Same day: `plan.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`, `tasks.md` and `checklists/requirements-quality.md` regenerated for the snapshot model. While planning, the capture step's caller was corrected to the recipe save (S-019).
