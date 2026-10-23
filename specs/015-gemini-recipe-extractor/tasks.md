@@ -1,6 +1,6 @@
 # Tasks: Recipe Extraction Assistant Adapter
 
-**Input**: Design documents from `/specs/003-gemini-recipe-extractor/`
+**Input**: Design documents from `/specs/015-gemini-recipe-extractor/`
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/, quickstart.md
 

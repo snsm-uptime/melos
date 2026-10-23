@@ -8,6 +8,9 @@
 #   in_design    a speckit spec exists under specs/ for the story, no implementation yet
 #   backlog      no speckit spec yet (PRD mention alone is not enough), or explicitly Later in the PRD
 #
+# Spec folders: specs/NNN-short-name, where NNN is the story number (S-016 -> specs/016-capture-recipe-text).
+# specs/001-finance-dashboard-reuse is the bootstrap spec for S-001 to S-014 (AGENTS.md, Spec folders).
+#
 # Order within the Must work: the fewest stories that give a first full flow come first
 # (capture -> save -> list -> cart -> shopping list, PRD J2 to J5). Capturing straight into a
 # kitchen's notebook covers that flow, so copying between notebooks (S-034) and embeddings
@@ -141,7 +144,7 @@ stories:
     epic: Capture
     priority: must
     status: done
-    source: prd.md 1.4, 1.7 (error mapping), Appendix C; prerequisite for S-016 (clarify session 002, Q1 = B)
+    source: prd.md 1.4, 1.7 (error mapping), Appendix C; prerequisite for S-016 (clarify session 016, Q1 = B)
     notes: Built and tested with a fake extractor first. S-016 consumes the port and does not implement it.
 
   # ---------------------------------------------------------------------------
@@ -153,7 +156,7 @@ stories:
     epic: Recipes
     priority: must
     status: in_design
-    source: prd.md 1.6 (notebook, users.default_notebook_id), specs/004-notebooks
+    source: prd.md 1.6 (notebook, users.default_notebook_id), specs/055-notebooks
     notes: >
       Prerequisite for S-016: build first. Creates the notebook and ingredient tables, a
       kitchen's notebook with the kitchen, and a member's default notebook ("{alias}'s Notebook")
@@ -172,10 +175,10 @@ stories:
     acceptance: [AC2.1, AC2.4, AC2.5]
     notes: >
       Plan review 2026-10-22: a notebook is its own entity. The tables, migration, notebook
-      creation and notebook read routes are delivered first by spec 004-notebooks (S-055);
+      creation and notebook read routes are delivered first by spec 055-notebooks (S-055);
       capture only reads notebooks. Captures are addressed by the notebook's owner (kitchen id,
       or user id and notebook id). Chip labels use
-      the member's language. Adds preparation to the extractor lines (spec 003 note).
+      the member's language. Adds preparation to the extractor lines (spec 015 note).
 
   - id: S-017
     title: Match captured ingredients to the notebook's catalog (member's or kitchen's)
@@ -203,7 +206,7 @@ stories:
       Saves into the notebook the capture started from (S-016 FR-001a). A capture in a kitchen
       saves twice: the kitchen recipe (member as author, kitchen catalog) and a copy in the
       member's notebook (normalized against the personal catalog, flow G). Also stores unique
-      vague amounts, moved here from S-016 (spec 002, 2026-10-22). No embedding until S-018.
+      vague amounts, moved here from S-016 (spec 016, 2026-10-22). No embedding until S-018.
       Categories are ids stored on the recipe, with no category table (PRD Appendix D, 2026-10-22).
 
   - id: S-020
@@ -411,7 +414,7 @@ stories:
     priority: should
     status: backlog
     journey: J3
-    source: user request in clarify session 002 (not in prd.md; extends J3 list)
+    source: user request in clarify session 016 (not in prd.md; extends J3 list)
     notes: >
       Cards show a recipe image preview or a default cooking-pot SVG, the title, and author chips
       (ui/components/Chip). Filters: ingredients, recipe author. Sort: times added to a cart in
@@ -424,7 +427,7 @@ stories:
     priority: should
     status: backlog
     journey: J3
-    source: prd.md 1.5G, J3 Copy to my notebook (replaces "clone"; clarify session 002, notebooks 2026-10-22)
+    source: prd.md 1.5G, J3 Copy to my notebook (replaces "clone"; clarify session 016, notebooks 2026-10-22)
     acceptance: [AC3.3]
     notes: >
       Any kitchen member. Names are normalized against the member's catalog (their names win). The
@@ -467,7 +470,7 @@ stories:
     epic: Capture
     priority: later
     status: backlog
-    source: user decision in spec 003 review (unit mapping contradiction, FR-006 vs FR-006a)
+    source: user decision in spec 015 review (unit mapping contradiction, FR-006 vs FR-006a)
     notes: >
       S-015 keeps unknown units as invalid output (FR-006a). This story is the deferred alternative.
       Needs: (1) a lookup from the extractor that returns "unknown unit" without writing anything;

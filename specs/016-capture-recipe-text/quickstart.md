@@ -31,7 +31,7 @@ Expected: all green. The api suite includes:
 
 | Test module | Proves |
 |-------------|--------|
-| `test_labels_domain.py` | `pick_label` uses the member's language and falls back to the other. (Notebook tests are in spec 004.) |
+| `test_labels_domain.py` | `pick_label` uses the member's language and falls back to the other. (Notebook tests are in spec 055.) |
 | `test_recipe_draft_domain.py` | `preparation` kept, trimmed, blank becomes None. |
 | `test_recipe_capture_application.py` | A capture sends only its notebook's catalog. Another member's notebook, a missing notebook and a kitchen notebook of a non-member all give `NotebookNotFoundError` before any catalog read or extractor call. Archived → `KitchenArchivedError` with zero extractor calls. Too long → refused with zero extractor calls. Each S-015 result passes through. |
 | `test_recipe_capture_integration.py` | Each route answers each status and `code` in the contract. 404 bodies are the same for a missing kitchen and a non-member. `Retry-After` is present when hinted. Row counts of `ingredient` (and later recipe tables) are unchanged after every capture (SC-005, SC-008). |
@@ -42,7 +42,7 @@ Expected: all green. The api suite includes:
 ./scripts/compose-up.sh -d
 docker compose exec api uv run alembic current    # expect 0003_notebooks_ingredients (head)
 docker compose exec db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-  -c "select count(*) from notebook;"          # one per kitchen and per user with an alias (spec 004 backfill)
+  -c "select count(*) from notebook;"          # one per kitchen and per user with an alias (spec 055 backfill)
 ```
 
 ## 3. Browser walkthrough (with the fake or a real key)
@@ -92,7 +92,7 @@ change the draft's behaviour (FR-021). Record the results in `dev/memory/`.
 
 ## 5. Data unchanged
 
-Open the Notebook page once and take these counts first, because that first visit creates the member's notebook (spec 004). After the walkthrough, every count should be the same as that baseline:
+Open the Notebook page once and take these counts first, because that first visit creates the member's notebook (spec 055). After the walkthrough, every count should be the same as that baseline:
 
 ```bash
 docker compose exec db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \

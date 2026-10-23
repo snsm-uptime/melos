@@ -13,7 +13,7 @@ reading the current code (S-015 adapter, kitchens access layer, ui shell).
     (`CHECK ((kitchen_id IS NULL) <> (user_id IS NULL))`) and `UNIQUE (kitchen_id)`:
     one notebook per kitchen. `user_id` is not unique, so the schema allows many
     notebooks per member; the user table gains a nullable `default_notebook_id`
-    (2026-10-22). Spec 004-notebooks creates these tables.
+    (2026-10-22). Spec 055-notebooks creates these tables.
   - `ingredient(id, notebook_id, name, created_at)` with
     `UNIQUE (notebook_id, name)`. Each notebook has its own catalog.
   The migration backfills one notebook for every existing kitchen and for every
@@ -22,7 +22,7 @@ reading the current code (S-015 adapter, kitchens access layer, ui shell).
   notebooks (S-034, S-047) finds its source and target by notebook id. Reading
   the catalog goes through an `IngredientCatalogReader` port
   (`names_for_notebook(notebook)`). Nothing in this feature writes to either
-  table; notebooks are created by spec 004 (R13).
+  table; notebooks are created by spec 055 (R13).
 - **Rationale**: The notebook id is what identifies the source and the target
   of a copy, and a kitchen and its notebook are different concepts. FR-003 and
   FR-022 need a real catalog read, so tests can prove that a capture only sees
@@ -37,7 +37,7 @@ reading the current code (S-015 adapter, kitchens access layer, ui shell).
 
 ## R2. `preparation` is missing from the S-015 result
 
-- **Finding**: spec 002 FR-007, FR-010 and FR-012 show and edit a preparation
+- **Finding**: spec 016 FR-007, FR-010 and FR-012 show and edit a preparation
   ("onion" + "chopped"). PRD §1.6 and Appendix B.1 rule 2 ask for it. The S-015
   `IngredientLine`, `_LinePayload` and prompt have no such field, so "2 onions,
   chopped" loses "chopped" or puts it in `note`.
@@ -45,7 +45,7 @@ reading the current code (S-015 adapter, kitchens access layer, ui shell).
   (domain), to `_LinePayload` (adapter) and to the prompt's ingredient fields
   ("preparation: how the ingredient is cut or prepared, for example 'chopped';
   never in the name"). `check_draft` trims it and turns blank into None. Update
-  the spec 003 data model and contract with a dated note.
+  the spec 015 data model and contract with a dated note.
 - **Rationale**: It is the smallest change that meets FR-010. It is additive, so
   existing fake scripts and tests still build.
 - **Alternatives considered**: Put preparation in `note` and split it in the ui.
@@ -89,7 +89,7 @@ reading the current code (S-015 adapter, kitchens access layer, ui shell).
   configured language and returns each chip as `{id, label}` in it, using the
   other language when a label is missing. There is no detection logic. The draft
   text (title, names, steps) still follows the pasted text, with no translation
-  (spec 003). `GET /recipe-vocabulary` returns both languages for the editor's
+  (spec 015). `GET /recipe-vocabulary` returns both languages for the editor's
   pickers, and the ui picks by the same configured language.
 - **Rationale**: Less logic, and it needs no new rules to test.
 - **Alternatives considered**: Detect the text's language by stopword counts
@@ -126,7 +126,7 @@ reading the current code (S-015 adapter, kitchens access layer, ui shell).
   text is too long. Paste up to {limit} characters.", before any assistant call.
   The pydantic body guard is twice the limit. The vocabulary route serves the
   limit so the ui shows the same number. S-015's 10,000-character refusal stays
-  as spec 003's upper bound and is not changed.
+  as spec 015's upper bound and is not changed.
 - **Alternatives considered**: Change the S-015 constant to the new wording
   (rejected: it would fix one number in code). Hard-code 5,000 in the ui
   (rejected: two sources for one rule).
@@ -213,10 +213,10 @@ reading the current code (S-015 adapter, kitchens access layer, ui shell).
   `BookIcon` follows `ui/app/icons/README.md`.
 - **Rationale**: `TabBar` is already data-driven. No `TabBar` change is needed.
 
-## R13. Creating notebooks (moved to spec 004-notebooks)
+## R13. Creating notebooks (moved to spec 055-notebooks)
 
 - **Decision (2026-10-22, revised)**: Notebook creation and the notebook reads are
-  delivered by `specs/004-notebooks`, merged before this feature starts.
+  delivered by `specs/055-notebooks`, merged before this feature starts.
   - A kitchen's notebook is created with the kitchen, in the same transaction as
     the kitchen and its owner membership (`CreateOwnedKitchenService`).
   - A member's notebook is created the first time the member asks for their
@@ -225,7 +225,7 @@ reading the current code (S-015 adapter, kitchens access layer, ui shell).
     creation. The alias claim and the auth routes are not changed; the user
     model gains one column, approved by the owner on 2026-10-22. This replaces
     the earlier alias-claim hook.
-  - Backfill in `0003` (spec 004): one notebook per existing kitchen and per
+  - Backfill in `0003` (spec 055): one notebook per existing kitchen and per
     existing user that has an alias, named "{alias}'s Notebook". Deleting the
     default notebook sets `default_notebook_id` to null, and the next call
     creates a new one silently.

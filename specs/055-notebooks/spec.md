@@ -3,7 +3,7 @@
 **Feature Branch**: TBD
 **Created**: 2026-10-22
 **Status**: Draft
-**Input**: Prerequisite for `specs/002-capture-recipe-text`. Backlog story: S-055. Build order: this spec first, then spec 002 (S-016). Spec numbers follow creation order, not build order.
+**Input**: Prerequisite for `specs/016-capture-recipe-text`. Backlog story: S-055. Build order: this spec first, then spec 016 (S-016). Spec numbers follow creation order, not build order.
 
 ## Summary
 
@@ -16,7 +16,7 @@ Recipes are kept in notebooks. Each kitchen has one shared notebook. Each member
 - The database must allow many notebooks per member, for later use. The schema has no unique constraint on the member side. Each kitchen still has exactly one notebook (unique on `kitchen_id`).
 - In this release the application creates one notebook per member, on first use. This is the current product rule; PRD §1.6 and AGENTS.md say "one for now" and were updated on 2026-10-22.
 - The auth routes (signup, alias claim, sign-in) are not changed (AGENTS.md).
-- The user has a nullable `default_notebook_id` (foreign key to `notebook`). `GET /notebooks/members/{user_id}` returns the member's default notebook. When the value is null, the call creates a notebook and stores its id there. The create-and-set step locks the user row and re-checks, so two simultaneous first calls make one notebook. A member's notebooks are the `notebook` rows with their `user_id`; there is no join table. Adding the column to the user model is approved by the owner's instruction of 2026-10-22 (AGENTS.md: the auth layer is otherwise unchanged). This also answers spec 002's question of how the member's page learns its notebook id: it calls the default route.
+- The user has a nullable `default_notebook_id` (foreign key to `notebook`). `GET /notebooks/members/{user_id}` returns the member's default notebook. When the value is null, the call creates a notebook and stores its id there. The create-and-set step locks the user row and re-checks, so two simultaneous first calls make one notebook. A member's notebooks are the `notebook` rows with their `user_id`; there is no join table. Adding the column to the user model is approved by the owner's instruction of 2026-10-22 (AGENTS.md: the auth layer is otherwise unchanged). This also answers spec 016's question of how the member's page learns its notebook id: it calls the default route.
 - Naming: a notebook has a `name`. A member's default notebook is named "{alias}'s Notebook", using the alias at creation time; the name does not follow later alias changes. A kitchen's notebook has no stored name; it shows the kitchen's name.
 - Deleting the default notebook sets `default_notebook_id` back to null (foreign key `ON DELETE SET NULL`). The next default call creates a new default notebook silently.
 - The creation is invisible to the UI: the default route answers with the same shape and status whether the notebook was just created or already existed. There is no "created" flag and no 201.
@@ -73,5 +73,5 @@ The migration gives every existing kitchen a notebook and every existing user wi
 ## Assumptions
 
 - The PRD (§1.6, Appendix A) and AGENTS.md already describe the notebook model (decided 2026-10-22).
-- Unit and integration tests run in Compose against Postgres, as in spec 002.
+- Unit and integration tests run in Compose against Postgres, as in spec 016.
 - This feature adds no env var and no library.

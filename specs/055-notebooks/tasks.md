@@ -1,6 +1,6 @@
 # Tasks: Notebooks for Kitchens and Members
 
-**Input**: `specs/004-notebooks/spec.md`. Prerequisite for `specs/002-capture-recipe-text`.
+**Input**: `specs/055-notebooks/spec.md`. Prerequisite for `specs/016-capture-recipe-text`.
 
 **Tests**: Domain tests are pure. Use-case tests use fake ports. Integration tests run in the Compose overlay with Postgres (constitution §6).
 

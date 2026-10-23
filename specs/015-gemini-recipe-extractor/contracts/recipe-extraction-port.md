@@ -43,7 +43,7 @@ RecipeExtractor.extract(
 - On `NotARecipe` with reason "Only one recipe at a time", show "Upload only one recipe at a time". Show any other reason as returned. This is not an error state.
 - On `AIProviderError`, the assistant is not set up for this deployment. Show "Assistant misconfigured. Your text is kept" and keep the text. Show no detail, because the member cannot fix it. *(Approved 2026-10-22, S-016.)*
 - Never display any field that is not in the result type.
-- *(Added 2026-10-22, spec 002 plan review.)* The input refusal for text over 10,000 characters keeps its own wording ("The text is longer than 10,000 characters. Paste one recipe at a time."). Spec 002 checks a lower, configured limit (`RECIPE_TEXT_MAX_CHARS`, default 5,000) before calling the extractor, with its own message, so this refusal is only the upper bound. Each ingredient line may carry an optional `preparation`.
+- *(Added 2026-10-22, spec 016 plan review.)* The input refusal for text over 10,000 characters keeps its own wording ("The text is longer than 10,000 characters. Paste one recipe at a time."). Spec 016 checks a lower, configured limit (`RECIPE_TEXT_MAX_CHARS`, default 5,000) before calling the extractor, with its own message, so this refusal is only the upper bound. Each ingredient line may carry an optional `preparation`.
 
 ## Settings used by the adapter
 

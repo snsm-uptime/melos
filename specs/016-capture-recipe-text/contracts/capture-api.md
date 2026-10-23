@@ -9,9 +9,9 @@ All routes need the session cookie and an alias (`require_user_alias`):
 401 when signed out, 403 `alias_required` without an alias (existing
 behaviour). The browser calls them only through the BFF (below).
 
-## Notebook reads (defined in spec 004-notebooks)
+## Notebook reads (defined in spec 055-notebooks)
 
-This feature uses two reads that spec 004 delivers. Their shapes are listed here
+This feature uses two reads that spec 055 delivers. Their shapes are listed here
 for reference only.
 
 - `GET /notebooks/kitchens/{kitchen_id}`: any member may read it. A missing kitchen
@@ -147,7 +147,7 @@ plus the fallback. `tag` is the parent tag id for a variant.
 | `/api/notebooks/members/[userId]/[notebookId]/captures/text` | POST | `/notebooks/members/{user_id}/{notebook_id}/captures/text` |
 | `/api/recipe-vocabulary` | GET | `/recipe-vocabulary` |
 
-The two read BFF routes (`/api/notebooks/kitchens/[kitchenId]`, `/api/notebooks/members/[userId]/[notebookId]`) are delivered by spec 004.
+The two read BFF routes (`/api/notebooks/kitchens/[kitchenId]`, `/api/notebooks/members/[userId]/[notebookId]`) are delivered by spec 055.
 
 - Forwards the `cookie` header, `Content-Type: application/json`, and the
   status, body and `Retry-After` as received.

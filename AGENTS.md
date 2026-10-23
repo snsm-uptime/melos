@@ -130,6 +130,19 @@ Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
 If a file does not exist yet, create it following this structure. Do not add
 new folders without asking.
 
+### Spec folders
+
+Each speckit spec lives in `specs/NNN-short-name/`, where `NNN` is the number of
+the backlog story it specifies, zero-padded to three digits: S-016 is
+`specs/016-capture-recipe-text/`, S-055 is `specs/055-notebooks/`. The one
+exception is `specs/001-finance-dashboard-reuse/`, the bootstrap spec, which
+covers S-001 to S-014. Create a spec with
+`.specify/scripts/bash/create-new-feature.sh --number <story number> --short-name <name> "<description>"`
+so the number is the story's and not the next free one. The folder number says
+which story a spec is for; it does not say the order to build them in (see
+`dev/docs/backlog.yaml`). A spec for a story that has no backlog entry yet needs
+that entry added first.
+
 ## Development environment
 
 Prerequisites: Docker with Compose v2, `uv`, Node/`npm`.

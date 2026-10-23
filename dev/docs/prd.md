@@ -215,7 +215,7 @@ message(id, conversation_id, role: user|assistant, content, found?, cited_recipe
 - A recipe captured in a kitchen is saved twice: into the kitchen's notebook, with the member as author, and into the member's notebook.
 - A kitchen recipe belongs to the kitchen and records its author: the member who captured it or copied it in. The kitchen shows the author's alias (a left join on `author_id`). If the author's account is deleted, the alias reads "unknown". Deleting a recipe from a member's notebook never changes a kitchen recipe.
 
-**Decided (open items from clarify session 002)**
+**Decided (open items from clarify session 016)**
 - **✓ Names of a copied recipe** (2026-10-22, replaces "names of a shared recipe"): a copy stores its ingredient names as confirmed when it enters the target notebook. Each name is normalized against the target's existing ingredients, the target's names win, and the member sees every change made (flow G). Categories are controlled values and are not renamed. Copies of one recipe may read differently in different kitchens.
 - **✓ Preview images:** a recipe may have a preview image, stored as base64 text on the recipe. When it has none, the card shows the default cooking-pot icon. Captured source photos are still not stored (§4).
 - **✓ Cart frequency:** the count is the number of additions to the kitchen's cart. Removing a recipe from the cart does not lower it. The count is kept on the kitchen recipe (`recipe.cart_add_count`).

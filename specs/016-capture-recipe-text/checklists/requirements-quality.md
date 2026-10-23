@@ -15,7 +15,7 @@
 - [ ] CHK003 Are the draft screen's editable fields and their limits (title, servings, lines, steps, chips) enumerated in one place? [Completeness, Spec §FR-005–FR-013]
 - [ ] CHK004 Are loading-state requirements defined for the wait between submit and result, beyond blocking a second submission? [Gap, Spec §FR-004]
 - [ ] CHK005 Are requirements defined for what the member sees when leaving the draft via Back versus a bottom-bar tab? [Completeness, Spec §FR-032]
-- [ ] CHK006 Is the removal of unique vague amounts from this feature (moved to S-019) reflected in every place that previously mentioned it, including spec 003? [Consistency, Spec §FR-019]
+- [ ] CHK006 Is the removal of unique vague amounts from this feature (moved to S-019) reflected in every place that previously mentioned it, including spec 015? [Consistency, Spec §FR-019]
 
 ## Requirement Clarity
 
@@ -32,7 +32,7 @@
 - [ ] CHK014 Are the language rules for draft text versus category chips consistent between the Clarifications, Edge Cases and FRs? [Consistency, Spec §Edge Cases]
 - [ ] CHK015 Are the member-removed and kitchen-archived refusals consistent in whether the text is kept and what is revealed? [Consistency, Spec §FR-022, §FR-033]
 - [ ] CHK016 Are the superseded Clarifications (2026-10-20) clearly marked so that no earlier statement contradicts a later FR? [Conflict, Spec §Clarifications]
-- [ ] CHK017 Do the draft shape in this spec and in spec 003's data model use identical field names and cardinalities (0–2 main ingredients, 0–2 cuisines)? [Consistency, Spec §Key Entities]
+- [ ] CHK017 Do the draft shape in this spec and in spec 015's data model use identical field names and cardinalities (0–2 main ingredients, 0–2 cuisines)? [Consistency, Spec §Key Entities]
 
 ## Acceptance Criteria Quality
 
@@ -70,15 +70,15 @@
 
 ## Decisions of 2026-10-22 (added after the analysis)
 
-- [ ] CHK037 Is the build order between spec 004-notebooks and this feature stated in both specs, with what 004 provides (notebook entity, default notebook, read routes)? [Dependency, Spec §Assumptions]
+- [ ] CHK037 Is the build order between spec 055-notebooks and this feature stated in both specs, with what spec 055 provides (notebook entity, default notebook, read routes)? [Dependency, Spec §Assumptions]
 - [ ] CHK038 Is the "edited draft" rule (content hash compared with the hash taken when the draft was shown) stated measurably and consistently in FR-032, the data model and the tasks? [Measurability, Spec §FR-032]
 - [ ] CHK039 Is the configured paste limit (`RECIPE_TEXT_MAX_CHARS`) stated consistently in FR-002, SC-001, the edge cases, the contracts and the messages? [Consistency, Spec §FR-002]
-- [ ] CHK040 Are requirements defined for an invalid `RECIPE_TEXT_MAX_CHARS` (non-numeric, zero, or above spec 003's 10,000-character limit)? [Gap, Edge Case]
+- [ ] CHK040 Are requirements defined for an invalid `RECIPE_TEXT_MAX_CHARS` (non-numeric, zero, or above spec 015's 10,000-character limit)? [Gap, Edge Case]
 - [ ] CHK041 Are the "Notebook" tab names (English and Spanish), routes and page headers consistent for the bottom bar, the kitchen page and the draft page? [Consistency, Spec §FR-001, §FR-001b]
 - [ ] CHK042 Is the label "My notebook" (FR-001a) consistent with the stored notebook name "{alias}'s Notebook"? [Conflict, Spec §FR-001a]
 - [ ] CHK043 Are requirements defined for the Notebook page when the default-notebook call fails? [Gap, Exception Flow]
 - [ ] CHK044 Is it specified that notebook creation and re-creation are invisible to the ui (same response shape and status)? [Clarity, Spec §Assumptions]
-- [ ] CHK045 Is the behaviour defined in spec 004 when the default notebook is deleted (default cleared, next call creates a new one)? [Dependency, Gap]
+- [ ] CHK045 Is the behaviour defined in spec 055 when the default notebook is deleted (default cleared, next call creates a new one)? [Dependency, Gap]
 
 ## Notes
 

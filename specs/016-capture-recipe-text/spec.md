@@ -4,11 +4,11 @@
 
 **Created**: 2026-10-20
 
-**Updated**: 2026-10-22 (re-synced with spec 003 and the PRD as of 2026-10-22; plan review: notebook entity, member language)
+**Updated**: 2026-10-22 (re-synced with spec 015 and the PRD as of 2026-10-22; plan review: notebook entity, member language)
 
 **Status**: Draft
 
-**Input**: User description: "Capture a recipe from pasted text into a draft review screen" (backlog S-016, journey J2, acceptance AC2.1, AC2.4, AC2.5; PRD `dev/docs/prd.md` §1.5A, §1.10, §2 J2, Appendix B.1). Builds on the extraction boundary delivered by S-015 (`specs/003-gemini-recipe-extractor`).
+**Input**: User description: "Capture a recipe from pasted text into a draft review screen" (backlog S-016, journey J2, acceptance AC2.1, AC2.4, AC2.5; PRD `dev/docs/prd.md` §1.5A, §1.10, §2 J2, Appendix B.1). Builds on the extraction boundary delivered by S-015 (`specs/015-gemini-recipe-extractor`).
 
 ## Clarifications
 
@@ -23,21 +23,21 @@
 - Q: Open item: how are recipe preview images stored? → A: Saved as base64 text on the recipe. Captured source photos are still not stored.
 - Q: Open item: does removing a recipe from the cart lower its cart frequency? → A: No. The count is the number of additions.
 
-### Session 2026-10-22 (re-sync with spec 003 and the PRD)
+### Session 2026-10-22 (re-sync with spec 015 and the PRD)
 
-These entries record decisions made in spec 003 and the PRD after the first draft of this spec. Where they differ from the 2026-10-20 entries, these win.
+These entries record decisions made in spec 015 and the PRD after the first draft of this spec. Where they differ from the 2026-10-20 entries, these win.
 
-- Categories are a controlled vocabulary (spec 003, decided 2026-10-21). A draft has zero to two main ingredients from `dev/docs/categories.yaml` and zero to two cuisines from `dev/docs/cuisine.yml`, scored by the app; with no cuisine match, the cuisine is International. The "3 to 5 categories, preferring kitchen categories" rule is removed. Categories are never renamed or matched against the kitchen; only ingredient names are (supersedes part of the "names and categories" entry above).
+- Categories are a controlled vocabulary (spec 015, decided 2026-10-21). A draft has zero to two main ingredients from `dev/docs/categories.yaml` and zero to two cuisines from `dev/docs/cuisine.yml`, scored by the app; with no cuisine match, the cuisine is International. The "3 to 5 categories, preferring kitchen categories" rule is removed. Categories are never renamed or matched against the kitchen; only ingredient names are (supersedes part of the "names and categories" entry above).
 - The Picture option is shown disabled, marked "coming soon"; it opens nothing in this feature (supersedes "Picture (opens an upload sheet)" above; PRD §1.10).
-- The pasted text is limited to 10,000 characters (spec 003).
-- Two or more recipes in one text: the member sees "Upload only one recipe at a time" (spec 003 FR-002, PRD J2).
-- Draft names and steps follow the pasted text's language, not the kitchen's language. Translation is a later story (spec 003). Category chip labels follow the member's configured language (plan review, below).
-- When the text gives no servings, base servings are 4 and marked as estimated (spec 003 FR-006b).
+- The pasted text is limited to 10,000 characters (spec 015).
+- Two or more recipes in one text: the member sees "Upload only one recipe at a time" (spec 015 FR-002, PRD J2).
+- Draft names and steps follow the pasted text's language, not the kitchen's language. Translation is a later story (spec 015). Category chip labels follow the member's configured language (plan review, below).
+- When the text gives no servings, base servings are 4 and marked as estimated (spec 015 FR-006b).
 - The extraction makes one attempt per submission; the member retries by submitting again (PRD §1.7).
 - The ownership conflict noted in the first draft (PRD J3 and AC3.2 against the sharing rule) is resolved in the PRD: deleting a recipe keeps it in the kitchens it was shared into, with author "unknown". It is no longer an open item for this feature.
 - Q: The kitchen's recipes page does not exist yet, and its list stories (S-020, S-046) come later. Where does the add-recipe call to action go in this feature? → A: In two places. (1) A Recipes tab in the app's bottom tab bar, next to Home, opens the member's own recipes page (per user). (2) The kitchen page gets a Recipes tab. Both show the shared add-recipe call to action below their header. The recipe lists on both are built by later stories (S-020, S-046). Supersedes "Entry point on the kitchen's recipes page" above.
 - Q: A capture started from the member's own Recipes page has no kitchen. Which notebook is it for? → A: Recipes are kept in notebooks. Each member has a personal notebook (their own recipes), and each kitchen has a shared notebook (the kitchen's recipes). A capture is for the notebook it was started from: the bottom-bar Recipes tab is the member's notebook; the kitchen's Recipes tab is that kitchen's shared notebook. Supersedes the "last-opened kitchen" assumption made earlier this session.
-- Q: Spec 003 says unique vague amounts are saved by S-016 after the member confirms a draft, but saving a draft is S-019. Does S-016 include Save? → A: No. S-016 offers Discard only. Storing unique vague amounts moves to S-019, together with Save; spec 003 carries a note.
+- Q: Spec 015 says unique vague amounts are saved by S-016 after the member confirms a draft, but saving a draft is S-019. Does S-016 include Save? → A: No. S-016 offers Discard only. Storing unique vague amounts moves to S-019, together with Save; spec 015 carries a note.
 - Q: Which message does the member see when the assistant is not set up (missing key or model name)? → A: "Assistant misconfigured. Your text is kept", with no technical detail.
 - Q: The PRD keeps ingredients per kitchen only. Where do the ingredients of a recipe in a member's own notebook live? → A: Ingredients belong to a member or to a kitchen: each member has a personal ingredient catalog, and each kitchen has its own. When a member uses one of their recipes in a kitchen, the recipe is copied into the kitchen, and its ingredient names are normalized against the kitchen's catalog; the kitchen's names take priority. The copy and the normalization belong to S-019 and S-017, not to this feature.
 - Q: Do a recipe and its copy stay in sync? Who owns a kitchen copy? Does a capture in a kitchen also go to the member's notebook? → A: Copies drift apart; editing one never changes the other. A kitchen recipe belongs to the kitchen and records its author; any kitchen member can copy it into their own notebook. A recipe captured in a kitchen is saved into the kitchen and into the member's notebook, and the kitchen recipe's author is that member. These replace the 2026-10-20 ownership and sharing entries above; PRD §1.5 flow G, §1.6 and J3 are updated to match.
@@ -54,12 +54,12 @@ These entries record decisions made in spec 003 and the PRD after the first draf
 These entries supersede the earlier wording wherever they differ.
 
 - The bottom-bar tab and the kitchen's tab are both named "Notebook" (Spanish: "Cuaderno"). Their routes are `/notebook` and `/kitchens/[kitchenId]/notebook`. Every "Recipes tab" and "Recipes page" in the body below means the Notebook tab or page.
-- Notebook creation and the notebook read routes are not part of this feature. They are delivered first by the prerequisite spec `specs/004-notebooks`. This feature reads notebooks and never creates or changes them. A member's notebook is created on first use, by spec 004, not in the signup or alias code.
-- The text limit is set by the environment variable `RECIPE_TEXT_MAX_CHARS` (default 5,000). Wherever the body says 5,000 characters, it means the configured limit. The limit applies after trimming, and the request body is guarded at twice the limit. Messages show the configured number. Supersedes "10,000 characters" for this feature only; spec 003 keeps its own 10,000-character limit as the upper bound.
+- Notebook creation and the notebook read routes are not part of this feature. They are delivered first by the prerequisite spec `specs/055-notebooks`. This feature reads notebooks and never creates or changes them. A member's notebook is created on first use, by spec 055, not in the signup or alias code.
+- The text limit is set by the environment variable `RECIPE_TEXT_MAX_CHARS` (default 5,000). Wherever the body says 5,000 characters, it means the configured limit. The limit applies after trimming, and the request body is guarded at twice the limit. Messages show the configured number. Supersedes "10,000 characters" for this feature only; spec 015 keeps its own 10,000-character limit as the upper bound.
 - Reordering ingredient lines and steps (FR-012) is required. It is not a cut line.
 - SC-007 is checked by a short usability session with the two household members before release.
 - Logging: a capture logs the text length and the outcome, never the pasted text (constitution §4). This is a documented rule, not a tested one.
-- The member's page gets its notebook from `GET /notebooks/members/{user_id}` (spec 004): it returns the member's default notebook, and the first call creates it when the member has none. A route with the notebook id also exists for a specific notebook. The creation, and any later re-creation after the default is deleted, happens in the backend and is invisible to the page: it only receives the notebook.
+- The member's page gets its notebook from `GET /notebooks/members/{user_id}` (spec 055): it returns the member's default notebook, and the first call creates it when the member has none. A route with the notebook id also exists for a specific notebook. The creation, and any later re-creation after the default is deleted, happens in the backend and is invisible to the page: it only receives the notebook.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -208,7 +208,7 @@ After reviewing a draft, the member decides not to keep it. They choose Discard.
 
 **Data and access**
 
-- **FR-019**: This feature MUST NOT save the draft. No recipe, ingredient, category, source, step or share record is created by capturing, editing or discarding a draft. The draft screen offers Discard only; Save is S-019. Storing unique vague amounts, which spec 003 assigned to S-016, moves to S-019 with Save.
+- **FR-019**: This feature MUST NOT save the draft. No recipe, ingredient, category, source, step or share record is created by capturing, editing or discarding a draft. The draft screen offers Discard only; Save is S-019. Storing unique vague amounts, which spec 015 assigned to S-016, moves to S-019 with Save.
 - **FR-020**: A Discard control MUST be available on the draft at all times. Choosing it MUST remove the draft and return to the text sheet with an empty input, without saving anything.
 - **FR-021**: The pasted text MUST be treated as data, not as instructions: text that tries to change the assistant's behaviour (for example "ignore previous instructions") MUST NOT change how the draft is produced.
 - **FR-022**: A member MUST NOT be able to capture for a kitchen's shared notebook when they do not belong to that kitchen; the request MUST be refused as not found. A capture for the member's own notebook needs only a signed-in member, and never reads another member's recipes or names.
@@ -220,7 +220,7 @@ After reviewing a draft, the member decides not to keep it. They choose Discard.
 - **Capture attempt**: One submission of pasted text by a member for one notebook. Holds the input text and the outcome: a draft, not a recipe (with its reason), or a failure class. Not stored.
 - **Draft recipe**: The assistant's structured reading of the text, shown for review. Holds the title, base servings and whether they were estimated, main ingredients (zero to two), cuisines (zero to two, or International), ingredient lines and steps. Exists only on screen; gone on Discard, on leaving the page or on reload.
 - **Draft ingredient line**: One ingredient in a draft: name, quantity, unit, size, preparation and vague note. Follows the line rules in PRD §1.6.
-- **Notebook**: Where recipes are kept. Its own entity with an id, owned by one member or one kitchen (a kitchen has one, a member has one). A member's own notebook holds the recipes they own; a kitchen's shared notebook holds the kitchen's recipes, captured or copied there. Every capture is for one notebook. This feature reads notebooks and never changes them. Notebooks are created by spec 004-notebooks.
+- **Notebook**: Where recipes are kept. Its own entity with an id, owned by one member or one kitchen (a kitchen has one, a member has one). A member's own notebook holds the recipes they own; a kitchen's shared notebook holds the kitchen's recipes, captured or copied there. Every capture is for one notebook. This feature reads notebooks and never changes them. Notebooks are created by spec 055-notebooks.
 - **Ingredient catalog (read-only here)**: The ingredient names owned by a member (personal catalog) or by a kitchen (kitchen catalog). The catalog of the capture's notebook is sent with the text so the draft can reuse its names. This feature reads it and never changes it.
 - **Controlled category lists (read-only)**: The main-ingredient and cuisine lists, with English and Spanish labels. The only source of draft categories.
 
@@ -239,15 +239,15 @@ After reviewing a draft, the member decides not to keep it. They choose Discard.
 
 ## Assumptions
 
-- The product is used by a small household (two to a few members); concurrent captures in the same kitchen are rare. Concurrent submissions of the same text share one assistant call (spec 003 FR-016).
+- The product is used by a small household (two to a few members); concurrent captures in the same kitchen are rare. Concurrent submissions of the same text share one assistant call (spec 015 FR-016).
 - The pasted text is in English or Spanish. The draft keeps its language; no translation is done.
-- The extraction rules (vague phrases, number words, the unit table and typo rule, sizes, servings, naming, category scoring) are those in spec 003 and PRD §2 J2 and Appendix B.1. This spec states them as visible behaviour only.
-- The draft shape and the failure classes are those in `specs/003-gemini-recipe-extractor/data-model.md` and `contracts/recipe-extraction-port.md`. This feature is built and tested against the stand-in extractor from S-015, so tests need no network.
+- The extraction rules (vague phrases, number words, the unit table and typo rule, sizes, servings, naming, category scoring) are those in spec 015 and PRD §2 J2 and Appendix B.1. This spec states them as visible behaviour only.
+- The draft shape and the failure classes are those in `specs/015-gemini-recipe-extractor/data-model.md` and `contracts/recipe-extraction-port.md`. This feature is built and tested against the stand-in extractor from S-015, so tests need no network.
 - Error wording follows the PRD §1.7 table exactly. The too-long message and "Assistant misconfigured. Your text is kept" are new and are recorded here.
 - There is no per-member capture limit (see Clarifications). One member's repeated captures can reach the assistant's shared usage limit for the whole deployment; FR-017 covers that case. Blocking a second submission while one is running (FR-004) is the only guard against repeated taps.
 - The usage-limit message stays "Try again in a minute." even when the assistant gives a wait hint; showing the exact wait is not in this feature.
 - Catalog matching (S-017), URL capture (S-025), photo capture (S-040) and saving a draft (S-019) are separate stories. Until S-017, the draft shows no "matched" / "new ingredient" labels and no list of name changes (FR-024); the assistant may still return an existing catalog name, but the draft does not mark it.
-- Notebook creation and the notebook read routes are delivered by `specs/004-notebooks`, which is merged before this feature starts.
+- Notebook creation and the notebook read routes are delivered by `specs/055-notebooks`, which is merged before this feature starts.
 - The options dialog reuses the existing dialog component, with its confirm and cancel buttons made optional so existing dialogs stay unchanged. The text sheet reuses the existing sheet component (`AddRecipeCallToAction`, `ActionDialog`, `Sheet`; AGENTS.md "Shared UI components").
 - The member's notebook will list the recipes they own; a kitchen's shared notebook will list the kitchen's recipes. Both lists come from later stories (S-020, S-046). The bottom bar's cart and chat tabs come with their own stories.
 - Ingredients belong to a member or to a kitchen (see Clarifications; PRD §1.6). Until S-019 saves recipes, a member's personal catalog is empty.

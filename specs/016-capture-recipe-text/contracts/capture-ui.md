@@ -8,10 +8,10 @@ in `ui/lib/i18n/capture.ts`.
 
 | Route | Shows | Tab marked |
 |-------|-------|------------|
-| `/notebook` | Header "Notebook". Reads the member's default notebook through `/api/notebooks/members/[userId]` (spec 004), with the signed-in user's id from the session. `AddRecipeCallToAction` for that notebook. No list (S-020). | `notebook` |
+| `/notebook` | Header "Notebook". Reads the member's default notebook through `/api/notebooks/members/[userId]` (spec 055), with the signed-in user's id from the session. `AddRecipeCallToAction` for that notebook. No list (S-020). | `notebook` |
 | `/notebook/draft` | Draft review for the member's notebook. Redirects to `/notebook` when the store has no draft. | `notebook` |
 | `/kitchens/[kitchenId]` | Unchanged Members content plus the `KitchenSectionTabs` (Members active). | `home` |
-| `/kitchens/[kitchenId]/notebook` | Header = kitchen name. `KitchenSectionTabs` (Notebook active). Reads the kitchen's notebook through `/api/notebooks/kitchens/[kitchenId]` (spec 004). `AddRecipeCallToAction` for that notebook, **only when not archived**. No list (S-046). Non-member → the existing not-found view. | `home` |
+| `/kitchens/[kitchenId]/notebook` | Header = kitchen name. `KitchenSectionTabs` (Notebook active). Reads the kitchen's notebook through `/api/notebooks/kitchens/[kitchenId]` (spec 055). `AddRecipeCallToAction` for that notebook, **only when not archived**. No list (S-046). Non-member → the existing not-found view. | `home` |
 | `/kitchens/[kitchenId]/notebook/draft` | Draft review for that kitchen's notebook. Redirects to `/kitchens/[kitchenId]/notebook` when there is no draft, or when the stored notebook id is not that kitchen's notebook. | `home` |
 
 ## `AddRecipeCallToAction` (`ui/components/AddRecipeCallToAction/`)

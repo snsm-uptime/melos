@@ -2,16 +2,16 @@
 
 This feature writes nothing (FR-019, SC-005). It adds one table that it only
 reads, one in-memory use-case value, and a client-only store. The draft shape is
-the S-015 one ([spec 003 data model](../003-gemini-recipe-extractor/data-model.md)),
+the S-015 one ([spec 015 data model](../015-gemini-recipe-extractor/data-model.md)),
 with one added field (`preparation`, research R2).
 
-## Persisted (created by spec 004-notebooks, read-only in capture)
+## Persisted (created by spec 055-notebooks, read-only in capture)
 
 A notebook is its own entity: a kitchen has a notebook, a member has a
 notebook, and neither is the notebook itself (research R1). The notebook id is
 what recipes, copies and the ingredient catalog point at.
 
-### `notebook` (spec 004, Alembic `0003_notebooks_ingredients`)
+### `notebook` (spec 055, Alembic `0003_notebooks_ingredients`)
 
 | Column | Type | Rules |
 |--------|------|-------|
@@ -27,9 +27,9 @@ for their default notebook. The migration backfills a notebook for every existin
 kitchen and every existing user with an alias. A member notebook's `name` is
 "{alias}'s Notebook"; a kitchen notebook has no name. `default_notebook_id` is
 `ON DELETE SET NULL`. After that, a kitchen's notebook is created with the kitchen
-(spec 004; research R13).
+(spec 055; research R13).
 
-### `ingredient` (spec 004, same revision)
+### `ingredient` (spec 055, same revision)
 
 | Column | Type | Rules |
 |--------|------|-------|
@@ -66,7 +66,7 @@ Reads in this feature:
 |-------|------|-------|
 | `preparation` | str or None | **New.** How the ingredient is cut or prepared ("chopped"). Trimmed, and blank becomes None. Never part of `name` (FR-010). No other rule. |
 
-All other fields and rules are unchanged from spec 003.
+All other fields and rules are unchanged from spec 015.
 
 ### Notebook (`domain/notebook.py`, new)
 
@@ -98,23 +98,23 @@ otherwise the other language. No text detection (research R4).
 | Outcome | Carries | From |
 |---------|---------|------|
 | `CapturedDraft` | `recipe: DraftRecipe`, `language: "en" \| "es"`, `notebook: Notebook`, `kitchen_name: str \| None` | S-015 `Draft` |
-| S-015 `NotARecipe`, `Unavailable`, `LimitReached`, `InvalidOutput`, `AIProviderError` | as in spec 003 | passed through |
+| S-015 `NotARecipe`, `Unavailable`, `LimitReached`, `InvalidOutput`, `AIProviderError` | as in spec 015 | passed through |
 
 Raised before any assistant call (not outcomes):
 
 | Error | When | HTTP |
 |-------|------|------|
-| `RecipeTextRefusedError` (S-015) | empty, or more than the configured limit after trimming (`RECIPE_TEXT_MAX_CHARS`, default 5,000; spec 003's own limit is 10,000) | 422 `text_empty` / `text_too_long` |
+| `RecipeTextRefusedError` (S-015) | empty, or more than the configured limit after trimming (`RECIPE_TEXT_MAX_CHARS`, default 5,000; spec 015's own limit is 10,000) | 422 `text_empty` / `text_too_long` |
 | `NotebookNotFoundError` (new, `domain/errors.py`) | notebook missing, another member's, or a kitchen notebook the caller is not a member of. Same body in every case. | 404 `notebook_not_found` |
 | `KitchenArchivedError` (new, `domain/errors.py`) | the notebook's kitchen is archived | 409 `kitchen_archived` |
 
-### Ports (`application/ports.py`; the notebook and catalog ports are spec 004's)
+### Ports (`application/ports.py`; the notebook and catalog ports are spec 055's)
 
 ```text
 NotebookRepository.get(notebook_id: UUID) -> Notebook | None
 NotebookRepository.for_kitchen(kitchen_id: UUID) -> Notebook | None
 NotebookRepository.for_member(user_id: UUID) -> Notebook | None
-NotebookRepository.create(notebook: Notebook) -> None        # used by spec 004 when a notebook is created
+NotebookRepository.create(notebook: Notebook) -> None        # used by spec 055 when a notebook is created
 IngredientCatalogReader.names_for_notebook(notebook_id: UUID) -> list[str]
 ```
 

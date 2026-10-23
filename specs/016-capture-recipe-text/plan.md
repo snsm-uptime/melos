@@ -1,8 +1,8 @@
 # Implementation Plan: Capture a Recipe from Pasted Text
 
-**Branch**: `s20` (spec folder `002-capture-recipe-text`) | **Date**: 2026-10-22 | **Spec**: [spec.md](./spec.md)
+**Branch**: `s20` (spec folder `016-capture-recipe-text`) | **Date**: 2026-10-22 | **Spec**: [spec.md](./spec.md)
 
-**Input**: Feature specification from `specs/002-capture-recipe-text/spec.md`
+**Input**: Feature specification from `specs/016-capture-recipe-text/spec.md`
 
 ## Summary
 
@@ -16,7 +16,7 @@ either a draft or a coded refusal. The ui shows the draft on its own full-screen
 page, where the member can edit it and discard it. Nothing is saved.
 
 Technical approach: notebooks are their own entity, owned by one member or one kitchen,
-and are created and read by the prerequisite spec `specs/004-notebooks`. One new
+and are created and read by the prerequisite spec `specs/055-notebooks`. One new
 application use case (`CaptureRecipeText`) wraps the S-015 use case with notebook
 access, the archive check and the catalog read. Two thin capture routes keyed by the
 owner (`/notebooks/kitchens/{kitchen_id}/captures/text` and
@@ -33,7 +33,7 @@ matches this spec.
 
 **Primary Dependencies**: FastAPI, SQLAlchemy, Alembic, pydantic (api); the S-015 `RecipeExtraction` use case, `GeminiRecipeExtractor` and `FakeRecipeExtractor`; existing ui components `ActionDialog`, `Sheet`, `Chip`, `ChipPicker`, `TabBar`, `useFocusTrap`. **No new library** in api or ui.
 
-**Storage**: PostgreSQL 16. The `notebook` and `ingredient` tables, their Alembic revision `0003` and the backfill are delivered by spec 004-notebooks. This feature adds no table: it only reads notebooks and the ingredient catalog (FR-003, FR-019). `ingredient` stays empty until S-019 saves recipes.
+**Storage**: PostgreSQL 16. The `notebook` and `ingredient` tables, their Alembic revision `0003` and the backfill are delivered by spec 055-notebooks. This feature adds no table: it only reads notebooks and the ingredient catalog (FR-003, FR-019). `ingredient` stays empty until S-019 saves recipes.
 
 **Testing**: pytest + ruff (api). Domain tests are pure. Use-case tests use fake ports and the `FakeRecipeExtractor`. Integration tests run in the Compose test overlay with a real Postgres and the fake extractor injected through a FastAPI dependency override. vitest + eslint + typecheck (ui). Browser walkthrough per `quickstart.md`. Manual AI evaluation for SC-002 and SC-006 uses `api/tests/fixtures/ai_eval/`.
 
@@ -52,7 +52,7 @@ matches this spec.
 - The paste limit is `RECIPE_TEXT_MAX_CHARS` (default 5,000) after trimming. The request body is guarded at twice that value.
 - The draft lives only in browser memory: it is lost on reload and never sent back to the api in this feature.
 
-**Scale/Scope**: One household (two to a few members). About 4 new api modules and 2 api edits into S-015, about 15 new ui files and 4 ui edits. The notebook work (migration, entity, repositories, creation, read routes) is in spec 004.
+**Scale/Scope**: One household (two to a few members). About 4 new api modules and 2 api edits into S-015, about 15 new ui files and 4 ui edits. The notebook work (migration, entity, repositories, creation, read routes) is in spec 055.
 
 ## Constitution Check
 
@@ -60,7 +60,7 @@ matches this spec.
 
 | Principle | Check | Status |
 |-----------|-------|--------|
-| §1 Simplicity and Reuse | No new service, queue or worker. Auth and signup untouched: routes use the existing `require_user_alias` and session cookie, and the member's notebook is created on first use by spec 004, not in the alias code. The Gemini call goes only through the S-015 port. ui reuses `ActionDialog`, `Sheet`, `Chip`, `ChipPicker`, `TabBar`. | PASS |
+| §1 Simplicity and Reuse | No new service, queue or worker. Auth and signup untouched: routes use the existing `require_user_alias` and session cookie, and the member's notebook is created on first use by spec 055, not in the alias code. The Gemini call goes only through the S-015 port. ui reuses `ActionDialog`, `Sheet`, `Chip`, `ChipPicker`, `TabBar`. | PASS |
 | §2 Tech stack | uv/npm, no new libraries. Model name and timeouts come from settings. The BFF reads the same `GEMINI_TEXT_TIMEOUT_S` env var for its safety deadline. | PASS |
 | §3 Hexagonal | `CaptureRecipeText` (application) resolves the notebook's owner, checks membership and archive state, and calls the ports `NotebookRepository`, `IngredientCatalogReader`, `KitchenAccessAuthorizer` and `RecipeExtraction`. The SQLAlchemy readers live in `adapters/persistence/`. Routes only map results to HTTP. | PASS |
 | §4 Security and Privacy | Pasted text is delimited as data by the existing S-015 prompt (FR-021). Personal captures read only `ingredient.user_id = caller` (FR-022). Logs keep the text length, never the text. Test data is invented. | PASS |
@@ -75,13 +75,13 @@ matches this spec.
 
 **Cross-spec changes (approved scope needed at review)**:
 
-1. **`preparation` on ingredient lines.** Spec 002 FR-007, FR-010 and FR-012 show and edit a preparation ("onion" + "chopped"). The S-015 result type has no such field, so the preparation is lost. This plan adds an optional `preparation` to `IngredientLine`, to the adapter's response schema, to the prompt, and to the spec 003 data model and contract (research R2).
-2. **Too-long text.** The capture use case checks the trimmed length against `RECIPE_TEXT_MAX_CHARS` (default 5,000) before any extraction call and refuses with that limit in the message, "That text is too long. Paste up to {limit} characters." Spec 003's own 10,000-character refusal stays as the upper bound (research R6).
-3. **Notebook entity.** The PRD (§1.6, Appendix A) and AGENTS.md already record the notebook model (decided and approved 2026-10-22). Spec 004-notebooks implements it (research R1).
-4. **Member notebook on first use.** Spec 004 creates the member's notebook the first time the member asks for their default notebook, and stores its id in the new nullable `users.default_notebook_id`. The alias claim and the auth routes are not changed; the user model gains one column (research R13).
-5. **Kitchen notebook.** Spec 004 creates the kitchen's notebook with the kitchen, in the same transaction (`CreateOwnedKitchenService`).
+1. **`preparation` on ingredient lines.** Spec 016 FR-007, FR-010 and FR-012 show and edit a preparation ("onion" + "chopped"). The S-015 result type has no such field, so the preparation is lost. This plan adds an optional `preparation` to `IngredientLine`, to the adapter's response schema, to the prompt, and to the spec 015 data model and contract (research R2).
+2. **Too-long text.** The capture use case checks the trimmed length against `RECIPE_TEXT_MAX_CHARS` (default 5,000) before any extraction call and refuses with that limit in the message, "That text is too long. Paste up to {limit} characters." Spec 015's own 10,000-character refusal stays as the upper bound (research R6).
+3. **Notebook entity.** The PRD (§1.6, Appendix A) and AGENTS.md already record the notebook model (decided and approved 2026-10-22). Spec 055-notebooks implements it (research R1).
+4. **Member notebook on first use.** Spec 055 creates the member's notebook the first time the member asks for their default notebook, and stores its id in the new nullable `users.default_notebook_id`. The alias claim and the auth routes are not changed; the user model gains one column (research R13).
+5. **Kitchen notebook.** Spec 055 creates the kitchen's notebook with the kitchen, in the same transaction (`CreateOwnedKitchenService`).
 6. **Tab name.** The bottom-bar tab and the kitchen's tab are both named "Notebook" (route `/notebook` and `/kitchens/[kitchenId]/notebook`).
-7. **Language.** Chip labels use the member's configured language (research R4). Spec 002 FR-011 and the draft-language edge case should say the labels follow the member's language; the draft text itself still follows the pasted text.
+7. **Language.** Chip labels use the member's configured language (research R4). Spec 016 FR-011 and the draft-language edge case should say the labels follow the member's language; the draft text itself still follows the pasted text.
 
 **Result**: No violations. Complexity Tracking is not needed.
 
@@ -90,7 +90,7 @@ matches this spec.
 ### Documentation (this feature)
 
 ```text
-specs/002-capture-recipe-text/
+specs/016-capture-recipe-text/
 ├── spec.md                       # Feature spec (input)
 ├── plan.md                       # This file
 ├── research.md                   # Phase 0 output
@@ -113,21 +113,21 @@ api/
 │   └── kitchen_access.py                   # EDIT: add "capture_recipe" (member, deny as 404)
 ├── application/
 │   ├── recipe_extraction.py                # EDIT: TOO_LONG wording (FR-002)
-│   ├── kitchens.py                         # (spec 004) CreateOwnedKitchenService creates the kitchen's notebook
+│   ├── kitchens.py                         # (spec 055) CreateOwnedKitchenService creates the kitchen's notebook
 │   ├── recipe_capture.py                   # NEW: CaptureRecipeText use case, outcomes
-│   └── ports.py                            # (spec 004) NotebookRepository, IngredientCatalogReader
+│   └── ports.py                            # (spec 055) NotebookRepository, IngredientCatalogReader
 ├── adapters/
 │   ├── llm/gemini_extractor.py             # EDIT: _LinePayload.preparation → IngredientLine
 │   ├── llm/prompt.py                       # EDIT: preparation rule in the ingredient fields
 │   ├── llm/fake_extractor.py               # unchanged (scripts any DraftRecipe)
 │   └── persistence/
-│       ├── models.py                       # (spec 004) NotebookModel, IngredientModel
-│       ├── notebooks.py                    # (spec 004) SqlAlchemyNotebookRepository
-│       ├── ingredient_catalog.py           # (spec 004) SqlAlchemyIngredientCatalogReader
-│       └── migrations/versions/0003_notebooks_ingredients.py  # (spec 004) notebook, ingredient, backfill
+│       ├── models.py                       # (spec 055) NotebookModel, IngredientModel
+│       ├── notebooks.py                    # (spec 055) SqlAlchemyNotebookRepository
+│       ├── ingredient_catalog.py           # (spec 055) SqlAlchemyIngredientCatalogReader
+│       └── migrations/versions/0003_notebooks_ingredients.py  # (spec 055) notebook, ingredient, backfill
 ├── api/
 │   ├── deps.py                             # EDIT: get_recipe_extraction (app.state singleton), get_vocabulary
-│   ├── routes/notebooks.py                 # (spec 004) GET /notebooks/kitchens/{kitchen_id}, GET /notebooks/members/{user_id}, GET /notebooks/members/{user_id}/{notebook_id}
+│   ├── routes/notebooks.py                 # (spec 055) GET /notebooks/kitchens/{kitchen_id}, GET /notebooks/members/{user_id}, GET /notebooks/members/{user_id}/{notebook_id}
 │   ├── routes/recipe_capture.py            # NEW: POST /notebooks/kitchens/{kitchen_id}/captures/text, POST /notebooks/members/{user_id}/{notebook_id}/captures/text, GET /recipe-vocabulary
 │   ├── schemas/recipe_capture.py           # NEW: request/response models
 │   └── app.py                              # EDIT: include router with require_user_alias
@@ -166,9 +166,9 @@ ui/
 │   └── api/
 │       ├── notebooks/kitchens/[kitchenId]/captures/text/route.ts          # NEW BFF
 │       ├── notebooks/members/[userId]/[notebookId]/captures/text/route.ts # NEW BFF
-│       ├── notebooks/kitchens/[kitchenId]/route.ts                        # NEW BFF (spec 004)
-│       ├── notebooks/members/[userId]/route.ts                            # NEW BFF (spec 004, default notebook)
-│       ├── notebooks/members/[userId]/[notebookId]/route.ts               # NEW BFF (spec 004)
+│       ├── notebooks/kitchens/[kitchenId]/route.ts                        # NEW BFF (spec 055)
+│       ├── notebooks/members/[userId]/route.ts                            # NEW BFF (spec 055, default notebook)
+│       ├── notebooks/members/[userId]/[notebookId]/route.ts               # NEW BFF (spec 055)
 │       └── recipe-vocabulary/route.ts                      # NEW BFF
 └── lib/
     ├── appChrome.ts                        # EDIT: /notebook prefix, "notebook" tab key
@@ -189,7 +189,7 @@ a later story that reuses `CaptureRecipeText`.
 ## Design Decisions (summary; detail in research.md)
 
 1. **One use case, two capture routes.** `CaptureRecipeText.execute(actor, owner, text, language)`, where `owner` is the kitchen id or the member's user id and notebook id from the route. It loads the notebook, then: a member-owned notebook must be the caller's (404); a kitchen-owned notebook goes through `capture_recipe` (404), then the archive check (409). Then the catalog read, then extraction. Text length is checked before any of these, so a too-long text never costs a database read (R3).
-2. **Catalog is real but empty.** The `ingredient` table from PRD Appendix A is created by spec 004, so `IngredientCatalogReader` has a real query and integration tests can prove which catalog is sent. S-019 is the first writer (R1).
+2. **Catalog is real but empty.** The `ingredient` table from PRD Appendix A is created by spec 055, so `IngredientCatalogReader` has a real query and integration tests can prove which catalog is sent. S-019 is the first writer (R1).
 3. **Results to HTTP.** Draft → 200. Not a recipe and one-at-a-time → 422 with distinct codes. Invalid output → 422. Unavailable → 503. Limit → 429 with `Retry-After` when hinted. Misconfigured → 503 `ai_misconfigured`. Text refused → 422. Archived → 409. Non-member → 404. This follows PRD §1.7, with `code` telling apart the statuses that share a number ([contracts/capture-api.md](./contracts/capture-api.md)).
 4. **Chip labels in the member's language.** The route reads the member's configured language (`users.language`, falling back as `effective_language` does). The response carries `language` and the labels in it, using the other language for any label missing. No detection logic, one extraction attempt. `GET /recipe-vocabulary` gives the full lists in both languages for editing (R4).
 5. **Draft state is client-only.** A module store (`captureStore.ts`, the same pattern as `membershipKitchensStore.ts`) holds the notebook, the pasted text, the sheet state, the draft, its edits flag and the language. Reload clears it, so the draft page with no draft redirects to its Notebook page (R5).
@@ -201,10 +201,10 @@ a later story that reuses `CaptureRecipeText`.
 ## Phase breakdown (for tasks; not tasks.md)
 
 - **P0 Research**: done in `research.md`.
-- **P0 Prerequisite**: spec `004-notebooks` merged first (notebook entity, tables, creation, read routes).
-- **P1 S-015 touch-ups**: `preparation` through domain, adapter, prompt and tests. Configured paste limit. Spec 003 data model and contract notes. One commit.
+- **P0 Prerequisite**: spec `055-notebooks` merged first (notebook entity, tables, creation, read routes).
+- **P1 S-015 touch-ups**: `preparation` through domain, adapter, prompt and tests. Configured paste limit. Spec 015 data model and contract notes. One commit.
 - **P2 Domain + application**: the capture errors, the `capture_recipe` action, `CaptureRecipeText` against fakes.
-- **P3 (spec 004)**: notebook entity, tables, migration with backfill, repositories, creation, read routes.
+- **P3 (spec 055)**: notebook entity, tables, migration with backfill, repositories, creation, read routes.
 - **P4 API**: schemas, capture routes, deps (extraction singleton, vocabulary), integration tests in Compose.
 - **P5 ui foundation**: optional `ActionDialog` buttons, `BookIcon`, Notebook tab, `appChrome`, i18n, BFF routes, `captureClient`, `captureStore`.
 - **P6 ui capture**: `AddRecipeCallToAction` (options dialog, text sheet, progress, messages), the two Notebook pages, kitchen tab switcher, archived hides the call to action.
@@ -213,7 +213,7 @@ a later story that reuses `CaptureRecipeText`.
 
 ## Re-check after Phase 1 design
 
-The data model is delivered by spec 004-notebooks, and this feature adds no table. The
+The data model is delivered by spec 055-notebooks, and this feature adds no table. The
 contracts add two capture routes and the vocabulary route behind the existing auth
 dependency, plus three BFF proxies. They add no service, library or env var beyond
 `RECIPE_TEXT_MAX_CHARS`. Membership is checked in `application/`, and archive state is
