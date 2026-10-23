@@ -37,31 +37,54 @@ The architecture, structure, auth layer and tooling are reused from
 
 Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
 
-- Recipes live in notebooks. Each member has a private notebook with their own
-  recipes, and each kitchen has a shared notebook. A recipe is in exactly one
-  notebook.
-- A notebook is its own entity with an id, owned by exactly one member or one
-  kitchen: a kitchen has one notebook and a member has one for now (the schema
-  allows more; `users.default_notebook_id` points at the default). Recipes and
-  ingredients point at `notebook_id`. A copy finds its source and target by
-  notebook id. A notebook is created with its owner: a kitchen's with the kitchen,
-  and a member's on first use (the auth routes are not changed).
-- Ingredients belong to a notebook: each notebook has its own ingredient
-  catalog.
-- Recipes move between notebooks only by copying (PRD §1.5 flow G): "Use in a
-  kitchen" (member's notebook → kitchen) and "Copy to my notebook" (kitchen →
-  member's notebook, open to any kitchen member). A copy has no link to the
-  original, and the two drift apart: editing or deleting one never changes the
-  other.
+- Recipes live in notebooks. A recipe is in exactly one notebook. Recipes and
+  ingredients point at `notebook_id`; a copy finds its source and target by
+  notebook id.
+- There are two kinds of notebook (decided 2026-10-23, PRD §1.5 flow H;
+  replaces the kitchen-owned notebook of 2026-10-22 and the kitchen links):
+  - A **personal notebook** belongs to people: one owner, who created it, and
+    any number of notebook members, who joined through a notebook invite (the
+    kitchen invite flow, reused). The owner and members add, edit and delete
+    its recipes; only the owner renames or deletes it and invites or removes
+    members. It is never shown in a kitchen. Every person gets a default one,
+    "{alias}'s Notebook", on first use (`users.default_notebook_id`; the auth
+    routes are not changed) and can create more.
+  - A **kitchen notebook** belongs to one kitchen, which can have several. Every
+    member of the kitchen reads, writes, renames and deletes it, only while
+    they belong to the kitchen. It has no owner and no membership rows. It is
+    deleted with the kitchen.
+- A kitchen notebook is created with the kitchen by the kitchen service, as
+  "{alias}'s ({kitchen name}) Notebook" named after the creator; by the first
+  capture in a kitchen that has none (for example "My kitchen", which signup
+  makes); or as a snapshot. A snapshot is an independent kitchen copy of a
+  personal notebook, added by any kitchen member. It keeps only an origin
+  label (`source_notebook_id`, cleared if the original is deleted); the two
+  never sync.
+- A capture outside a kitchen goes into a personal notebook the person owns or
+  is a member of; in a kitchen, into one of the kitchen's notebooks. With
+  several, the person picks one. No capture happens in an archived kitchen.
+- Leaving a kitchen ends access to its notebooks; nothing is copied. When an
+  owner deletes their account, each personal notebook they own passes to its
+  longest-standing member, or is deleted when it has none.
+- Each notebook has its own ingredient catalog: a set of unique normalized
+  names (trimmed, lower-case, singular), stored as plain strings. Recipe lines
+  and shopping list lines carry the name, not an id. A new notebook's catalog
+  starts from its owner's (or a kitchen notebook's creator's) names, and a
+  snapshot copies the catalog; when someone joins a personal notebook, their
+  names are matched against it, the notebook's names win, and the rest are
+  added.
+- Recipes move between notebooks only by copying (PRD §1.5 flow G): "Copy to
+  notebook", from any recipe the person can read into a notebook they can
+  write to, and snapshots of a whole personal notebook into a kitchen. A copy
+  has no link to the original, and the two drift apart: editing or deleting
+  one never changes the other.
 - A copy's ingredient names are normalized against the target notebook's
-  catalog, and the target's names take priority. The app tells the member which
-  changes were made, before they confirm.
-- A recipe captured in a kitchen is saved into the kitchen's notebook, with the
-  member as author, and also into the member's notebook.
-- A kitchen recipe belongs to the kitchen and records its author. The kitchen
-  shows the author's alias; if the author's account is deleted, it reads
-  "unknown". Author history is out of scope. Never store past owners or the
-  recipe a copy came from.
+  catalog, and the target's names take priority. The app tells the person
+  which changes were made, before they confirm.
+- A recipe records its author, the person who added it. Lists show the
+  author's alias; if the author's account is deleted, it reads "unknown". A
+  snapshot keeps each recipe's author. Author history is out of scope. Never store past
+  owners or the recipe a copy came from.
 - A recipe stores its categories as ids (no category table), editable on the
   recipe. Categories come only from the controlled lists in `dev/docs/categories.yaml`
   and `dev/docs/cuisine.yml`. They are never renamed or matched.
@@ -69,8 +92,8 @@ Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
   "onion"), the app tells the member which changes were made, before save.
 - Recipe preview images are stored as base64 text on the recipe. Captured
   source photos are not stored (PRD §4).
-- Cart frequency counts every addition to the kitchen's cart. Removing a recipe
-  from the cart does not lower it.
+- Cart frequency counts every addition to the kitchen's cart, kept on the
+  kitchen notebook's recipe. Removing a recipe from the cart does not lower it.
 
 ## Shared UI components
 
@@ -228,8 +251,9 @@ ALWAYS use `uv`. Never use `pip`, `python -m venv` or `requirements.txt`.
   input is never lost on error.
 - Every kitchen-scoped query checks membership in `application/`. A
   non-member gets `404`.
-- Every recipe query checks that the recipe is in the caller's own notebook or
-  in the notebook of a kitchen the caller belongs to. Otherwise `404`.
+- Every recipe query checks that the recipe is in a personal notebook the
+  caller owns or is a member of, or in a notebook of a kitchen the caller
+  belongs to. Otherwise `404`.
 - Schema changes go through Alembic migrations.
 - Small changes: one per request. When finished, explain what you changed and
   why.

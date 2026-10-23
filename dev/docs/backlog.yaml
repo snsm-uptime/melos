@@ -13,9 +13,14 @@
 #
 # Order within the Must work: the fewest stories that give a first full flow come first
 # (capture -> save -> list -> cart -> shopping list, PRD J2 to J5). Capturing straight into a
-# kitchen's notebook covers that flow, so copying between notebooks (S-034) and embeddings
-# (S-018, needed only by Ask and semantic search) come after the shopping list, followed by
-# extra input paths, editing and PDF (S-025, S-026, S-027). Reordered 2026-10-22 (notebooks).
+# kitchen notebook covers that flow, so snapshots (S-034), sharing personal notebooks (S-056),
+# ownership passing (S-057) and embeddings (S-018, needed only by Ask and semantic search)
+# come after the shopping list, followed by extra input paths, editing and PDF (S-025, S-026,
+# S-027). Reordered 2026-10-22 (notebooks).
+# Notebook redesign 2026-10-23 (final): personal notebooks (one owner, members by invite) are
+# private; kitchen notebooks belong to a kitchen and every member reads and writes them; a personal
+# notebook reaches a kitchen only as a snapshot copy. Kitchen links and kept copies were dropped.
+# S-055 re-scoped, S-056 added, S-034, S-047 and S-057 re-titled (PRD 1.5 H, 1.6, J1a).
 
 stories:
   # ---------------------------------------------------------------------------
@@ -152,23 +157,30 @@ stories:
   # ---------------------------------------------------------------------------
 
   - id: S-055
-    title: Notebooks for members and kitchens (entity, default notebook, read routes)
+    title: Personal and kitchen notebooks (entity, default notebook, kitchen notebook at kitchen creation, capture notebook, read routes)
     epic: Recipes
     priority: must
     status: in_progress
-    source: prd.md 1.6 (notebook, users.default_notebook_id), specs/055-notebooks
+    source: prd.md 1.4, 1.5 H, 1.6 (notebook, notebook_membership, users.default_notebook_id), J1a; specs/055-notebooks
+    acceptance: [AC1a.2]
     notes: >
-      Prerequisite for S-016: build first. Creates the notebook and ingredient tables, a
-      kitchen's notebook with the kitchen, and a member's default notebook ("{alias}'s Notebook")
-      on the first call to GET /notebooks/members/{user_id}, stored in users.default_notebook_id
-      (ON DELETE SET NULL, so a deleted default is recreated silently). The schema allows many
-      notebooks per member; the app creates one for now. Adds the two notebook read routes.
-      The auth routes are not changed.
+      Prerequisite for S-016: build first. Redesigned 2026-10-23 (final): a personal notebook
+      belongs to people (one owner, members by invite) and is never shown in a kitchen; a kitchen
+      notebook belongs to a kitchen and every member reads and writes it while they belong to it.
+      Creates the notebook (kitchen_id, source_notebook_id), notebook_membership and ingredient
+      tables (a catalog is a set of unique normalized names); the person's default notebook
+      ("{alias}'s Notebook") on first use (users.default_notebook_id, ON DELETE SET NULL,
+      recreated silently); a kitchen notebook "{alias}'s ({kitchen name}) Notebook" created by
+      the kitchen service with every new kitchen; the capture notebook step (one notebook: use it;
+      several: the member picks; none: create one; archived kitchen: refused); read routes for a
+      person's notebooks, one notebook and a kitchen's notebooks. Signup's "My kitchen" gets its
+      notebook from the capture step (signup and the auth routes are not changed). Invites
+      (S-056), snapshots (S-034) and ownership passing (S-057) come later. Spec 055 must be
+      re-specified.
     verification: >
-      Implemented on branch s55-notebooks, not merged. api suite green in Compose
-      (391 passed); migration 0003 backfill, downgrade and re-upgrade checked on a scratch
-      database. Signup's "My kitchen" gets its notebook on its first read (signup unchanged).
-
+      The 2026-10-22 model (a notebook owned by a kitchen or a member) is implemented on branch
+      s55-notebooks, not merged (391 passed in Compose). That code must be reworked to the
+      2026-10-23 model before merge.
   - id: S-016
     title: Capture a recipe from pasted text into a draft review screen
     epic: Capture
@@ -180,12 +192,14 @@ stories:
     notes: >
       Plan review 2026-10-22: a notebook is its own entity. The tables, migration, notebook
       creation and notebook read routes are delivered first by spec 055-notebooks (S-055);
-      capture only reads notebooks. Captures are addressed by the notebook's owner (kitchen id,
-      or user id and notebook id). Chip labels use
-      the member's language. Adds preparation to the extractor lines (spec 015 note).
+      capture only reads notebooks. Chip labels use the member's language. Adds preparation to
+      the extractor lines (spec 015 note). Redesign 2026-10-23: a capture outside a kitchen
+      targets a personal notebook the member owns or is a member of; a capture from a kitchen's
+      tab targets one of the kitchen's notebooks (S-055's capture step picks, or creates one).
+      No capture in an archived kitchen. Spec 016 FR-001a and the capture routes need re-sync.
 
   - id: S-017
-    title: Match captured ingredients to the notebook's catalog (member's or kitchen's)
+    title: Match captured ingredient names to the notebook's catalog
     epic: Capture
     priority: must
     status: backlog
@@ -193,8 +207,9 @@ stories:
     source: prd.md J2, 1.6 (normalization), Appendix B.1 rule 3
     acceptance: [AC2.2]
     notes: >
-      The matcher is reused by S-034 to normalize a copied recipe against the target catalog
-      (target names win).
+      The matcher is reused by S-047 to normalize a copied recipe against the target catalog
+      (target names win) and by S-056 to merge a new member's names into a notebook's catalog.
+      Catalog entries are plain normalized strings (2026-10-23).
       Owns the draft's list of name changes ("onions" -> "onion", undoable) and the per-line
       "matched" / "new ingredient" labels, moved from S-016 FR-024 (clarify 2026-10-22).
 
@@ -207,14 +222,15 @@ stories:
     source: prd.md 1.5A, 1.6, J2 Save, Appendix A (Recipe)
     acceptance: [AC3.5]
     notes: >
-      Saves into the notebook the capture started from (S-016 FR-001a). A capture in a kitchen
-      saves twice: the kitchen recipe (member as author, kitchen catalog) and a copy in the
-      member's notebook (normalized against the personal catalog, flow G). Also stores unique
+      Saves once, into the notebook the capture started from, with the member as author; a
+      capture in a kitchen saves into one of the kitchen's notebooks (redesign 2026-10-23,
+      replaces "saves twice"). Recipe lines store the ingredient name as a
+      normalized string; new names are added to the notebook's catalog. Also stores unique
       vague amounts, moved here from S-016 (spec 016, 2026-10-22). No embedding until S-018.
       Categories are ids stored on the recipe, with no category table (PRD Appendix D, 2026-10-22).
 
   - id: S-020
-    title: Recipe lists for my notebook and the kitchen's notebook, with text and category filters
+    title: Recipe lists for a personal notebook and for a kitchen (its notebooks), with text and category filters
     epic: Recipes
     priority: must
     status: backlog
@@ -228,6 +244,7 @@ stories:
     status: backlog
     journey: J4
     source: prd.md J4, 1.6 (cart)
+    notes: Cart items come from the kitchen's notebooks (redesign 2026-10-23).
 
   - id: S-022
     title: Consolidated shopping list (domain/cart.py) with units, sizes, vague section and chips
@@ -237,6 +254,9 @@ stories:
     journey: J5
     source: prd.md J5 steps 1–7
     acceptance: [AC5.1, AC5.2, AC5.3, AC5.4]
+    notes: >
+      Lines merge by ingredient name (plain normalized strings), so the same name from different
+      notebooks merges (redesign 2026-10-23).
 
   - id: S-023
     title: Shopping list export as Markdown copy and PDF
@@ -256,19 +276,47 @@ stories:
     source: prd.md J5 Finalize, 1.6 (shopping_list)
 
   - id: S-034
-    title: Use a recipe from my notebook in a kitchen (copy, normalize names, confirm)
+    title: Add a personal notebook to a kitchen as a snapshot (independent kitchen copy)
     epic: Recipes
     priority: must
     status: backlog
-    journey: J3
-    source: prd.md 1.5G, 1.6 design choices, J3 Use in a kitchen
-    acceptance: [AC3.4]
+    journey: J1a, J3
+    source: prd.md 1.5H, 1.6 (notebook.source_notebook_id), J1a, J3 Add to a kitchen; AC1a.4
+    acceptance: [AC1a.4]
     notes: >
-      Copies the recipe into the kitchen's notebook with the member as author. Names are
-      normalized against the kitchen's catalog with the S-017 matcher; the kitchen's names win and
-      the member sees every change before confirming. The copy has no link to the original and
-      the two drift apart (decided 2026-10-22).
+      Re-scoped 2026-10-23 twice (was "Use a recipe from my notebook in a kitchen", then "Link a
+      notebook to a kitchen"). Any kitchen member copies one of their personal notebooks into the
+      kitchen as a new kitchen notebook: every recipe (authors kept) and the catalog. The new
+      notebook records source_notebook_id as an origin label only, cleared if the original is
+      deleted; the two never sync. Reuses the flow G copy step from S-047's design.
+  - id: S-056
+    title: Share a notebook by email invite (owner invites, member accepts, leaves or is removed; catalogs merge)
+    epic: Recipes
+    priority: must
+    status: backlog
+    journey: J1a
+    source: prd.md 1.5H, 1.6 (notebook_membership, notebook_invite), J1a; redesign 2026-10-23 (personal notebooks only)
+    acceptance: [AC1a.1, AC1a.3]
+    notes: >
+      Reuses the kitchen invite flow (S-011): token stored hashed, single use, same email rules.
+      On joining, the new member's names are normalized against the notebook's catalog with the
+      S-017 matcher; the notebook's names win and the rest are added. The owner cannot leave.
 
+  - id: S-057
+    title: Personal notebook ownership passes to the longest-standing member when the owner's account is deleted
+    epic: Recipes
+    priority: must
+    status: backlog
+    journey: J1a
+    source: prd.md 1.5H, J1a edge cases, Appendix A (User); redesign 2026-10-23
+    notes: >
+      Re-scoped 2026-10-23 (final model): kept copies and the system-managed kitchen notebook were
+      dropped, because kitchen notebooks belong to the kitchen and leaving a kitchen only ends
+      access. What remains: when an owner's account is deleted, each personal notebook they own
+      passes to its longest-standing member, or is deleted when it has none. Build order
+      (checklist CHK001, 2026-10-23): must be built before, or together with, account deletion
+      (S-053). No DELETE /auth/me route exists today, so S-055 cannot leave an ownerless personal
+      notebook until then.
   - id: S-018
     title: Embeddings and pgvector search pre-filtered by kitchen
     epic: Ask
@@ -297,8 +345,9 @@ stories:
     source: prd.md J3
     acceptance: [AC3.2]
     notes: >
-      Deleting a recipe from a member's notebook never changes a kitchen (AC3.2). Open first: who
-      may edit and delete a kitchen recipe, and how past citations show a deleted one (PRD Appendix D).
+      Edit and delete: those who can write to the recipe's notebook (PRD Appendix D, 2026-10-23).
+      Deleting a kitchen notebook's recipe removes it from the kitchen's list, cart and search;
+      copies and snapshots in other notebooks do not change (AC3.2). A past citation keeps its text and shows "recipe removed".
 
   - id: S-027
     title: Recipe PDF with correct accents and fractions
@@ -326,6 +375,7 @@ stories:
     journey: J6
     source: prd.md 1.5B, 1.7, Appendix B.2
     acceptance: [AC6.1, AC6.2, AC6.4]
+    notes: Searches the kitchen's notebooks (redesign 2026-10-23).
 
   - id: S-030
     title: Shopping list history answered in chat as cards
@@ -345,7 +395,7 @@ stories:
     notes: >
       Container, health endpoint and lock file exist from the bootstrap. Keys, auth and tools
       (capture, read recipes, cart ops, shopping list ops, ask) are not built. The capture tool
-      takes a target notebook (the member's or a kitchen's).
+      takes a target notebook (one the user owns or is a member of).
 
   - id: S-032
     title: Deploy v1 on the owner's server with the prod overlay
@@ -383,7 +433,7 @@ stories:
     source: prd.md J6, 1.5B
 
   - id: S-042
-    title: "Catalog management: rename and merge ingredients, in my catalog and each kitchen's"
+    title: "Catalog management: rename and merge ingredient names in a notebook's catalog"
     epic: Recipes
     priority: should
     status: backlog
@@ -421,21 +471,25 @@ stories:
     source: user request in clarify session 016 (not in prd.md; extends J3 list)
     notes: >
       Cards show a recipe image preview or a default cooking-pot SVG, the title, and author chips
-      (ui/components/Chip). Filters: ingredients, recipe author. Sort: times added to a cart in
-      this kitchen, ascending or descending. Author alias comes from the kitchen recipe's author_id;
-      "unknown" when the author's account is deleted (notebooks decision, 2026-10-22).
+      (ui/components/Chip). Filters: ingredients, recipe author, notebook. Sort: times added to a
+      cart in this kitchen, ascending or descending (recipe.cart_add_count). Cards cover every
+      notebook of the kitchen. Author alias comes from the recipe's author_id; "unknown" when the
+      author's account is deleted (redesign 2026-10-23).
 
   - id: S-047
-    title: Copy a kitchen recipe into my notebook
+    title: Copy a recipe into another notebook (normalize names, confirm)
     epic: Recipes
     priority: should
     status: backlog
     journey: J3
-    source: prd.md 1.5G, J3 Copy to my notebook (replaces "clone"; clarify session 016, notebooks 2026-10-22)
-    acceptance: [AC3.3]
+    source: prd.md 1.5G, J3 Copy to notebook (replaces "Use in a kitchen" and "Copy to my notebook", redesign 2026-10-23)
+    acceptance: [AC3.3, AC3.4]
     notes: >
-      Any kitchen member. Names are normalized against the member's catalog (their names win). The
-      copy has no link to the original; the two drift apart. Reuses the S-034 copy flow.
+      Any recipe the person can read, into a notebook they can write to. Names are
+      normalized against the target's catalog with the S-017 matcher; the target's names win and
+      the person sees every change before confirming. The person is the copy's author. The copy
+      has no link to the original; the two drift apart. The copy step is reused by S-034
+      (snapshots).
 
   # ---------------------------------------------------------------------------
   # Later or not in v1
@@ -468,6 +522,9 @@ stories:
     priority: later
     status: backlog
     source: prd.md Appendix A (User), Appendix D
+    notes: >
+      No DELETE /auth/me route exists in the code (checked 2026-10-23), although the PRD says the
+      endpoint exists. Depends on S-057 (ownership passing), which must land first.
 
   - id: S-054
     title: Trial units for unknown ingredient units, promoted to allowed units by repeated use
