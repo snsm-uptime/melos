@@ -106,7 +106,7 @@ The name invariant replaces the 2026-10-22 rule "exactly one of `kitchen_id`, `u
 | `name` | `notebook.name` | `notebook.name` |
 | `kind` | `personal` | `kitchen` |
 | `access` | the caller's role: `owner` or `member` | `kitchen_member` |
-| `owner_alias` | alias of the owner membership's user; null if none remains | null |
+| `owner_alias` | alias of the owner membership's user; null if none remains (ui: "unknown") | alias of the kitchen's owner (`kitchens.owner_id`); null if none (ui: "unknown") |
 | `kitchen_id` | null | `notebook.kitchen_id` |
 | `kitchen_is_archived` | null | the kitchen's archived state, read with the notebook |
 | `is_default` | `users.default_notebook_id = notebook.id` for the caller | false |

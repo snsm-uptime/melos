@@ -29,7 +29,7 @@ A kitchen notebook:
   "name": "ana's (Home) Notebook",
   "kind": "kitchen",
   "access": "kitchen_member",
-  "owner_alias": null,
+  "owner_alias": "ana",
   "kitchen_id": "5e7b…",
   "kitchen_is_archived": false,
   "is_default": false
@@ -41,7 +41,7 @@ A kitchen notebook:
 | `name` | The stored name, fixed at creation. It does not follow alias or kitchen renames |
 | `kind` | `"personal"` or `"kitchen"` |
 | `access` | Personal: the caller's role, `"owner"` or `"member"`. Kitchen: always `"kitchen_member"` |
-| `owner_alias` | Personal: the owner's alias, or `null` when no owner remains (the ui shows "unknown"). Kitchen: `null` |
+| `owner_alias` | Personal: the owner's alias, or `null` when no owner remains (the ui shows "unknown"). Kitchen: the kitchen owner's alias, or `null` when the kitchen has no owner (the ui shows "unknown") |
 | `kitchen_id` | Kitchen: the kitchen it belongs to. Personal: `null` |
 | `kitchen_is_archived` | Kitchen: whether its kitchen is archived, read at request time; the ui hides "add recipe" when `true` (spec 016 FR-033). Personal: `null` |
 | `is_default` | `true` only on the caller's default notebook; always `false` for a kitchen notebook |

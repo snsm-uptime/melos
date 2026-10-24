@@ -57,7 +57,7 @@
   - **Upgrade**: create `notebook`, `notebook_membership` and `ingredient` with the constraints, indexes and names of T005, then add `users.default_notebook_id` with its foreign key `users_default_notebook_id_fkey`. No backfill (FR-023).
   - **Downgrade**: drop the foreign key and column, then `ingredient`, `notebook_membership` and `notebook`.
 - [ ] T007 Rework `api/application/ports.py` (research R6–R10):
-  - **Add a frozen `NotebookFacts`**: `notebook: Notebook`, `role: NotebookRole | None`, `in_kitchen: bool`, `owner_alias: str | None`, `is_default: bool`.
+  - **Add a frozen `NotebookFacts`**: `notebook: Notebook`, `role: NotebookRole | None`, `in_kitchen: bool`, `owner_alias: str | None` (for a kitchen notebook, the kitchen owner's alias, read through `kitchens.owner_id`), `kitchen_is_archived: bool | None`, `is_default: bool`.
   - **`NotebookRepository` becomes**:
     - `get(notebook_id) -> Notebook | None`;
     - `facts_for(user_id, notebook_id) -> NotebookFacts | None`;
@@ -85,8 +85,8 @@
   - the three handlers in `api/api/routes/notebooks.py`.
   Keep the `_kitchen_not_found` and `_notebook_not_found` helpers, and keep the router included behind `require_user_alias` in `api/api/app.py`. `CreateOwnedKitchenService` is reworked in US2 (T020)
 - [ ] T011 Add the shared read model:
-  - **In `api/application/notebooks.py`**: a frozen `NotebookView(id, name, kind, access, owner_alias, kitchen_id, is_default)` and `notebook_view(facts) -> NotebookView`, which applies `notebook_access` and raises `NotebookNotFoundError` when it is `None`. A kitchen notebook's view has `owner_alias None` and `is_default False` (data-model.md "Read model").
-  - **In `api/api/schemas/notebooks.py`**: `NotebookResponse` with `id`, `name`, `kind: Literal["personal", "kitchen"]`, `access: Literal["owner", "member", "kitchen_member"]`, `owner_alias: str | None`, `kitchen_id: UUID | None`, `is_default: bool`; `NotebooksResponse` with `notebooks: list[NotebookResponse]`.
+  - **In `api/application/notebooks.py`**: a frozen `NotebookView(id, name, kind, access, owner_alias, kitchen_id, kitchen_is_archived, is_default)` and `notebook_view(facts) -> NotebookView`, which applies `notebook_access` and raises `NotebookNotFoundError` when it is `None`. A kitchen notebook's view has `owner_alias` the kitchen owner's alias (None when there is none) and `is_default False` (data-model.md "Read model").
+  - **In `api/api/schemas/notebooks.py`**: `NotebookResponse` with `id`, `name`, `kind: Literal["personal", "kitchen"]`, `access: Literal["owner", "member", "kitchen_member"]`, `owner_alias: str | None`, `kitchen_id: UUID | None`, `kitchen_is_archived: bool | None`, `is_default: bool`; `NotebooksResponse` with `notebooks: list[NotebookResponse]`.
 - [ ] T012 Rewrite the fakes at the top of `api/tests/test_notebooks_application.py` and delete the tests written for the 2026-10-22 services:
   - an in-memory `FakeNotebookRepo` implementing T007 (notebooks with creation order, memberships, a call log for `lock_kitchen`);
   - `FakeIngredientCatalog` (names per notebook; `seed_from_person` copies the union of the person's personal notebooks);
@@ -198,7 +198,7 @@
 
 - [ ] T027 [US4] Add tests for `ListMyNotebooksService`, `GetNotebookService` and `ListKitchenNotebooksService` to `api/tests/test_notebooks_application.py`, first, and check that they fail (spec US4):
   - **My list**: only personal notebooks with a membership, `access` `"owner"` or `"member"`, oldest first, `is_default` only on the default; never a kitchen notebook; creates nothing.
-  - **Get by id**: a personal notebook for its owner and members; a kitchen notebook with `access "kitchen_member"`, `owner_alias None` and `kitchen_id` set for a member of its kitchen; `NotebookNotFoundError` for a personal notebook whose owner shares a kitchen with the caller, for a kitchen notebook of another kitchen, and for a missing id.
+  - **Get by id**: a personal notebook for its owner and members; a kitchen notebook with `access "kitchen_member"`, `owner_alias` the kitchen owner's alias and `kitchen_id` set for a member of its kitchen; `NotebookNotFoundError` for a personal notebook whose owner shares a kitchen with the caller, for a kitchen notebook of another kitchen, and for a missing id.
   - **Kitchen list**: authorizes first (`KitchenNotFoundError` for a missing kitchen and a non-member), lists only that kitchen's notebooks, `[]` when it has none, and still lists for an archived kitchen.
 - [ ] T028 [US4] Implement `ListMyNotebooksService`, `GetNotebookService` and `ListKitchenNotebooksService` in `api/application/notebooks.py` so that T027 passes, building every answer with `notebook_view` (T011). The kitchen list authorizes with `read_kitchen` through `AuthorizeKitchenAccessService` and then builds views with `in_kitchen=True`
 - [ ] T029 [US4] Add the routes to `api/api/routes/notebooks.py`:
@@ -259,6 +259,9 @@
 - [ ] T038 [P] Extend the S-019 `notes` in `dev/docs/backlog.yaml`: its save calls `ResolveCaptureNotebookService` before writing anything and maps `KitchenArchivedError`, `NotebookChoiceRequiredError`, `NotebookNotFoundError` and `KitchenNotFoundError` to HTTP (contract, research R13)
 - [X] T039 Regenerate the requirements-quality checklist `specs/055-notebooks/checklists/requirements-quality.md` for the snapshot-model spec with `/speckit-checklist` (it replaces the kitchen-link checklist of commit `3ff1601`)
 - [ ] T040 Update the S-055 `verification` in `dev/docs/backlog.yaml` with the new pass counts and "reworked to the snapshot model", and append a memory line with `dev/skills/save_to_memory.md`. Do not push or deploy without review (AGENTS.md)
+- [ ] T046 Close SC-011 in `api/tests/test_notebook_integration.py`, reusing T026 (FR-013) and the BFF cases of T018 and T031 (FR-021) rather than repeating them:
+  - **Catalog readers (FR-018)**: `names_for_notebook` returns one notebook's names, sorted, and none from another notebook; `names_for_person` returns the distinct names of the personal notebooks the person owns or is a member of, and none from their kitchen notebooks.
+  - **Writes nothing else (FR-022)**: count the rows of the recipe, step, category, source, invite and cart tables that exist, and of `notebook_membership` for kitchen notebooks, before and after the default request, a kitchen creation and both capture-step paths; every count is unchanged, and `source_notebook_id` stays null on every notebook.
 
 ---
 
@@ -280,7 +283,7 @@
 - **US4 (T027–T031)**: after Foundational. Its tests set notebooks up through the repository and direct inserts, and use the kitchen service (US2) for Home's notebook.
 - **US5 (T032)**: after T006 and T043. It is a run, not code.
 - **Remove hide (T041–T045)**: after Foundational (T043 needs the `0003` revision from T006). T041 before T042 and T044; T042 → T043. Independent of US1–US4.
-- **Polish (T033–T040)**: after the stories they check and T041–T045. T037 and T038 are docs and can start any time after Foundational.
+- **Polish (T033–T040, T046)**: after the stories they check and T041–T045. T046 after T026, T030 and T031. T037 and T038 are docs and can start any time after Foundational.
 
 ### User story dependencies
 

@@ -9,21 +9,33 @@
 **Marker Semantics**: `[x]` means the criterion has been reviewed and satisfied for requirements quality. It does not mean implementation work is complete.
 
 ## Data Model and Lifecycle
+Items after "Solution: " are my response to the item in the checklist; not current implemented solutions
 
 - [ ] CHK001 Does FR-002 ("every personal notebook MUST have exactly one owner") still hold after FR-006 deletes a deleted user's memberships, given that the contract allows `owner_alias: null` "when no owner remains"? Is the S-057 build-order rule enough, or should FR-002 name the exception? [Conflict, Spec §FR-002, §FR-006, contracts §The notebook object]
+  - Solution: The owner_alias should be set to unknown
 - [ ] CHK002 Does FR-005 say the default reference must point at a personal notebook the person **owns**, as data-model.md states, or only at "a personal notebook"? [Consistency, Spec §FR-005, data-model.md §users]
+  - Solution: A notebook the person owns
 - [ ] CHK003 Do the cascade rules in FR-006 cover the origin label: a kitchen notebook deleted with its kitchen, or a personal notebook deleted on its own, clears `source_notebook_id` on notebooks that came from it? The Edge Cases mention only the personal case. [Completeness, Spec §FR-006, §FR-003, §Edge Cases, data-model.md §Cascades]
+  - Solution: A personal notebook on its own
 - [ ] CHK004 Is the kitchen notebook's "no owner, no members" rule stated once, with the same words, in FR-002, Key Entities and the Summary? [Consistency, Spec §FR-002, §Key Entities, §Summary]
+  - Solution: There is always an owner on a kitchen notebook. if the user is no longer a member of the kitchen, the alias is shown as unknown. (this means, a kitchen author can be null "unknown" but the owner is going to be the owner of the kitchen)
 - [ ] CHK005 Is the person's catalog defined the same way in FR-012, FR-018, Key Entities ("Personal catalog") and research R9: personal notebooks the person owns or is a member of, never kitchen notebooks? [Consistency, Spec §FR-012, §FR-018, §Key Entities, research.md §R9]
+  - TODO: Let's talk about this point in chat.
 - [ ] CHK006 Is a maximum notebook name length defined, given that names are built from an alias and a kitchen name and that S-058 will let people rename them? [Gap, Clarity, Spec §FR-001]
+  - Solution: A notebook title can be renamed only by the owner
 - [ ] CHK007 Does the spec define what "deleted with the kitchen" covers for a kitchen notebook's future content (recipes, cart counts), or state that later stories own that? [Completeness, Spec §FR-006, §Edge Cases]
+  - Solution: All related to the kitchen is deleted, cart, recipe, chats.
 
 ## Origin Label and Kitchen Notebooks
 
 - [ ] CHK008 Does FR-003 say which kind of notebook an origin may point at (PRD flow H: a snapshot comes from a personal notebook), or may it point at another kitchen notebook? [Gap, Spec §FR-003, PRD §1.5 H]
+  - Solution: it can only point to notebooks the user owns
 - [ ] CHK009 Is it clear that a kitchen made from the kitchen page and a kitchen made by signup start differently (one notebook vs none), and are both covered by acceptance scenarios? [Coverage, Spec §FR-008, US2 scenarios 1 and 4]
+  - TODO: let's talk about the interaction flow to pick the best one.
 - [ ] CHK010 Are "kitchen page" (US2) and "kitchen service" (FR-008) the same path in the requirements, and does FR-008 also cover kitchens created by the dev seed? [Clarity, Spec §US2, §FR-008, research.md §R5]
+  - Solution: all api paths should have the api prefix, for example: "localhost:3000/api/kitchen" (this is the API, internally the UI calls the api container) instead of "localhost:3000/kitchen" (this would be the page)
 - [ ] CHK011 Is the catalog of a kitchen notebook made by the kitchen service tied to the creator only, and does the spec say what happens to it when the creator later leaves the kitchen (nothing)? [Clarity, Spec §FR-012, §Edge Cases]
+  - Solution: the kitchen notebook belongs to the owner, if the current owner leaves or is deleted, the next owner with most time since added to the kitchen becomes the owner. If there's no people left on a kitchen it's deleted
 
 ## API Contract Consistency
 
@@ -66,7 +78,9 @@
 ## Non-Functional Requirements
 
 - [ ] CHK035 Is the accepted risk of a GET that creates data (`/notebooks/default`, a cross-site navigation) recorded in the spec or only in research R4? [Security, Assumption, Spec §FR-007, research.md §R4]
+  - TODO: why is this a risk?
 - [ ] CHK036 Are any response-time or lock-wait expectations stated for the first capture in a kitchen, given that it serializes on the kitchen row? [Non-Functional, Gap, research.md §R6]
+  - always try and wait until it creates the kitchen on the first capture
 
 ## Notes
 

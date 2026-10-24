@@ -89,7 +89,7 @@ The Technical Context has no NEEDS CLARIFICATION items: every open point was dec
 ## R10. Access and the read model (FR-014 to FR-017)
 
 - **Decision**:
-  - **Facts from the repository**: for each notebook, its fields, the caller's membership role (if any), the owner's alias, whether it is the caller's default, and, for a kitchen notebook, whether the caller is a member of its kitchen. One query per route, with left joins.
+  - **Facts from the repository**: for each notebook, its fields, the caller's membership role (if any), the owner's alias (for a kitchen notebook, the kitchen owner's, joined through `kitchens.owner_id`), whether it is the caller's default, and, for a kitchen notebook, whether the caller is a member of its kitchen. One query per route, with left joins.
   - **Rule in the domain**: `notebook_access(kind, role, in_kitchen)` returns `owner`, `member`, `kitchen_member` or `None`. A personal notebook gives its role, and kitchen membership never counts. A kitchen notebook gives `kitchen_member` when the caller belongs to its kitchen, and a membership row never counts. `None` becomes `NotebookNotFoundError` (404).
   - **Lists**: "my notebooks" reads only personal notebooks with the caller's membership, and creates nothing (FR-014). "A kitchen's notebooks" first authorizes the kitchen (`read_kitchen`, 404), then reads the notebooks with that `kitchen_id`. Archived kitchens are still readable by their members. Every list is ordered by `created_at, id`.
   - **Leaving**: access is computed from the kitchen membership on every request, so a member who leaves or is removed loses access at once and nothing is copied (FR-017, SC-006, AC1.3). No code runs on leave.
