@@ -159,6 +159,14 @@ A house outline with a door. Used for the Home tab in the app's tab bar.
 - Style: Stroke-based
 - Accepts: className, SVG element props
 
+### NotebookIcon
+
+A closed notebook with a spine. Used for the Notebook tab in the tab bar.
+
+- ViewBox: `0 0 24 24`
+- Style: Stroke-based
+- Accepts: className, SVG element props
+
 ### UploadIcon
 
 An arrow pointing up out of a tray line. Currently unused in the UI.

@@ -4,7 +4,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { BackIcon, HomeIcon } from "@/app/icons";
+import { BackIcon, HomeIcon, NotebookIcon } from "@/app/icons";
 import {
   ChromeBackProvider,
   chromeHeaderIsActive,
@@ -39,7 +39,10 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   const showTabBar = showsAppChrome(pathname);
 
   // Recipes, cart and chat tabs join Home as those features land.
-  const tabs: TabBarItem[] = [{ key: "home", href: "/home", label: t.tabHome, Icon: HomeIcon }];
+  const tabs: TabBarItem[] = [
+    { key: "home", href: "/home", label: t.tabHome, Icon: HomeIcon },
+    { key: "notebook", href: "/notebooks", label: t.tabNotebook, Icon: NotebookIcon },
+  ];
 
   if (!showHeader && !showTabBar) {
     return <div className="fixed inset-0 overflow-y-auto">{children}</div>;

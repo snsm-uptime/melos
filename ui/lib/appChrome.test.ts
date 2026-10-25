@@ -7,6 +7,8 @@ describe("showsAppChrome", () => {
     expect(showsAppChrome("/home")).toBe(true);
     expect(showsAppChrome("/kitchens/abc")).toBe(true);
     expect(showsAppChrome("/account")).toBe(true);
+    expect(showsAppChrome("/notebooks")).toBe(true);
+    expect(showsAppChrome("/notebooks/nb-1")).toBe(true);
   });
 
   it("hides the tab bar on auth, setup and removed finance routes", () => {
@@ -30,5 +32,10 @@ describe("tabKeyFromPath", () => {
 
   it("marks Account from its route", () => {
     expect(tabKeyFromPath("/account")).toBe("account");
+  });
+
+  it("marks Notebook on the tab and its sub-paths", () => {
+    expect(tabKeyFromPath("/notebooks")).toBe("notebook");
+    expect(tabKeyFromPath("/notebooks/nb-1")).toBe("notebook");
   });
 });

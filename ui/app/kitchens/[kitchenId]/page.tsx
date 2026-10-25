@@ -11,6 +11,7 @@ import type { Locale } from "@/lib/i18n/locale";
 import { fetchSession } from "@/lib/session";
 import { KitchenDetailChrome } from "../KitchenDetailChrome";
 import { KitchenDetailMobileActions } from "../KitchenDetailMobileActions";
+import { KitchenNotebooksSection } from "../KitchenNotebooksSection";
 import { TemporalNavigation } from "../TemporalNavigation";
 import { memberLabel, type KitchenMember } from "../kitchensClient";
 import styles from "../kitchens.module.scss";
@@ -21,6 +22,7 @@ type DetailPayload = {
   id?: string;
   name?: string;
   owner_id?: string;
+  is_archived?: boolean;
 };
 
 function resolvePageLocale(languageCookie: string | undefined): Locale {
@@ -65,7 +67,7 @@ export default async function KitchenDetailPage({
   if (!session) {
     redirect(`/sign-in?returnTo=/kitchens/${encodeURIComponent(kitchenId)}`);
   }
-  await requireAlias(`/kitchens/${kitchenId}`);
+  const me = await requireAlias(`/kitchens/${kitchenId}`);
 
   const jar = await cookies();
   const locale = resolvePageLocale(jar.get("melos_lang_cache")?.value);
@@ -180,6 +182,12 @@ export default async function KitchenDetailPage({
                   ))}
                 </ul>
               )}
+              <KitchenNotebooksSection
+                kitchenId={kitchenId}
+                isArchived={Boolean(detail?.is_archived)}
+                viewerAlias={me.alias}
+                locale={locale}
+              />
             </div>
             <aside className={styles.detailSidebar}>
               <TemporalNavigation kitchenId={kitchenId} isOwner={isOwner} inviteMessages={inviteMessages} />

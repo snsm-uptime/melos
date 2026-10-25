@@ -9,6 +9,7 @@ export { PieChartIcon } from "./PieChartIcon";
 export { EyeIcon } from "./EyeIcon";
 export { CopyIcon } from "./CopyIcon";
 export { HomeIcon } from "./HomeIcon";
+export { NotebookIcon } from "./NotebookIcon";
 export { UploadIcon } from "./UploadIcon";
 export { FileIcon } from "./FileIcon";
 export { FileImportIcon } from "./FileImportIcon";

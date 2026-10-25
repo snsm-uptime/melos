@@ -1,0 +1,13 @@
+/* Notebook-shaped card: a spine on the leading edge, nothing interactive. */
+
+.card {
+  box-shadow: none;
+}
+
+.spine {
+  flex-shrink: 0;
+  width: 0.35rem;
+  border-radius: 0.2rem;
+  background: var(--accent);
+  opacity: 0.6;
+}
