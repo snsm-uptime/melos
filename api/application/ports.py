@@ -7,7 +7,7 @@ from datetime import timedelta
 from typing import Protocol
 from uuid import UUID
 
-from domain.notebook import Notebook
+from domain.notebook import Notebook, NotebookRole
 
 # Canonical session TTL (30d).
 # adapters.persistence.sessions re-exports this for SESSION_COOKIE_MAX_AGE.
@@ -67,22 +67,66 @@ class KitchenAccessAuthorizer(Protocol):
     ) -> KitchenAccessGrant: ...
 
 
+@dataclass(frozen=True, slots=True)
+class NotebookFacts:
+    """What the repository knows about one notebook for one caller. The domain decides access."""
+
+    notebook: Notebook
+    # The caller's membership role in a personal notebook; None when they have none.
+    role: NotebookRole | None
+    # Whether the caller belongs to the notebook's kitchen (kitchen notebooks only).
+    in_kitchen: bool
+    # The stored owner's alias, or the kitchen owner's when none is stored; None if neither.
+    owner_alias: str | None
+    # Read with the notebook (kitchen notebooks only).
+    kitchen_is_archived: bool | None
+    is_default: bool
+
+
 class NotebookRepository(Protocol):
     def get(self, notebook_id: UUID) -> Notebook | None: ...
 
-    def for_kitchen(self, kitchen_id: UUID) -> Notebook | None: ...
-
-    def for_member(self, user_id: UUID) -> Notebook | None:
-        """The member's default notebook (users.default_notebook_id), or None when unset."""
+    def facts_for(self, user_id: UUID, notebook_id: UUID) -> NotebookFacts | None:
+        """The notebook and the caller's facts, or None when the notebook does not exist."""
         ...
 
-    def create(self, notebook: Notebook) -> None:
-        """Insert a notebook. A second notebook for the same kitchen is skipped, not raised."""
+    def personal_facts_for(self, user_id: UUID) -> list[NotebookFacts]:
+        """Personal notebooks where the user has a membership, oldest first."""
+        ...
+
+    def kitchen_notebooks(self, kitchen_id: UUID) -> list[Notebook]:
+        """A kitchen's notebooks, oldest first."""
+        ...
+
+    def personal_ids_for(self, user_id: UUID) -> list[UUID]:
+        """Capture candidates outside a kitchen: the user's personal notebooks, oldest first."""
+        ...
+
+    def kitchen_ids_for(self, kitchen_id: UUID) -> list[UUID]:
+        """Capture candidates in a kitchen: its notebooks, oldest first."""
+        ...
+
+    def create(self, notebook: Notebook) -> None: ...
+
+    def add_owner(self, notebook_id: UUID, user_id: UUID) -> None:
+        """Insert the owner membership of a personal notebook."""
+        ...
+
+    def lock_kitchen(self, kitchen_id: UUID) -> None:
+        """Serialize first creations in a kitchen (FOR NO KEY UPDATE on the kitchen row)."""
         ...
 
 
-class IngredientCatalogReader(Protocol):
+class IngredientCatalog(Protocol):
     def names_for_notebook(self, notebook_id: UUID) -> list[str]: ...
+
+    def names_for_person(self, user_id: UUID) -> list[str]:
+        """Distinct names across the user's personal notebooks (never kitchen notebooks)."""
+        ...
+
+    def seed_from_person(self, notebook_id: UUID, user_id: UUID) -> None:
+        """Copy the person's personal catalog into a new notebook's catalog."""
+        ...
 
 
 class UserDefaultNotebook(Protocol):
@@ -94,6 +138,12 @@ class UserDefaultNotebook(Protocol):
         ...
 
     def set(self, user_id: UUID, notebook_id: UUID) -> None: ...
+
+
+class TransactionCommitter(Protocol):
+    def commit(self) -> None:
+        """Commit now, so a notebook the capture step created survives a failed save (R8)."""
+        ...
 
 
 class PasswordHasher(Protocol):

@@ -1,5 +1,7 @@
 """Domain errors for account and kitchen operations."""
 
+from uuid import UUID
+
 
 class DomainError(Exception):
     """Base domain error."""
@@ -220,23 +222,44 @@ class KitchenWriteError(DomainError):
         super().__init__(detail or self.MESSAGE)
 
 
-class InvalidNotebookOwnerError(DomainError):
-    """Raised when a notebook has both a kitchen and a member owner, or neither."""
+class InvalidNotebookError(DomainError):
+    """Raised when a notebook breaks its invariants (for example a blank name)."""
 
-    MESSAGE = "A notebook belongs to exactly one kitchen or one member."
+    MESSAGE = "A notebook needs a name, and only a kitchen notebook has an origin or an owner."
 
     def __init__(self) -> None:
         super().__init__(self.MESSAGE)
 
 
 class NotebookNotFoundError(DomainError):
-    """Raised for a missing notebook and for another member's notebook — same body."""
+    """Raised for a missing notebook and for a notebook the caller may not see — same body."""
 
     MESSAGE = "Notebook not found."
     CODE = "notebook_not_found"
 
     def __init__(self) -> None:
         super().__init__(self.MESSAGE)
+
+
+class KitchenArchivedError(DomainError):
+    """Raised when a capture is attempted in an archived kitchen (spec 016 FR-033)."""
+
+    MESSAGE = "This kitchen is archived, so recipes can't be added."
+    CODE = "kitchen_archived"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class NotebookChoiceRequiredError(DomainError):
+    """Raised when a capture has several candidate notebooks and no pick."""
+
+    MESSAGE = "Choose a notebook for this recipe."
+    CODE = "notebook_choice_required"
+
+    def __init__(self, candidate_ids: list[UUID]) -> None:
+        super().__init__(self.MESSAGE)
+        self.candidate_ids = candidate_ids
 
 
 class InvalidInviteEmailError(DomainError):

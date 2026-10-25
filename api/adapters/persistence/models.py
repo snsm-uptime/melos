@@ -200,26 +200,75 @@ class KitchenInviteTokenModel(Base):
 class NotebookModel(Base):
     __tablename__ = "notebook"
     __table_args__ = (
-        CheckConstraint("(kitchen_id IS NULL) <> (user_id IS NULL)", name="ck_notebook_one_owner"),
+        CheckConstraint("btrim(name) <> ''", name="ck_notebook_name_not_blank"),
+        CheckConstraint(
+            "source_notebook_id IS NULL OR kitchen_id IS NOT NULL",
+            name="ck_notebook_source_is_kitchen",
+        ),
+        CheckConstraint("source_notebook_id <> id", name="ck_notebook_source_not_self"),
+        CheckConstraint(
+            "owner_user_id IS NULL OR kitchen_id IS NOT NULL",
+            name="ck_notebook_owner_is_kitchen",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
-    # One notebook per kitchen. No unique on user_id: a member may own many.
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    # Set: a kitchen notebook. Null: a personal notebook. Not unique: a kitchen can have several.
     kitchen_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("kitchens.id", ondelete="CASCADE"),
         nullable=True,
-        unique=True,
+        index=True,
     )
-    user_id: Mapped[uuid.UUID | None] = mapped_column(
+    # The member who created a kitchen notebook (FR-002). Personal notebooks keep their owner
+    # in notebook_membership instead.
+    owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
+        ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
-    name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Origin label of a snapshot (S-034). Never set by this feature.
+    source_notebook_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("notebook.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class NotebookMembershipModel(Base):
+    """A person's place in a personal notebook. Kitchen notebooks have no rows here."""
+
+    __tablename__ = "notebook_membership"
+    __table_args__ = (
+        CheckConstraint("role IN ('owner', 'member')", name="ck_notebook_membership_role"),
+        Index(
+            "uq_notebook_one_owner",
+            "notebook_id",
+            unique=True,
+            postgresql_where=text("role = 'owner'"),
+        ),
+    )
+
+    notebook_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("notebook.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+    role: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
