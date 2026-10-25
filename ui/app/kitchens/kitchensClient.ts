@@ -279,55 +279,6 @@ export async function unarchiveKitchen(
   return postKitchenAction(kitchenId, "unarchive", messages);
 }
 
-async function postHideAction(
-  kitchenId: string,
-  action: "hide" | "unhide",
-  messages: KitchensClientMessages,
-): Promise<OkSimple | ErrorResult> {
-  let response: Response;
-  try {
-    response = await fetch(`/api/kitchens/${encodeURIComponent(kitchenId)}/${action}`, {
-      method: "POST",
-      headers: { Accept: "application/json" },
-      credentials: "same-origin",
-    });
-  } catch {
-    return { ok: false, error: messages.errorGeneric };
-  }
-  if (!response.ok) {
-    const body = (await parseJson(response)) as {
-      detail?: unknown;
-      code?: unknown;
-    } | null;
-    return { ok: false, error: mapError(response.status, body, messages) };
-  }
-  return { ok: true };
-}
-
-/**
- * Hides a kitchen from a non-owner member's own dashboard — a personal view
- * filter, invisible to the owner and other members. Owner-only kitchens still
- * use archiveKitchen; this is member-only (`POST /kitchens/{id}/hide`).
- */
-export async function hideKitchen(
-  kitchenId: string,
-  messages: KitchensClientMessages,
-): Promise<OkSimple | ErrorResult> {
-  const result = await postHideAction(kitchenId, "hide", messages);
-  if (result.ok) {
-    patchMembershipKitchens((prev) => prev.filter((item) => item.id !== kitchenId));
-  }
-  return result;
-}
-
-/** Unhides a kitchen previously hidden by a non-owner member. */
-export async function unhideKitchen(
-  kitchenId: string,
-  messages: KitchensClientMessages,
-): Promise<OkSimple | ErrorResult> {
-  return postHideAction(kitchenId, "unhide", messages);
-}
-
 /** Persist last-opened via /auth/me (account column) after ACL on the API. */
 export async function setLastOpenedKitchen(
   kitchenId: string,

@@ -166,41 +166,14 @@ describe("KitchensPanel archive toggle", () => {
     expect(items).not.toContain(t.kitchensUnarchive);
   });
 
-  it("shows only a Hide control (no invite/rename/delete) for a non-owner member", () => {
+  it("shows no kitchen menu to a non-owner member, since archive is owner-only", () => {
     act(() => {
       root.render(
         <KitchensPanel initialKitchens={[{ ...shared, role: "member" }]} currentUserId="member-2" />,
       );
     });
-    openMenu(container, "Home");
-    const items = Array.from(container.querySelectorAll('[role="menuitem"]')).map(
-      (el) => el.textContent,
-    );
-    expect(items).toEqual([t.kitchensArchive]);
-  });
-
-  it("shows only an Unhide control for a non-owner member in the archived view", async () => {
-    const hiddenForMember: KitchenItem = { ...shared, role: "member" };
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({ kitchens: [hiddenForMember] }),
-      }),
-    );
-
-    await act(async () => {
-      root.render(
-        <KitchensPanel initialKitchens={[]} currentUserId="member-2" showArchived />,
-      );
-    });
-
-    openMenu(container, "Home");
-    const items = Array.from(container.querySelectorAll('[role="menuitem"]')).map(
-      (el) => el.textContent,
-    );
-    expect(items).toEqual([t.kitchensUnarchive]);
+    const card = container.querySelector(`[aria-label="Open kitchen: Home"]`);
+    expect(card?.parentElement?.querySelector(`[aria-label="${t.menuAria}"]`)).toBeNull();
   });
 
   it("hides the create input and fetches archived kitchens when showArchived is true", async () => {

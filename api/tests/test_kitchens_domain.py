@@ -11,8 +11,6 @@ from application.kitchens import (
     ArchiveKitchenService,
     CreateOwnedKitchenCommand,
     CreateOwnedKitchenService,
-    HideKitchenCommand,
-    HideKitchenService,
     KitchenMembershipsCommand,
     KitchenMembershipsService,
     KitchenMembershipSummary,
@@ -20,12 +18,9 @@ from application.kitchens import (
     MembershipRecord,
     RenameKitchenCommand,
     RenameKitchenService,
-    UnhideKitchenCommand,
-    UnhideKitchenService,
 )
 from application.ports import NewKitchenRecord, NewMembershipRecord
 from domain.errors import (
-    CannotHideOwnedKitchenError,
     InvalidKitchenNameError,
     KitchenNotFoundError,
     NotKitchenMemberError,
@@ -38,7 +33,6 @@ from domain.kitchens import validate_kitchen_name
 class FakeKitchenRepo:
     kitchens: dict[UUID, KitchenRecord] = field(default_factory=dict)
     memberships: list[MembershipRecord] = field(default_factory=list)
-    hidden_memberships: set[tuple[UUID, UUID]] = field(default_factory=set)
 
     def create_owned_kitchen(
         self,
@@ -86,12 +80,6 @@ class FakeKitchenRepo:
             id=current.id, name=current.name, owner_id=current.owner_id, is_archived=False
         )
 
-    def hide_kitchen_for_member(self, kitchen_id: UUID, user_id: UUID) -> None:
-        self.hidden_memberships.add((kitchen_id, user_id))
-
-    def unhide_kitchen_for_member(self, kitchen_id: UUID, user_id: UUID) -> None:
-        self.hidden_memberships.discard((kitchen_id, user_id))
-
     def kitchens_for_user(
         self, user_id: UUID, *, archived: bool = False
     ) -> list[KitchenMembershipSummary]:
@@ -100,12 +88,7 @@ class FakeKitchenRepo:
             if m.user_id != user_id:
                 continue
             kitchen = self.kitchens[m.kitchen_id]
-            effective_archived = (
-                kitchen.is_archived
-                if kitchen.owner_id == user_id
-                else kitchen.is_archived or (m.kitchen_id, m.user_id) in self.hidden_memberships
-            )
-            if effective_archived != archived:
+            if kitchen.is_archived != archived:
                 continue
             out.append(
                 KitchenMembershipSummary(
@@ -125,6 +108,17 @@ class FakeKitchenRepo:
         if row is None:
             raise KitchenNotFoundError()
         return row
+
+
+def _owned_kitchen(repo: FakeKitchenRepo, owner: UUID, name: str = "Household") -> UUID:
+    kitchen_id = uuid4()
+    repo.create_owned_kitchen(
+        owned_kitchen=NewKitchenRecord(id=kitchen_id, name=name, owner_id=owner),
+        membership=NewMembershipRecord(
+            id=uuid4(), kitchen_id=kitchen_id, user_id=owner, role="owner"
+        ),
+    )
+    return kitchen_id
 
 
 def test_validate_kitchen_name_trims() -> None:
@@ -155,6 +149,17 @@ def test_create_owned_kitchen_makes_creator_owner_and_member() -> None:
     assert repo.memberships[0].user_id == actor
     assert repo.memberships[0].role == "owner"
     assert repo.memberships[0].kitchen_id == result.id
+
+
+def test_create_owned_kitchen_makes_no_notebook() -> None:
+    """Kitchen creation takes only the kitchen repository (FR-008: no notebook)."""
+    repo = FakeKitchenRepo()
+
+    CreateOwnedKitchenService(repo).execute(
+        CreateOwnedKitchenCommand(actor_user_id=uuid4(), name="Household")
+    )
+
+    assert len(repo.kitchens) == 1
 
 
 def test_create_allows_multiple_owned_kitchens() -> None:
@@ -188,13 +193,7 @@ def test_owner_rename_updates_name_visible_via_membership_kitchen() -> None:
     repo = FakeKitchenRepo()
     owner = uuid4()
     member = uuid4()
-    kitchen_id = uuid4()
-    repo.create_owned_kitchen(
-        owned_kitchen=NewKitchenRecord(id=kitchen_id, name="Old", owner_id=owner),
-        membership=NewMembershipRecord(
-            id=uuid4(), kitchen_id=kitchen_id, user_id=owner, role="owner"
-        ),
-    )
+    kitchen_id = _owned_kitchen(repo, owner, "Old")
     repo.memberships.append(MembershipRecord(kitchen_id=kitchen_id, user_id=member, role="member"))
 
     RenameKitchenService(repo).execute(
@@ -212,13 +211,7 @@ def test_non_member_rename_rejected() -> None:
     repo = FakeKitchenRepo()
     owner = uuid4()
     stranger = uuid4()
-    kitchen_id = uuid4()
-    repo.create_owned_kitchen(
-        owned_kitchen=NewKitchenRecord(id=kitchen_id, name="Household", owner_id=owner),
-        membership=NewMembershipRecord(
-            id=uuid4(), kitchen_id=kitchen_id, user_id=owner, role="owner"
-        ),
-    )
+    kitchen_id = _owned_kitchen(repo, owner)
 
     with pytest.raises(NotKitchenMemberError):
         RenameKitchenService(repo).execute(
@@ -231,13 +224,7 @@ def test_member_non_owner_rename_rejected() -> None:
     repo = FakeKitchenRepo()
     owner = uuid4()
     member = uuid4()
-    kitchen_id = uuid4()
-    repo.create_owned_kitchen(
-        owned_kitchen=NewKitchenRecord(id=kitchen_id, name="Household", owner_id=owner),
-        membership=NewMembershipRecord(
-            id=uuid4(), kitchen_id=kitchen_id, user_id=owner, role="owner"
-        ),
-    )
+    kitchen_id = _owned_kitchen(repo, owner)
     repo.memberships.append(MembershipRecord(kitchen_id=kitchen_id, user_id=member, role="member"))
 
     with pytest.raises(NotKitchenOwnerError):
@@ -254,121 +241,12 @@ def test_rename_missing_kitchen_raises_not_member() -> None:
         )
 
 
-def test_member_hide_removes_kitchen_from_default_view() -> None:
+def test_owner_archive_moves_kitchen_to_the_archived_view_for_members() -> None:
+    """Archive is kitchen-wide: every member's archived view follows kitchens.is_archived."""
     repo = FakeKitchenRepo()
     owner = uuid4()
     member = uuid4()
-    kitchen_id = uuid4()
-    repo.create_owned_kitchen(
-        owned_kitchen=NewKitchenRecord(id=kitchen_id, name="Household", owner_id=owner),
-        membership=NewMembershipRecord(
-            id=uuid4(), kitchen_id=kitchen_id, user_id=owner, role="owner"
-        ),
-    )
-    repo.memberships.append(MembershipRecord(kitchen_id=kitchen_id, user_id=member, role="member"))
-
-    HideKitchenService(repo).execute(
-        HideKitchenCommand(actor_user_id=member, kitchen_id=kitchen_id)
-    )
-
-    default_view = KitchenMembershipsService(repo).execute(
-        KitchenMembershipsCommand(actor_user_id=member)
-    )
-    archived_view = KitchenMembershipsService(repo).execute(
-        KitchenMembershipsCommand(actor_user_id=member, archived=True)
-    )
-    assert default_view == []
-    assert [s.id for s in archived_view] == [kitchen_id]
-    # Owner's own view is untouched by another member hiding the kitchen.
-    owner_view = KitchenMembershipsService(repo).execute(
-        KitchenMembershipsCommand(actor_user_id=owner)
-    )
-    assert [s.id for s in owner_view] == [kitchen_id]
-
-
-def test_member_unhide_restores_default_view() -> None:
-    repo = FakeKitchenRepo()
-    owner = uuid4()
-    member = uuid4()
-    kitchen_id = uuid4()
-    repo.create_owned_kitchen(
-        owned_kitchen=NewKitchenRecord(id=kitchen_id, name="Household", owner_id=owner),
-        membership=NewMembershipRecord(
-            id=uuid4(), kitchen_id=kitchen_id, user_id=owner, role="owner"
-        ),
-    )
-    repo.memberships.append(MembershipRecord(kitchen_id=kitchen_id, user_id=member, role="member"))
-    HideKitchenService(repo).execute(
-        HideKitchenCommand(actor_user_id=member, kitchen_id=kitchen_id)
-    )
-
-    UnhideKitchenService(repo).execute(
-        UnhideKitchenCommand(actor_user_id=member, kitchen_id=kitchen_id)
-    )
-
-    default_view = KitchenMembershipsService(repo).execute(
-        KitchenMembershipsCommand(actor_user_id=member)
-    )
-    assert [s.id for s in default_view] == [kitchen_id]
-
-
-def test_owner_hide_rejected() -> None:
-    repo = FakeKitchenRepo()
-    owner = uuid4()
-    kitchen_id = uuid4()
-    repo.create_owned_kitchen(
-        owned_kitchen=NewKitchenRecord(id=kitchen_id, name="Household", owner_id=owner),
-        membership=NewMembershipRecord(
-            id=uuid4(), kitchen_id=kitchen_id, user_id=owner, role="owner"
-        ),
-    )
-
-    with pytest.raises(CannotHideOwnedKitchenError):
-        HideKitchenService(repo).execute(
-            HideKitchenCommand(actor_user_id=owner, kitchen_id=kitchen_id)
-        )
-    assert (kitchen_id, owner) not in repo.hidden_memberships
-
-
-def test_non_member_hide_rejected() -> None:
-    with pytest.raises(NotKitchenMemberError):
-        HideKitchenService(FakeKitchenRepo()).execute(
-            HideKitchenCommand(actor_user_id=uuid4(), kitchen_id=uuid4())
-        )
-
-
-def test_owner_unhide_rejected() -> None:
-    repo = FakeKitchenRepo()
-    owner = uuid4()
-    kitchen_id = uuid4()
-    repo.create_owned_kitchen(
-        owned_kitchen=NewKitchenRecord(id=kitchen_id, name="Household", owner_id=owner),
-        membership=NewMembershipRecord(
-            id=uuid4(), kitchen_id=kitchen_id, user_id=owner, role="owner"
-        ),
-    )
-
-    with pytest.raises(CannotHideOwnedKitchenError):
-        UnhideKitchenService(repo).execute(
-            UnhideKitchenCommand(actor_user_id=owner, kitchen_id=kitchen_id)
-        )
-
-
-def test_owner_archiving_still_moves_kitchen_to_archived_view_for_members_who_never_hid_it() -> (
-    None
-):
-    """Regression guard: a member's personal hide must be additive to, never a
-    replacement for, the owner's kitchen-wide archive (Story 9.1 behavior)."""
-    repo = FakeKitchenRepo()
-    owner = uuid4()
-    member = uuid4()
-    kitchen_id = uuid4()
-    repo.create_owned_kitchen(
-        owned_kitchen=NewKitchenRecord(id=kitchen_id, name="Household", owner_id=owner),
-        membership=NewMembershipRecord(
-            id=uuid4(), kitchen_id=kitchen_id, user_id=owner, role="owner"
-        ),
-    )
+    kitchen_id = _owned_kitchen(repo, owner)
     repo.memberships.append(MembershipRecord(kitchen_id=kitchen_id, user_id=member, role="member"))
 
     ArchiveKitchenService(repo).execute(
@@ -383,36 +261,3 @@ def test_owner_archiving_still_moves_kitchen_to_archived_view_for_members_who_ne
     )
     assert member_default == []
     assert [s.id for s in member_archived] == [kitchen_id]
-
-
-def test_member_hide_state_is_isolated_per_member() -> None:
-    repo = FakeKitchenRepo()
-    owner = uuid4()
-    member_a = uuid4()
-    member_b = uuid4()
-    kitchen_id = uuid4()
-    repo.create_owned_kitchen(
-        owned_kitchen=NewKitchenRecord(id=kitchen_id, name="Household", owner_id=owner),
-        membership=NewMembershipRecord(
-            id=uuid4(), kitchen_id=kitchen_id, user_id=owner, role="owner"
-        ),
-    )
-    repo.memberships.append(
-        MembershipRecord(kitchen_id=kitchen_id, user_id=member_a, role="member")
-    )
-    repo.memberships.append(
-        MembershipRecord(kitchen_id=kitchen_id, user_id=member_b, role="member")
-    )
-
-    HideKitchenService(repo).execute(
-        HideKitchenCommand(actor_user_id=member_a, kitchen_id=kitchen_id)
-    )
-
-    a_default = KitchenMembershipsService(repo).execute(
-        KitchenMembershipsCommand(actor_user_id=member_a)
-    )
-    b_default = KitchenMembershipsService(repo).execute(
-        KitchenMembershipsCommand(actor_user_id=member_b)
-    )
-    assert a_default == []
-    assert [s.id for s in b_default] == [kitchen_id]

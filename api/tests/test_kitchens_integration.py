@@ -8,7 +8,7 @@ from __future__ import annotations
 from uuid import UUID, uuid4
 
 import pytest
-from adapters.persistence.models import KitchenMembershipModel, KitchenModel
+from adapters.persistence.models import KitchenMembershipModel, KitchenModel, NotebookModel
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -74,6 +74,12 @@ def test_create_owned_kitchen_membership_and_multi_own(
     assert len(memberships) == 1
     assert memberships[0].role == "owner"
     assert str(memberships[0].user_id) == str(row.owner_id)
+
+    # Spec 055 FR-008: kitchen creation makes no notebook; the first open creates it.
+    notebooks = db_session.scalars(
+        select(NotebookModel).where(NotebookModel.kitchen_id == kitchen_id)
+    ).all()
+    assert notebooks == []
 
 
 def test_owner_rename_persists(client: TestClient, db_session: Session) -> None:
@@ -223,214 +229,14 @@ def test_archiving_preserves_membership(client: TestClient, db_session: Session)
     assert detail.json()["is_archived"] is True
 
 
-def test_member_hide_and_unhide_round_trip(client: TestClient, db_session: Session) -> None:
-    _register(client, "hideowner@example.com")
-    created = client.post("/kitchens", json={"name": "Family"})
-    kitchen_id = created.json()["id"]
-    owner_id = created.json()["owner_id"]
-    kitchen_uuid = UUID(kitchen_id)
+def test_hide_and_unhide_routes_are_gone(client: TestClient) -> None:
+    """Spec 055 FR-024: archive is the only way to put a kitchen away."""
+    _register(client, "nohide@example.com")
+    kitchen_id = client.post("/kitchens", json={"name": "Trip"}).json()["id"]
 
-    client.post("/auth/sign-out")
-    _register(client, "hidemember@example.com")
-    member_me = client.get("/auth/me")
-    member_id = UUID(member_me.json()["user_id"])
-    db_session.add(
-        KitchenMembershipModel(
-            id=uuid4(), kitchen_id=kitchen_uuid, user_id=member_id, role="member"
-        )
-    )
-    db_session.flush()
-
-    hidden = client.post(f"/kitchens/{kitchen_id}/hide")
-    assert hidden.status_code == 204, hidden.text
-
-    default_kitchens = client.get("/kitchens")
-    ids_default = {item["id"] for item in default_kitchens.json()["kitchens"]}
-    assert kitchen_id not in ids_default
-
-    archived_kitchens = client.get("/kitchens", params={"archived": "true"})
-    ids_archived = {item["id"] for item in archived_kitchens.json()["kitchens"]}
-    assert kitchen_id in ids_archived
-
-    unhidden = client.post(f"/kitchens/{kitchen_id}/unhide")
-    assert unhidden.status_code == 204, unhidden.text
-
-    default_kitchens_again = client.get("/kitchens")
-    ids_default_again = {item["id"] for item in default_kitchens_again.json()["kitchens"]}
-    assert kitchen_id in ids_default_again
-
-    # Owner's own view was never affected, at no point in the round trip.
-    client.post("/auth/sign-out")
-    client.post("/auth/sign-in", json={"email": "hideowner@example.com", "password": "password1"})
-    owner_kitchens = client.get("/kitchens")
-    owner_ids = {item["id"] for item in owner_kitchens.json()["kitchens"]}
-    assert kitchen_id in owner_ids
-    assert owner_id == created.json()["owner_id"]
-
-
-def test_member_hide_preserves_membership_and_is_owner_invisible(
-    client: TestClient, db_session: Session
-) -> None:
-    _register(client, "hidehistoryowner@example.com")
-    created = client.post("/kitchens", json={"name": "Shared"})
-    kitchen_id = created.json()["id"]
-    kitchen_uuid = UUID(kitchen_id)
-
-    client.post("/auth/sign-out")
-    _register(client, "hidehistorymember@example.com")
-    member_me = client.get("/auth/me")
-    member_id = UUID(member_me.json()["user_id"])
-    db_session.add(
-        KitchenMembershipModel(
-            id=uuid4(), kitchen_id=kitchen_uuid, user_id=member_id, role="member"
-        )
-    )
-    db_session.flush()
-
-    before_members = client.get(f"/kitchens/{kitchen_id}/members")
-    assert before_members.status_code == 200
-
-    hidden = client.post(f"/kitchens/{kitchen_id}/hide")
-    assert hidden.status_code == 204, hidden.text
-
-    after_members = client.get(f"/kitchens/{kitchen_id}/members")
-    assert after_members.status_code == 200
-    assert after_members.json() == before_members.json()
-
-    # Detail endpoint stays unfiltered, same rule as owner archiving.
-    detail = client.get(f"/kitchens/{kitchen_id}")
-    assert detail.status_code == 200
-
-    # Owner's default listing is unaffected by a member's personal hide.
-    client.post("/auth/sign-out")
-    client.post(
-        "/auth/sign-in",
-        json={"email": "hidehistoryowner@example.com", "password": "password1"},
-    )
-    owner_kitchens = client.get("/kitchens")
-    assert kitchen_id in {item["id"] for item in owner_kitchens.json()["kitchens"]}
-
-
-def test_owner_hide_rejected(client: TestClient) -> None:
-    _register(client, "hideself@example.com")
-    created = client.post("/kitchens", json={"name": "Trip"})
-    kitchen_id = created.json()["id"]
-
-    response = client.post(f"/kitchens/{kitchen_id}/hide")
-    assert response.status_code == 403
-    assert response.json()["code"] == "cannot_hide_owned_kitchen"
-
-
-def test_non_member_hide_denied(client: TestClient, db_session: Session) -> None:
-    _register(client, "hidestranger_owner@example.com")
-    created = client.post("/kitchens", json={"name": "Household"})
-    kitchen_id = created.json()["id"]
-
-    client.post("/auth/sign-out")
-    _register(client, "hidestranger@example.com")
-    response = client.post(f"/kitchens/{kitchen_id}/hide")
-    assert response.status_code == 404
-    assert response.json()["code"] == "kitchen_not_found"
-
-
-def test_hide_unknown_kitchen_same_as_non_member(client: TestClient) -> None:
-    _register(client, "hideprober@example.com")
-    response = client.post(f"/kitchens/{uuid4()}/hide")
-    assert response.status_code == 404
-    assert response.json()["code"] == "kitchen_not_found"
-
-
-def test_owner_unhide_rejected(client: TestClient) -> None:
-    _register(client, "unhideself@example.com")
-    created = client.post("/kitchens", json={"name": "Trip"})
-    kitchen_id = created.json()["id"]
-
-    response = client.post(f"/kitchens/{kitchen_id}/unhide")
-    assert response.status_code == 403
-    assert response.json()["code"] == "cannot_hide_owned_kitchen"
-
-
-def test_owner_archiving_still_hides_kitchen_for_member_who_never_hid_it(
-    client: TestClient, db_session: Session
-) -> None:
-    """Regression guard: a member's personal hide is additive to, never a
-    replacement for, the owner's kitchen-wide archive (Story 9.1 behavior)."""
-    _register(client, "archregowner@example.com")
-    created = client.post("/kitchens", json={"name": "Household"})
-    kitchen_id = created.json()["id"]
-    kitchen_uuid = UUID(kitchen_id)
-
-    client.post("/auth/sign-out")
-    _register(client, "archregmember@example.com")
-    member_me = client.get("/auth/me")
-    member_id = UUID(member_me.json()["user_id"])
-    db_session.add(
-        KitchenMembershipModel(
-            id=uuid4(), kitchen_id=kitchen_uuid, user_id=member_id, role="member"
-        )
-    )
-    db_session.flush()
-
-    default_before = client.get("/kitchens")
-    assert kitchen_id in {item["id"] for item in default_before.json()["kitchens"]}
-
-    client.post("/auth/sign-out")
-    client.post(
-        "/auth/sign-in", json={"email": "archregowner@example.com", "password": "password1"}
-    )
-    archived = client.post(f"/kitchens/{kitchen_id}/archive")
-    assert archived.status_code == 200, archived.text
-
-    client.post("/auth/sign-out")
-    client.post(
-        "/auth/sign-in", json={"email": "archregmember@example.com", "password": "password1"}
-    )
-    member_default = client.get("/kitchens")
-    assert kitchen_id not in {item["id"] for item in member_default.json()["kitchens"]}
-    member_archived = client.get("/kitchens", params={"archived": "true"})
-    assert kitchen_id in {item["id"] for item in member_archived.json()["kitchens"]}
-
-
-def test_member_hide_state_is_isolated_per_member(client: TestClient, db_session: Session) -> None:
-    _register(client, "isoowner@example.com")
-    created = client.post("/kitchens", json={"name": "Household"})
-    kitchen_id = created.json()["id"]
-    kitchen_uuid = UUID(kitchen_id)
-
-    client.post("/auth/sign-out")
-    _register(client, "isomembera@example.com")
-    member_a_me = client.get("/auth/me")
-    member_a_id = UUID(member_a_me.json()["user_id"])
-    db_session.add(
-        KitchenMembershipModel(
-            id=uuid4(), kitchen_id=kitchen_uuid, user_id=member_a_id, role="member"
-        )
-    )
-    db_session.flush()
-
-    client.post("/auth/sign-out")
-    _register(client, "isomemberb@example.com")
-    member_b_me = client.get("/auth/me")
-    member_b_id = UUID(member_b_me.json()["user_id"])
-    db_session.add(
-        KitchenMembershipModel(
-            id=uuid4(), kitchen_id=kitchen_uuid, user_id=member_b_id, role="member"
-        )
-    )
-    db_session.flush()
-
-    client.post("/auth/sign-out")
-    client.post("/auth/sign-in", json={"email": "isomembera@example.com", "password": "password1"})
-    hidden = client.post(f"/kitchens/{kitchen_id}/hide")
-    assert hidden.status_code == 204, hidden.text
-
-    a_default = client.get("/kitchens")
-    assert kitchen_id not in {item["id"] for item in a_default.json()["kitchens"]}
-
-    client.post("/auth/sign-out")
-    client.post("/auth/sign-in", json={"email": "isomemberb@example.com", "password": "password1"})
-    b_default = client.get("/kitchens")
-    assert kitchen_id in {item["id"] for item in b_default.json()["kitchens"]}
+    for action in ("hide", "unhide"):
+        response = client.post(f"/kitchens/{kitchen_id}/{action}")
+        assert response.status_code in (404, 405), response.text
 
 
 def test_blank_name_rejected(client: TestClient) -> None:

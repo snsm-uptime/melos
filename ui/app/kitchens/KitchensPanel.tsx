@@ -43,12 +43,10 @@ import {
   createKitchen,
   deleteKitchen,
   fetchKitchens,
-  hideKitchen,
   memberLabel,
   renameKitchen,
   setLastOpenedKitchen,
   unarchiveKitchen,
-  unhideKitchen,
   type KitchenItem,
 } from "./kitchensClient";
 import {
@@ -441,44 +439,6 @@ export function KitchensPanel({ initialKitchens, currentUserId, showArchived = f
     }
   }
 
-  async function onHide(kitchen: KitchenItem) {
-    if (archivingId) return;
-    setArchivingId(kitchen.id);
-    setOpenMenuId(null);
-    try {
-      const result = await hideKitchen(kitchen.id, messages);
-      if (!result.ok) {
-        setArchiveActionError(result.error);
-      } else {
-        setArchiveActionError(null);
-      }
-      // hideKitchen already removes the kitchen from the shared membership
-      // store on success — useMembershipKitchens() re-renders this row away.
-    } finally {
-      setArchivingId(null);
-    }
-  }
-
-  async function onUnhide(kitchen: KitchenItem) {
-    if (archivingId) return;
-    setArchivingId(kitchen.id);
-    setOpenMenuId(null);
-    try {
-      const result = await unhideKitchen(kitchen.id, messages);
-      if (!result.ok) {
-        setArchiveActionError(result.error);
-        return;
-      }
-      setArchiveActionError(null);
-      setArchivedKitchens((prev) => prev.filter((item) => item.id !== kitchen.id));
-      patchMembershipKitchens((prev) =>
-        prev.some((item) => item.id === kitchen.id) ? prev : [...prev, kitchen],
-      );
-    } finally {
-      setArchivingId(null);
-    }
-  }
-
   const anyOpening = openingId !== null;
 
   const startInvite = useCallback((kitchenId: string) => {
@@ -653,50 +613,7 @@ export function KitchensPanel({ initialKitchens, currentUserId, showArchived = f
                     )}
                   </IconButtonPopup>
                 </div>
-              ) : (
-                <div className={styles.menuCol}>
-                  <IconButtonPopup
-                    panelClassName={styles.menuPanel}
-                    panelRole="menu"
-                    open={openMenuId === kitchen.id}
-                    onOpenChange={(next) => {
-                      setOpenMenuId(next ? kitchen.id : null);
-                    }}
-                    button={
-                      <IconButton
-                        type="button"
-                        variant="muted"
-                        className={styles.renameIcon}
-                        label={t.menuAria}
-                        disabled={anyOpening}
-                        icon={<DotsIcon />}
-                      />
-                    }
-                  >
-                    {showArchived ? (
-                      <IconButtonPopupItem
-                        onClick={() => void onUnhide(kitchen)}
-                        disabled={anyOpening || archivingId !== null}
-                      >
-                        <span className="flex items-center gap-4">
-                          <ArchiveToggleIcon active className="h-4 w-4 shrink-0" />
-                          {t.kitchensUnarchive}
-                        </span>
-                      </IconButtonPopupItem>
-                    ) : (
-                      <IconButtonPopupItem
-                        onClick={() => void onHide(kitchen)}
-                        disabled={anyOpening || archivingId !== null}
-                      >
-                        <span className="flex items-center gap-4">
-                          <ArchiveToggleIcon className="h-4 w-4 shrink-0" />
-                          {t.kitchensArchive}
-                        </span>
-                      </IconButtonPopupItem>
-                    )}
-                  </IconButtonPopup>
-                </div>
-              )}
+              ) : null}
             </>
           )}
         </div>

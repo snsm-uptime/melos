@@ -1,8 +1,8 @@
 # Implementation Plan: Recipe Extraction Assistant Adapter
 
-**Branch**: `s15` (spec folder `003-gemini-recipe-extractor`) | **Date**: 2026-10-20 | **Spec**: [spec.md](./spec.md)
+**Branch**: `s15` (spec folder `015-gemini-recipe-extractor`) | **Date**: 2026-10-20 | **Spec**: [spec.md](./spec.md)
 
-**Input**: Feature specification from `specs/003-gemini-recipe-extractor/spec.md`
+**Input**: Feature specification from `specs/015-gemini-recipe-extractor/spec.md`
 
 ## Summary
 
@@ -74,7 +74,7 @@ PRD §1.6, §2 J2 and Appendix B.1 are updated to match.
 ### Documentation (this feature)
 
 ```text
-specs/003-gemini-recipe-extractor/
+specs/015-gemini-recipe-extractor/
 ├── spec.md                       # Feature spec (input)
 ├── plan.md                       # This file
 ├── research.md                   # Phase 0 output

@@ -9,7 +9,7 @@
 **Goal.** Turn recipes from any source (free text, a web page, a photo of a cookbook page) into structured recipes in a shared kitchen. Then answer questions about them and build a consolidated shopping list scaled to the number of people.
 
 **What the AI does and what it doesn't.**
-- The AI structures recipes, matches ingredient names to the kitchen's catalog and answers questions grounded in the kitchen's data.
+- The AI structures recipes, matches ingredient names to the notebook's catalog and answers questions grounded in the kitchen's data.
 - Scaling, merging the shopping list and generating PDFs are plain code.
 
 ---
@@ -48,7 +48,7 @@ Browser / External AI (Claude, ChatGPT, etc.)
 | Scripts | `compose-up/down/restart/wipe-db.sh`, `compose-lib.sh`, `worktree/*` | Names and default ports only |
 | Lists + membership + invites | Membership checks, list access checks, invite-by-email flow | "List" becomes **Kitchen** |
 | Authentication | The whole layer, see 1.3 | Names only (cookie `melos_session`, env prefix) |
-| UI shell | `AppShell`, `AccountMenu`, `ActionDialog`, `Chip`, `ChipPicker`, `IconButton`, `Disclosure`, `CopyButton` and the Tailwind theme | Remove the language toggle (UI is English only) |
+| UI shell | `AppShell`, `AccountMenu`, `ActionDialog`, `Chip`, `ChipPicker`, `IconButton`, `Disclosure`, `CopyButton` and the Tailwind theme | Keep the language setting: the UI is English and Spanish, chosen in the account |
 | Tooling | ruff, pytest, vitest, eslint, Alembic | — |
 
 Do **not** copy finance's `.env.example` seed credentials or any finance domain code (cards, statements, budgets, splits, FX, bank adapters).
@@ -80,19 +80,19 @@ The MCP service is a separate container that exposes tools for external AI provi
 |---|---|
 | API key generation | Each user can generate and revoke API keys from their account page. Keys are hashed in the database and never displayed again. |
 | MCP authentication | All MCP requests include `Authorization: Bearer <api_key>` header. The MCP server validates the key, identifies the user, and enforces kitchen access control (a user can only interact with kitchens they're a member of). |
-| MCP access control | A user's API key grants read/write/delete access only to content they own (recipes, conversations) and to the cart items of kitchens they're a member of, plus recipes shared into those kitchens (read only, unless they own the recipe). Kitchen-level access checks happen in `application/`, same as REST API. |
+| MCP access control | A user's API key grants read/write/delete access only to the personal notebooks they own or are a member of, the notebooks of kitchens they're a member of, their conversations, and the carts of those kitchens. Notebook and kitchen access checks happen in `application/`, same as REST API. |
 | Rate limiting | Per API key. `429` with `Retry-After` on quota exceeded. |
 
 ### 1.4 API layers
 
 | Layer | Modules |
 |---|---|
-| `domain/` (pure, no I/O) | `recipe.py` (Unit, Size, Dimension, validation rules) · `cart.py` (scale + consolidate) · `ingredient_catalog.py` (name normalization, merge rules) · `toon.py` (TOON encoder for our fixed shapes) · `render.py` (`to_markdown`, `to_embed_text`) · `kitchen.py`, `membership.py`, `invite.py` (from finance's lists) |
-| `application/` | `ports.py`: `RecipeExtractor`, `Embedder`, `ChatModel`, `PageFetcher`, `PdfRenderer`, repositories · use cases: `capture_recipe`, `recipes`, `ingredients`, `categories`, `carts`, `shopping_list`, `conversations`, `exports`, `kitchens`, `invites` + reused auth use cases |
+| `domain/` (pure, no I/O) | `recipe.py` (Unit, Size, Dimension, validation rules) · `cart.py` (scale + consolidate) · `ingredient_catalog.py` (name normalization, merge rules, normalizing a copied recipe against the target catalog) · `toon.py` (TOON encoder for our fixed shapes) · `render.py` (`to_markdown`, `to_embed_text`) · `kitchen.py`, `membership.py`, `invite.py` (from finance's lists) · `notebook.py` (owner, members, kitchen links; reuses the membership and invite rules) |
+| `application/` | `ports.py`: `RecipeExtractor`, `Embedder`, `ChatModel`, `PageFetcher`, `PdfRenderer`, repositories · use cases: `capture_recipe`, `recipes`, `ingredients`, `vocabulary`, `carts`, `shopping_list`, `conversations`, `exports`, `kitchens`, `invites`, `notebooks`, `notebook_invites` + reused auth use cases |
 | `adapters/` | `llm/gemini.py` (extract, chat, embed — `google-genai` SDK) · `web/page_fetcher.py` + `web/jsonld.py` · `pdf/weasyprint.py` + `templates/` + `fonts/` · `persistence/` (SQLAlchemy, Alembic, pgvector) · `email/` (reused) |
-| `api/routes/` | `auth` (reused), `kitchens`, `members`, `invites`, `recipes`, `drafts`, `ingredients`, `categories`, `sources`, `carts`, `shopping-list`, `conversations`, `messages`, `exports`, `health` |
+| `api/routes/` | `auth` (reused), `kitchens`, `members`, `invites`, `notebooks`, `notebook-invites`, `recipes`, `drafts`, `ingredients`, `recipe-vocabulary`, `sources`, `carts`, `shopping-list`, `conversations`, `messages`, `exports`, `health` |
 
-Every table except auth tables has a `kitchen_id`. Access is checked in `application/`, the same way finance checks list access. A user who is not a member gets `404`, not `403`, so the response doesn't reveal that the kitchen exists.
+Recipes and the ingredient catalog belong to a notebook (`notebook_id`). There are two kinds (decided 2026-10-23, flow H): a **personal notebook** is created by a person, its owner, other people join it as notebook members through a notebook invite, and it is visible only to them; a **kitchen notebook** belongs to one kitchen, and every member of that kitchen reads and writes it while they belong to the kitchen. A personal notebook is never shown in a kitchen; it is added to one as a snapshot, an independent copy. Kitchen membership, kitchen invites, kitchen notebooks, the cart, the shopping list and conversations belong to a kitchen (`kitchen_id`). Access is checked in `application/`, the same way finance checks list access. A user who may not see a kitchen or a notebook gets `404`, not `403`, so the response doesn't reveal that it exists.
 
 ### 1.5 Key flows
 
@@ -103,18 +103,21 @@ input: text | URL | photo
         yes → map it to a RecipeDraft (ingredient lines still go to Gemini for normalization)
         no  → visible page text → Gemini
   → photo: image → Gemini (multimodal); the image is not stored
-  → Gemini RecipeExtractor, given the kitchen's ingredient catalog as TOON
+  → Gemini RecipeExtractor, given the ingredient catalog of the capture's notebook as TOON
         returns ParseResult{is_recipe, reason, draft}
   → domain checks the rules; anything that fails → AIInvalidOutput
   → the DRAFT is returned to the UI; nothing is saved
   → user reviews and edits → POST /recipes
-        → save the Source, Recipe, lines and steps; create the confirmed new ingredients/categories; embed
+        → save once, into the notebook the capture started from, with the member as author: a personal
+          notebook outside a kitchen, a kitchen notebook inside one (flow H)
+        → save the Source, Recipe, lines and steps; add the confirmed new names to that notebook's
+          catalog; embed
 ```
 
 **B. Ask**
 ```
 question + @mentioned recipe ids
-  → embed the question → pgvector top-5 within this kitchen (cosine)
+  → embed the question → pgvector top-5 within this kitchen's notebooks (cosine)
   → context = mentioned ∪ top-5, as TOON; plus the last 6 messages
   → Gemini ChatModel → {answer, found, cited_recipe_ids}
   → drop any cited id that is not in the context
@@ -139,7 +142,47 @@ Postgres → domain Recipe
 ```
 Embeddings are generated via the `EmbedTextStrategy` port (Strategy pattern), defaulting to TOON format for consistency with Gemini's chat context. The strategy is swappable to A/B test approaches (e.g., TOON vs. plain text). Each `recipe_embedding` records which strategy was used, input token count, and creation date to measure differences in search quality and token efficiency. The TOON encoder follows `dev/skills/using_toon.md` and is tested against its examples.
 
-**F. Vector search filtering.** Before pgvector similarity search, SQLAlchemy pre-filters recipes by: `kitchen_id` (required), `created_by` (optional, for "my recipes" view), `created_after`/`created_before` (date range), `ingredient_ids` (recipes containing specific ingredients), `category_ids` (optional), and `exclude_recipe_ids` (e.g., to avoid re-citing @mentioned recipes). The filtered set then undergoes cosine similarity search, limited to the top 5 results.
+**F. Vector search filtering.** Before pgvector similarity search, SQLAlchemy pre-filters recipes by: `notebook_ids` (required; the chat searches the kitchen's notebooks), `author_id` (optional, recipes a given person added), `created_after`/`created_before` (date range), `ingredient_names` (recipes containing specific ingredients), `main_ingredients` and `cuisines` (optional, ids), and `exclude_recipe_ids` (e.g., to avoid re-citing @mentioned recipes). The filtered set then undergoes cosine similarity search, limited to the top 5 results.
+
+**G. Copy a recipe between notebooks**
+```
+recipe in notebook A → copy into notebook B
+  ("Copy to notebook": any recipe the person can read → a notebook they can write to;
+   a snapshot copies every recipe of a personal notebook into a new kitchen notebook, flow H)
+  → normalize each ingredient name against B's catalog (ingredient_catalog.py + the S-017 matcher);
+    B's names take priority
+  → "Copy to notebook": the person sees every name change and confirms; a snapshot copies the catalog too, so nothing changes
+  → add the missing names to B's catalog; save the copy with no link to the original; embed
+```
+The original and the copy drift apart: editing or deleting one never changes the other.
+
+**H. Notebooks: personal notebooks, kitchen notebooks and snapshots** (decided 2026-10-23, replaces kitchen links and kept copies)
+```
+personal notebook → created by a person, its owner; others join through a notebook invite (the kitchen
+  invite flow, reused) as notebook members; visible only to its owner and members, never in a kitchen
+  → every person gets a default one, "{alias}'s Notebook", on first use, and can create more
+  → its catalog starts as the owner's catalog (every name in the personal notebooks they belong to)
+  → when someone joins, each name in their catalog is normalized against the notebook's catalog
+    (S-017 matcher); the notebook's names win; names with no match are added
+kitchen notebook → belongs to one kitchen; a kitchen can have several; every member of the kitchen
+  reads, writes, renames and deletes it, only while they belong to the kitchen; no owner, no member rows
+  → created with the kitchen by the kitchen service: "{alias}'s ({kitchen name}) Notebook", named after
+    the creator, its catalog started from the creator's catalog
+  → or added as a snapshot of a personal notebook by any kitchen member: an independent copy of its
+    recipes and catalog that records which notebook it came from (an origin label, cleared if the
+    original is deleted); from then on the two never sync
+  → or created by the first capture in a kitchen that has none (for example "My kitchen", which
+    signup makes): "{alias}'s ({kitchen name}) Notebook", named after the capturing member
+capture outside a kitchen → into a personal notebook the person owns or is a member of; with several,
+  they pick one
+capture in a kitchen → into one of the kitchen's notebooks; with several, the member picks one; with
+  none, one is created as above; no capture happens in an archived kitchen
+a person leaves a kitchen, or is removed → they lose access to its notebooks; nothing is copied
+an owner deletes their account → each personal notebook they own passes to its longest-standing
+  member; one with no members is deleted; recipes they authored elsewhere stay, author "unknown"
+kitchen deleted → its kitchen notebooks are deleted with it; the personal notebooks they were
+  snapshotted from are not touched
+```
 
 ### 1.6 Data model
 
@@ -147,21 +190,28 @@ Embeddings are generated via the `EmbedTextStrategy` port (Strategy pattern), de
 kitchen(id, name, content_language: en|es, created_at)
 membership(kitchen_id, user_id, role: owner|member, created_at)       pk(kitchen_id, user_id)
 invite(id, kitchen_id, email, token_hash, invited_by, expires_at, accepted_at)
-ingredient(id, kitchen_id, name, created_at)                          unique(kitchen_id, name)
-category(id, kitchen_id, name)                                        unique(kitchen_id, name)
+notebook(id, name, kitchen_id?, source_notebook_id?, created_at)     kitchen_id set: a kitchen notebook, which belongs to that kitchen (several per kitchen); null: a personal notebook. source_notebook_id: the notebook a snapshot came from (FK notebook.id, ON DELETE SET NULL), an origin label only
+notebook_membership(notebook_id, user_id, role: owner|member, created_at)   personal notebooks only; pk(notebook_id, user_id); exactly one owner per personal notebook
+notebook_invite(id, notebook_id, email, token_hash, invited_by, expires_at, accepted_at)   personal notebooks only; same rules as invite
+users.default_notebook_id (nullable, FK notebook.id, ON DELETE SET NULL)  the person's default personal notebook, named "{alias}'s Notebook"; null until their first visit to it, which creates it silently, and again after the notebook is deleted
+ingredient(id, notebook_id, name, created_at)                         unique(notebook_id, name); a catalog is a set of unique normalized names
 source(id, user_id, type: text|url|photo, url, raw_text, created_at)
-recipe(id, user_id, source_id?, title, base_servings ≥ 1, servings_estimated,
-       created_at, updated_at)                                        user_id = owner
-recipe_share(kitchen_id, recipe_id, shared_at, cart_add_count)        pk(kitchen_id, recipe_id)
-recipe_ingredient(id, recipe_id, ingredient_id, quantity?, unit?, size?, preparation?,
-                  vague_note?, position)
-recipe_category(recipe_id, category_id)
+recipe(id, notebook_id, author_id?, source_id?, title, base_servings ≥ 1,
+       servings_estimated, main_ingredients text[], cuisines text[], preview_image_base64?,
+       cart_add_count, created_at, updated_at)
+                                                                      exactly one notebook (notebook_id); a copy finds its source and target by notebook id
+                                                                      author_id: the person who added it; null reads "unknown"
+                                                                      cart_add_count: recipes in a kitchen notebook only
+                                                                      main_ingredients, cuisines: ids from categories.yaml and cuisine.yml, 0 to 2 each,
+                                                                      editable on the recipe; no category table (decided 2026-10-22)
+recipe_ingredient(id, recipe_id, name, quantity?, unit?, size?, preparation?,
+                  vague_note?, position)                               name: a normalized name in the notebook's catalog
 step(id, recipe_id, position, text)
 recipe_embedding(recipe_id, model, embedding vector(768), strategy_used, input_tokens, updated_at)  pk(recipe_id, model)
 cart(id, kitchen_id unique, people ≥ 1)
-cart_item(cart_id, recipe_id, meals ≥ 1)                               pk(cart_id, recipe_id)
+cart_item(cart_id, recipe_id, meals ≥ 1)                               pk(cart_id, recipe_id); the recipe is in a notebook of the cart's kitchen
 shopping_list(id, kitchen_id, closing_date?, created_at)               snapshot of a finalized cart
-shopping_list_item(id, shopping_list_id, ingredient_id, quantity?, unit?, size?, preparation?, recipe_ids[], position)
+shopping_list_item(id, shopping_list_id, name, quantity?, unit?, size?, preparation?, recipe_ids[], position)
 conversation(id, kitchen_id, user_id, title, archived_at?, created_at, updated_at)
 message(id, conversation_id, role: user|assistant, content, found?, cited_recipe_ids[], created_at)
 + auth tables reused from finance (user, session, password_reset_token, email_verification, preferences)
@@ -181,21 +231,24 @@ message(id, conversation_id, role: user|assistant, content, found?, cited_recipe
 - A non-vague line needs both `quantity > 0` and `unit`.
 
 **Normalization**
-- Ingredient and category names are trimmed, lower-cased and singular. Preparation never goes in the name ("onion" + `preparation: "chopped"`).
+- Ingredient and category names are trimmed, lower-cased and singular. Preparation never goes in the name ("onion" + `preparation: "chopped"`). A catalog stores each name once, as a plain string; recipe lines and shopping list lines carry the name, not an id.
 - Categories come only from the controlled lists in `dev/docs/categories.yaml` and `dev/docs/cuisine.yml`: up to 2 main ingredients (zero allowed) and up to 2 cuisines. Every tag and variant in `cuisine.yml` is scored: a cuisine matches when its dish names, labels and aliases cover at least 70% of the title's content words (stopwords such as "and" and "the" are not counted), or when at least 4 of its ingredient keywords appear in the steps. Phrase exclusions apply (for example "for the sake of" is not sake). A recipe with fewer than 5 ingredient lines is matched on the title only. Matches are ranked by total matches, one per tag. Ties go to the higher title coverage; if still tied, to the higher body coverage (the number of the cuisine's distinct ingredient keywords and techniques found in the steps); if still tied, all tied cuisines are kept, up to two. If no cuisine matches, the cuisine is `international`.
 
 **Design choices**
 - Embeddings live in their own table, so switching models means re-embedding, not migrating.
-- The ingredient catalog is per kitchen: no leaking between households, no moderation needed.
+- Each notebook has its own ingredient catalog, a set of unique normalized names. A personal notebook's catalog starts from its owner's catalog and grows when members join (flow H); a kitchen notebook's starts from its creator's catalog, or is copied with a snapshot. Every catalog grows when recipes are saved. A person's catalog is every name in the personal notebooks they belong to. No leaking between households, no moderation needed.
+- A notebook is its own entity (decided 2026-10-23, replaces the single kitchen-owned notebook of 2026-10-22 and the kitchen links of earlier on 2026-10-23). A personal notebook belongs to people: one owner, who created it, and any number of members who joined by invite; the owner and members add, edit and delete its recipes, and only the owner renames or deletes it and invites or removes members. A kitchen notebook belongs to a kitchen: any member of the kitchen adds, edits and deletes its recipes, renames or deletes it, and adds snapshots, while they belong to the kitchen. Every person gets a default personal notebook on first use (`users.default_notebook_id`; signup and the auth routes are not touched) and can create more. Recipes and ingredients point at `notebook_id`, and a copy (flow G) finds its source and target by notebook id.
 - `content_language` on the kitchen fixes the language of canonical names, so ingredients merge on the shopping list.
 - The cart is shared per kitchen. Conversations are personal per user.
-- A recipe belongs to one user and is shared into kitchens through `recipe_share`. The kitchen shows the owner's alias as the author (an inner join on the owner). If the owner removes the recipe, shares of it remain and the alias reads "unknown".
-- Cloning a shared recipe creates a new recipe owned by the cloner, with no link to the original. This is the only way a recipe moves between owners.
+- Recipes live in notebooks (replaces sharing through `recipe_share`). A recipe is in exactly one notebook. People share recipes by sharing a personal notebook; kitchens get recipes by capture, by copy, or by a snapshot of a personal notebook (decided 2026-10-23).
+- Recipes move between notebooks only by copying (flow G): a person can copy any recipe they can read into a notebook they can write to, and a snapshot copies a whole personal notebook into a kitchen. A copy has no link to the original, and the two drift apart.
+- A recipe captured in a kitchen is saved once, into one of the kitchen's notebooks (flow H).
+- A recipe records its author: the person who captured it or copied it in; a snapshot keeps each recipe's author. Lists show the author's alias (a left join on `author_id`). If the author's account is deleted, the alias reads "unknown". Deleting a recipe removes it from its notebook, and from the cart and search of the kitchen it belongs to; copies in other notebooks do not change.
 
-**Decided (open items from clarify session 002)**
-- **✓ Names of a shared recipe:** the recipe stores its ingredient names as confirmed when it enters a kitchen. Gemini normalizes each ingredient name against the kitchen's existing ingredients, and the draft shows every change made. Categories are controlled values and are not renamed. A recipe therefore reads the same in every kitchen it is shared into.
+**Decided (open items from clarify session 016)**
+- **✓ Names of a copied recipe** (2026-10-22, replaces "names of a shared recipe"): a copy stores its ingredient names as confirmed when it enters the target notebook. Each name is normalized against the target's existing ingredients, the target's names win, and the member sees every change made (flow G). Categories are controlled values and are not renamed. Copies of one recipe may read differently in different notebooks.
 - **✓ Preview images:** a recipe may have a preview image, stored as base64 text on the recipe. When it has none, the card shows the default cooking-pot icon. Captured source photos are still not stored (§4).
-- **✓ Cart frequency:** the count is the number of additions to the kitchen's cart. Removing a recipe from the cart does not lower it. The count is kept on `recipe_share.cart_add_count`.
+- **✓ Cart frequency:** the count is the number of additions to the kitchen's cart. Removing a recipe from the cart does not lower it. The count is kept on the kitchen notebook's recipe (`recipe.cart_add_count`); a recipe belongs to one kitchen at most.
 
 ### 1.7 AI integration, errors and safety
 
@@ -253,7 +306,7 @@ The user's input (text, URL or photo) is never lost on error.
 
 ### 1.10 Shared UI components
 
-- **Add-recipe call to action** (`AddRecipeCallToAction`). A rounded-corner placeholder rectangle with a plus icon at its centre. Every page that lets a user add a recipe uses it; the first use is the kitchen's recipes page (J2). Tapping it opens the add-recipe options dialog: a vertical list separated by dividers, with no confirm or cancel buttons, in this order: URL (disabled, not implemented yet), Picture (disabled, "coming soon", until S-040), Text (opens the text sheet). The option list lives in this component only.
+- **Add-recipe call to action** (`AddRecipeCallToAction`). A rounded-corner placeholder rectangle with a plus icon at its centre. Every page that lets a user add a recipe uses it; the first uses are a person's notebook (the Notebook tab in the bottom bar) and a kitchen's Notebook tab (J2). Tapping it opens the add-recipe options dialog: a vertical list separated by dividers, with no confirm or cancel buttons, in this order: URL (disabled, not implemented yet), Picture (disabled, "coming soon", until S-040), Text (opens the text sheet). The option list lives in this component only.
 - Built on the existing `ActionDialog` (its confirm and cancel props become optional) and `Sheet`. The picture sheet, when built (S-040), has an inner dashed border of about 2rem with the text "Upload file or drag and drop".
 
 ---
@@ -279,26 +332,44 @@ The user signs up, signs in, signs out, resets their password by email and edits
 - **Edge cases:**
   - The last owner cannot leave or be demoted.
   - Changing `content_language` after recipes exist shows a warning: existing names are not translated.
+  - A member who leaves, or is removed, loses access to the kitchen's notebooks; nothing is copied, and their personal notebooks are not touched (flow H).
 - **AC1.1** A member of kitchen A gets `404` for any resource of kitchen B.
 - **AC1.2** An invitee who signs up through the link sees the inviting kitchen first.
+- **AC1.3** When Ben leaves kitchen K, he can no longer read or write K's notebooks, and K's notebooks and recipes are unchanged.
+
+### J1a · Notebooks and sharing
+- Every person gets "{alias}'s Notebook" the first time they open their notebook, and can create more personal notebooks. The creator of a personal notebook is its owner.
+- The owner invites people by email to join a personal notebook; this reuses the kitchen invite flow. An invitee who accepts becomes a notebook member. The owner can remove members, and a member can leave.
+- The owner and members add, edit and delete a personal notebook's recipes. Only the owner renames or deletes it and invites and removes members.
+- When someone joins, the names in their catalog are matched against the notebook's catalog; the notebook's names win and the remaining names are added (flow H).
+- A personal notebook is never shown in a kitchen. Any member of a kitchen can add one of their personal notebooks to it as a snapshot: an independent kitchen notebook with copies of its recipes and catalog, labelled with the notebook it came from. Later changes to either one do not reach the other.
+- Every kitchen made from the kitchen page starts with one kitchen notebook, "{alias}'s ({kitchen name}) Notebook", named after its creator. Any member of the kitchen reads, writes, renames and deletes the kitchen's notebooks, while they belong to it.
+- **Edge cases:**
+  - The owner cannot leave their personal notebook; they can delete it.
+  - An owner who deletes their account passes each personal notebook to its longest-standing member; a notebook with no members is deleted (flow H).
+  - Deleting a kitchen deletes its notebooks; the personal notebooks they were snapshotted from are not touched.
+- **AC1a.1** A notebook member edits a recipe; the owner sees the change in the same notebook.
+- **AC1a.2** A person gets `404` for a personal notebook they do not belong to, and for a notebook of a kitchen they do not belong to.
+- **AC1a.3** Joining a notebook whose catalog has "onion" with a personal catalog that has "onions" adds no new name to the notebook's catalog.
+- **AC1a.4** Adding Ana's notebook to kitchen Home as a snapshot creates a Home notebook with copies of its recipes, labelled as coming from Ana's notebook; editing a recipe in either one does not change the other.
 
 ### J2 · Capture a recipe
-- **Entry:** on the kitchen's recipes page, a placeholder image rectangle (standard rounded corners) below the page header shows a plus icon at its centre. Tapping it opens an options dialog with no confirm or cancel buttons: a vertical list separated by dividers, in this order:
+- **Entry:** in a notebook (the member's notebook from the Notebook tab in the bottom bar, or a kitchen's Notebook tab), a placeholder image rectangle (standard rounded corners) below the page header shows a plus icon at its centre. Tapping it opens an options dialog with no confirm or cancel buttons: a vertical list separated by dividers, in this order:
   - **URL:** a link to one recipe page. Shown but disabled until built.
   - **Picture:** one image of a cookbook page (JPEG/PNG/HEIC, up to 10 MB). Shown but disabled, marked "coming soon", until S-040. The upload sheet has an inner dashed border (about 2rem thick) with the text "Upload file or drag and drop".
   - **Text:** a free description. Opens a text sheet with the paste input and submit control.
 - **Output:** a **draft review screen**:
   - Title, base servings (with an "estimated" badge when Gemini guessed), categories as chips, and the ingredient table and steps, all editable.
   - Each ingredient shows either "matched: *onion*" or "new ingredient", and the user can change the match.
-  - Gemini may match a name to an existing kitchen entry (e.g. "onions" to "onion"). The draft lists every such change, so the member can see it and undo it before save.
-- **Save** creates the recipe, owned by the member who saved it and shared into the kitchen where it was captured, together with the confirmed new catalog entries, then embeds the recipe. **Discard** saves nothing.
+  - Gemini may match a name to an existing entry in the notebook's catalog (e.g. "onions" to "onion"). The draft lists every such change, so the member can see it and undo it before save.
+- **Save** creates the recipe in the notebook the capture started from, with the member as author, adds the confirmed new names to that notebook's catalog, then embeds it. Outside a kitchen it goes into one of the person's personal notebooks; in a kitchen, into one of the kitchen's notebooks (with several, the member picks one; with none, one is created; flow H). No capture happens in an archived kitchen. **Discard** saves nothing.
 - **Extraction rules** (prompt in Appendix B):
   - Canonical names in the language of the pasted text: singular, lower-case, preparation in its own field. Translation is a later story.
   - Vague amounts (the phrases in Appendix B.1 rule 4) → `vague_note`.
   - "2 large onions" → `quantity 2, unit unit, size large`.
   - Units are mapped to the allowed set without converting ("tablespoon" → `tbsp`). A unit with no exact match that is one edit away from an allowed spelling (one letter added, removed or changed) and is 5 or more characters long is mapped the same way ("tablespon" → `tbsp`). A unit one edit away from the spellings of more than one allowed unit, or any other unknown unit, is invalid output.
   - Servings are taken from the text, or estimated and flagged.
-  - The model proposes a main ingredient (zero to two keys) from the controlled list. The app scores every cuisine in `cuisine.yml` by the rules in the normalization section and `categories.yaml#/matching/cuisine`, keeps at most two, ranked by total matches, and uses `international` when none matches. Category labels are shown in the pasted text's language.
+  - The model proposes a main ingredient (zero to two keys) from the controlled list. The app scores every cuisine in `cuisine.yml` by the rules in the normalization section and `categories.yaml#/matching/cuisine`, keeps at most two, ranked by total matches, and uses `international` when none matches. Category labels are shown in the member's configured language (decided 2026-10-22; the draft's names and steps still follow the pasted text).
 - **Edge cases:**
   - The input is not a recipe → `NotARecipe`.
   - Two or more complete recipes in one input (each with its own title and ingredient list) → `NotARecipe` with reason "Only one recipe at a time". The member sees "Upload only one recipe at a time". Sub-sections of one recipe are not a second recipe.
@@ -312,18 +383,21 @@ The user signs up, signs in, signs out, resets their password by email and edits
 - **AC2.5** If Gemini fails, the typed text is still in the box.
 
 ### J3 · Browse and manage recipes
-- **List:** cards for the kitchen's shared recipes, each with a preview image (or a default cooking-pot icon), the title, the author alias as a chip, the ingredient count and category chips. Filter by text (title or ingredient), by category, by ingredient and by author. Sort by frequency: how many times the recipe has been added to this kitchen's cart, ascending or descending. Removing it from the cart does not lower the count. Each card has a checkbox, "Add to cart".
-- **Detail:** ingredients, steps, source link, **Edit**, **Delete** (with confirmation) and **Download PDF** for recipes the user owns; **Clone to my account** for recipes owned by someone else.
-- Editing re-embeds the recipe. The change shows in every kitchen the recipe is shared into and in every cart that holds it.
-- Deleting a recipe from its owner's account does not remove it from the kitchens it was shared into or from their carts. There its author alias reads "unknown". Past conversation citations still resolve.
-- **Clone** (*Should*): copy a recipe shared into a kitchen to one's own account, to use it there. The copy is owned by the cloner and has no link to the original or its author.
-- **Catalog management** (*Should*): a page listing ingredients and categories with rename and **merge** ("red pepper" → "pepper"). Deleting an ingredient that is still used is blocked; merge it instead.
+- **Lists:** a personal notebook lists its recipes, visible to its owner and members. A kitchen's Notebook tab lists the recipes of the kitchen's notebooks as cards, each with a preview image (or a default cooking-pot icon), the title, the author alias as a chip, the ingredient count and category chips. Filter by text (title or ingredient), by category, by ingredient, by author and by notebook. Sort by frequency: how many times the recipe has been added to this kitchen's cart, ascending or descending. Removing it from the cart does not lower the count. Each kitchen card has a checkbox, "Add to cart".
+- **Detail:** ingredients, steps, source link, **Edit**, **Delete** (with confirmation) and **Download PDF**. Edit includes the recipe's categories: the member picks up to two main ingredients and two cuisines from the controlled lists, as on the draft. Also **Copy to notebook**, for any recipe the person can read. Edit and Delete show only to those who can write to the recipe's notebook: the owner and members of a personal notebook, or any member of the kitchen for a kitchen notebook.
+- Editing re-embeds the recipe. The change shows in its notebook and, for a kitchen notebook, in the kitchen's cart. Copies and snapshots of it elsewhere do not change.
+- Deleting a recipe removes it from its notebook and, for a kitchen notebook, from the kitchen's list, cart and search; a past chat citation to it keeps its text and shows "recipe removed" in place of the link (decided 2026-10-22). Copies and snapshots elsewhere do not change.
+- **Add to a kitchen** (*Must*): any member of a kitchen adds one of their personal notebooks to it as a snapshot (flow H). The kitchen notebook is an independent copy, labelled with the notebook it came from; the two never sync.
+- **Copy to notebook** (*Should*): a person copies any recipe they can read into a notebook they can write to (flow G). Names are normalized against the target's catalog, the target's names win, and the person sees every change before confirming. The person is the copy's author. The copy has no link to the original.
+- **Catalog management** (*Should*): for each notebook's catalog, those who can write to the notebook get a page listing ingredients with rename and **merge** ("red pepper" → "pepper"). Deleting an ingredient that is still used is blocked; merge it instead.
 - **AC3.1** The recipe PDF shows á, é, ñ, ¿, ½ and ⅓ correctly.
-- **AC3.2** After its owner deletes a shared recipe, it stays in the kitchen's list and cart with author "unknown", and past chat citations still resolve.
-- **AC3.3** Cloning a shared recipe creates a copy in the cloner's account; editing the copy does not change the original.
+- **AC3.2** Deleting a recipe leaves its copies in other notebooks, and the carts and past chat citations that use those copies, unchanged.
+- **AC3.3** Copying a recipe into another notebook creates an independent copy; editing either one does not change the other.
+- **AC3.4** Copying a recipe that says "onions" into a notebook whose catalog has "onion" shows the change "onions" → "onion" before the person confirms, and the copy uses "onion".
+- **AC3.5** Saving a draft captured in a kitchen creates one recipe, in one of the kitchen's notebooks, with the member as author, and the kitchen's list shows it. If the kitchen has no notebook, one is created on that first capture.
 
 ### J4 · Plan (cart)
-- Selected recipes go to the kitchen's cart, which members share.
+- Selected recipes, from the kitchen's notebooks, go to the kitchen's cart, which members share.
 - **Controls:**
   - One global **People** number (default 2).
   - Per recipe, **Meals**: how many times you'll eat it (default 1).
@@ -335,11 +409,11 @@ The user signs up, signs in, signs out, resets their password by email and edits
 ### J5 · Shop (shopping list)
 **Consolidation (`domain/cart.py`, pure):**
 1. Scale each line by its recipe's factor.
-2. Group by `(ingredient, dimension)`; preparation is ignored.
+2. Group by `(ingredient name, dimension)`; preparation is ignored. Names are plain normalized strings, so the same name from different notebooks merges.
 3. The same ingredient in different dimensions gives **separate lines**.
 4. **Count:** one line per `size` (no size is its own line). Sum first, then round **up** (`ceil`).
 5. **Mass and volume:** sum per unit without converting. Join the units from largest to smallest using the order in 1.6, e.g. `flour — 1 cup + 3 tbsp`. At most 2 decimals, trailing zeros removed.
-6. Lines with `vague_note` go in a separate section, **"Your call"**, de-duplicated by ingredient and listing their notes. An ingredient that is vague in one recipe and measured in another appears in both places.
+6. Lines with `vague_note` go in a separate section, **"Your call"**, de-duplicated by ingredient name and listing their notes. An ingredient that is vague in one recipe and measured in another appears in both places.
 7. Each line shows **chips** with the titles of the recipes it comes from.
 
 **Export:**
@@ -359,7 +433,7 @@ The user signs up, signs in, signs out, resets their password by email and edits
 - A conversation list (active / archived) and a chat view. **New**, **Rename**, **Archive**, **Unarchive**, **Delete** (with confirmation).
 - Typing `@` in the input suggests recipes; a chosen recipe is always included in the context.
 - Answers show **cited recipes as links**. When `found=false`, the answer says the kitchen's recipes don't cover it.
-- **Sources:** only the kitchen's recipes, ingredients and categories, plus the conversation so far. No web, no general knowledge.
+- **Sources:** only the recipes of the kitchen's notebooks, with their ingredients and categories, plus the conversation so far. No web, no general knowledge.
 - The first user message sets the default title (first 60 characters).
 - **Shopping list history:** When the user asks about past shopping lists (e.g., "What was the shopping list last time?"), the chat queries `shopping_list` records with `closing_date` and reconstructs the history. The UI displays cards showing: date closed, recipes included, and kitchen. Clicking a recipe card navigates to that recipe's detail page.
 - **Edge cases:**
@@ -379,11 +453,13 @@ The user signs up, signs in, signs out, resets their password by email and edits
 | Role | Who | Can |
 |---|---|---|
 | **Visitor** | Not signed in | Landing page, sign up, sign in, password reset, open an invite link |
-| **Member** | Belongs to a kitchen | Full CRUD on **their own** recipes and conversations. Shares their recipes into the kitchen, and clones recipes shared by others into their own account. Full CRUD on the kitchen's ingredients, categories and cart. Leave the kitchen |
+| **Member** | Belongs to a kitchen | Full CRUD on the kitchen's notebooks and their recipes, on the kitchen's cart and on their own conversations. Add their personal notebooks to the kitchen as snapshots. Leave the kitchen |
 | **Owner** | Created the kitchen, or was promoted | Everything a Member can do, plus: rename the kitchen, change `content_language`, invite and remove members, promote/demote, delete the kitchen |
+| **Notebook member** | Joined a personal notebook by invite | Full CRUD on the notebook's recipes and catalog. Leave the notebook |
+| **Notebook owner** | Created the personal notebook, or inherited it (flow H) | Everything a notebook member can do, plus: rename and delete the notebook, invite and remove members |
 
-- Roles are per kitchen: the same user can be an Owner in one kitchen and a Member in another.
-- No user can read another user's conversations, including Owners.
+- Roles are per kitchen and per notebook: the same user can be an Owner in one and a Member in another.
+- No user can read another user's conversations, including Owners. A personal notebook is readable only by its owner and members; a kitchen notebook only by the kitchen's members.
 - There is no in-app admin. Operations (backups, logs) happen on the server.
 
 ---
@@ -393,8 +469,8 @@ The user signs up, signs in, signs out, resets their password by email and edits
 **Product**
 - The assistant never answers from outside the kitchen's data. No web search, no general cooking, nutrition, allergy or health advice. It never says a recipe is safe for an allergy.
 - No crawling. A URL import fetches exactly the one page the user gave.
-- Imported recipes belong to the user who imported them and keep their source link. A recipe is visible in a kitchen only when its owner shares it there. No public sharing.
-- Author history is out of scope. A shared recipe shows its owner's alias as the author. If the owner removes the recipe from their account, the kitchen keeps it and the alias reads "unknown". The system keeps no record of past owners.
+- Imported recipes keep their source link. A personal notebook is private to its owner and members and is never shown in a kitchen; a kitchen gets a snapshot copy instead. No public sharing.
+- Author history is out of scope. A recipe shows its author's alias; if the author's account is deleted, the alias reads "unknown". A copy keeps no record of the recipe it was copied from; a snapshot keeps only a label naming the notebook it came from.
 - Captured source photos are not stored; only the extracted text is kept. A recipe's preview image may be stored as base64 text on the recipe.
 - No conversion between units or between mass and volume. No carry-over ("1 cup + 20 tbsp" stays as is).
 - An AI draft is never saved without the user confirming it.
@@ -421,15 +497,19 @@ Every entity has full CRUD in the API. The UI only exposes what the journey need
 
 | Entity | Create | Read | Update | Delete | In the v1 UI | MCP v1 | Notes |
 |---|---|---|---|---|---|---|---|
-| User (auth) | register | `/auth/me` | profile; password via reset | `DELETE /auth/me` | all but delete | — | Deleting the account removes memberships and conversations; kitchens it alone owns are deleted; recipes it owned stay in the kitchens they were shared into, with author "unknown" |
-| Kitchen | ✓ | ✓ | name, language | owner only | ✓ | ✓ | Cascades to its ingredients, categories, shares and cart. Recipes are not deleted |
+| User (auth) | register | `/auth/me` | profile; password via reset | `DELETE /auth/me` | all but delete | — | Deleting the account removes kitchen and notebook memberships and conversations; kitchens it alone owns are deleted. Each personal notebook it owns passes to its longest-standing member, or is deleted when it has none (flow H). Recipes it authored elsewhere stay, with author "unknown" |
+| Kitchen | ✓ | ✓ | name, language | owner only | ✓ | ✓ | Created with one kitchen notebook. Cascades to its notebooks and its cart. Personal notebooks are not touched |
 | Membership | via invite | ✓ | role (owner) | leave / remove | ✓ | — | Last owner protected |
 | Invite | owner | owner | resend | revoke | ✓ | — | |
-| Recipe | via draft confirm (owner = creator) | ✓ | owner | owner | ✓ | capture (✓), read (✓), update (—), delete (—) | Owned by a user; shared into kitchens. Update re-embeds. Delete keeps it in shared kitchens with author "unknown" |
-| RecipeShare | owner shares into a kitchen | ✓ | — | owner unshares | ✓ | — | Kitchen-scoped |
+| Notebook | ✓ | ✓ | name | personal: owner only; kitchen: any kitchen member | ✓ | ✓ (read) | Personal: one owner, any number of members. Kitchen: belongs to the kitchen, every kitchen member reads and writes it |
+| NotebookMembership | via notebook invite | ✓ | — | leave / remove | ✓ | — | Personal notebooks only. The owner cannot leave |
+| NotebookInvite | notebook owner | notebook owner | resend | revoke | ✓ | — | Reuses the kitchen invite flow |
+| Notebook snapshot (action) | any kitchen member | — | — | — | ✓ | — | Not stored as such: creates a kitchen notebook copied from a personal notebook, labelled with its origin (flow H) |
+| Recipe | via draft confirm, a copy or a snapshot | ✓ | those who can write to its notebook | same as update | ✓ | capture (✓), read (✓), update (—), delete (—) | In exactly one notebook. Records its author. Update re-embeds. Copies drift apart |
+| Recipe copy (action) | Copy to notebook | — | — | — | ✓ | — | Not stored: creates a new Recipe in the target notebook (flow G) |
 | Draft | `POST /drafts` | — | — | — | ✓ | ✓ | Not stored; the response holds the draft |
 | RecipeIngredient, Step | nested in Recipe | ✓ | ✓ | ✓ | inside recipe edit | — | Also addressable at `/recipes/{id}/ingredients`, `/steps` |
-| Ingredient | ✓ | ✓ | rename, merge | only if unused | *Should* | — | `409` if used |
+| Ingredient | ✓ | ✓ | rename, merge | only if unused | *Should* | — | `409` if used. A unique normalized name in one notebook's catalog |
 | Category | ✓ | ✓ | rename, merge | ✓ (unlinks) | *Should* | — | |
 | Source | with recipe | ✓ | ✓ | ✓ | link on detail | — | Deleting keeps the recipe (`source_id` set to null) |
 | Cart | with kitchen | ✓ | people | clear | ✓ | ✓ (people) | One per kitchen |
@@ -520,8 +600,8 @@ steps[3]: "Fry the garlic in oil.","Add the tomato and cook 5 minutes.","Add the
 
 | Priority | Items |
 |---|---|
-| **Must** | Scaffold + auth reuse · kitchens + invites · Gemini extraction adapter · capture from text and URL with draft review · ingredient catalog matching · recipe CRUD, sharing into kitchens + PDF · cart + shopping list + PDF/Markdown · conversations with history, archive and delete · **MCP service** with per-user API keys, capture tool, recipe read, cart ops, shopping list ops · deployed on the server |
-| **Should** | Photo capture · `@` mentions · catalog management (rename/merge) · semantic search in the recipe list · API key management UI (generate, view, copy, revoke) · recipe cards with ingredient and author filters and cart-frequency sort · clone a shared recipe into one's own account |
+| **Must** | Scaffold + auth reuse · kitchens + invites · Gemini extraction adapter · capture from text and URL with draft review · ingredient catalog matching · recipe CRUD, notebooks (personal ones shared by invite, kitchen ones by snapshot) + PDF · cart + shopping list + PDF/Markdown · conversations with history, archive and delete · **MCP service** with per-user API keys, capture tool, recipe read, cart ops, shopping list ops · deployed on the server |
+| **Should** | Photo capture · `@` mentions · catalog management (rename/merge) · semantic search in the recipe list · API key management UI (generate, view, copy, revoke) · recipe cards with ingredient and author filters and cart-frequency sort · copy a recipe into another notebook |
 | **Later** | A recipe ML model (e.g. a Hugging Face ingredient tagger) · public sharing · offline mode |
 
 | Dates | Milestone |
@@ -538,3 +618,9 @@ steps[3]: "Fry the garlic in oil.","Add the tomato and cook 5 minutes.","Add the
 - **✓ TOON encoder:** Use [`python-toon`](https://github.com/xaviviro/python-toon) library.
 - **✓ Account deletion:** Not in v1 UI; REST endpoint exists but not exposed.
 - **✓ MCP scope:** v1 must scope (separate container, per-user API keys, tools: capture, read recipes, cart ops, shopping list ops, ask with history).
+- **✓ Who may edit and delete a recipe** (2026-10-23, replaces "any member of the kitchen" of 2026-10-22): those who can write to its notebook: the owner and members of a personal notebook, or any member of the kitchen for a kitchen notebook.
+- **✓ Notebook model** (2026-10-23, replaces the kitchen-owned notebook of 2026-10-22 and the kitchen links of earlier on 2026-10-23): personal notebooks (owner and members by invite) and kitchen notebooks (several per kitchen, every member reads and writes them while they belong to the kitchen); a personal notebook reaches a kitchen only as a snapshot; see 1.4, 1.5 H, 1.6 and J1a.
+- **✓ Snapshots** (2026-10-23): a snapshot is an independent kitchen copy of a personal notebook. Its link to the original is an origin label only, cleared if the original is deleted; nothing syncs. Deleting the kitchen deletes its notebooks. Any kitchen member may add snapshots and rename or delete kitchen notebooks.
+- **✓ Name of a kitchen notebook made with the kitchen or on a first capture** (2026-10-23): "{alias}'s ({kitchen name}) Notebook".
+- **✓ A deleted recipe in a past chat citation** (2026-10-22): the citation keeps its text and shows "recipe removed" in place of the link.
+- **✓ Categories** (2026-10-22): no `category` or `recipe_category` table. A recipe stores its main-ingredient and cuisine ids (0 to 2 each) and the member can edit them on the recipe, from the controlled lists only. Catalog management covers ingredients only.
