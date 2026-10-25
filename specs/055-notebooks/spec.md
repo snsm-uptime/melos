@@ -12,9 +12,9 @@
 
 ## Summary
 
-Recipes are kept in notebooks, and there are two kinds. A **personal notebook** belongs to people: one owner, who created it, and members who join later by invite (S-056). Only they can see it, and it is never shown in a kitchen. A **kitchen notebook** belongs to one kitchen. Every member of that kitchen reads and writes it while they belong to the kitchen; its owner is the kitchen's owner (`kitchens.owner_id`), and it has no member list. A personal notebook reaches a kitchen only as a snapshot, an independent copy (S-034).
+Recipes are kept in notebooks, and there are two kinds. A **personal notebook** belongs to people: one owner, who created it, and members who join later by invite (S-056). Only they can see it, and it is never shown in a kitchen. A **kitchen notebook** belongs to one kitchen. Every member of that kitchen reads and writes it while they belong to the kitchen. It stores one owner, the member who created it, and it has no member list; if that owner leaves the kitchen, the kitchen's owner becomes its owner. A personal notebook reaches a kitchen only as a snapshot, an independent copy (S-034).
 
-This feature creates the notebook, membership and ingredient catalog data, with room for a snapshot's origin label. It gives every person a default personal notebook on first use. It gives every kitchen made from the kitchen page a kitchen notebook, and it gives a capture a notebook to go into: in a kitchen with no notebook (for example signup's "My kitchen"), the first saved capture creates one. It also provides the read routes that capture (S-016) and the Notebook tabs need: a person's notebooks, one notebook, and a kitchen's notebooks. It also removes the per-member kitchen hide, which archive already covers. It does not capture, save or show recipes. It does not invite people (S-056), make snapshots (S-034), pass ownership (S-057), or create, rename or delete notebooks by hand (S-058).
+This feature creates the notebook, membership and ingredient catalog data, with room for a snapshot's origin label. It gives every person a default personal notebook on first use. It gives every kitchen a kitchen notebook the first time a member opens the kitchen's notebooks, and it gives a capture a notebook to go into: in a kitchen with no notebook yet (for example signup's "My kitchen"), the first saved capture creates one. It also provides the read routes that capture (S-016) and the Notebook tabs need: a person's notebooks, one notebook, and a kitchen's notebooks. It also removes the per-member kitchen hide, which archive already covers. It does not capture, save or show recipes. It does not invite people (S-056), make snapshots (S-034), pass ownership (S-057), or create, rename or delete notebooks by hand (S-058).
 
 ## Clarifications
 
@@ -33,8 +33,8 @@ This feature creates the notebook, membership and ingredient catalog data, with 
 ### Session 2026-10-23 (snapshot model)
 
 - A personal notebook has exactly one owner and any number of members, recorded the same way (owner or member role). Nothing in this feature adds members; S-056 does.
-- A kitchen notebook belongs to one kitchen, which can have several. Access to it comes only from kitchen membership: there are no owner or member rows (its owner is the kitchen's owner, read from the kitchen), and leaving the kitchen ends access at once, with nothing copied.
-- A kitchen made through the kitchen service starts with one kitchen notebook, "{alias}'s ({kitchen name}) Notebook", named after its creator, made in the same step as the kitchen (decision of 13:52, renamed at 13:56). Signup's "My kitchen" and the kitchen made when an invitee signs up are made by the auth code, which is not changed, so they start with none.
+- (Owner part superseded on 2026-10-24: a kitchen notebook stores its owner, see FR-002.) A kitchen notebook belongs to one kitchen, which can have several. Access to it comes only from kitchen membership: there are no member rows, and leaving the kitchen ends access at once, with nothing copied.
+- (Superseded on 2026-10-24: a kitchen no longer starts with a notebook; see FR-008a.) A kitchen made through the kitchen service starts with one kitchen notebook, "{alias}'s ({kitchen name}) Notebook", named after its creator, made in the same step as the kitchen (decision of 13:52, renamed at 13:56). Signup's "My kitchen" and the kitchen made when an invitee signs up are made by the auth code, which is not changed, so they start with none.
 - A capture saved in a kitchen with no notebook creates "{alias}'s ({kitchen name}) Notebook", named after the capturing member, and saves into it. It is created when the capture is saved, never when a capture is opened (the 2026-10-23 answer to "when is it created" still holds). A draft made before it exists is matched against the member's personal catalog.
 - The capture picker in a kitchen offers the kitchen's notebooks. Outside a kitchen it offers the personal notebooks the person owns or is a member of.
 - A snapshot keeps an origin label (`source_notebook_id`), cleared when the original is deleted. This feature only stores the field; S-034 sets it and decides how it is shown.
@@ -43,15 +43,26 @@ This feature creates the notebook, membership and ingredient catalog data, with 
 
 ### Session 2026-10-23 (requirements-quality review)
 
-- Q: Does a kitchen notebook have an owner? → A: Yes, the kitchen's owner, read from `kitchens.owner_id`, not stored on the notebook. Access stays "any current kitchen member". Passing kitchen ownership to the longest-standing member when the owner leaves or is deleted, and deleting a kitchen with no people left, belong to the story that adds leaving, removal and user deletion (S-053/S-057). No creator is stored; the name says who made it (CHK004, CHK011).
+- Q: Does a kitchen notebook have an owner? → A: Yes. (Superseded on 2026-10-24: the owner is stored on the notebook, see FR-002.) Originally: the kitchen's owner, read from `kitchens.owner_id`. Access stays "any current kitchen member". Passing kitchen ownership to the longest-standing member when the owner leaves or is deleted, and deleting a kitchen with no people left, belong to the story that adds leaving, removal and user deletion (S-053/S-057). No creator is stored; the name says who made it (CHK004, CHK011).
 - Q: Which notebooks make up a person's catalog? → A: Unchanged: the personal notebooks they own or are a member of, never kitchen notebooks (CHK005).
-- Q: Should a kitchen made at signup start with a notebook? → A: No. Auth stays unchanged; "My kitchen" gets its notebook on the first saved capture, and S-016 shows an empty state in its Notebook tab until then (CHK009).
+- Q: Should a kitchen made at signup start with a notebook? → A: No. Auth stays unchanged; "My kitchen" gets its notebook when a member first opens its notebooks or saves a first capture (CHK009; the empty-state wording was replaced on 2026-10-24, see FR-008a).
 - Q: Keep `GET /notebooks/default` creating on first use? → A: Yes, the accepted risk stands (CHK035).
 
 - Q: When a capture's picked notebook is no longer among the options, is the save always refused? → A: No. A pick is checked only when there are several notebooks; with none the step creates one, with one it uses it, and a stale pick is ignored (CHK018, CHK019; replaces research R6's "refused even when the kitchen has none").
 - Q: Does a non-member capturing in an archived kitchen get the not-found answer? → A: Yes. Membership is checked first, then the archived state, so only members learn a kitchen is archived (CHK020).
 - Q: Does a kitchen notebook's answer say whether its kitchen is archived? → A: Yes, `kitchen_is_archived` on every notebook answer: true/false for a kitchen notebook, null for a personal one, so the ui can hide "add recipe" without another call (CHK014).
 - Q: Can a member capture into a kitchen they have hidden? → A: The per-member hide is removed in this feature (owner decision: archive already covers it). A kitchen membership is either there or not; archived is the only kitchen state notebooks look at (CHK022).
+
+### Session 2026-10-24 (checklist answers)
+
+- A kitchen notebook stores its owner (FR-002). When that owner leaves or is deleted, the kitchen's owner becomes the notebook's owner. `owner_alias` is null, shown as "unknown", only when neither the notebook nor the kitchen has an owner (CHK004).
+- Notebook names are at most 70 characters. Aliases are at most 20 characters and kitchen names at most 15, so a generated name is at most 49 characters (CHK006).
+- Kitchen notebook creation moved. A kitchen no longer gets a notebook when it is created, through the kitchen service or otherwise. The first time a member opens the kitchen's notebooks while it has none and is not archived, the notebook is created, named after that member and owned by them. A first saved capture creates it too, as before. The same rule applies to every kitchen (FR-008, FR-008a, FR-009).
+- Kitchen notebook owner: the member who created the notebook, stored on it. When that owner leaves the kitchen or is deleted, the kitchen's owner becomes the notebook's owner. Passing the kitchen itself to the longest-standing member, and deleting a kitchen with nobody left, are S-053/S-057 (Edge Cases).
+- The kitchen's first notebook is created by the system the first time a member opens its notebooks (FR-008a) or saves a first capture (FR-009). The owner does not treat that as a risk: it is the only moment that notebook is created, so the creation on that GET is accepted (CHK009, CHK035). The notebook's owner is stored on it: the member who created it. Each notebook's owner is recorded on the notebook itself, not derived from the kitchen (CHK004, CHK011).
+- The personal catalog is unchanged: every name in the personal notebooks a person owns or belongs to, including notebooks they only joined. A new notebook starts with a copy of its creator's catalog, so a kitchen notebook can carry names from a personal notebook its creator joined but the kitchen cannot see (CHK005).
+- The access value is `kitchen_member` everywhere in the spec, the same as the contract's wire value (CHK013).
+- The notebook answers in FR-014 and FR-015 list the exact fields of the contract, including the nulls (CHK012).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -74,21 +85,23 @@ A signed-in person with an alias opens their own Notebook tab. The first time, t
 
 ---
 
-### User Story 2 - A kitchen made from the kitchen page starts with a kitchen notebook (Priority: P1)
+### User Story 2 - A kitchen gets its kitchen notebook the first time a member opens it (Priority: P1)
 
-Ana creates the kitchen "Home" from the kitchen page. Home starts with one notebook, "ana's (Home) Notebook", that belongs to Home. When Ben joins Home, he reads and writes that notebook too, because he belongs to the kitchen.
+Ana creates the kitchen "Home" from the kitchen page. Home has no notebook yet. The first time Ana opens Home's notebooks, the app creates one, "ana's (Home) Notebook", that belongs to Home. When Ben joins Home and opens it, he gets that same notebook, because he belongs to the kitchen.
 
 **Why this priority**: A kitchen's recipe list, cart and chat are built from its notebooks, and a capture in a kitchen needs one to save into.
 
-**Independent Test**: As Ana, create a kitchen named "Home". Check that exactly one notebook exists for Home, named "ana's (Home) Notebook", owned by Ana as the kitchen's owner, with no membership rows, and that its catalog starts from Ana's personal catalog.
+**Independent Test**: As Ana, create a kitchen named "Home". Check that Home has no notebook. Then open its notebooks and check that exactly one exists, named "ana's (Home) Notebook", owned by Ana, with no membership rows, and that its catalog starts from Ana's personal catalog.
 
 **Acceptance Scenarios**:
 
-1. **Given** Ana, alias "ana", **When** she creates the kitchen "Home" from the kitchen page, **Then** Home has exactly one kitchen notebook, "ana's (Home) Notebook", whose owner is Ana as the kitchen's owner, with no membership rows.
-2. **Given** Ana's personal catalog holds "onion", **When** she creates "Home", **Then** the notebook's catalog starts with "onion".
-3. **Given** creating "Home" fails, **When** the failure happens after the kitchen was started, **Then** neither the kitchen nor its notebook exists.
-4. **Given** Ana signs up and gets "My kitchen", **When** signup finishes, **Then** "My kitchen" has no notebook, and signup works as before.
-5. **Given** Ana renames "Home" to "Casa", **When** she lists Home's notebooks, **Then** the notebook is still named "ana's (Home) Notebook".
+1. **Given** Ana, alias "ana", **When** she creates the kitchen "Home" from the kitchen page, **Then** Home has no notebook yet, and Ana is its only member.
+2. **Given** Home has no notebook and Ana's personal catalog holds "onion", **When** Ana opens Home's notebooks for the first time, **Then** "ana's (Home) Notebook" is created as Home's only notebook, its owner is Ana, it has no membership rows, and its catalog starts with "onion".
+3. **Given** Home has no notebook, **When** Ana and Ben open Home's notebooks at the same time, **Then** exactly one notebook is created, and both get it.
+4. **Given** creating "Home" fails, **Then** neither the kitchen nor its membership exists.
+5. **Given** Ana signs up and gets "My kitchen", **When** signup finishes, **Then** "My kitchen" has no notebook, and signup works as before; its first open creates one, as in scenario 2.
+6. **Given** Home's notebook exists, **When** Ana renames "Home" to "Casa" and lists Home's notebooks, **Then** the notebook is still named "ana's (Home) Notebook".
+7. **Given** Home is archived and has no notebook, **When** Ana opens its notebooks, **Then** the list is empty and nothing is created.
 
 ---
 
@@ -102,7 +115,7 @@ Ana saves a captured recipe. In a kitchen, it goes once into one of that kitchen
 
 **Acceptance Scenarios**:
 
-1. **Given** Ana is a member of "My kitchen", which has no notebook, **When** she saves her first capture there, **Then** a kitchen notebook "ana's (My kitchen) Notebook" is created for "My kitchen" and returned as the capture notebook.
+1. **Given** Ana is a member of "My kitchen", which has no notebook, **When** she saves her first capture there (or opens its notebooks first; see User Story 2), **Then** a kitchen notebook "ana's (My kitchen) Notebook" is created for "My kitchen" and returned as the capture notebook.
 2. **Given** "Home" has exactly one notebook, **When** Ben, a member, saves a capture there, **Then** that notebook is used and none is created.
 3. **Given** "Home" has two notebooks, **When** Ana saves a capture there, **Then** the recipe goes into the one she picked; a missing pick or a pick that is not one of Home's notebooks is refused, and nothing is created.
 4. **Given** "My kitchen" has no notebook, **When** two first captures by Ana and Ben arrive at the same time, **Then** exactly one notebook is created, and both use it.
@@ -127,19 +140,19 @@ Ana opens her own Notebook tab and sees the personal notebooks she owns or is a 
 **Acceptance Scenarios**:
 
 1. **Given** Ana owns "ana's Notebook" and is a member of Ben's personal notebook "Family", **When** she lists her notebooks, **Then** she gets both, each with its name, kind "personal", her access ("owner" or "member"), the owner's alias, and "ana's Notebook" marked as her default.
-2. **Given** Ana and Ben are members of "Home", which has "ana's (Home) Notebook", **When** Ben lists Home's notebooks, **Then** he gets that notebook with kind "kitchen" and his access "kitchen member"; **When** Ana lists them, her access is the same.
-3. **Given** the same setup, **When** Ben reads "ana's (Home) Notebook" by id, **Then** he gets it with access "kitchen member"; **When** he reads "ana's Notebook" by id, **Then** he gets the not-found answer.
+2. **Given** Ana and Ben are members of "Home", which has "ana's (Home) Notebook", **When** Ben lists Home's notebooks, **Then** he gets that notebook with kind "kitchen" and his access `kitchen_member`; **When** Ana lists them, her access is the same.
+3. **Given** the same setup, **When** Ben reads "ana's (Home) Notebook" by id, **Then** he gets it with access `kitchen_member`; **When** he reads "ana's Notebook" by id, **Then** he gets the not-found answer.
 4. **Given** Carl belongs to neither a personal notebook nor the kitchen of a kitchen notebook, **When** he reads it by id, **Then** he gets the same not-found answer as for a notebook id that does not exist (AC1a.2).
 5. **Given** Carl is not a member of "Home", **When** he lists Home's notebooks, **Then** he gets the same not-found answer as for a kitchen that does not exist.
 6. **Given** Ana belongs to "Home", **When** she lists her notebooks, **Then** Home's notebooks are not in the list; **When** anyone lists Home's notebooks, **Then** Ana's personal notebooks are not in it.
-7. **Given** "My kitchen" has no notebook yet, **When** a member lists its notebooks, **Then** the list is empty, not an error.
+7. **Given** "My kitchen" has no notebook yet, **When** a member lists its notebooks, **Then** the notebook is created (FR-008a) and is the only one listed.
 8. **Given** Ben has stopped being a member of "Home", **When** he reads or lists Home's notebooks, **Then** he gets the not-found answer, and Home's notebooks are unchanged (AC1.3).
 
 ---
 
 ### User Story 5 - The upgrade keeps existing data working (Priority: P2)
 
-The owner upgrades a database that already has users and kitchens. Nothing about the existing users and kitchens changes. Each person gets their default notebook the first time they open their Notebook tab, and each existing kitchen gets its notebook on its first saved capture. The upgrade can be undone and redone.
+The owner upgrades a database that already has users and kitchens. Nothing about the existing users and kitchens changes. Each person gets their default notebook the first time they open their Notebook tab, and each existing kitchen gets its notebook the first time a member opens its notebooks or saves a first capture there. The upgrade can be undone and redone.
 
 **Why this priority**: The deployed v0 has users and kitchens. The upgrade must not break them, but no notebook is needed before first use.
 
@@ -148,7 +161,7 @@ The owner upgrades a database that already has users and kitchens. Nothing about
 **Acceptance Scenarios**:
 
 1. **Given** a database with users and kitchens from the released version, **When** it is upgraded, **Then** the notebook, membership and ingredient data exist and are empty, every user's default notebook is empty (none yet), and the users and kitchens are unchanged.
-2. **Given** the upgraded database, **When** an existing user with an alias asks for their default notebook, **Then** it is created as in User Story 1; **When** a member saves the first capture in an existing kitchen, **Then** its notebook is created as in User Story 3.
+2. **Given** the upgraded database, **When** an existing user with an alias asks for their default notebook, **Then** it is created as in User Story 1; **When** a member opens an existing kitchen's notebooks or saves a first capture there, **Then** its notebook is created as in User Story 2 or 3.
 3. **Given** the upgraded database, **When** it is downgraded, **Then** the notebook data and the default notebook column are gone and the rest of the data is unchanged; **When** it is upgraded again, **Then** scenario 1 holds again.
 
 ---
@@ -158,12 +171,12 @@ The owner upgrades a database that already has users and kitchens. Nothing about
 - A signed-in user without an alias asks for any notebook route: they get the existing "alias required" answer, and no notebook is created. Kitchen creation already requires an alias, so a kitchen notebook always has one to be named after.
 - A person changes their alias, or a kitchen is renamed, after a notebook exists: the notebook keeps its original name.
 - Two notebooks may have the same name (for example when Ana creates two kitchens both named "Home"). Names are not unique.
-- A kitchen is archived: its members can still list and read its notebooks. No capture happens in it, so no notebook is created or used for one.
+- A kitchen is archived: its members can still list and read its notebooks. No capture happens in it, so no notebook is created or used for one, and opening its notebooks does not create one either.
 - A kitchen is deleted: its kitchen notebooks and their catalogs are deleted with it. Personal notebooks are not touched.
-- A kitchen notebook's creator later leaves the kitchen: nothing changes. The catalog seed was a one-time copy, and the notebook stays with the kitchen.
+- A kitchen notebook's owner leaves the kitchen: the kitchen's owner becomes the notebook's owner (FR-002). Nothing else changes. The catalog seed was a one-time copy, and the notebook stays with the kitchen.
 - A personal notebook is deleted: its memberships and catalog go with it. If it was someone's default, their default is cleared and recreated on the next visit. A snapshot made from it keeps its recipes, and its origin label is cleared.
 - A person stops being a member of a kitchen (no route does this today): they lose access to its notebooks at once, nothing is copied, and their personal notebooks are not touched.
-- A kitchen's owner leaves or is deleted (no route does this today): the story that adds it (S-053/S-057) passes kitchen ownership to the longest-standing member, which also makes them the owner of its notebooks, and deletes the kitchen when nobody is left. Until a new owner exists, a kitchen notebook's owner shows as "unknown".
+- A kitchen's owner leaves or is deleted (no route does this today): the story that adds it (S-053/S-057) passes kitchen ownership to the longest-standing member, and deletes the kitchen when nobody is left. A notebook owned by the person who left passes to the kitchen's owner (FR-002). Until a new owner exists, that owner shows as "unknown".
 - A user is deleted: their notebook memberships are removed. Passing their personal notebooks to another member is S-057, which must be built before or with any route that deletes a user (S-053 depends on it).
 - A personal notebook with no owner or two owners, a person listed twice in one notebook, a membership in a kitchen notebook, a kitchen notebook as anyone's default, and an origin label on a personal notebook are all rejected.
 - An invitee who signs up through a kitchen invite gets their own "My kitchen" from the auth code, with no notebook, like any signup; the inviting kitchen keeps its notebooks.
@@ -175,8 +188,8 @@ The owner upgrades a database that already has users and kitchens. Nothing about
 
 **Data**
 
-- **FR-001**: The system MUST store notebooks with a non-empty name, an optional kitchen reference, an optional origin reference and a creation date (PRD §1.6 `notebook`). A notebook with a kitchen reference is a kitchen notebook, and a kitchen can have several; one without is a personal notebook.
-- **FR-002**: The system MUST store personal notebook memberships: a person, a notebook, a role (owner or member) and a join date, one per person and notebook (PRD §1.6 `notebook_membership`). Every personal notebook MUST have exactly one owner. The one exception is a deleted owner: until ownership passing (S-057) exists, deleting a user (FR-006) can leave a notebook with no owner, and its answer then gives `owner_alias: null`, which the ui shows as "unknown". No route deletes a user today. A kitchen notebook MUST have no memberships.
+- **FR-001**: The system MUST store notebooks with a non-empty name of at most 70 characters, an optional kitchen reference, an optional owner reference (kitchen notebooks, FR-002), an optional origin reference and a creation date (PRD §1.6 `notebook`). A notebook with a kitchen reference is a kitchen notebook, and a kitchen can have several; one without is a personal notebook.
+- **FR-002**: The system MUST store personal notebook memberships: a person, a notebook, a role (owner or member) and a join date, one per person and notebook (PRD §1.6 `notebook_membership`). Every personal notebook MUST have exactly one owner. The one exception is a deleted owner: until ownership passing (S-057) exists, deleting a user (FR-006) can leave a notebook with no owner, and its answer then gives `owner_alias: null`, which the ui shows as "unknown". No route deletes a user today. A kitchen notebook MUST have no memberships. It MUST store one owner on the notebook: the member who created it (FR-008a, FR-009, or the uploader of a snapshot under S-034). When that owner leaves the kitchen or is deleted, the kitchen's owner becomes the notebook's owner. `owner_alias` is null, shown as "unknown", only when neither the notebook nor the kitchen has an owner.
 - **FR-003**: The origin reference (`source_notebook_id`) MUST be allowed only on a kitchen notebook, MUST point at another notebook, which MUST be a personal notebook owned by the person making the snapshot (PRD §1.5 flow H; S-034 enforces this when it sets the label), so the origin is never a kitchen notebook, and MUST be cleared when that notebook is deleted. No code in this feature sets it (S-034 does).
 - **FR-004**: The system MUST store each notebook's ingredient catalog as a set of unique normalized names per notebook, with a creation date (PRD §1.6 `ingredient`).
 - **FR-005**: The user MUST gain a nullable default notebook reference that can only point at a personal notebook the person owns and is cleared when that notebook is deleted. No other change to the user, signup, sign-in, alias claim or session is allowed.
@@ -185,18 +198,20 @@ The owner upgrades a database that already has users and kitchens. Nothing about
 **Creating notebooks**
 
 - **FR-007**: Asking for one's default notebook MUST return it, and when the person has none, MUST first create the personal notebook "{alias}'s Notebook" with the person as owner and record it as their default. Repeated and simultaneous requests MUST leave exactly one default notebook. The answer MUST have the same shape and status whether the notebook was created or not.
-- **FR-008**: Creating a kitchen through the kitchen service (api `POST /kitchens`, which the kitchen page calls through the BFF route `POST /api/kitchens`, and the dev seed, which uses the same service) MUST also create one kitchen notebook for it, "{alias}'s ({kitchen name}) Notebook", named after the creator, in the same step: the kitchen, the creator's kitchen membership, the notebook and its catalog seed (FR-012) are all kept or, on any failure, none of them is. Signup and the other auth flows MUST NOT be changed and create no notebook.
-- **FR-009**: The capture notebook step, called by the recipe save (S-019) when a capture is saved in a kitchen (the save calls it first, before the recipe is written), MUST look at the kitchen's notebooks. With none, it MUST create the kitchen notebook "{alias}'s ({kitchen name}) Notebook", named after the capturing member, and use it. With one, it MUST use it. With several, it MUST use the one the member picked, and MUST refuse a missing pick or a pick that is not among them. With none or one, a pick MUST be ignored, even when it is not among them. Simultaneous first requests MUST create exactly one notebook. Nothing MUST be created before the recipe save calls the step. A notebook the step creates MUST be kept even if the recipe save that called it then fails.
+- **FR-008**: Creating a kitchen through the kitchen service (api `POST /kitchens`, which the kitchen page calls through the BFF route `POST /api/kitchens`, and the dev seed, which uses the same service) MUST create the kitchen and the creator's kitchen membership in one step: if either fails, neither exists. It MUST NOT create a notebook; a kitchen made this way has none until FR-008a or FR-009 creates one. Signup and the other auth flows MUST NOT be changed and create no notebook.
+
+- **FR-008a**: Opening a kitchen's notebooks as a member (the kitchen's notebook list, FR-016) MUST create the kitchen's first notebook when the kitchen has none and is not archived. It is named "{alias}'s ({kitchen name}) Notebook" after the member who opens it, that member is stored as its owner (FR-002), and it MUST be returned. It uses the same lock, catalog seed (FR-012) and simultaneous-request rule as FR-009. In an archived kitchen with no notebook, the list MUST be empty and nothing MUST be created.
+- **FR-009**: The capture notebook step, called by the recipe save (S-019) when a capture is saved in a kitchen (the save calls it first, before the recipe is written), MUST look at the kitchen's notebooks. With none, it MUST create the kitchen notebook "{alias}'s ({kitchen name}) Notebook", named after the capturing member, store that member as its owner (FR-002), and use it. With one, it MUST use it. With several, it MUST use the one the member picked, and MUST refuse a missing pick or a pick that is not among them. With none or one, a pick MUST be ignored, even when it is not among them. Simultaneous first requests MUST create exactly one notebook. Nothing MUST be created before the recipe save calls the step. A notebook the step creates MUST be kept even if the recipe save that called it then fails.
 - **FR-010**: The capture notebook step in a kitchen MUST be available only to members of the kitchen. A missing kitchen and a non-member MUST get the same not-found answer. Membership MUST be checked before the archived state, so a non-member of an archived kitchen gets the not-found answer. In an archived kitchen it MUST refuse every member's capture, whether or not the kitchen has notebooks, and MUST create nothing (spec 016 FR-033).
 - **FR-011**: The capture notebook step, called by the recipe save (S-019) when a capture is saved outside a kitchen, MUST look at the personal notebooks the person owns or is a member of. With none, it MUST create and use their default notebook (FR-007). With one, it MUST use it. With several, it MUST use the one the person picked, and MUST refuse a missing pick or a pick that is not among them. With none or one, a pick MUST be ignored, even when it is not among them.
-- **FR-012**: A notebook created by this feature MUST start with its creator's personal catalog: every name in the catalogs of the personal notebooks the creator owns or is a member of, each name once. For a kitchen notebook, the creator is the person who created the kitchen (FR-008) or made the capture (FR-009).
+- **FR-012**: A notebook created by this feature MUST start with its creator's personal catalog: every name in the catalogs of the personal notebooks the creator owns or is a member of, each name once. For a kitchen notebook, the creator is the owner stored under FR-002: the member who first opened the kitchen's notebooks (FR-008a) or made the capture (FR-009).
 - **FR-013**: The capture notebook step is an internal step for the recipe save (S-019). It MUST NOT be reachable by a route in this feature.
 
 **Reading notebooks**
 
-- **FR-014**: A person MUST be able to list the personal notebooks they own or are a member of. Each item MUST give the notebook's id and name, its kind (personal), the person's access (owner or member), the owner's alias, and whether it is the person's default. Kitchen notebooks MUST NOT be in this list. Listing MUST NOT create a default notebook.
-- **FR-015**: A person MUST be able to read one notebook by id when it is a personal notebook they own or are a member of, or a kitchen notebook of a kitchen they are a member of. A personal notebook's answer MUST have the fields of FR-014; a kitchen notebook's answer MUST give its id, name, kind (kitchen), its kitchen's id, whether that kitchen is archived, the kitchen owner's alias as its owner, and the access "kitchen member"; a personal notebook's answer gives no archived state. Anyone else, and a missing notebook, MUST get the same not-found answer.
-- **FR-016**: A member of a kitchen MUST be able to list the kitchen's notebooks, each with the fields of a kitchen notebook in FR-015. Personal notebooks MUST NOT be in this list. A missing kitchen and a non-member MUST get the same not-found answer. Archived kitchens MUST still be listed for their members.
+- **FR-014**: A person MUST be able to list the personal notebooks they own or are a member of. Each item MUST give the notebook's `id`, `name`, `kind` (always `personal`), `access` (the person's role, `owner` or `member`), `owner_alias` (the owner's alias, or null when no owner remains, shown as "unknown"), `kitchen_id` (always null), `kitchen_is_archived` (always null) and `is_default` (true only on the person's default notebook). Kitchen notebooks MUST NOT be in this list. Listing MUST NOT create a default notebook.
+- **FR-015**: A person MUST be able to read one notebook by id when it is a personal notebook they own or are a member of, or a kitchen notebook of a kitchen they are a member of. A personal notebook's answer MUST have the fields of FR-014. A kitchen notebook's answer MUST give `id`, `name`, `kind` (`kitchen`), `access` (always `kitchen_member`), `owner_alias` (the stored owner's alias, FR-002, or null, shown as "unknown", when neither the notebook nor the kitchen has an owner), `kitchen_id`, `kitchen_is_archived` (true or false, read at request time) and `is_default` (always false). Anyone else, and a missing notebook, MUST get the same not-found answer.
+- **FR-016**: A member of a kitchen MUST be able to list the kitchen's notebooks, each with the fields of a kitchen notebook in FR-015. When the kitchen has no notebook, the list creates its first one (FR-008a). Personal notebooks MUST NOT be in this list. A missing kitchen and a non-member MUST get the same not-found answer. Archived kitchens MUST still be listed for their members.
 - **FR-017**: Access to a kitchen notebook MUST be decided only by current membership of its kitchen, at the moment of each request.
 - **FR-018**: The system MUST offer an internal reader that returns one notebook's catalog names, and one that returns a person's personal catalog (every name in the personal notebooks they own or are a member of), for capture (S-016) and the matcher (S-017). A draft made in a kitchen with no notebook yet uses the person's personal catalog. No route exposes these readers in this feature.
 - **FR-019**: Lists MUST be ordered by creation date, oldest first.
@@ -205,27 +220,27 @@ The owner upgrades a database that already has users and kitchens. Nothing about
 
 - **FR-020**: Every notebook route MUST require a signed-in user with an alias, as the kitchen routes do. A user without an alias MUST get the existing "alias required" answer and MUST NOT get a notebook.
 - **FR-021**: The UI MUST reach every notebook route through same-origin routes that forward the person's session, as the existing kitchen routes do.
-- **FR-022**: Code in this feature MUST NOT write recipe, step, category, source, invite or cart data, add notebook members, set an origin label, or create notebooks other than the default notebook (FR-007), the kitchen notebook made with a kitchen (FR-008) and the capture notebook (FR-009, FR-011).
+- **FR-022**: Code in this feature MUST NOT write recipe, step, category, source, invite or cart data, add notebook members, set an origin label, or create notebooks other than the default notebook (FR-007), a kitchen's first notebook (FR-008a) and the capture notebook (FR-009, FR-011).
 - **FR-023**: The upgrade MUST create the data in FR-001 to FR-005 empty, with no backfill, MUST NOT change existing users or kitchens, and MUST have a working downgrade. It replaces the unmerged notebook upgrade on this branch rather than adding to it.
 - **FR-024**: The per-member kitchen hide MUST be removed: the hide and unhide routes and their BFF routes, the hide control in the kitchen page, the hide services, port methods and error, and the `kitchen_memberships.is_hidden` column (dropped by an upgrade with a working downgrade that restores it as `false`). A member's archived view MUST then follow `kitchens.is_archived` alone. Archive and unarchive are not changed.
 
 ### Key Entities
 
-- **Notebook**: a container for recipes and an ingredient catalog. It has a name, set when it is created and not changed by this feature, and a creation date. A personal notebook has no kitchen. A kitchen notebook belongs to exactly one kitchen and may carry an origin label naming the notebook it was snapshotted from.
-- **Notebook membership**: a person's place in a personal notebook, as owner or member, with the date they joined. Exactly one owner per personal notebook; none for a kitchen notebook.
+- **Notebook**: a container for recipes and an ingredient catalog. It has a name, set when it is created and not changed by this feature, and a creation date. A personal notebook has no kitchen. A kitchen notebook belongs to exactly one kitchen, stores its owner (FR-002), and may carry an origin label naming the notebook it was snapshotted from.
+- **Notebook membership**: a person's place in a personal notebook, as owner or member, with the date they joined. Exactly one owner per personal notebook. A kitchen notebook has no membership rows.
 - **Ingredient (catalog entry)**: one normalized name in one notebook's catalog, unique within that notebook.
 - **Personal catalog** (derived, not stored): every name in the personal notebooks a person owns or is a member of.
 - **User (changed)**: gains a default notebook reference, empty until the person first asks for their default notebook and empty again after that notebook is deleted.
-- **Kitchen notebook owner** (derived, not stored): the owner of the notebook's kitchen.
-- **Kitchen (behavior changed)**: creating one from the kitchen page also creates its first kitchen notebook; deleting one deletes its notebooks.
+- **Kitchen notebook owner** (stored on the notebook, FR-002): the member who created it. It passes to the kitchen's owner when the owner leaves or is deleted; null (shown as "unknown") only when there is no kitchen owner either.
+- **Kitchen (behavior changed)**: deleting one deletes its notebooks. Its first kitchen notebook is created when a member first opens its notebooks or saves a first capture (FR-008a, FR-009).
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
 - **SC-001**: Repeated and simultaneous first requests for the default notebook, first personal captures, or a mix of both, leave exactly one default notebook for the person, personal, recorded as their default and owned by them, in 100% of automated runs.
-- **SC-002**: Every kitchen created from the kitchen page has exactly one notebook right after creation, named after its creator, and a failed creation leaves neither kitchen nor notebook, in 100% of automated runs.
-- **SC-003**: Repeated and simultaneous first captures in a kitchen with no notebook, by the same member or by different members, leave exactly one new kitchen notebook, used by all of them, in 100% of automated runs.
+- **SC-002**: Every kitchen has exactly one kitchen notebook once a member has opened its notebooks or saved a first capture, named after the member who did so first. Repeated and simultaneous first opens and captures leave exactly one, and a failed kitchen creation leaves no kitchen, in 100% of automated runs.
+- **SC-003**: Repeated and simultaneous first opens and first captures in a kitchen with no notebook, by the same member or by different members, leave exactly one new kitchen notebook, used by all of them, in 100% of automated runs.
 - **SC-004**: For every read route and the capture step, a person with no access gets an answer identical to the answer for a notebook or kitchen that does not exist, in 100% of automated runs.
 - **SC-005**: A personal notebook never appears in a kitchen's list or to a non-member, and a kitchen notebook never appears in a person's own list, in 100% of automated runs.
 - **SC-006**: A person who stops being a member of a kitchen gets the not-found answer for its notebooks on their next request, and the notebooks are unchanged, in 100% of automated runs.
@@ -239,18 +254,18 @@ The owner upgrades a database that already has users and kitchens. Nothing about
 
 - The PRD (§1.4, §1.5 flow H, §1.6, J1, J1a, Appendix A and D) and AGENTS.md describe the snapshot model. Where this spec and the PRD differ, the PRD wins and this spec is fixed.
 - Data names follow PRD §1.6 because S-016, S-034, S-056 and S-057 build on them. Route paths and answer shapes are set in the plan's contracts.
-- No backfill: existing users get their default notebook on first use (FR-007), and existing kitchens get a notebook on their first saved capture (FR-009). The unmerged 2026-10-22 upgrade on this branch is replaced, not stacked on.
-- The access label "kitchen member" and the kinds "personal" and "kitchen" are working names; the plan's contracts fix the exact values.
+- No backfill: existing users get their default notebook on first use (FR-007), and existing kitchens get a notebook the first time a member opens its notebooks (FR-008a) or saves a first capture (FR-009). The unmerged 2026-10-22 upgrade on this branch is replaced, not stacked on.
+- The access value `kitchen_member` and the kinds "personal" and "kitchen" are the contract's wire values; the plan's contracts fix them.
 - The capture picker's preselection (for example, the default notebook outside a kitchen) is S-016's choice; the step itself always needs a pick when there are several notebooks.
-- A kitchen notebook does not record who created it; only its name says so.
+- A kitchen notebook stores its owner (FR-002). Its name also says who opened it first, and the name does not change when the owner does.
 - No route today removes a kitchen member, lets one leave or deletes a user. Access rules (FR-017) make leaving work without further changes when such a route is built. The story that adds member removal or leaving (S-053 or later) must keep FR-017, and the story that adds user deletion (S-053) must come with or after S-057.
-- Until S-016 adds it, nothing shows a kitchen with no notebook; S-016's kitchen Notebook tab shows an empty state for it.
-- No backfill means an existing kitchen shows an empty notebook list until its first saved capture (US4 scenario 7). This is accepted for the deployed v0 users: the Notebook tab shows an empty state, and the first capture fixes it.
-- `GET /notebooks/default` creates data on first use. This is an accepted risk (research R4): it is idempotent, so a cross-site navigation can at most create the notebook the person would get on their next visit.
+- A kitchen's first notebook comes from its first open (FR-008a) or its first saved capture (FR-009). The only kitchen that can show an empty notebook list is an archived one that never had a notebook.
+- No backfill means an existing kitchen has no notebook until a member first opens its notebooks or saves a first capture. Nothing else is created for it.
+- `GET /notebooks/default` creates data on first use. This is an accepted risk (research R4): it is idempotent, so a cross-site navigation can at most create the notebook the person would get on their next visit. The kitchen notebook list (FR-008a) also creates the kitchen's first notebook on first open. The owner does not treat this as a risk: it is the only moment that notebook is created (2026-10-24).
 - The user-facing messages for `notebook_choice_required` (choose a notebook) and a stale pick (`notebook_not_found`) belong to S-019, which maps the step's errors on its save route; S-016's picker avoids them in normal use. Only the archived message is fixed here (spec 016 FR-033).
 - Spec 016 FR-001a ("also saved into the member's notebook", "a kitchen's shared notebook") conflicts with this model. It must be re-synced to this spec before S-016 is built (plan Follow-ups, backlog S-016 note).
-- No maximum notebook name length is set: names are built from an alias and a kitchen name, which already have limits. S-058 sets a limit when it adds renaming, and only a personal notebook's owner may rename it.
-- No response-time target is set for the capture step. The kitchen-row lock is taken only for the first capture in a kitchen with no notebook, and held until that notebook is committed (research R6, R8). A capture that arrives during that time waits for the lock, then uses the new notebook; it is never refused because of the race.
+- Notebook names are at most 70 characters (FR-001). Aliases are at most 20 characters and kitchen names at most 15, so a generated name is at most 49 characters and is never cut. Today the code allows 32 for aliases (`ALIAS_MAX_LENGTH`, `api/domain/alias.py`) and 200 for kitchen names (`KITCHEN_NAME_MAX_LENGTH`, `api/domain/kitchens.py`); lowering them is a separate change, not part of this feature. S-058 owns renaming, and only a personal notebook's owner may rename it.
+- No response-time target is set for the capture step. The kitchen-row lock is taken only for the first open or first capture in a kitchen with no notebook, and held until that notebook is committed (research R6, R8). A capture that arrives during that time waits for the lock, then uses the new notebook; it is never refused because of the race.
 - Unit and integration tests run in Compose against Postgres, as in spec 016.
 - This feature adds no env var and no library.
 - Out of scope: creating more personal notebooks, adding more kitchen notebooks, and renaming or deleting notebooks (S-058); notebook invites and members (S-056); snapshots and showing the origin label (S-034); ownership passing (S-057); copying recipes (S-047); writing catalog names other than the seed in FR-012 (S-017, S-019); recipes (S-016 onwards).

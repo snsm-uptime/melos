@@ -1,6 +1,6 @@
 # Implementation Plan: Personal and Kitchen Notebooks
 
-**Branch**: `s55-notebooks` (spec folder `055-notebooks`) | **Date**: 2026-10-23 (snapshot model) | **Spec**: [spec.md](./spec.md)
+**Branch**: `s55-notebooks` (spec folder `055-notebooks`) | **Date**: 2026-10-24 (snapshot model; stored kitchen-notebook owner; first-open creation) | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `specs/055-notebooks/spec.md` (re-specified 2026-10-23 for the snapshot model; replaces the kitchen-link plan of commit `3ff1601`)
 
@@ -8,18 +8,18 @@
 
 ## Summary
 
-There are two kinds of notebook. A personal notebook belongs to people: one owner and any number of members, recorded in `notebook_membership`. A kitchen notebook has a `kitchen_id`, no membership rows, and is readable by every member of that kitchen. This feature:
+There are two kinds of notebook. A personal notebook belongs to people: one owner and any number of members, recorded in `notebook_membership`. A kitchen notebook has a `kitchen_id`, one stored owner (`owner_user_id`, the member who created it), no membership rows, and is readable by every member of that kitchen. This feature:
 
-- adds the `notebook`, `notebook_membership` and `ingredient` tables and `users.default_notebook_id`, with room for a snapshot's origin label (`notebook.source_notebook_id`, unset until S-034);
+- adds the `notebook`, `notebook_membership` and `ingredient` tables and `users.default_notebook_id`, with `notebook.owner_user_id` for kitchen notebooks and room for a snapshot's origin label (`notebook.source_notebook_id`, unset until S-034);
 - creates a person's default personal notebook on first use;
-- makes the kitchen service create a named kitchen notebook with every new kitchen;
+- gives a kitchen its named kitchen notebook the first time a member opens its notebooks or saves a first capture, not when the kitchen is made;
 - adds the in-process capture notebook step that S-019's save calls, for a kitchen (use, pick, or create one) and outside a kitchen (use, pick, or create the default);
 - exposes four read routes and their ui BFF routes: my notebooks, my default notebook, one notebook, and a kitchen's notebooks.
 
 Technical approach:
 
 - **Domain**: pure rules in `domain/notebook.py` (the `Notebook` invariants, names, the access rule, the capture choice).
-- **Application**: services in `application/notebooks.py` over the `NotebookRepository`, `IngredientCatalog`, `UserDefaultNotebook`, `TransactionCommitter`, `PreferencesRepository` and `KitchenRepository` ports. `CreateOwnedKitchenService` names and seeds the kitchen notebook.
+- **Application**: services in `application/notebooks.py` over the `NotebookRepository`, `IngredientCatalog`, `UserDefaultNotebook`, `TransactionCommitter`, `PreferencesRepository` and `KitchenRepository` ports. `ensure_kitchen_notebook` creates a kitchen's first notebook for the first open and the first capture (R14). `CreateOwnedKitchenService` creates no notebook (R5).
 - **Persistence**: SQLAlchemy adapters. A row lock on `users` serializes the first default notebook; a `FOR NO KEY UPDATE` lock on the `kitchens` row serializes the first capture in a kitchen.
 - **Migration**: a fresh Alembic revision `0003_personal_kitchen_notebooks` replaces the unmerged `0003_notebooks_ingredients`, with no backfill.
 - **Unchanged**: signup and the auth routes.
@@ -30,7 +30,7 @@ Technical approach:
 
 **Primary Dependencies**: FastAPI, SQLAlchemy 2, Alembic, Pydantic (api); Next.js route handlers (ui). No new library.
 
-**Storage**: PostgreSQL 16 (pgvector image). Three new tables (`notebook`, `notebook_membership`, `ingredient`) and one new column (`users.default_notebook_id`). See [data-model.md](./data-model.md).
+**Storage**: PostgreSQL 16 (pgvector image). Three new tables (`notebook`, `notebook_membership`, `ingredient`) and two new columns (`users.default_notebook_id`, `notebook.owner_user_id`). See [data-model.md](./data-model.md).
 
 **Testing**: pytest (domain pure, application against fake ports, integration in the Compose test overlay against Postgres); vitest for the BFF routes
 
@@ -55,7 +55,7 @@ Technical approach:
 
 | Principle | Check | Result |
 |---|---|---|
-| §1 Simplicity and reuse: auth layer immutable | Signup, sign-in, alias claim and session code unchanged. "My kitchen" gets its notebook from the capture step, not from signup. The only change to the user is the nullable `default_notebook_id`, approved 2026-10-22 (spec Clarifications). | Pass (approved exception, Complexity Tracking) |
+| §1 Simplicity and reuse: auth layer immutable | Signup, sign-in, alias claim and session code unchanged. "My kitchen" gets its notebook from its first open or first capture, not from signup. The only change to the user is the nullable `default_notebook_id`, approved 2026-10-22 (spec Clarifications). | Pass (approved exception, Complexity Tracking) |
 | §1 Four services, external calls through ports | No service added. No external call. | Pass |
 | §2 Stack stability | No library, no env var. Schema change through Alembic. | Pass |
 | §3 Hexagonal | `domain/notebook.py` imports only `domain.errors`. Access is decided by `notebook_access` (domain) in `application/notebooks.py`; repositories return facts (research R10). Kitchen access goes through `AuthorizeKitchenAccessService` (`read_kitchen`). The early commit goes through the `TransactionCommitter` port (R8). | Pass |
@@ -69,7 +69,7 @@ Technical approach:
 **Post-design re-check (after Phase 1)**: unchanged, all pass. Points checked:
 
 - The kitchen-row lock (`FOR NO KEY UPDATE`) is a new query in the notebook adapter. It does not change kitchen or auth code paths, and it does not block foreign-key inserts that reference the kitchen (research R6).
-- `CreateOwnedKitchenService` gains two ports (preferences, catalog). Kitchens are not part of the auth layer.
+- `CreateOwnedKitchenService` gains no ports: kitchen creation goes back to its pre-S-055 form (R5). Kitchens are not part of the auth layer.
 - The `TransactionCommitter` port is the first explicit commit outside `get_db`. It runs only when the capture step has created a notebook, before the save writes anything (R8).
 
 ## Project Structure
@@ -87,7 +87,7 @@ specs/055-notebooks/
 ├── checklists/
 │   ├── requirements.md          # spec quality (passes)
 │   └── requirements-quality.md  # PR review gate (36 items)
-└── tasks.md             # Phase 2: 40 tasks (/speckit-tasks)
+└── tasks.md             # Phase 2: task list (/speckit-tasks)
 ```
 
 ### Source Code (repository root)
@@ -95,7 +95,7 @@ specs/055-notebooks/
 ```text
 api/
 ├── domain/
-│   ├── notebook.py                      # REWORK: Notebook(id, name, kitchen_id?, source_notebook_id?),
+│   ├── notebook.py                      # REWORK: Notebook(id, name, kitchen_id?, source_notebook_id?, owner_user_id?),
 │   │                                    #   kind; default_notebook_name, kitchen_notebook_name,
 │   │                                    #   notebook_access, choose_capture_notebook
 │   └── errors.py                        # InvalidNotebookOwnerError → InvalidNotebookError;
@@ -108,9 +108,9 @@ api/
 │   │                                    #   kept; + TransactionCommitter
 │   ├── notebooks.py                     # REWORK: ListMyNotebooks, GetDefaultNotebook, GetNotebook,
 │   │                                    #   ListKitchenNotebooks, ResolveCaptureNotebook; NotebookView
-│   └── kitchens.py                      # CreateOwnedKitchenService: named kitchen notebook + catalog seed
+│   └── kitchens.py                      # CreateOwnedKitchenService: kitchen and membership only (R5)
 ├── adapters/persistence/
-│   ├── models.py                        # NotebookModel (drop user_id, kitchen_id not unique, name not null,
+│   ├── models.py                        # NotebookModel (drop user_id, kitchen_id not unique, name not null, + owner_user_id,
 │   │                                    #   + source_notebook_id, new checks), + NotebookMembershipModel;
 │   │                                    #   IngredientModel and users.default_notebook_id kept
 │   ├── notebooks.py                     # REWORK: SqlAlchemyNotebookRepository; SqlAlchemyUserDefaultNotebook
@@ -122,16 +122,16 @@ api/
 ├── api/
 │   ├── routes/notebooks.py              # REWORK: GET /notebooks, /notebooks/default,
 │   │                                    #   /notebooks/kitchens/{kitchen_id}, /notebooks/{notebook_id}
-│   ├── routes/kitchens.py               # wire the preferences and catalog adapters into kitchen creation
+│   ├── routes/kitchens.py               # unchanged (R5)
 │   ├── schemas/notebooks.py             # NotebookResponse, NotebooksResponse
 │   └── app.py                           # unchanged (router already behind require_user_alias)
-├── scripts/seed_dev_user.py             # new kitchen-service wiring; skip the kitchen without an alias
+├── scripts/seed_dev_user.py             # revert the notebook wiring of the kitchen service (R5)
 └── tests/
     ├── test_notebook_domain.py          # REWORK
     ├── test_notebooks_application.py    # REWORK (fake ports)
     ├── test_notebook_integration.py     # REWORK (routes, capture step, cascades, concurrency, leaving)
-    ├── test_kitchens_domain.py          # kitchen creation fakes: preferences and catalog
-    └── test_kitchens_integration.py     # a new kitchen has its named notebook; failed creation leaves neither
+    ├── test_kitchens_domain.py          # kitchen creation makes no notebook
+    └── test_kitchens_integration.py     # a new kitchen has no notebook; a failed creation leaves neither
 
 ui/app/api/notebooks/
 ├── route.ts                             # NEW  GET /api/notebooks
@@ -155,7 +155,8 @@ ui/app/api/notebooks.bff.test.ts         # REWORK
   - the BFF forwarding pattern (copy `kitchens/[kitchenId]/route.ts` for the three new BFF routes).
 - **Kept with changes**:
   - `GetDefaultNotebookService`: the lock and re-check stay. It adds the owner membership and the catalog seed, and loses the `user_id` path argument and the owner-only branch.
-  - `CreateOwnedKitchenService`: it still creates a notebook with the kitchen, now named, seeded, and without the `unique(kitchen_id)` conflict skip.
+  - `CreateOwnedKitchenService`: reverted to create no notebook (R5). The branch's notebook insert and its extra argument go.
+  - `ensure_kitchen_notebook` (R14) is new. `ResolveCaptureNotebookService` and the kitchen list service both use it.
   - `default_notebook_name`, `NotebookNotFoundError`, `names_for_notebook`.
 - **Removed**:
   - `notebook.user_id`, its index and `ck_notebook_one_owner`; `unique(kitchen_id)`;
@@ -168,9 +169,9 @@ ui/app/api/notebooks.bff.test.ts         # REWORK
 1. **Domain**: rework `domain/notebook.py` and the errors, with domain tests first.
 2. **Schema**: models plus migration `0003_personal_kitchen_notebooks`, checked as quickstart §2 (upgrade, downgrade, upgrade).
 3. **Ports and adapters**: repository facts queries, personal and kitchen candidate ids, the kitchen-row lock, the committer, the catalog seed and readers.
-4. **Application services**, tested against fakes. `ResolveCaptureNotebookService` reuses the default-notebook creation for the personal case (R7).
-5. **Kitchen creation**: `CreateOwnedKitchenService`, `routes/kitchens.py`, `seed_dev_user.py` and the kitchen tests.
-6. **Routes and schemas**, then integration tests: simultaneous first calls (SC-001, SC-003), kitchen deletion (SC-008), leaving (SC-006), failed save (FR-009).
+4. **Application services**, tested against fakes. `ResolveCaptureNotebookService` reuses the default-notebook creation for the personal case (R7) and `ensure_kitchen_notebook` for a kitchen (R14).
+5. **Kitchen creation**: revert the notebook creation in `CreateOwnedKitchenService`, `seed_dev_user.py` and the kitchen tests (R5). Then the first open: `ListKitchenNotebooksService` with `ensure_kitchen_notebook` (R14).
+6. **Routes and schemas**, then integration tests: simultaneous first calls (SC-001), simultaneous first opens and first captures (SC-003), kitchen deletion (SC-008), leaving (SC-006), failed save (FR-009).
 7. **UI BFF routes** and vitest.
 8. **Docs**:
    - backlog S-055 verification note;
@@ -180,6 +181,7 @@ ui/app/api/notebooks.bff.test.ts         # REWORK
 ## Follow-ups outside this feature
 
 - **Spec 016** (S-016): FR-001a and the capture routes must be re-synced to the snapshot model before S-016 is built (backlog S-016 note already says so).
+- **S-057**: passes a kitchen notebook's owner (`owner_user_id`) to the kitchen's owner when the owner leaves or is deleted. Built with the leave and user-deletion routes (S-053).
 - **S-034**: sets `source_notebook_id` and adds it to the notebook answer.
 - **S-058**: creating more notebooks, renaming and deleting them. A deleted personal notebook clears `users.default_notebook_id` through the existing cascade.
 

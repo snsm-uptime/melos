@@ -1,25 +1,28 @@
 # Research: Personal and Kitchen Notebooks
 
-**Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md) | **Date**: 2026-10-23 (snapshot model)
+**Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md) | **Date**: 2026-10-24 (snapshot model; revised the same day, see below)
 
 The Technical Context has no NEEDS CLARIFICATION items: every open point was decided on 2026-10-23 (`dev/memory/231026.md`, 13:52 to 14:08). This file records the design decisions for the snapshot model, how they change the code built for the 2026-10-22 model on `s55-notebooks`, and the alternatives that were rejected. It replaces the research for the kitchen-link model (R1 to R11 of commit `3ff1601`).
+
+Revised 2026-10-24 (owner decisions on the checklist items): a kitchen notebook stores its owner, the member who created it (R1, R2, R10); a kitchen's first notebook is created on its first open or its first capture, not with the kitchen (R5, R14); the personal catalog keeps owned and joined notebooks (R9).
 
 ## R1. One `notebook` table for both kinds
 
 - **Decision**: `notebook(id, name, kitchen_id?, source_notebook_id?, created_at)`.
   - `name` is `NOT NULL`, with a check that it is not blank. Kitchen notebooks now have names ("{alias}'s ({kitchen name}) Notebook").
   - `kitchen_id` is nullable, indexed, **not unique**, `ON DELETE CASCADE`. Set: a kitchen notebook. Null: a personal notebook.
+  - `owner_user_id`: nullable, FK `users.id` `ON DELETE SET NULL`, indexed. It stores the owner of a kitchen notebook only, a check keeps it off personal notebooks, and personal notebooks keep their owner row (R2).
   - `notebook.user_id`, its index and `ck_notebook_one_owner` are removed.
-- **Rationale**: PRD §1.6. A kitchen can have several notebooks (made with the kitchen, by capture, by snapshot, by S-058), so the 2026-10-22 `unique(kitchen_id)` goes. Deleting a kitchen deletes its notebooks through the cascade (FR-006, SC-008). One table keeps every recipe pointing at `notebook_id`, as AGENTS.md requires.
-- **Alternatives considered**: two tables, `personal_notebook` and `kitchen_notebook` (recipes and ingredients would need two foreign keys or a polymorphic id); keep `name` nullable and show the kitchen's name (the 2026-10-22 rule, replaced by named kitchen notebooks).
+- **Rationale**: PRD §1.6. A kitchen notebook has no membership rows (FR-002), but it needs one owner who can change: the member who created it, passed to the kitchen's owner when they leave. The owner is therefore a column, and S-057 passes it with one `UPDATE`. A kitchen can have several notebooks (made by first open, by capture, by snapshot, by S-058), so the 2026-10-22 `unique(kitchen_id)` goes. Deleting a kitchen deletes its notebooks through the cascade (FR-006, SC-008). One table keeps every recipe pointing at `notebook_id`, as AGENTS.md requires.
+- **Alternatives considered**: two tables, `personal_notebook` and `kitchen_notebook` (recipes and ingredients would need two foreign keys or a polymorphic id); keep `name` nullable and show the kitchen's name (the 2026-10-22 rule, replaced by named kitchen notebooks); show the kitchen's owner as the notebook's owner with nothing stored (the 2026-10-23 model, withdrawn on 2026-10-24: the notebook belongs to the member who created it, and passes to the kitchen's owner only when they leave).
 
 ## R2. Personal notebook membership
 
 - **Decision**: `notebook_membership(notebook_id, user_id, role, created_at)`, `pk(notebook_id, user_id)`, `role in ('owner', 'member')`, index on `user_id`, and a partial unique index `uq_notebook_one_owner` on `(notebook_id) WHERE role = 'owner'`. Both foreign keys `ON DELETE CASCADE`.
   - "Exactly one owner" (FR-002) is kept by the application: a personal notebook and its owner row are inserted in the same transaction, and the index stops a second owner.
-  - "A kitchen notebook has no memberships" is an application rule: only the default-notebook path writes membership rows, and it writes them for a personal notebook it has just created. Tests check that kitchen creation and the capture step write none.
+  - "A kitchen notebook has no memberships" is an application rule: only the default-notebook path writes membership rows, and it writes them for a personal notebook it has just created. Tests check that kitchen creation, the first open (R14) and the capture step write none.
 - **Rationale**: PRD §1.6 and flow H. Owner and members are one fact with two roles, so "the notebooks I own or belong to" is one query (FR-014), and S-056 adds members with no schema change. `created_at` orders "longest-standing member" for S-057.
-- **Alternatives considered**: a trigger or a composite foreign key that checks the notebook's kind (no trigger exists in the schema; the only writer is this feature's application code); keep an owner column on `notebook` (two places to check access, and S-057 would update both).
+- **Alternatives considered**: a trigger or a composite foreign key that checks the notebook's kind (no trigger exists in the schema; the only writer is this feature's application code); an owner column for personal notebooks too (their owner would be stored twice, in the column and in the owner row, and S-057 would update both).
 
 ## R3. The origin label column
 
@@ -37,14 +40,14 @@ The Technical Context has no NEEDS CLARIFICATION items: every open point was dec
 - **Rationale**: The lock pattern is built and tested (T002, 2026-10-22): the loser of a race waits on the lock and then finds the default set, so it creates nothing (SC-001). A GET that creates data on first use was accepted on 2026-10-22: it is idempotent, so a cross-site navigation can at most create the notebook the person would get on their next visit anyway.
 - **Alternatives considered**: create the default at signup (changes the auth routes, constitution §1); `POST /notebooks/default` (the Notebook tab would need two calls, for no gain given the idempotence).
 
-## R5. The kitchen notebook made with a kitchen (FR-008, FR-012)
+## R5. Kitchen creation makes no notebook (FR-008, FR-008a)
 
-- **Decision**: `CreateOwnedKitchenService` keeps its `NotebookRepository` dependency and gains `PreferencesRepository` (the creator's alias) and `IngredientCatalog` (the seed). After `create_owned_kitchen`, in the same session, it inserts the kitchen notebook named `kitchen_notebook_name(alias, kitchen name)` with `kitchen_id` set, and seeds its catalog from the creator's personal catalog. No membership rows. A creator without an alias gets `AliasRequiredError`; the kitchen routes already require an alias (`require_user_alias`), so this is a guard, not a new answer.
+- **Decision**: `CreateOwnedKitchenService` goes back to its pre-S-055 form: it creates the kitchen and the creator's kitchen membership, and no notebook. The branch's additions go with it: the notebook repository argument, the notebook insert and the seed. The kitchen's first notebook is created by R14, on the first open or the first capture.
   - **Atomicity**: `get_db` commits once at the end of the request and rolls back on any exception, so the kitchen, its membership and its notebook are committed together or not at all (SC-002).
-  - **Dev seed** (`api/scripts/seed_dev_user.py`): it creates the shared kitchen only when `SEED_DEV_USER_ALIAS` is set, and otherwise logs a warning and skips the kitchen.
+  - **Dev seed** (`api/scripts/seed_dev_user.py`): the branch's notebook wiring is reverted. No alias skip is needed, because kitchen creation names no notebook.
   - **Signup**: `create_user_with_personal_kitchen` and the invite signup path are not touched. "My kitchen" starts with no notebook (spec US2 scenario 4).
-- **Rationale**: Decision of 2026-10-23 13:52 (kitchen service creates the notebook in the same creation process) and PRD J1a. The 2026-10-22 code already inserts a notebook here, so the change is the name, the seed and the alias lookup.
-- **Alternatives considered**: create the kitchen notebook lazily on the kitchen's first read (the 2026-10-22 FR-001a, replaced: a GET would create kitchen data, and it hides a kitchen with no notebook from the capture step); name it after the kitchen only (decided against on 2026-10-23, Appendix D).
+- **Rationale**: Owner decision of 2026-10-24 (checklist item 9, option C): the system creates the kitchen's notebook at the one moment it is first needed, the same for every kitchen however it was made. This replaces the 2026-10-23 13:52 decision that kitchen creation makes it. Signup stays unchanged (FR-005), so "My kitchen" gets its notebook on its first open or first capture like any other kitchen.
+- **Alternatives considered**: keep the notebook made with the kitchen (the 2026-10-23 13:52 decision, replaced); create it at signup for "My kitchen" (option B of 2026-10-24, rejected: it changes the auth routes); create the kitchen notebook on the kitchen's first read without the lock (two members could make two notebooks); name it after the kitchen only (decided against on 2026-10-23, Appendix D).
 
 ## R6. The capture notebook step in a kitchen (FR-009, FR-010, FR-013)
 
@@ -56,7 +59,7 @@ The Technical Context has no NEEDS CLARIFICATION items: every open point was dec
      - one candidate → use it (any pick ignored);
      - several, a pick → it must be a candidate, otherwise `NotebookNotFoundError`;
      - several, no pick → `NotebookChoiceRequiredError(candidates)`.
-  4. To create: lock the kitchen row (`SELECT … FOR NO KEY UPDATE`), read the candidates again, and apply the rule again. If still none, insert "{alias}'s ({kitchen name}) Notebook" for the capturing member with `kitchen_id` set, seed its catalog from their personal catalog, and commit (R8).
+  4. To create: `ensure_kitchen_notebook` (R14) with the capturing member as the owner, then commit (R8).
 - **Rationale**:
   - Any two members can make the first capture at the same moment (spec US3 scenario 4), so the lock must cover the kitchen, not one member. `FOR NO KEY UPDATE` serializes the capture steps for one kitchen without blocking the `FOR KEY SHARE` locks that foreign-key inserts elsewhere take (a new membership, a cart row), and without blocking reads.
   - The fast path takes no lock: once a kitchen has a notebook, every capture is a plain read.
@@ -84,12 +87,13 @@ The Technical Context has no NEEDS CLARIFICATION items: every open point was dec
   - `seed_from_person(notebook_id, user_id)`: one `INSERT … SELECT DISTINCT … ON CONFLICT DO NOTHING` from the same set.
   The seed runs right after the new notebook is inserted, before any owner membership exists, so the new (empty) notebook is never part of its own source.
 - **Rationale**: PRD §1.6 design choices: "a person's catalog is every name in the personal notebooks they belong to"; a personal notebook starts from its owner's catalog; a kitchen notebook from its creator's. Names are already normalized and unique per notebook, so a set union needs no matcher. The matcher (S-017) is needed only when people's catalogs meet (S-056).
-- **Alternatives considered**: include the person's kitchen notebooks in their catalog (the kitchen-link plan's rule; the PRD now says personal notebooks only, and it would copy one household's names into another kitchen); start every catalog empty (against flow H, and a first capture would propose every ingredient as new).
+- **Alternatives considered**: include the person's kitchen notebooks in their catalog (the kitchen-link plan's rule; the PRD now says personal notebooks only, and it would copy one household's names into another kitchen); start every catalog empty (against flow H, and a first capture would propose every ingredient as new); owned notebooks only (option 2 of 2026-10-24: changes the PRD wording first, and a joined notebook's names stop helping the owner's captures); seed from the creator's default notebook only (option 3 of 2026-10-24: two rules, one for the seed and one for matching).
+- **Decision on 2026-10-24** (checklist item 5, option 1): the set stays "owned or joined". Consequence, accepted: a kitchen notebook can carry names from a personal notebook its owner joined but the kitchen cannot see. The names are ingredient names, not recipes.
 
 ## R10. Access and the read model (FR-014 to FR-017)
 
 - **Decision**:
-  - **Facts from the repository**: for each notebook, its fields, the caller's membership role (if any), the owner's alias (for a kitchen notebook, the kitchen owner's, joined through `kitchens.owner_id`), whether it is the caller's default, and, for a kitchen notebook, whether the caller is a member of its kitchen. One query per route, with left joins.
+  - **Facts from the repository**: for each notebook, its fields, the caller's membership role (if any), the owner's alias (for a kitchen notebook, the stored owner's, or the kitchen owner's when none is stored, joined through `notebook.owner_user_id` and `kitchens.owner_id`), whether it is the caller's default, and, for a kitchen notebook, whether the caller is a member of its kitchen. One query per route, with left joins.
   - **Rule in the domain**: `notebook_access(kind, role, in_kitchen)` returns `owner`, `member`, `kitchen_member` or `None`. A personal notebook gives its role, and kitchen membership never counts. A kitchen notebook gives `kitchen_member` when the caller belongs to its kitchen, and a membership row never counts. `None` becomes `NotebookNotFoundError` (404).
   - **Lists**: "my notebooks" reads only personal notebooks with the caller's membership, and creates nothing (FR-014). "A kitchen's notebooks" first authorizes the kitchen (`read_kitchen`, 404), then reads the notebooks with that `kitchen_id`. Archived kitchens are still readable by their members. Every list is ordered by `created_at, id`.
   - **Leaving**: access is computed from the kitchen membership on every request, so a member who leaves or is removed loses access at once and nothing is copied (FR-017, SC-006, AC1.3). No code runs on leave.
@@ -101,7 +105,7 @@ The Technical Context has no NEEDS CLARIFICATION items: every open point was dec
 - **Decision**: Four GET routes in the `notebooks` router, which already sits behind `require_user_alias`:
   - `GET /notebooks`: my personal notebooks;
   - `GET /notebooks/default`: my default notebook, created on first use;
-  - `GET /notebooks/kitchens/{kitchen_id}`: a kitchen's notebooks;
+  - `GET /notebooks/kitchens/{kitchen_id}`: a kitchen's notebooks, creating the first one for a kitchen that has none (R14);
   - `GET /notebooks/{notebook_id}`: one notebook.
 
   One shape for every notebook: `{ id, name, kind, access, owner_alias, kitchen_id, is_default }`, with `kind: "personal" | "kitchen"` and `access: "owner" | "member" | "kitchen_member"`. Lists are `{ "notebooks": [...] }`, like `{ "kitchens": [...] }`. The routes `/notebooks/members/{user_id}[/{notebook_id}]` and their BFF routes are removed. The ui BFF routes mirror the paths under `/api/notebooks`. See [contracts/notebooks-api.md](./contracts/notebooks-api.md).
@@ -111,10 +115,10 @@ The Technical Context has no NEEDS CLARIFICATION items: every open point was dec
 ## R12. The migration and the 2026-10-22 code
 
 - **Decision**:
-  - **Migration**: delete `0003_notebooks_ingredients` and add `0003_personal_kitchen_notebooks` (down revision `0002_pgvector_kitchen_lang`). It creates `notebook`, `notebook_membership` and `ingredient`, adds `users.default_notebook_id`, and backfills nothing. The downgrade drops them in reverse order.
+  - **Migration**: delete `0003_notebooks_ingredients` and add `0003_personal_kitchen_notebooks` (down revision `0002_pgvector_kitchen_lang`). It creates `notebook` (with `owner_user_id`), `notebook_membership` and `ingredient`, adds `users.default_notebook_id`, and backfills nothing. The downgrade drops them in reverse order.
   - **Dev databases** that ran the old `0003` must run `alembic downgrade 0002_pgvector_kitchen_lang` with the old file still present (any commit up to `3ff1601`), or be recreated (quickstart prerequisites). Production is at `0002`.
   - **Code**: rework in place (plan "Reuse"). `GetKitchenNotebookService`, `GetMemberNotebookService`, their responses and the `members` routes go.
-- **Rationale**: The branch is not merged and production is at `0002` (backlog S-055 verification note). A new revision id makes a dev database at the old `0003` fail loudly ("can't locate revision") instead of believing it is current. Without a backfill, existing users get their default notebook on first use and existing kitchens on their first capture (FR-023, spec US5).
+- **Rationale**: The branch is not merged and production is at `0002` (backlog S-055 verification note). A new revision id makes a dev database at the old `0003` fail loudly ("can't locate revision") instead of believing it is current. Without a backfill, existing users get their default notebook on first use and existing kitchens on their first open or first capture (FR-023, spec US5).
 - **Alternatives considered**: keep the old revision id and rewrite the file (a dev database at the old `0003` would silently keep the old schema); a `0004` that reshapes the old `0003` (a dead intermediate schema in history); backfill a kitchen notebook per existing kitchen (it would need a creator alias, and the capture step already covers kitchens with none).
 
 ## R13. Errors
@@ -125,3 +129,14 @@ The Technical Context has no NEEDS CLARIFICATION items: every open point was dec
   - **New**: `KitchenArchivedError` (code `kitchen_archived`, message "This kitchen is archived, so recipes can't be added.", from spec 016 FR-033) and `NotebookChoiceRequiredError` (code `notebook_choice_required`, carries the candidate ids). Only the capture step raises them, and it has no route, so this feature adds no HTTP mapping; S-019 maps them when its save route lands.
 - **Rationale**: Naming the step's errors now gives S-019 a stable contract, and the archived message is already fixed by spec 016.
 - **Alternatives considered**: return a result union from the step (every other use case signals failure with domain errors).
+
+## R14. A kitchen's first notebook: the first open and the first capture (FR-008a, FR-009, FR-012)
+
+- **Decision**: One helper in `application/notebooks.py`, `ensure_kitchen_notebook(kitchen, actor_user_id, alias) -> tuple[UUID, bool]` (id, created), used by two callers:
+  1. `ListKitchenNotebooksService` (`GET /notebooks/kitchens/{kitchen_id}`), for a member. It authorizes with `read_kitchen` (404 for a missing kitchen and for a non-member). If the kitchen has notebooks, it lists them. If it has none and is archived, it lists nothing and creates nothing. If it has none and is not archived, it calls the helper with the caller as owner, then lists the result.
+  2. `ResolveCaptureNotebookService` in a kitchen with none (R6 step 4). It then commits (R8).
+- **The helper**, when the kitchen has none: `lock_kitchen`, read the kitchen's notebooks again, and if still none insert `Notebook(name=kitchen_notebook_name(alias, kitchen.name), kitchen_id, owner_user_id=actor_user_id)` and call `seed_from_person(notebook_id, actor_user_id)`. It returns `(id, True)`. If another request created one under the lock, it returns `(id, False)` and creates nothing.
+- **No commit in the helper.** The list answer is committed by `get_db` with the response, as for every read that writes. The capture step commits explicitly (R8).
+- **Rationale**: The lock is the one from R6, so simultaneous first opens and captures by any members leave one notebook (SC-003, US2 scenario 3). The owner is the member who made the first open or capture, which is what the owner decision of 2026-10-24 asks for (FR-002). Keeping one helper means the open rule and the capture rule cannot drift apart.
+- **A GET writes here, as in R4.** It is idempotent (the lock and re-check), and the owner does not treat the creation as a risk (2026-10-24).
+- **Alternatives considered**: a separate "open" route (the Notebook tab would make two calls, and the list is already its first call); creating without the lock (two members could make two notebooks); creating the notebook for every kitchen at kitchen creation (the 2026-10-23 13:52 decision, replaced, R5).

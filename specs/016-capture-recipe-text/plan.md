@@ -1,5 +1,7 @@
 # Implementation Plan: Capture a Recipe from Pasted Text
 
+> **Re-synced 2026-10-25 to spec 055 (snapshot model).** FR-001a of spec.md is superseded: a capture outside a kitchen targets a picked personal notebook, and a capture in a kitchen one of its notebooks. The draft reads `names_for_notebook`, or `names_for_person` in a kitchen with none. Built in S-016 after spec 055 merges (plan follow-up, `dev/docs/backlog.yaml` S-016).
+
 **Branch**: `s20` (spec folder `016-capture-recipe-text`) | **Date**: 2026-10-22 | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `specs/016-capture-recipe-text/spec.md`

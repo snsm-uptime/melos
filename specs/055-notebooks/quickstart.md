@@ -26,7 +26,7 @@ Expected: all green. The notebook tests cover SC-001 to SC-009 (SC-010 is §2):
 - `api/tests/test_notebook_domain.py`: names, the `Notebook` invariants, the access rule, the capture choice.
 - `api/tests/test_notebooks_application.py`: services against fake ports, including the commit after a created capture notebook.
 - `api/tests/test_notebook_integration.py`: routes, the capture step, cascades and concurrency, against Postgres.
-- `api/tests/test_kitchens_integration.py`: a new kitchen has its notebook; a failed creation leaves neither.
+- `api/tests/test_kitchens_integration.py`: a new kitchen has no notebook until its first open; a failed creation leaves neither.
 
 ## 2. Migration (FR-023, SC-010)
 
@@ -56,10 +56,11 @@ await j("/api/notebooks/default");
 await j("/api/notebooks");
 // 200 { notebooks: [ the default notebook ] }
 await j("/api/notebooks/kitchens/<Home id>");
+// first call creates Home's notebook for Ana:
 // 200 { notebooks: [ { name: "ana's (Home) Notebook", kind: "kitchen", access: "kitchen_member",
-//       owner_alias: null, kitchen_id: "<Home id>", is_default: false } ] }
+//       owner_alias: "ana", kitchen_id: "<Home id>", is_default: false } ] }
 await j("/api/notebooks/kitchens/<Ana's My kitchen id>");
-// 200 { notebooks: [] }                         (signup's kitchen has none until its first capture)
+// 200 { notebooks: [ { name: "ana's (My kitchen) Notebook", ... } ] }   (signup's kitchen gets its notebook on this first call)
 ```
 
 From Ben's profile:

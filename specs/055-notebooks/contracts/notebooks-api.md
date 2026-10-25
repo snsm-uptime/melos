@@ -1,6 +1,6 @@
 # Contract: Notebook routes and the capture notebook step
 
-**Feature**: [../spec.md](../spec.md) | **Data model**: [../data-model.md](../data-model.md) | **Status**: designed 2026-10-23 for the snapshot model; replaces the 2026-10-22 routes `/notebooks/kitchens/{id}` (single kitchen notebook) and `/notebooks/members/{user_id}[/{notebook_id}]`, and the kitchen-link design of earlier on 2026-10-23
+**Feature**: [../spec.md](../spec.md) | **Data model**: [../data-model.md](../data-model.md) | **Status**: designed 2026-10-23 for the snapshot model, updated 2026-10-24 (a kitchen notebook stores its owner; a kitchen's first notebook is created on its first open); replaces the 2026-10-22 routes `/notebooks/kitchens/{id}` (single kitchen notebook) and `/notebooks/members/{user_id}[/{notebook_id}]`, and the kitchen-link design of earlier on 2026-10-23
 
 All routes are `GET`. They need a session cookie (`melos_session`) and a claimed alias (`require_user_alias`). The ui calls them through same-origin BFF routes on the same paths under `/api` (for example `/api/notebooks/default`). The BFF forwards the `cookie` header and returns the api's status and body unchanged, or 502 `{ "detail": "Upstream unavailable.", "code": "bad_gateway" }` when the api is unreachable (FR-021).
 
@@ -41,7 +41,7 @@ A kitchen notebook:
 | `name` | The stored name, fixed at creation. It does not follow alias or kitchen renames |
 | `kind` | `"personal"` or `"kitchen"` |
 | `access` | Personal: the caller's role, `"owner"` or `"member"`. Kitchen: always `"kitchen_member"` |
-| `owner_alias` | Personal: the owner's alias, or `null` when no owner remains (the ui shows "unknown"). Kitchen: the kitchen owner's alias, or `null` when the kitchen has no owner (the ui shows "unknown") |
+| `owner_alias` | Personal: the owner's alias, or `null` when no owner remains (the ui shows "unknown"). Kitchen: the alias of the notebook's stored owner, the member who created it; when none is stored, the kitchen owner's alias; `null` when neither exists (the ui shows "unknown") |
 | `kitchen_id` | Kitchen: the kitchen it belongs to. Personal: `null` |
 | `kitchen_is_archived` | Kitchen: whether its kitchen is archived, read at request time; the ui hides "add recipe" when `true` (spec 016 FR-033). Personal: `null` |
 | `is_default` | `true` only on the caller's default notebook; always `false` for a kitchen notebook |
@@ -75,7 +75,8 @@ The caller's default personal notebook, created on the first call (FR-007). Decl
 
 The kitchen's notebooks, for a member of the kitchen (FR-016). Declared before `/notebooks/{notebook_id}`.
 
-- **200** `{ "notebooks": [...] }`, each with `kind: "kitchen"` and `access: "kitchen_member"`. Empty when the kitchen has none yet (for example "My kitchen" before its first capture). Archived kitchens are still listed for their members.
+- **200** `{ "notebooks": [...] }`, each with `kind: "kitchen"` and `access: "kitchen_member"`. When the kitchen has no notebook and is not archived, the first call creates its notebook for the caller, who becomes its owner (FR-008a), and lists it; later calls list the same notebook. In an archived kitchen with no notebook, the list is empty and nothing is created. Archived kitchens with notebooks are still listed for their members.
+- The route can write, only for the first call on a kitchen with none. It is idempotent (research R14), and the owner does not treat that creation as a risk (2026-10-24).
 - **404** `{ "detail": "Kitchen not found.", "code": "kitchen_not_found" }` for a missing kitchen and for a non-member, same body (SC-004).
 
 ## GET /notebooks/{notebook_id}
@@ -103,10 +104,10 @@ ResolveCaptureNotebookService.execute(
 | No pick, several candidates | `NotebookChoiceRequiredError(candidate_ids)`; nothing created |
 | One candidate (any pick ignored) | that notebook, `created = false` |
 | Several candidates, a valid pick | that notebook, `created = false` |
-| Kitchen, no candidates | new kitchen notebook "{alias}'s ({kitchen name}) Notebook", catalog seeded from the caller's personal catalog, committed; `created = true` |
+| Kitchen, no candidates | new kitchen notebook "{alias}'s ({kitchen name}) Notebook" owned by the caller, catalog seeded from the caller's personal catalog (R14), committed; `created = true` |
 | Personal (`kitchen_id` null), no candidates | the caller's default notebook, created as in `GET /notebooks/default`, committed; `created = true` |
 
-Candidates: in a kitchen, its notebooks; outside a kitchen, the personal notebooks the caller owns or is a member of. Oldest first. A notebook the step creates is committed before it returns, so it stays if the save then fails (research R8).
+Candidates: in a kitchen, its notebooks; outside a kitchen, the personal notebooks the caller owns or is a member of. Oldest first. The first open of a kitchen's notebooks (`GET /notebooks/kitchens/{kitchen_id}`) creates the same notebook with the same lock and seed, and does not commit: the response commits it (research R14). A notebook the step creates is committed before it returns, so it stays if the save then fails (research R8).
 
 ## In-process: catalog readers (no route, FR-018)
 

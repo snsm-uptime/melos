@@ -10,75 +10,75 @@
 
 ## Requirement Completeness
 
-- [ ] CHK001 Are entry-point requirements defined for both the personal and the kitchen Notebook tabs, including header content and call-to-action placement? [Completeness, Spec §FR-001, §FR-001a]
-- [ ] CHK002 Are the options-dialog requirements (order, dividers, disabled "coming soon" state of URL and Picture) fully specified in the Functional Requirements, not only in Clarifications? [Completeness, Spec §Clarifications]
-- [ ] CHK003 Are the draft screen's editable fields and their limits (title, servings, lines, steps, chips) enumerated in one place? [Completeness, Spec §FR-005–FR-013]
-- [ ] CHK004 Are loading-state requirements defined for the wait between submit and result, beyond blocking a second submission? [Gap, Spec §FR-004]
-- [ ] CHK005 Are requirements defined for what the member sees when leaving the draft via Back versus a bottom-bar tab? [Completeness, Spec §FR-032]
-- [ ] CHK006 Is the removal of unique vague amounts from this feature (moved to S-019) reflected in every place that previously mentioned it, including spec 015? [Consistency, Spec §FR-019]
+- [x] CHK001 Are entry-point requirements defined for both the personal and the kitchen Notebook tabs, including header content and call-to-action placement? [Completeness, Spec §FR-001, §FR-001a]
+- [x] CHK002 Are the options-dialog requirements (order, dividers, disabled "coming soon" state of URL and Picture) fully specified in the Functional Requirements, not only in Clarifications? [Completeness, Spec §Clarifications]
+- [x] CHK003 Are the draft screen's editable fields and their limits (title, servings, lines, steps, chips) enumerated in one place? [Completeness, Spec §FR-005–FR-013]
+- [x] CHK004 Are loading-state requirements defined for the wait between submit and result, beyond blocking a second submission? [Gap, Spec §FR-004]
+- [x] CHK005 Are requirements defined for what the member sees when leaving the draft via Back versus a bottom-bar tab? [Completeness, Spec §FR-032]
+- [x] CHK006 Is the removal of unique vague amounts from this feature (moved to S-019) reflected in every place that previously mentioned it, including spec 015? [Consistency, Spec §FR-019]
 
 ## Requirement Clarity
 
-- [ ] CHK007 Is "the draft stays tied to the notebook named in the text sheet" defined precisely enough to implement when the member switches kitchen? [Clarity, Spec §Edge Cases]
-- [ ] CHK008 Is "edited" defined (what counts as a change) for the leave-confirmation prompt? [Ambiguity, Spec §FR-032]
-- [ ] CHK009 Are the allowed units and the "estimated" servings badge referenced to a single authoritative source rather than restated? [Clarity, Spec §Assumptions]
-- [ ] CHK010 Is "the configured limit (RECIPE_TEXT_MAX_CHARS) counted after trimming" unambiguous for multi-byte and newline characters? [Clarity, Spec §Edge Cases]
-- [ ] CHK011 Is the "reason" shown with "That doesn't look like a recipe." bounded in length and wording source? [Ambiguity, Spec §FR-014]
-- [ ] CHK012 Is the 12-second target in SC-001 stated with a defined start and end point and a defined condition ("default settings")? [Measurability, Spec §SC-001]
+- [x] CHK007 Is "the draft stays tied to the notebook named in the text sheet" defined precisely enough to implement when the member switches kitchen? [Clarity, Spec §Edge Cases]
+- [x] CHK008 Is "edited" defined (what counts as a change) for the leave-confirmation prompt? [Ambiguity, Spec §FR-032]
+- [x] CHK009 Are the allowed units and the "estimated" servings badge referenced to a single authoritative source rather than restated? [Clarity, Spec §Assumptions]
+- [x] CHK010 Is "the configured limit (RECIPE_TEXT_MAX_CHARS) counted after trimming" unambiguous for multi-byte and newline characters? [Clarity, Spec §Edge Cases]
+- [x] CHK011 Is the "reason" shown with "That doesn't look like a recipe." bounded in length and wording source? [Ambiguity, Spec §FR-014]
+- [x] CHK012 Is the 12-second target in SC-001 stated with a defined start and end point and a defined condition ("default settings")? [Measurability, Spec §SC-001]
 
 ## Requirement Consistency
 
-- [ ] CHK013 Do error messages in FR-014 to FR-018, FR-028 and FR-033 match the PRD §1.7 table wording exactly, and are the new ones recorded there? [Consistency, Spec §Assumptions]
-- [ ] CHK014 Are the language rules for draft text versus category chips consistent between the Clarifications, Edge Cases and FRs? [Consistency, Spec §Edge Cases]
-- [ ] CHK015 Are the member-removed and kitchen-archived refusals consistent in whether the text is kept and what is revealed? [Consistency, Spec §FR-022, §FR-033]
-- [ ] CHK016 Are the superseded Clarifications (2026-10-20) clearly marked so that no earlier statement contradicts a later FR? [Conflict, Spec §Clarifications]
-- [ ] CHK017 Do the draft shape in this spec and in spec 015's data model use identical field names and cardinalities (0–2 main ingredients, 0–2 cuisines)? [Consistency, Spec §Key Entities]
+- [x] CHK013 Do error messages in FR-014 to FR-018, FR-028 and FR-033 match the PRD §1.7 table wording exactly, and are the new ones recorded there? [Consistency, Spec §Assumptions]
+- [x] CHK014 Are the language rules for draft text versus category chips consistent between the Clarifications, Edge Cases and FRs? [Consistency, Spec §Edge Cases]
+- [x] CHK015 Are the member-removed and kitchen-archived refusals consistent in whether the text is kept and what is revealed? [Consistency, Spec §FR-022, §FR-033]
+- [x] CHK016 Are the superseded Clarifications (2026-10-20) clearly marked so that no earlier statement contradicts a later FR? [Conflict, Spec §Clarifications]
+- [x] CHK017 Do the draft shape in this spec and in spec 015's data model use identical field names and cardinalities (0–2 main ingredients, 0–2 cuisines)? [Consistency, Spec §Key Entities]
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK018 Does every FR map to at least one measurable success criterion or acceptance scenario? [Traceability, Spec §SC-001–SC-008]
-- [ ] CHK019 Can SC-002 and SC-006 be objectively evaluated given they depend on a manual, non-CI evaluation set? [Measurability, Spec §Assumptions]
-- [ ] CHK020 Is a pass threshold stated for evaluation-set-based criteria? [Gap, Spec §SC-006]
+- [x] CHK018 Does every FR map to at least one measurable success criterion or acceptance scenario? [Traceability, Spec §SC-001–SC-008]
+- [x] CHK019 Can SC-002 and SC-006 be objectively evaluated given they depend on a manual, non-CI evaluation set? [Measurability, Spec §Assumptions]
+- [x] CHK020 Is a pass threshold stated for evaluation-set-based criteria? [Gap, Spec §SC-006]
 
 ## Scenario and Exception Coverage
 
-- [ ] CHK021 Are recovery requirements defined after each failure class (retry path, text preserved, state reset)? [Coverage, Spec §FR-016–FR-018, §FR-028]
-- [ ] CHK022 Is behaviour specified when the assistant returns a partial draft (some lines valid, others not)? [Gap, Spec §FR-018]
-- [ ] CHK023 Is behaviour specified when the session expires between opening the sheet and submitting? [Gap]
-- [ ] CHK024 Are requirements defined for submissions that lose network connectivity before reaching the server, distinct from assistant timeouts? [Gap, Spec §FR-016]
-- [ ] CHK025 Is the draft's behaviour defined when the member holds unsaved edits and the kitchen becomes archived or the membership is removed? [Coverage, Spec §Edge Cases]
-- [ ] CHK026 Is concurrent submission of identical text by two members addressed from the member's point of view (independent drafts)? [Coverage, Spec §Assumptions]
+- [x] CHK021 Are recovery requirements defined after each failure class (retry path, text preserved, state reset)? [Coverage, Spec §FR-016–FR-018, §FR-028]
+- [x] CHK022 Is behaviour specified when the assistant returns a partial draft (some lines valid, others not)? [Gap, Spec §FR-018]
+- [x] CHK023 Is behaviour specified when the session expires between opening the sheet and submitting? [Gap]
+- [x] CHK024 Are requirements defined for submissions that lose network connectivity before reaching the server, distinct from assistant timeouts? [Gap, Spec §FR-016]
+- [x] CHK025 Is the draft's behaviour defined when the member holds unsaved edits and the kitchen becomes archived or the membership is removed? [Coverage, Spec §Edge Cases]
+- [x] CHK026 Is concurrent submission of identical text by two members addressed from the member's point of view (independent drafts)? [Coverage, Spec §Assumptions]
 
 ## Security, Access and Data Requirements
 
-- [ ] CHK027 Is "refused as not found" defined to be indistinguishable from a nonexistent kitchen, including timing and message? [Clarity, Spec §FR-022]
-- [ ] CHK028 Are requirements specified for what pasted text and catalog data may be logged or retained server-side? [Gap, Spec §FR-029]
-- [ ] CHK029 Is the prompt-injection requirement measurable beyond one example phrase? [Measurability, Spec §FR-021]
-- [ ] CHK030 Is it stated explicitly that no records of any kind are created on a failed or discarded capture, and how that is verified? [Measurability, Spec §FR-019]
+- [x] CHK027 Is "refused as not found" defined to be indistinguishable from a nonexistent kitchen, including timing and message? [Clarity, Spec §FR-022]
+- [x] CHK028 Are requirements specified for what pasted text and catalog data may be logged or retained server-side? [Gap, Spec §FR-029]
+- [x] CHK029 Is the prompt-injection requirement measurable beyond one example phrase? [Measurability, Spec §FR-021]
+- [x] CHK030 Is it stated explicitly that no records of any kind are created on a failed or discarded capture, and how that is verified? [Measurability, Spec §FR-019]
 
 ## Non-Functional Requirements
 
-- [ ] CHK031 Are accessibility requirements (keyboard, screen reader, focus handling) defined for the options dialog, text sheet and draft editor? [Gap]
-- [ ] CHK032 Are mobile and narrow-viewport layout requirements defined for the bottom tab bar and the draft editor? [Gap]
-- [ ] CHK033 Are bilingual (English/Spanish) requirements defined for every new fixed message and label? [Coverage, Spec §Assumptions]
+- [x] CHK031 Are accessibility requirements (keyboard, screen reader, focus handling) defined for the options dialog, text sheet and draft editor? [Gap]
+- [x] CHK032 Are mobile and narrow-viewport layout requirements defined for the bottom tab bar and the draft editor? [Gap]
+- [x] CHK033 Are bilingual (English/Spanish) requirements defined for every new fixed message and label? [Coverage, Spec §Assumptions]
 
 ## Dependencies and Assumptions
 
-- [ ] CHK034 Is the dependency on the S-015 stand-in extractor and its failure-class mapping documented with the version or contract it relies on? [Dependency, Spec §Assumptions]
-- [ ] CHK035 Is the assumption "no per-member capture limit" validated against the shared usage limit risk? [Assumption, Spec §FR-017]
-- [ ] CHK036 Are the boundaries with S-017, S-019, S-020, S-034, S-046 and S-047 stated so no requirement is orphaned or duplicated? [Dependency, Spec §Assumptions]
+- [x] CHK034 Is the dependency on the S-015 stand-in extractor and its failure-class mapping documented with the version or contract it relies on? [Dependency, Spec §Assumptions]
+- [x] CHK035 Is the assumption "no per-member capture limit" validated against the shared usage limit risk? [Assumption, Spec §FR-017]
+- [x] CHK036 Are the boundaries with S-017, S-019, S-020, S-034, S-046 and S-047 stated so no requirement is orphaned or duplicated? [Dependency, Spec §Assumptions]
 
 ## Decisions of 2026-10-22 (added after the analysis)
 
-- [ ] CHK037 Is the build order between spec 055-notebooks and this feature stated in both specs, with what spec 055 provides (notebook entity, default notebook, read routes)? [Dependency, Spec §Assumptions]
-- [ ] CHK038 Is the "edited draft" rule (content hash compared with the hash taken when the draft was shown) stated measurably and consistently in FR-032, the data model and the tasks? [Measurability, Spec §FR-032]
-- [ ] CHK039 Is the configured paste limit (`RECIPE_TEXT_MAX_CHARS`) stated consistently in FR-002, SC-001, the edge cases, the contracts and the messages? [Consistency, Spec §FR-002]
-- [ ] CHK040 Are requirements defined for an invalid `RECIPE_TEXT_MAX_CHARS` (non-numeric, zero, or above spec 015's 10,000-character limit)? [Gap, Edge Case]
-- [ ] CHK041 Are the "Notebook" tab names (English and Spanish), routes and page headers consistent for the bottom bar, the kitchen page and the draft page? [Consistency, Spec §FR-001, §FR-001b]
-- [ ] CHK042 Is the label "My notebook" (FR-001a) consistent with the stored notebook name "{alias}'s Notebook"? [Conflict, Spec §FR-001a]
-- [ ] CHK043 Are requirements defined for the Notebook page when the default-notebook call fails? [Gap, Exception Flow]
-- [ ] CHK044 Is it specified that notebook creation and re-creation are invisible to the ui (same response shape and status)? [Clarity, Spec §Assumptions]
-- [ ] CHK045 Is the behaviour defined in spec 055 when the default notebook is deleted (default cleared, next call creates a new one)? [Dependency, Gap]
+- [x] CHK037 Is the build order between spec 055-notebooks and this feature stated in both specs, with what spec 055 provides (notebook entity, default notebook, read routes)? [Dependency, Spec §Assumptions]
+- [x] CHK038 Is the "edited draft" rule (content hash compared with the hash taken when the draft was shown) stated measurably and consistently in FR-032, the data model and the tasks? [Measurability, Spec §FR-032]
+- [x] CHK039 Is the configured paste limit (`RECIPE_TEXT_MAX_CHARS`) stated consistently in FR-002, SC-001, the edge cases, the contracts and the messages? [Consistency, Spec §FR-002]
+- [x] CHK040 Are requirements defined for an invalid `RECIPE_TEXT_MAX_CHARS` (non-numeric, zero, or above spec 015's 10,000-character limit)? [Gap, Edge Case]
+- [x] CHK041 Are the "Notebook" tab names (English and Spanish), routes and page headers consistent for the bottom bar, the kitchen page and the draft page? [Consistency, Spec §FR-001, §FR-001b]
+- [x] CHK042 Is the label "My notebook" (FR-001a) consistent with the stored notebook name "{alias}'s Notebook"? [Conflict, Spec §FR-001a]
+- [x] CHK043 Are requirements defined for the Notebook page when the default-notebook call fails? [Gap, Exception Flow]
+- [x] CHK044 Is it specified that notebook creation and re-creation are invisible to the ui (same response shape and status)? [Clarity, Spec §Assumptions]
+- [x] CHK045 Is the behaviour defined in spec 055 when the default notebook is deleted (default cleared, next call creates a new one)? [Dependency, Gap]
 
 ## Notes
 
