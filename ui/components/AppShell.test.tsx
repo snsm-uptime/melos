@@ -235,4 +235,22 @@ describe("AppShell chrome header", () => {
     expect(container.querySelector("header h1")?.textContent).toBe("Account");
     expect(container.querySelector('button[aria-label="Back"]')).toBeNull();
   });
+
+  it("shows the Notebook tab and marks it current on /notebooks", async () => {
+    pathname = "/notebooks";
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <p>screen</p>
+        </AppShell>,
+      );
+    });
+
+    const links = Array.from(container.querySelectorAll("nav a"));
+    expect(links.map((link) => link.getAttribute("aria-label"))).toEqual(["Home", "Notebook"]);
+    const notebook = container.querySelector('nav a[aria-label="Notebook"]');
+    expect(notebook?.getAttribute("href")).toBe("/notebooks");
+    expect(notebook?.getAttribute("aria-current")).toBe("page");
+    expect(container.querySelector('nav a[aria-label="Home"]')?.getAttribute("aria-current")).toBeNull();
+  });
 });
