@@ -98,7 +98,9 @@ stories:
     verification: integration test added; manual seed check pending (T059a)
 
   - id: S-009
-    title: Kitchen create, rename, content_language (en|es), archive, hide
+    title: Kitchen create, rename, content_language (en|es), archive
+    notes: >
+      The per-member hide was removed by S-055 (FR-024, 2026-10-23); archive covers it.
     epic: Kitchens
     priority: must
     status: done
@@ -178,9 +180,32 @@ stories:
       (S-056), snapshots (S-034) and ownership passing (S-057) come later. Spec 055 must be
       re-specified.
     verification: >
-      The 2026-10-22 model (a notebook owned by a kitchen or a member) is implemented on branch
-      s55-notebooks, not merged (391 passed in Compose). That code must be reworked to the
-      2026-10-23 model before merge.
+      Reworked to the snapshot model on s55-notebooks (2026-10-25). api: 432 passed and 2
+      skipped in Compose (dev and test overlays). ui: 285 vitest tests, lint and typecheck
+      clean. Migrations 0003_personal_kitchen_notebooks and 0004_drop_kitchen_hide: upgrade,
+      downgrade to 0002 and upgrade again on a scratch database with invented users and
+      kitchens, which were unchanged. Not done: the manual walk on the running stack
+      (quickstart sections 3, 5 and 6). Not committed and not pushed.
+
+  - id: S-059
+    title: Notebook list and tabs in the UI (kitchen page lists its notebooks; personal Notebook tab lists mine)
+    epic: Recipes
+    priority: must
+    status: backlog
+    journey: J1a
+    source: spec 055 US1, US2 and US4 ("Notebook tab"); prd.md 1.5H, J1a
+    notes: >
+      Built on the S-055 read routes and their BFF routes (/api/notebooks, /api/notebooks/default,
+      /api/notebooks/kitchens/{id}, /api/notebooks/{id}). Placed right after S-055 so the S-055
+      implementation can be validated in the running app. Scope: a section on the kitchen page
+      that lists the kitchen's notebooks (the first open creates one, S-055 FR-008a); when
+      kitchen_is_archived is true it shows no add-recipe action; a personal Notebook tab that
+      lists my personal notebooks, marks the default, and shows my access (owner or member) and
+      the owner's alias. Read-only: no create, rename or delete (S-058), no capture picker
+      (S-016), no recipe lists (S-020), no invites (S-056) and no snapshots (S-034).
+      "unknown" is shown where the contract gives a null owner alias.
+    verification: pending implementation
+
   - id: S-016
     title: Capture a recipe from pasted text into a draft review screen
     epic: Capture
@@ -227,6 +252,10 @@ stories:
       replaces "saves twice"). Recipe lines store the ingredient name as a
       normalized string; new names are added to the notebook's catalog. Also stores unique
       vague amounts, moved here from S-016 (spec 016, 2026-10-22). No embedding until S-018.
+      Spec 055 (2026-10-25): the save calls ResolveCaptureNotebookService before it writes
+      anything, and the step may have committed a notebook it created, so a failed save keeps
+      that notebook. The save maps KitchenArchivedError, NotebookChoiceRequiredError,
+      NotebookNotFoundError and KitchenNotFoundError to HTTP (spec 055 contract, research R13).
       Categories are ids stored on the recipe, with no category table (PRD Appendix D, 2026-10-22).
 
   - id: S-020
