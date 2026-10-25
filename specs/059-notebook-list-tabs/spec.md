@@ -12,11 +12,20 @@
 
 Spec 055 gives every person a default personal notebook and gives every kitchen a kitchen notebook, and it provides the read answers for them. This feature makes those notebooks visible in the app. A signed-in person gets a **Notebook** tab that lists their personal notebooks and marks their default. Every kitchen page gets a section that lists the kitchen's notebooks. Both screens are read-only: nothing here creates, renames, deletes, shares or copies a notebook. It adds no recipe lists (S-020), no capture picker (S-016), no invites (S-056) and no snapshots (S-034).
 
+## Clarifications
+
+### Session 2026-10-25
+
+- Q: Which language should the labels on the Notebook tab and the kitchen notebooks section use? → A: English until the account language setting is built (Story 1.6), then they switch to the person's chosen language.
+- Q: When a person taps a notebook on the Notebook tab or the kitchen notebooks section, what should happen? → A: Opens the notebook's recipe list (S-020), once S-020 exists; see FR-014.
+- Q: Are notebooks shown as rows or as cards? → A: Cards, shaped like a notebook (not rows).
+- Q: Since tapping a card should open the notebook's recipe list, how should this feature handle that list, which is S-020 and not built yet? → A: Keep the tap, but it depends on S-020: cards do nothing until S-020 ships.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - See my personal notebooks on the Notebook tab (Priority: P1)
 
-A signed-in person with an alias opens the Notebook tab. The first time, their default notebook "{alias}'s Notebook" appears, without anyone saying it was created. The tab lists every personal notebook they own or belong to, oldest first. Each row shows the name, the owner's alias (or "unknown"), the person's access (owner or member), and a marker on the default notebook. Kitchen notebooks never appear here.
+A signed-in person with an alias opens the Notebook tab. The first time, their default notebook "{alias}'s Notebook" appears, without anyone saying it was created. The tab lists every personal notebook they own or belong to, oldest first. Each notebook appears as a card shaped like a notebook. The card shows the name, the owner's alias (or "unknown"), the person's access (owner or member), and a marker on the default notebook. Kitchen notebooks never appear here.
 
 **Why this priority**: The Notebook tab is where a person first sees where their recipes will be saved. Without it, the notebooks created by spec 055 are invisible, and the capture (S-016) and recipe screens have no place to show them.
 
@@ -26,7 +35,7 @@ A signed-in person with an alias opens the Notebook tab. The first time, their d
 
 1. **Given** Ana, alias "ana", who has never opened the Notebook tab, **When** she opens it, **Then** the list shows "ana's Notebook" with access "owner", owner alias "ana", and the default marker.
 2. **Given** Ana owns "ana's Notebook" and is a member of Ben's personal notebook "Family", **When** she opens the Notebook tab, **Then** both appear, "Family" shows owner alias "ben" and access "member", and only "ana's Notebook" carries the default marker.
-3. **Given** Ben's personal notebook "Family" has lost its owner (owner alias is null), **When** Ana opens the Notebook tab, **Then** the owner shows as "unknown" and the row is otherwise unchanged.
+3. **Given** Ben's personal notebook "Family" has lost its owner (owner alias is null), **When** Ana opens the Notebook tab, **Then** the owner shows as "unknown" and the card is otherwise unchanged.
 4. **Given** Ana belongs to kitchen "Home", **When** she opens the Notebook tab, **Then** Home's notebook does not appear in the list.
 
 ---
@@ -52,7 +61,7 @@ A member opens a kitchen page and sees a notebooks section listing the kitchen's
 
 ### User Story 3 - Lists stay accurate when access changes (Priority: P2)
 
-A person who is removed from a kitchen, or whose access to a notebook ends, stops seeing it on their next visit. Nothing shows stale rows. A person who loads a list that fails sees a clear message and a way to try again, not a partial or empty list that looks like "no notebooks".
+A person who is removed from a kitchen, or whose access to a notebook ends, stops seeing it on their next visit. Nothing shows stale cards. A person who loads a list that fails sees a clear message and a way to try again, not a partial or empty list that looks like "no notebooks".
 
 **Why this priority**: Access changes are rare today (no route removes members yet), but a list that keeps showing a notebook the person can no longer open would mislead them. The failure message keeps a network problem from looking like missing data.
 
@@ -71,10 +80,10 @@ A person who is removed from a kitchen, or whose access to a notebook ends, stop
 - A person opens the Notebook tab while their default notebook is being created by another request: they see exactly one default, not two.
 - Two notebooks share a name (for example two kitchens both called "Home"): both are listed, with their own owner alias; names are not made unique.
 - A person changes their alias, or a kitchen is renamed: the notebook names stay as stored, and the owner alias shown is the current one.
-- A kitchen notebook's owner leaves the kitchen: the row shows the kitchen owner's alias, as the answer gives it, or "unknown" when none exists.
+- A kitchen notebook's owner leaves the kitchen: the card shows the kitchen owner's alias, as the answer gives it, or "unknown" when none exists.
 - A kitchen with notebooks is archived: the page lists them and hides the add-recipe action; a kitchen with none shows an empty state.
 - The default notebook was deleted: the Notebook tab shows the replacement default, marked as default.
-- A kitchen's list is long: rows are shown in creation order, oldest first, and the page does not hide any row.
+- A kitchen's list is long: cards are shown in creation order, oldest first, and the page does not hide any card.
 
 ## Requirements *(mandatory)*
 
@@ -82,16 +91,17 @@ A person who is removed from a kitchen, or whose access to a notebook ends, stop
 
 - **FR-001**: The app MUST show a **Notebook** tab in its tab bar to every signed-in person with an alias. Opening it MUST make sure the person's default notebook exists (spec 055 FR-007) before listing their personal notebooks, so the first visit shows the default.
 - **FR-002**: The Notebook tab MUST list every personal notebook the person owns or is a member of, and no other. Kitchen notebooks MUST NOT appear in it.
-- **FR-003**: Each row on the Notebook tab MUST show the notebook's name, the owner's alias (or "unknown" when none), the person's access ("owner" or "member"), and a default marker on the person's default notebook only.
-- **FR-004**: Each kitchen page MUST show a notebooks section listing the kitchen's notebooks to its members. Each row MUST show the notebook's name and the owner's alias (or "unknown" when none). Personal notebooks MUST NOT appear in it.
+- **FR-003**: Each notebook on the Notebook tab MUST appear as a card shaped like a notebook. The card MUST show the notebook's name, the owner's alias (or "unknown" when none), the person's access ("owner" or "member"), and a default marker on the person's default notebook only.
+- **FR-004**: Each kitchen page MUST show a notebooks section listing the kitchen's notebooks to its members. Each notebook MUST appear as a card shaped like a notebook, showing the notebook's name and the owner's alias (or "unknown" when none). Personal notebooks MUST NOT appear in it.
 - **FR-005**: Opening a kitchen page's notebooks section as a member MUST make sure the kitchen's first notebook exists when it has none and is not archived (spec 055 FR-008a), and then list it. Repeated and simultaneous openings MUST show the same notebook.
 - **FR-006**: When a kitchen is archived, its notebooks section MUST still list its notebooks to members, and MUST NOT show any add-recipe action. An archived kitchen with no notebook MUST show an empty state and create nothing.
 - **FR-007**: A non-member, or anyone asking about a missing kitchen, MUST see the same not-found state as for a kitchen that does not exist, and no notebook data.
 - **FR-008**: Both screens are read-only. They MUST NOT offer create, rename, delete, invite, member-management or copy controls for notebooks. Those belong to S-058, S-056 and S-047.
 - **FR-009**: When notebook data cannot be loaded, the screen MUST show a message that the notebooks could not be loaded, with a retry action, and MUST NOT show a list that looks complete.
 - **FR-010**: A person without an alias MUST be sent to the existing alias step from either screen, and nothing MUST be shown or created.
-- **FR-011**: Notebook names MUST be shown as stored, without translation or change. Labels on these screens (for example "owner", "member", "unknown", the default marker and the empty and error messages) MUST follow the person's interface language.
-- **FR-012**: Lists MUST show rows in the order the answer gives them (oldest first), and MUST NOT hide, merge or de-duplicate rows.
+- **FR-011**: Notebook names MUST be shown as stored, without translation or change. Labels on these screens (for example "owner", "member", "unknown", the default marker and the empty and error messages) MUST be in English until the account language setting (Story 1.6) exists, and MUST then follow the person's chosen language.
+- **FR-012**: Lists MUST show cards in the order the answer gives them (oldest first), and MUST NOT hide, merge or de-duplicate cards.
+- **FR-014**: Tapping a notebook card MUST open that notebook's recipe list once S-020 exists. Until S-020 ships, a notebook card MUST NOT respond to taps and MUST NOT open any recipe list, so FR-013 still holds in this feature (Clarifications 2026-10-25).
 - **FR-013**: Neither screen MUST show recipes, categories, cart items or chat content. Those belong to S-016 and later stories.
 
 ### Key Entities
@@ -118,7 +128,7 @@ A person who is removed from a kitchen, or whose access to a notebook ends, stop
 - Lists are short (a person has a handful of notebooks; a kitchen has a few), so no paging or search is needed here.
 - The owner alias shown is the current alias the answer gives, not a copy saved on the screen.
 - The data is the read answers already defined in spec 055 (personal list, default, kitchen list, one notebook). This feature does not change those answers.
-- Interface language follows the existing per-person language setting used elsewhere in the app.
+- No per-person interface language exists yet: the UI picks English or Spanish from the browser language, and the account language setting is Story 1.6. Until it exists, these screens use English (FR-011).
 
 ## Out of Scope
 
