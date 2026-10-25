@@ -25,7 +25,7 @@
 
 **Purpose**: Record the state of the ui before any change, so later failures are attributable.
 
-- [ ] T001 Run `cd ui && npm test && npm run lint && npm run typecheck` and record any failures that already exist before this feature's changes
+- [X] T001 Run `cd ui && npm test && npm run lint && npm run typecheck` and record any failures that already exist before this feature's changes
 
 ---
 
@@ -35,11 +35,11 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T002 [P] Create the en/es dictionary in `ui/lib/i18n/notebooks.ts` following the shape of `kitchensMessages` in `ui/lib/i18n/kitchens.ts`. Keys: section title, tab title, owner label, owner "unknown", access "owner", access "member", default marker "Default", tab empty state, kitchen empty state, loading error with retry, and the kitchen not-found message (reuse the text of `detailNotFound` from `ui/lib/i18n/kitchens.ts`). Constraint (spec FR-011): "Notebook names MUST be shown as stored, without translation or change. Labels on these screens ... MUST be in English until the account language setting (Story 1.6) exists, and MUST then follow the person's chosen language." Every string has an `en` and an `es` entry; none is hard-coded in a component.
-- [ ] T003 [P] Create `ui/lib/notebooksClient.ts` with the `NotebookResponse` type and fetch helpers that call the same-origin BFF only: `fetchDefaultNotebook()` → `GET /api/notebooks/default`, `fetchPersonalNotebooks()` → `GET /api/notebooks`, `fetchKitchenNotebooks(kitchenId)` → `GET /api/notebooks/kitchens/{kitchenId}`. `NotebookResponse` fields, as spec 055 defines them: `id`, `name`, `kind`, `owner_alias`, `access`, `is_default`, `kitchen_id`, `kitchen_is_archived`. Each helper returns the parsed answer or a typed error that keeps the HTTP status and any `code` (needed for `alias_required` and `kitchen_not_found`). Follow the style of the existing `ui/app/kitchens/kitchensClient.ts`.
-- [ ] T004 [P] Create the shared inert card in `ui/components/NotebookCard/NotebookCard.tsx` with `NotebookCard.module.scss` next to it. Props: `name: string`, `ownerAlias: string | null`, `access?: "owner" | "member" | "kitchen_member"`, `isDefault?: boolean`, `locale: "en" | "es"`. Render a notebook-shaped element (cover or spine edge) as an `article` or `li`. It MUST NOT render a link or a button and MUST NOT have a click handler (FR-014, research R6). Show `access` only when it is passed (tab), and show the "Default" text marker only when `isDefault` is `true`. Constraint (data-model Validation): "A `null` owner alias is shown as "unknown"." Labels come from `ui/lib/i18n/notebooks.ts`.
-- [ ] T005 [P] Write `ui/components/NotebookCard/NotebookCard.test.tsx` (vitest, same style as `ui/components/AccountMenu.test.tsx`). Cases: renders no `a` and no `button`; shows "Default" only when `isDefault` is true; shows "unknown" when `ownerAlias` is null; shows access only when passed; labels switch with `locale`.
-- [ ] T006 [P] Write `ui/lib/notebooksClient.test.ts` (same style as `ui/app/kitchens/kitchensClient.test.ts`). Cases: each helper calls its BFF path; a 403 with `code: alias_required` is returned as such; a 404 with `kitchen_not_found` is returned as such; a network failure is returned as an error, not as an empty list.
+- [X] T002 [P] Create the en/es dictionary in `ui/lib/i18n/notebooks.ts` following the shape of `kitchensMessages` in `ui/lib/i18n/kitchens.ts`. Keys: section title, tab title, owner label, owner "unknown", access "owner", access "member", default marker "Default", tab empty state, kitchen empty state, loading error with retry, and the kitchen not-found message (reuse the text of `detailNotFound` from `ui/lib/i18n/kitchens.ts`). Constraint (spec FR-011): "Notebook names MUST be shown as stored, without translation or change. Labels on these screens ... MUST be in English until the account language setting (Story 1.6) exists, and MUST then follow the person's chosen language." Every string has an `en` and an `es` entry; none is hard-coded in a component.
+- [X] T003 [P] Create `ui/lib/notebooksClient.ts` with the `NotebookResponse` type and fetch helpers that call the same-origin BFF only: `fetchDefaultNotebook()` → `GET /api/notebooks/default`, `fetchPersonalNotebooks()` → `GET /api/notebooks`, `fetchKitchenNotebooks(kitchenId)` → `GET /api/notebooks/kitchens/{kitchenId}`. `NotebookResponse` fields, as spec 055 defines them: `id`, `name`, `kind`, `owner_alias`, `access`, `is_default`, `kitchen_id`, `kitchen_is_archived`. Each helper returns the parsed answer or a typed error that keeps the HTTP status and any `code` (needed for `alias_required` and `kitchen_not_found`). Follow the style of the existing `ui/app/kitchens/kitchensClient.ts`.
+- [X] T004 [P] Create the shared inert card in `ui/components/NotebookCard/NotebookCard.tsx` with `NotebookCard.module.scss` next to it. Props: `name: string`, `ownerAlias: string | null`, `access?: "owner" | "member" | "kitchen_member"`, `isDefault?: boolean`, `locale: "en" | "es"`. Render a notebook-shaped element (cover or spine edge) as an `article` or `li`. It MUST NOT render a link or a button and MUST NOT have a click handler (FR-014, research R6). Show `access` only when it is passed (tab), and show the "Default" text marker only when `isDefault` is `true`. Constraint (data-model Validation): "A `null` owner alias is shown as "unknown"." Labels come from `ui/lib/i18n/notebooks.ts`.
+- [X] T005 [P] Write `ui/components/NotebookCard/NotebookCard.test.tsx` (vitest, same style as `ui/components/AccountMenu.test.tsx`). Cases: renders no `a` and no `button`; shows "Default" only when `isDefault` is true; shows "unknown" when `ownerAlias` is null; shows access only when passed; labels switch with `locale`.
+- [X] T006 [P] Write `ui/lib/notebooksClient.test.ts` (same style as `ui/app/kitchens/kitchensClient.test.ts`). Cases: each helper calls its BFF path; a 403 with `code: alias_required` is returned as such; a 404 with `kitchen_not_found` is returned as such; a network failure is returned as an error, not as an empty list.
 
 **Checkpoint**: Shared dictionary, client and card exist and their tests pass. User story work can begin.
 
@@ -53,16 +53,16 @@
 
 ### Tests for User Story 1 (write before T011 if following TDD)
 
-- [ ] T007 [P] [US1] Update `ui/lib/appChrome.test.ts`: `/notebooks` and `/notebooks/...` keep the tab bar (`showsAppChrome`), and `tabKeyFromPath` returns `"notebook"` for them.
-- [ ] T008 [P] [US1] Write `ui/app/notebooks/NotebookTabScreen.test.tsx`. Cases: calls `GET /api/notebooks/default` before `GET /api/notebooks`; a default failure shows the loading error with retry and does not call the list; a `403 alias_required` redirects to the alias step; cards keep the order the answer gives (oldest first).
+- [X] T007 [P] [US1] Update `ui/lib/appChrome.test.ts`: `/notebooks` and `/notebooks/...` keep the tab bar (`showsAppChrome`), and `tabKeyFromPath` returns `"notebook"` for them.
+- [X] T008 [P] [US1] Write `ui/app/notebooks/NotebookTabScreen.test.tsx`. Cases: calls `GET /api/notebooks/default` before `GET /api/notebooks`; a default failure shows the loading error with retry and does not call the list; a `403 alias_required` redirects to the alias step; cards keep the order the answer gives (oldest first).
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Add `/notebooks` to `APP_CHROME_PREFIXES` in `ui/lib/appChrome.ts`, and return `"notebook"` from `tabKeyFromPath` for `/notebooks` and `/notebooks/...` paths (research R3).
-- [ ] T010 [US1] Add the Notebook tab item to the `tabs` array in `ui/components/AppShell.tsx` (key `notebook`, href `/notebooks`, an icon, and a label added to the dictionary AppShell already uses for `tabHome`, in en and es). Update `ui/components/AppShell.test.tsx` to expect the new tab.
-- [ ] T011 [P] [US1] Create `ui/app/notebooks/notebooks.module.scss` with the shared layout for the tab and the kitchen section (card grid, section spacing, state text). Keep it phone-width first, with no horizontal scroll (quickstart §7).
-- [ ] T012 [P] [US1] Create `ui/app/notebooks/page.tsx` as a server component. It runs `requireAlias("/notebooks")` first, resolves the locale from the `melos_lang_cache` cookie using the same rule as `resolvePageLocale` in `ui/app/kitchens/[kitchenId]/page.tsx` (`es` or `en`, else `en`), and renders `NotebookTabScreen` with that locale (FR-010, FR-011).
-- [ ] T013 [US1] Create `ui/app/notebooks/NotebookTabScreen.tsx` as a client component. On mount: call `fetchDefaultNotebook()`; only on success, call `fetchPersonalNotebooks()`. Render each notebook as a `NotebookCard` with `access` and `isDefault`, in the order the answer gives. Constraint (spec FR-012): "Lists MUST show cards in the order the answer gives them (oldest first), and MUST NOT hide, merge or de-duplicate cards." An empty list shows the tab empty state. A failure shows the loading error with a retry button and no list (FR-009). A `403 alias_required` redirects to the alias step. It has no create, rename, delete or copy control (FR-008). Depends on T002, T003, T004, T011.
+- [X] T009 [US1] Add `/notebooks` to `APP_CHROME_PREFIXES` in `ui/lib/appChrome.ts`, and return `"notebook"` from `tabKeyFromPath` for `/notebooks` and `/notebooks/...` paths (research R3).
+- [X] T010 [US1] Add the Notebook tab item to the `tabs` array in `ui/components/AppShell.tsx` (key `notebook`, href `/notebooks`, an icon, and a label added to the dictionary AppShell already uses for `tabHome`, in en and es). Update `ui/components/AppShell.test.tsx` to expect the new tab.
+- [X] T011 [P] [US1] Create `ui/app/notebooks/notebooks.module.scss` with the shared layout for the tab and the kitchen section (card grid, section spacing, state text). Keep it phone-width first, with no horizontal scroll (quickstart §7).
+- [X] T012 [P] [US1] Create `ui/app/notebooks/page.tsx` as a server component. It runs `requireAlias("/notebooks")` first, resolves the locale from the `melos_lang_cache` cookie using the same rule as `resolvePageLocale` in `ui/app/kitchens/[kitchenId]/page.tsx` (`es` or `en`, else `en`), and renders `NotebookTabScreen` with that locale (FR-010, FR-011).
+- [X] T013 [US1] Create `ui/app/notebooks/NotebookTabScreen.tsx` as a client component. On mount: call `fetchDefaultNotebook()`; only on success, call `fetchPersonalNotebooks()`. Render each notebook as a `NotebookCard` with `access` and `isDefault`, in the order the answer gives. Constraint (spec FR-012): "Lists MUST show cards in the order the answer gives them (oldest first), and MUST NOT hide, merge or de-duplicate cards." An empty list shows the tab empty state. A failure shows the loading error with a retry button and no list (FR-009). A `403 alias_required` redirects to the alias step. It has no create, rename, delete or copy control (FR-008). Depends on T002, T003, T004, T011.
 
 **Checkpoint**: User Story 1 works alone: the tab appears, the default is created on first open, the list shows the personal notebooks only, and the tests from T007 and T008 pass.
 
@@ -76,12 +76,12 @@
 
 ### Tests for User Story 2 (write before T014 if following TDD)
 
-- [ ] T014 [P] [US2] Write `ui/app/kitchens/KitchenNotebooksSection.test.tsx`. Cases: a `404 kitchen_not_found` shows the kitchen not-found message and no cards; an empty list shows the empty state; cards show name and owner only (no access, no default marker); no add-recipe action is rendered, active or archived; cards keep the order the answer gives.
+- [X] T014 [P] [US2] Write `ui/app/kitchens/KitchenNotebooksSection.test.tsx`. Cases: a `404 kitchen_not_found` shows the kitchen not-found message and no cards; an empty list shows the empty state; cards show name and owner only (no access, no default marker); no add-recipe action is rendered, active or archived; cards keep the order the answer gives.
 
 ### Implementation for User Story 2
 
-- [ ] T015 [US2] Create `ui/app/kitchens/KitchenNotebooksSection.tsx` as a client component. Props: `kitchenId: string`, `isArchived: boolean`, `locale: "en" | "es"`. On mount, call `fetchKitchenNotebooks(kitchenId)` and render a `NotebookCard` per notebook (name and `ownerAlias` only). A `404 kitchen_not_found` shows the kitchen not-found message. Any other failure shows the loading error with retry. Constraint (spec FR-006): "When a kitchen is archived, its notebooks section MUST still list its notebooks to members, and MUST NOT show any add-recipe action." `isArchived` is accepted for the future add-recipe action (S-016) but does not change the output in this feature. Depends on T002, T003, T004, T011.
-- [ ] T016 [US2] Render `KitchenNotebooksSection` in `ui/app/kitchens/[kitchenId]/page.tsx` in the `detailPrimary` column, under the members list, with a `SectionLabel` from `ui/components/soft-ledger/SectionLabel.tsx`. Pass `kitchenId`, the archive state from the kitchen detail the page already fetches, and the locale the page already resolves. Update any page-level test that asserts the primary column content.
+- [X] T015 [US2] Create `ui/app/kitchens/KitchenNotebooksSection.tsx` as a client component. Props: `kitchenId: string`, `isArchived: boolean`, `locale: "en" | "es"`. On mount, call `fetchKitchenNotebooks(kitchenId)` and render a `NotebookCard` per notebook (name and `ownerAlias` only). A `404 kitchen_not_found` shows the kitchen not-found message. Any other failure shows the loading error with retry. Constraint (spec FR-006): "When a kitchen is archived, its notebooks section MUST still list its notebooks to members, and MUST NOT show any add-recipe action." `isArchived` is accepted for the future add-recipe action (S-016) but does not change the output in this feature. Depends on T002, T003, T004, T011.
+- [X] T016 [US2] Render `KitchenNotebooksSection` in `ui/app/kitchens/[kitchenId]/page.tsx` in the `detailPrimary` column, under the members list, with a `SectionLabel` from `ui/components/soft-ledger/SectionLabel.tsx`. Pass `kitchenId`, the archive state from the kitchen detail the page already fetches, and the locale the page already resolves. Update any page-level test that asserts the primary column content.
 
 **Checkpoint**: User Story 2 works alone: the section lists the kitchen's notebooks for members, shows the not-found message to non-members, has no add-recipe action, and the tests from T014 pass.
 
@@ -95,13 +95,13 @@
 
 ### Tests for User Story 3
 
-- [ ] T017 [P] [US3] Add cases to `ui/app/notebooks/NotebookTabScreen.test.tsx`: a retry after a failure re-runs the default call and then the list; cards from an earlier load are gone when a new load fails.
-- [ ] T018 [P] [US3] Add cases to `ui/app/kitchens/KitchenNotebooksSection.test.tsx`: a `403 alias_required` redirects to the alias step and shows no cards; a retry after a failure re-runs the load; cards from an earlier load are gone when a new load fails or returns 404.
+- [X] T017 [P] [US3] Add cases to `ui/app/notebooks/NotebookTabScreen.test.tsx`: a retry after a failure re-runs the default call and then the list; cards from an earlier load are gone when a new load fails.
+- [X] T018 [P] [US3] Add cases to `ui/app/kitchens/KitchenNotebooksSection.test.tsx`: a `403 alias_required` redirects to the alias step and shows no cards; a retry after a failure re-runs the load; cards from an earlier load are gone when a new load fails or returns 404.
 
 ### Implementation for User Story 3
 
-- [ ] T019 [US3] In `ui/app/kitchens/KitchenNotebooksSection.tsx`, handle `403 alias_required` by redirecting to the alias step, with no cards and no notebook shown (FR-010), and clear the previous list when a load starts or fails (no stale cards).
-- [ ] T020 [US3] In `ui/app/notebooks/NotebookTabScreen.tsx`, clear the previous list when a load starts or fails, and make the retry button re-run the whole sequence (default, then list) (FR-009, research R8). Confirm that an error from step 1 never calls step 2.
+- [X] T019 [US3] In `ui/app/kitchens/KitchenNotebooksSection.tsx`, handle `403 alias_required` by redirecting to the alias step, with no cards and no notebook shown (FR-010), and clear the previous list when a load starts or fails (no stale cards).
+- [X] T020 [US3] In `ui/app/notebooks/NotebookTabScreen.tsx`, clear the previous list when a load starts or fails, and make the retry button re-run the whole sequence (default, then list) (FR-009, research R8). Confirm that an error from step 1 never calls step 2.
 
 **Checkpoint**: All three stories work independently. Failures show retry, access changes do not leave stale cards, and the tests from T017 and T018 pass.
 
@@ -111,8 +111,8 @@
 
 **Purpose**: Full checks and browser checks for the whole feature.
 
-- [ ] T021 Run `cd ui && npm test && npm run lint && npm run typecheck` and confirm all green (quickstart §1). Failures already present at T001 are reported as such, not fixed here.
-- [ ] T022 [P] Confirm no write control and no link exists on the two screens: grep `ui/app/notebooks/`, `ui/app/kitchens/KitchenNotebooksSection.tsx` and `ui/components/NotebookCard/` for `<a`, `<Link`, `<button`, `href`, `onClick`. The only button allowed is the retry button in the error state (FR-008, FR-014).
+- [X] T021 Run `cd ui && npm test && npm run lint && npm run typecheck` and confirm all green (quickstart §1). Failures already present at T001 are reported as such, not fixed here.
+- [X] T022 [P] Confirm no write control and no link exists on the two screens: grep `ui/app/notebooks/`, `ui/app/kitchens/KitchenNotebooksSection.tsx` and `ui/components/NotebookCard/` for `<a`, `<Link`, `<button`, `href`, `onClick`. The only button allowed is the retry button in the error state (FR-008, FR-014).
 - [ ] T023 Browser check with the Compose stack per quickstart §2 to §5: Notebook tab first visit, reload, shared-family card, kitchen section for Ana and Ben, archived kitchen, non-member not-found, stopped api retry, alias gate. Phone width first (quickstart §7). Record results in the PR description.
 - [ ] T024 [P] Browser check of language per quickstart §6: no cookie gives English; `melos_lang_cache=es` gives Spanish labels; notebook names unchanged.
 
