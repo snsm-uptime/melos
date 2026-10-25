@@ -204,15 +204,6 @@ class NotKitchenOwnerError(DomainError):
         super().__init__(detail or self.MESSAGE)
 
 
-class CannotHideOwnedKitchenError(DomainError):
-    """Raised when the kitchen owner attempts the member-only hide/unhide action."""
-
-    MESSAGE = "The kitchen owner cannot hide their own kitchen; use archive instead."
-
-    def __init__(self) -> None:
-        super().__init__(self.MESSAGE)
-
-
 class KitchenWriteError(DomainError):
     """Raised when kitchen persistence fails due to a constraint / integrity error."""
 

@@ -29,7 +29,7 @@ from domain.errors import (
     NotKitchenMemberError,
     PrincipalNotFoundError,
 )
-from sqlalchemy import case, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -273,44 +273,9 @@ class SqlAlchemyKitchenRepository:
         row.is_archived = False
         self._session.flush()
 
-    def hide_kitchen_for_member(self, kitchen_id: UUID, user_id: UUID) -> None:
-        row = self._session.scalar(
-            select(KitchenMembershipModel).where(
-                KitchenMembershipModel.kitchen_id == kitchen_id,
-                KitchenMembershipModel.user_id == user_id,
-            )
-        )
-        if row is None:
-            raise KitchenNotFoundError()
-        row.is_hidden = True
-        self._session.flush()
-
-    def unhide_kitchen_for_member(self, kitchen_id: UUID, user_id: UUID) -> None:
-        row = self._session.scalar(
-            select(KitchenMembershipModel).where(
-                KitchenMembershipModel.kitchen_id == kitchen_id,
-                KitchenMembershipModel.user_id == user_id,
-            )
-        )
-        if row is None:
-            raise KitchenNotFoundError()
-        row.is_hidden = False
-        self._session.flush()
-
     def kitchens_for_user(
         self, user_id: UUID, *, archived: bool = False
     ) -> list[KitchenMembershipSummary]:
-        # Effective archived state is per-row. The owner's own copy follows
-        # kitchens.is_archived alone. A non-owner member's follows the OR of
-        # both: the owner archiving still moves it to everyone's archived
-        # view (pre-existing Story 9.1 behavior, unchanged), and a member's
-        # own personal hide is an *additional*, independent reason for it
-        # to appear archived in their view only — never the inverse (a
-        # member can't unhide their way out of an owner's archive).
-        effective_archived = case(
-            (KitchenModel.owner_id == user_id, KitchenModel.is_archived),
-            else_=KitchenModel.is_archived | KitchenMembershipModel.is_hidden,
-        )
         stmt = (
             select(KitchenModel, KitchenMembershipModel.role)
             .join(
@@ -319,7 +284,7 @@ class SqlAlchemyKitchenRepository:
             )
             .where(
                 KitchenMembershipModel.user_id == user_id,
-                effective_archived == archived,
+                KitchenModel.is_archived == archived,
             )
             .order_by(KitchenModel.created_at.asc())
         )
