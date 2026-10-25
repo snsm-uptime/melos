@@ -2,26 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getApiInternalUrl } from "@/lib/api";
 
-type RouteContext = {
-  params: Promise<{ userId: string; notebookId: string }>;
-};
-
 /**
- * Same-origin BFF: /api/notebooks/members/{userId}/{notebookId}
- * → api /notebooks/members/{userId}/{notebookId}.
+ * Same-origin BFF: /api/notebooks/default → api /notebooks/default (created on first use).
  */
-export async function GET(request: NextRequest, context: RouteContext) {
-  const { userId, notebookId } = await context.params;
+export async function GET(request: NextRequest) {
   const headers = new Headers({ Accept: "application/json" });
   const cookie = request.headers.get("cookie");
   if (cookie) headers.set("Cookie", cookie);
 
   let upstream: Response;
   try {
-    upstream = await fetch(
-      `${getApiInternalUrl()}/notebooks/members/${encodeURIComponent(userId)}/${encodeURIComponent(notebookId)}`,
-      { method: "GET", headers, cache: "no-store" },
-    );
+    upstream = await fetch(`${getApiInternalUrl()}/notebooks/default`, {
+      method: "GET",
+      headers,
+      cache: "no-store",
+    });
   } catch {
     return NextResponse.json(
       { detail: "Upstream unavailable.", code: "bad_gateway" },

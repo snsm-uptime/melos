@@ -3,15 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getApiInternalUrl } from "@/lib/api";
 
 type RouteContext = {
-  params: Promise<{ userId: string }>;
+  params: Promise<{ notebookId: string }>;
 };
 
 /**
- * Same-origin BFF: /api/notebooks/members/{userId} → api /notebooks/members/{userId}.
- * Returns the member's default notebook; the api creates it on first use.
+ * Same-origin BFF: /api/notebooks/{id} → api /notebooks/{id}.
  */
 export async function GET(request: NextRequest, context: RouteContext) {
-  const { userId } = await context.params;
+  const { notebookId } = await context.params;
   const headers = new Headers({ Accept: "application/json" });
   const cookie = request.headers.get("cookie");
   if (cookie) headers.set("Cookie", cookie);
@@ -19,7 +18,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   let upstream: Response;
   try {
     upstream = await fetch(
-      `${getApiInternalUrl()}/notebooks/members/${encodeURIComponent(userId)}`,
+      `${getApiInternalUrl()}/notebooks/${encodeURIComponent(notebookId)}`,
       { method: "GET", headers, cache: "no-store" },
     );
   } catch {
