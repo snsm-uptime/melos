@@ -1,4 +1,4 @@
-"""Create owned kitchens, rename, archive/hide, membership listing, ACL reads — 2.1 / 2.2."""
+"""Create owned kitchens, rename, archive, membership listing, ACL reads — 2.1 / 2.2."""
 
 from __future__ import annotations
 
@@ -7,12 +7,10 @@ from typing import Protocol
 from uuid import UUID, uuid4
 
 from domain.errors import (
-    CannotHideOwnedKitchenError,
     NotKitchenMemberError,
     NotKitchenOwnerError,
 )
 from domain.kitchens import validate_kitchen_name
-from domain.notebook import Notebook
 
 from application.kitchen_access import (
     AuthorizeKitchenAccessCommand,
@@ -22,7 +20,6 @@ from application.ports import (
     KitchenAccessGrant,
     NewKitchenRecord,
     NewMembershipRecord,
-    NotebookRepository,
     PreferencesRepository,
 )
 
@@ -88,10 +85,6 @@ class KitchenRepository(Protocol):
 
     def unarchive_kitchen(self, kitchen_id: UUID) -> None: ...
 
-    def hide_kitchen_for_member(self, kitchen_id: UUID, user_id: UUID) -> None: ...
-
-    def unhide_kitchen_for_member(self, kitchen_id: UUID, user_id: UUID) -> None: ...
-
     def kitchens_for_user(
         self, user_id: UUID, *, archived: bool = False
     ) -> list[KitchenMembershipSummary]: ...
@@ -141,18 +134,6 @@ class UnarchiveKitchenCommand:
 
 
 @dataclass(frozen=True, slots=True)
-class HideKitchenCommand:
-    actor_user_id: UUID
-    kitchen_id: UUID
-
-
-@dataclass(frozen=True, slots=True)
-class UnhideKitchenCommand:
-    actor_user_id: UUID
-    kitchen_id: UUID
-
-
-@dataclass(frozen=True, slots=True)
 class GetKitchenDetailCommand:
     actor_user_id: UUID
     kitchen_id: UUID
@@ -191,27 +172,16 @@ def _require_owner(repo: KitchenRepository, kitchen_id: UUID, actor_user_id: UUI
         raise NotKitchenOwnerError()
 
 
-def _require_non_owner_member(
-    repo: KitchenRepository, kitchen_id: UUID, actor_user_id: UUID
-) -> None:
-    existing = repo.get_kitchen(kitchen_id)
-    membership = repo.get_membership(kitchen_id, actor_user_id)
-    if existing is None or membership is None:
-        raise NotKitchenMemberError()
-    if existing.owner_id == actor_user_id:
-        raise CannotHideOwnedKitchenError()
-
-
 class CreateOwnedKitchenService:
     """Create an additional named kitchen owned by the authenticated user.
 
     Same Kitchen entity as personal kitchens; the creator is the sole owner-member.
-    The kitchen's notebook is created in the same transaction (spec 055 FR-001).
+    Kitchen creation makes no notebook: a kitchen's first notebook is created when a
+    member first opens its notebooks or saves a first capture (spec 055 FR-008).
     """
 
-    def __init__(self, repo: KitchenRepository, notebooks: NotebookRepository) -> None:
+    def __init__(self, repo: KitchenRepository) -> None:
         self._repo = repo
-        self._notebooks = notebooks
 
     def execute(self, command: CreateOwnedKitchenCommand) -> KitchenRecord:
         name = validate_kitchen_name(command.name)
@@ -228,7 +198,6 @@ class CreateOwnedKitchenService:
             role="owner",
         )
         self._repo.create_owned_kitchen(owned_kitchen=owned, membership=membership)
-        self._notebooks.create(Notebook(id=uuid4(), kitchen_id=kitchen_id))
         return KitchenRecord(id=kitchen_id, name=name, owner_id=command.actor_user_id)
 
 
@@ -277,33 +246,6 @@ class UnarchiveKitchenService:
         _require_owner(self._repo, command.kitchen_id, command.actor_user_id)
         self._repo.unarchive_kitchen(command.kitchen_id)
         return self._repo.get_kitchen(command.kitchen_id)
-
-
-class HideKitchenService:
-    """Hide a kitchen from a non-owner member's own dashboard — personal view filter.
-
-    Unlike ArchiveKitchenService, this is member-only: the owner must use the
-    archive action instead, since hiding is scoped to one member's membership
-    row and has no meaning for the owner's own kitchen.
-    """
-
-    def __init__(self, repo: KitchenRepository) -> None:
-        self._repo = repo
-
-    def execute(self, command: HideKitchenCommand) -> None:
-        _require_non_owner_member(self._repo, command.kitchen_id, command.actor_user_id)
-        self._repo.hide_kitchen_for_member(command.kitchen_id, command.actor_user_id)
-
-
-class UnhideKitchenService:
-    """Unhide a kitchen previously hidden by a non-owner member."""
-
-    def __init__(self, repo: KitchenRepository) -> None:
-        self._repo = repo
-
-    def execute(self, command: UnhideKitchenCommand) -> None:
-        _require_non_owner_member(self._repo, command.kitchen_id, command.actor_user_id)
-        self._repo.unhide_kitchen_for_member(command.kitchen_id, command.actor_user_id)
 
 
 class KitchenMembershipsService:

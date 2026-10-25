@@ -1,4 +1,4 @@
-"""Kitchen create / rename / archive / hide / membership / ACL reads / invites."""
+"""Kitchen create / rename / archive / membership / ACL reads / invites."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ import uuid
 
 from adapters.email import SmtpEmailSender, load_smtp_settings
 from adapters.persistence.kitchen_invite import SqlAlchemyKitchenInviteTokenRepository
-from adapters.persistence.notebooks import SqlAlchemyNotebookRepository
 from adapters.persistence.repositories import (
     SqlAlchemyAuthUserRepository,
     SqlAlchemyKitchenRepository,
@@ -22,8 +21,6 @@ from application.kitchens import (
     DeleteKitchenService,
     GetKitchenDetailCommand,
     GetKitchenDetailService,
-    HideKitchenCommand,
-    HideKitchenService,
     KitchenMembersCommand,
     KitchenMembershipsCommand,
     KitchenMembershipsService,
@@ -32,12 +29,9 @@ from application.kitchens import (
     RenameKitchenService,
     UnarchiveKitchenCommand,
     UnarchiveKitchenService,
-    UnhideKitchenCommand,
-    UnhideKitchenService,
 )
 from domain.errors import (
     AlreadyKitchenMemberError,
-    CannotHideOwnedKitchenError,
     InvalidInviteEmailError,
     InvalidKitchenNameError,
     KitchenNotFoundError,
@@ -137,9 +131,7 @@ def create_kitchen(
     user_id: uuid.UUID = Depends(require_authenticated_user),
     db: Session = Depends(get_db),
 ) -> KitchenResponse | JSONResponse:
-    service = CreateOwnedKitchenService(
-        SqlAlchemyKitchenRepository(db), SqlAlchemyNotebookRepository(db)
-    )
+    service = CreateOwnedKitchenService(SqlAlchemyKitchenRepository(db))
     try:
         result = service.execute(CreateOwnedKitchenCommand(actor_user_id=user_id, name=body.name))
     except InvalidKitchenNameError as exc:
@@ -339,46 +331,6 @@ def unarchive_kitchen(
         )
     logger.info("kitchen_unarchived kitchen_id=%s", result.id)
     return _kitchen_response(result.id, result.name, result.owner_id, result.is_archived)
-
-
-@router.post("/{kitchen_id}/hide", response_model=None)
-def hide_kitchen(
-    kitchen_id: uuid.UUID,
-    user_id: uuid.UUID = Depends(require_authenticated_user),
-    db: Session = Depends(get_db),
-) -> Response | JSONResponse:
-    service = HideKitchenService(SqlAlchemyKitchenRepository(db))
-    try:
-        service.execute(HideKitchenCommand(actor_user_id=user_id, kitchen_id=kitchen_id))
-    except (KitchenNotFoundError, NotKitchenMemberError):
-        return _kitchen_not_found()
-    except CannotHideOwnedKitchenError as exc:
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content={"detail": str(exc), "code": "cannot_hide_owned_kitchen"},
-        )
-    logger.info("kitchen_hidden kitchen_id=%s", kitchen_id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-@router.post("/{kitchen_id}/unhide", response_model=None)
-def unhide_kitchen(
-    kitchen_id: uuid.UUID,
-    user_id: uuid.UUID = Depends(require_authenticated_user),
-    db: Session = Depends(get_db),
-) -> Response | JSONResponse:
-    service = UnhideKitchenService(SqlAlchemyKitchenRepository(db))
-    try:
-        service.execute(UnhideKitchenCommand(actor_user_id=user_id, kitchen_id=kitchen_id))
-    except (KitchenNotFoundError, NotKitchenMemberError):
-        return _kitchen_not_found()
-    except CannotHideOwnedKitchenError as exc:
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content={"detail": str(exc), "code": "cannot_hide_owned_kitchen"},
-        )
-    logger.info("kitchen_unhidden kitchen_id=%s", kitchen_id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.delete("/{kitchen_id}", response_model=None)

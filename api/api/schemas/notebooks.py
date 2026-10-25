@@ -1,4 +1,4 @@
-"""Pydantic DTOs for notebook reads (spec 055)."""
+"""Pydantic DTOs for notebook reads (spec 055, contracts/notebooks-api.md)."""
 
 from __future__ import annotations
 
@@ -8,18 +8,18 @@ from uuid import UUID
 from pydantic import BaseModel
 
 
-class KitchenNotebookResponse(BaseModel):
+class NotebookResponse(BaseModel):
+    """One notebook as the caller may see it. The same shape for every route and kind."""
+
     id: UUID
-    kind: Literal["kitchen"] = "kitchen"
-    kitchen_id: UUID
-    # A kitchen notebook has no stored name; it shows the kitchen's.
     name: str
-    is_archived: bool
+    kind: Literal["personal", "kitchen"]
+    access: Literal["owner", "member", "kitchen_member"]
+    owner_alias: str | None
+    kitchen_id: UUID | None
+    kitchen_is_archived: bool | None
+    is_default: bool
 
 
-class MemberNotebookResponse(BaseModel):
-    """Same shape whether the default notebook was just created or already existed."""
-
-    id: UUID
-    kind: Literal["member"] = "member"
-    user_id: UUID
+class NotebooksResponse(BaseModel):
+    notebooks: list[NotebookResponse]

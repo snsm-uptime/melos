@@ -1,4 +1,4 @@
-"""Notebook use cases against fake ports (spec 055 FR-002, FR-005, FR-010, SC-002, SC-005)."""
+"""Notebook use cases against fake ports (spec 055 FR-007 to FR-016, SC-001 to SC-006)."""
 
 from __future__ import annotations
 
@@ -8,68 +8,28 @@ from uuid import UUID, uuid4
 import pytest
 from application.kitchens import KitchenRecord, MembershipRecord
 from application.notebooks import (
+    CaptureNotebook,
     GetDefaultNotebookCommand,
     GetDefaultNotebookService,
-    GetKitchenNotebookCommand,
-    GetKitchenNotebookService,
-    GetMemberNotebookCommand,
-    GetMemberNotebookService,
+    GetNotebookCommand,
+    GetNotebookService,
+    ListKitchenNotebooksCommand,
+    ListKitchenNotebooksService,
+    ListMyNotebooksCommand,
+    ListMyNotebooksService,
+    NotebookView,
+    ResolveCaptureNotebookCommand,
+    ResolveCaptureNotebookService,
 )
-from application.ports import KitchenAccessGrant, UserPreferencesRecord
-from domain.errors import KitchenNotFoundError, NotebookNotFoundError
+from application.ports import KitchenAccessGrant, NotebookFacts, UserPreferencesRecord
+from domain.errors import (
+    AliasRequiredError,
+    KitchenArchivedError,
+    KitchenNotFoundError,
+    NotebookChoiceRequiredError,
+    NotebookNotFoundError,
+)
 from domain.notebook import Notebook
-
-
-@dataclass
-class FakeNotebookRepo:
-    rows: dict[UUID, Notebook] = field(default_factory=dict)
-    defaults: dict[UUID, UUID | None] = field(default_factory=dict)
-
-    def get(self, notebook_id: UUID) -> Notebook | None:
-        return self.rows.get(notebook_id)
-
-    def for_kitchen(self, kitchen_id: UUID) -> Notebook | None:
-        return next((n for n in self.rows.values() if n.kitchen_id == kitchen_id), None)
-
-    def for_member(self, user_id: UUID) -> Notebook | None:
-        default_id = self.defaults.get(user_id)
-        return self.rows.get(default_id) if default_id is not None else None
-
-    def create(self, notebook: Notebook) -> None:
-        if notebook.kitchen_id is not None and self.for_kitchen(notebook.kitchen_id):
-            return
-        self.rows[notebook.id] = notebook
-
-    def delete(self, notebook_id: UUID) -> None:
-        """ON DELETE SET NULL on users.default_notebook_id."""
-        del self.rows[notebook_id]
-        for user_id, default_id in self.defaults.items():
-            if default_id == notebook_id:
-                self.defaults[user_id] = None
-
-
-@dataclass
-class FakeUserDefaultNotebook:
-    repo: FakeNotebookRepo
-    locks: int = 0
-
-    def get_for_update(self, user_id: UUID) -> UUID | None:
-        self.locks += 1
-        return self.repo.defaults.get(user_id)
-
-    def set(self, user_id: UUID, notebook_id: UUID) -> None:
-        self.repo.defaults[user_id] = notebook_id
-
-
-@dataclass
-class FakePrefs:
-    aliases: dict[UUID, str]
-
-    def get_preferences(self, user_id: UUID) -> UserPreferencesRecord | None:
-        alias = self.aliases.get(user_id)
-        return UserPreferencesRecord(
-            id=user_id, email="x@example.com", language=None, theme=None, alias=alias
-        )
 
 
 @dataclass
@@ -90,151 +50,639 @@ class FakeKitchenRepo:
         return self.kitchens[kitchen_id]
 
 
-def _default_service(
-    repo: FakeNotebookRepo, user_id: UUID, alias: str = "ana"
-) -> tuple[GetDefaultNotebookService, FakeUserDefaultNotebook]:
-    defaults = FakeUserDefaultNotebook(repo)
-    return GetDefaultNotebookService(repo, defaults, FakePrefs({user_id: alias})), defaults
+@dataclass
+class FakeNotebookRepo:
+    """Notebooks in creation order, with memberships, defaults and a log of calls."""
 
+    kitchens: FakeKitchenRepo
+    aliases: dict[UUID, str]
+    notebooks: dict[UUID, Notebook] = field(default_factory=dict)
+    # (notebook_id, user_id) -> "owner" | "member"; personal notebooks only.
+    roles: dict[tuple[UUID, UUID], str] = field(default_factory=dict)
+    defaults: dict[UUID, UUID] = field(default_factory=dict)
+    calls: list[str] = field(default_factory=list)
+    # The next kitchen_ids_for call returns nothing: another request created one meanwhile.
+    hide_next_kitchen_read: bool = False
 
-def test_first_default_call_creates_notebook_and_sets_default() -> None:
-    repo = FakeNotebookRepo()
-    user = uuid4()
-    service, _ = _default_service(repo, user)
+    def get(self, notebook_id: UUID) -> Notebook | None:
+        return self.notebooks.get(notebook_id)
 
-    notebook = service.execute(GetDefaultNotebookCommand(actor_user_id=user, user_id=user))
-
-    assert notebook.kind == "member"
-    assert notebook.user_id == user
-    assert notebook.name == "ana's Notebook"
-    assert repo.defaults[user] == notebook.id
-    assert len(repo.rows) == 1
-
-
-def test_second_default_call_returns_same_notebook() -> None:
-    repo = FakeNotebookRepo()
-    user = uuid4()
-    service, defaults = _default_service(repo, user)
-
-    first = service.execute(GetDefaultNotebookCommand(actor_user_id=user, user_id=user))
-    second = service.execute(GetDefaultNotebookCommand(actor_user_id=user, user_id=user))
-
-    assert first.id == second.id
-    assert len(repo.rows) == 1
-    # The second call reads without taking the row lock.
-    assert defaults.locks == 1
-
-
-def test_first_call_that_finds_default_set_under_lock_creates_nothing() -> None:
-    """A simultaneous first call set the default between the read and the lock."""
-    repo = FakeNotebookRepo()
-    user = uuid4()
-    winner = Notebook(id=uuid4(), user_id=user, name="ana's Notebook")
-    repo.rows[winner.id] = winner
-
-    class RacingRepo(FakeNotebookRepo):
-        def for_member(self, user_id: UUID) -> Notebook | None:
+    def facts_for(self, user_id: UUID, notebook_id: UUID) -> NotebookFacts | None:
+        notebook = self.notebooks.get(notebook_id)
+        if notebook is None:
             return None
+        is_default = self.defaults.get(user_id) == notebook_id
+        if notebook.kitchen_id is not None:
+            kitchen = self.kitchens.kitchens[notebook.kitchen_id]
+            owner_id = notebook.owner_user_id or kitchen.owner_id
+            return NotebookFacts(
+                notebook=notebook,
+                role=None,
+                in_kitchen=self.kitchens.get_membership(kitchen.id, user_id) is not None,
+                owner_alias=self.aliases.get(owner_id),
+                kitchen_is_archived=kitchen.is_archived,
+                is_default=is_default,
+            )
+        owner_id = next(
+            (u for (n, u), r in self.roles.items() if n == notebook_id and r == "owner"), None
+        )
+        return NotebookFacts(
+            notebook=notebook,
+            role=self.roles.get((notebook_id, user_id)),
+            in_kitchen=False,
+            owner_alias=self.aliases.get(owner_id) if owner_id is not None else None,
+            kitchen_is_archived=None,
+            is_default=is_default,
+        )
 
-    racing = RacingRepo(rows=repo.rows, defaults={user: winner.id})
-    service, _ = _default_service(racing, user)
+    def personal_facts_for(self, user_id: UUID) -> list[NotebookFacts]:
+        return [
+            facts
+            for notebook in self.notebooks.values()
+            if notebook.kitchen_id is None and (notebook.id, user_id) in self.roles
+            for facts in [self.facts_for(user_id, notebook.id)]
+            if facts is not None
+        ]
 
-    notebook = service.execute(GetDefaultNotebookCommand(actor_user_id=user, user_id=user))
+    def kitchen_notebooks(self, kitchen_id: UUID) -> list[Notebook]:
+        self.calls.append("kitchen_notebooks")
+        return [n for n in self.notebooks.values() if n.kitchen_id == kitchen_id]
 
-    assert notebook.id == winner.id
-    assert len(racing.rows) == 1
+    def personal_ids_for(self, user_id: UUID) -> list[UUID]:
+        self.calls.append("personal_ids_for")
+        return [
+            n.id
+            for n in self.notebooks.values()
+            if n.kitchen_id is None and (n.id, user_id) in self.roles
+        ]
+
+    def kitchen_ids_for(self, kitchen_id: UUID) -> list[UUID]:
+        self.calls.append("kitchen_ids_for")
+        if self.hide_next_kitchen_read:
+            self.hide_next_kitchen_read = False
+            return []
+        return [n.id for n in self.notebooks.values() if n.kitchen_id == kitchen_id]
+
+    def create(self, notebook: Notebook) -> None:
+        self.calls.append("create")
+        self.notebooks[notebook.id] = notebook
+
+    def add_owner(self, notebook_id: UUID, user_id: UUID) -> None:
+        self.calls.append("add_owner")
+        self.roles[(notebook_id, user_id)] = "owner"
+
+    def lock_kitchen(self, kitchen_id: UUID) -> None:
+        self.calls.append("lock_kitchen")
+
+    def delete(self, notebook_id: UUID) -> None:
+        """ON DELETE SET NULL on users.default_notebook_id."""
+        del self.notebooks[notebook_id]
+        for user_id, default_id in list(self.defaults.items()):
+            if default_id == notebook_id:
+                del self.defaults[user_id]
+
+
+@dataclass
+class FakeUserDefaultNotebook:
+    repo: FakeNotebookRepo
+    locks: int = 0
+
+    def get_for_update(self, user_id: UUID) -> UUID | None:
+        self.locks += 1
+        return self.repo.defaults.get(user_id)
+
+    def set(self, user_id: UUID, notebook_id: UUID) -> None:
+        self.repo.defaults[user_id] = notebook_id
+
+
+@dataclass
+class FakeIngredientCatalog:
+    repo: FakeNotebookRepo
+    names: dict[UUID, set[str]] = field(default_factory=dict)
+
+    def names_for_notebook(self, notebook_id: UUID) -> list[str]:
+        return sorted(self.names.get(notebook_id, set()))
+
+    def names_for_person(self, user_id: UUID) -> list[str]:
+        personal = [
+            n.id
+            for n in self.repo.notebooks.values()
+            if n.kitchen_id is None and (n.id, user_id) in self.repo.roles
+        ]
+        return sorted(
+            {name for notebook_id in personal for name in self.names.get(notebook_id, set())}
+        )
+
+    def seed_from_person(self, notebook_id: UUID, user_id: UUID) -> None:
+        self.names[notebook_id] = set(self.names_for_person(user_id))
+
+
+@dataclass
+class FakeCommitter:
+    commits: int = 0
+
+    def commit(self) -> None:
+        self.commits += 1
+
+
+@dataclass
+class FakePrefs:
+    aliases: dict[UUID, str]
+
+    def get_preferences(self, user_id: UUID) -> UserPreferencesRecord | None:
+        return UserPreferencesRecord(
+            id=user_id,
+            email="x@example.com",
+            language=None,
+            theme=None,
+            alias=self.aliases.get(user_id),
+        )
+
+
+@dataclass
+class World:
+    kitchens: FakeKitchenRepo
+    notebooks: FakeNotebookRepo
+    catalog: FakeIngredientCatalog
+    defaults: FakeUserDefaultNotebook
+    prefs: FakePrefs
+    committer: FakeCommitter
+
+
+def _world(aliases: dict[UUID, str]) -> World:
+    kitchens = FakeKitchenRepo()
+    notebooks = FakeNotebookRepo(kitchens=kitchens, aliases=aliases)
+    return World(
+        kitchens=kitchens,
+        notebooks=notebooks,
+        catalog=FakeIngredientCatalog(notebooks),
+        defaults=FakeUserDefaultNotebook(notebooks),
+        prefs=FakePrefs(aliases),
+        committer=FakeCommitter(),
+    )
+
+
+def _kitchen(world: World, owner: UUID, name: str = "Home", *, archived: bool = False) -> UUID:
+    kitchen_id = uuid4()
+    world.kitchens.kitchens[kitchen_id] = KitchenRecord(
+        id=kitchen_id, name=name, owner_id=owner, is_archived=archived
+    )
+    world.kitchens.memberships.append(
+        MembershipRecord(kitchen_id=kitchen_id, user_id=owner, role="owner")
+    )
+    return kitchen_id
+
+
+def _join(world: World, kitchen_id: UUID, user_id: UUID) -> None:
+    world.kitchens.memberships.append(
+        MembershipRecord(kitchen_id=kitchen_id, user_id=user_id, role="member")
+    )
+
+
+def _personal(world: World, owner: UUID, name: str, names: set[str] | None = None) -> UUID:
+    notebook = Notebook(id=uuid4(), name=name)
+    world.notebooks.create(notebook)
+    world.notebooks.add_owner(notebook.id, owner)
+    if names:
+        world.catalog.names[notebook.id] = set(names)
+    return notebook.id
+
+
+def _kitchen_notebook(world: World, kitchen_id: UUID, name: str, owner: UUID) -> UUID:
+    notebook = Notebook(id=uuid4(), name=name, kitchen_id=kitchen_id, owner_user_id=owner)
+    world.notebooks.create(notebook)
+    return notebook.id
+
+
+def _default(world: World) -> GetDefaultNotebookService:
+    return GetDefaultNotebookService(world.notebooks, world.defaults, world.prefs, world.catalog)
+
+
+def _list_kitchen(world: World) -> ListKitchenNotebooksService:
+    return ListKitchenNotebooksService(world.kitchens, world.notebooks, world.prefs, world.catalog)
+
+
+def _resolve(world: World) -> ResolveCaptureNotebookService:
+    return ResolveCaptureNotebookService(
+        world.kitchens,
+        world.notebooks,
+        world.defaults,
+        world.prefs,
+        world.catalog,
+        world.committer,
+    )
+
+
+# --- The default personal notebook (US1, FR-007) ---
+
+
+def test_first_default_call_creates_seeded_personal_notebook_and_sets_default() -> None:
+    ana = uuid4()
+    world = _world({ana: "ana"})
+
+    view = _default(world).execute(GetDefaultNotebookCommand(actor_user_id=ana))
+
+    assert view.name == "ana's Notebook"
+    assert view.kind == "personal"
+    assert view.access == "owner"
+    assert view.owner_alias == "ana"
+    assert view.kitchen_id is None
+    assert view.is_default is True
+    assert world.notebooks.roles[(view.id, ana)] == "owner"
+    assert world.notebooks.defaults[ana] == view.id
+
+
+def test_second_default_call_returns_same_notebook_and_creates_nothing() -> None:
+    ana = uuid4()
+    world = _world({ana: "ana"})
+    first = _default(world).execute(GetDefaultNotebookCommand(actor_user_id=ana))
+
+    second = _default(world).execute(GetDefaultNotebookCommand(actor_user_id=ana))
+
+    assert second.id == first.id
+    assert len(world.notebooks.notebooks) == 1
+
+
+def test_default_set_by_another_call_under_the_lock_creates_nothing() -> None:
+    ana = uuid4()
+    world = _world({ana: "ana"})
+    winner = _personal(world, ana, "ana's Notebook")
+    world.notebooks.defaults[ana] = winner
+
+    view = _default(world).execute(GetDefaultNotebookCommand(actor_user_id=ana))
+
+    assert view.id == winner
+    assert len(world.notebooks.notebooks) == 1
 
 
 def test_deleted_default_is_recreated_on_next_call() -> None:
-    repo = FakeNotebookRepo()
-    user = uuid4()
-    service, _ = _default_service(repo, user)
-    first = service.execute(GetDefaultNotebookCommand(actor_user_id=user, user_id=user))
+    ana = uuid4()
+    world = _world({ana: "ana"})
+    first = _default(world).execute(GetDefaultNotebookCommand(actor_user_id=ana))
 
-    repo.delete(first.id)
-    assert repo.defaults[user] is None
+    world.notebooks.delete(first.id)
+    second = _default(world).execute(GetDefaultNotebookCommand(actor_user_id=ana))
 
-    second = service.execute(GetDefaultNotebookCommand(actor_user_id=user, user_id=user))
     assert second.id != first.id
     assert second.name == "ana's Notebook"
-    assert repo.defaults[user] == second.id
+    assert world.notebooks.defaults[ana] == second.id
 
 
-def test_default_notebook_of_another_member_is_not_found() -> None:
-    repo = FakeNotebookRepo()
-    owner, other = uuid4(), uuid4()
-    service, _ = _default_service(repo, owner)
+def test_new_default_starts_with_the_catalog_of_joined_personal_notebooks() -> None:
+    ana, ben = uuid4(), uuid4()
+    world = _world({ana: "ana", ben: "ben"})
+    family = _personal(world, ben, "ben's Family", {"onion", "garlic"})
+    world.notebooks.roles[(family, ana)] = "member"
 
-    with pytest.raises(NotebookNotFoundError):
-        service.execute(GetDefaultNotebookCommand(actor_user_id=other, user_id=owner))
-    assert repo.rows == {}
+    view = _default(world).execute(GetDefaultNotebookCommand(actor_user_id=ana))
+
+    assert world.catalog.names_for_notebook(view.id) == ["garlic", "onion"]
 
 
-def test_member_notebook_by_id_owner_only() -> None:
-    repo = FakeNotebookRepo()
-    owner, other = uuid4(), uuid4()
-    notebook = Notebook(id=uuid4(), user_id=owner, name="ana's Notebook")
-    repo.rows[notebook.id] = notebook
-    service = GetMemberNotebookService(repo)
+def test_default_without_alias_raises_and_creates_nothing() -> None:
+    ana = uuid4()
+    world = _world({})
 
-    found = service.execute(
-        GetMemberNotebookCommand(actor_user_id=owner, user_id=owner, notebook_id=notebook.id)
+    with pytest.raises(AliasRequiredError):
+        _default(world).execute(GetDefaultNotebookCommand(actor_user_id=ana))
+    assert world.notebooks.notebooks == {}
+
+
+# --- A kitchen's first notebook (US2, FR-008a) ---
+
+
+def test_first_open_creates_kitchen_notebook_owned_by_the_opener() -> None:
+    ana, ben = uuid4(), uuid4()
+    world = _world({ana: "ana", ben: "ben"})
+    home = _kitchen(world, ana)
+    _join(world, home, ben)
+    _personal(world, ben, "ben's Notebook", {"onion"})
+
+    views = _list_kitchen(world).execute(
+        ListKitchenNotebooksCommand(actor_user_id=ben, kitchen_id=home)
     )
-    assert found.id == notebook.id
 
-    with pytest.raises(NotebookNotFoundError):
-        service.execute(
-            GetMemberNotebookCommand(actor_user_id=other, user_id=owner, notebook_id=notebook.id)
-        )
-    with pytest.raises(NotebookNotFoundError):
-        service.execute(
-            GetMemberNotebookCommand(actor_user_id=other, user_id=other, notebook_id=notebook.id)
-        )
-    with pytest.raises(NotebookNotFoundError):
-        service.execute(
-            GetMemberNotebookCommand(actor_user_id=owner, user_id=owner, notebook_id=uuid4())
-        )
+    assert len(views) == 1
+    view = views[0]
+    assert view.name == "ben's (Home) Notebook"
+    assert view.kind == "kitchen"
+    assert view.access == "kitchen_member"
+    assert view.owner_alias == "ben"
+    assert view.kitchen_id == home
+    assert view.is_default is False
+    assert world.notebooks.notebooks[view.id].owner_user_id == ben
+    assert not any(notebook_id == view.id for notebook_id, _ in world.notebooks.roles)
+    assert world.catalog.names_for_notebook(view.id) == ["onion"]
 
 
-def test_kitchen_notebook_for_member_and_not_found_for_non_member() -> None:
-    kitchens = FakeKitchenRepo()
-    owner, outsider = uuid4(), uuid4()
-    kitchen_id = uuid4()
-    kitchens.kitchens[kitchen_id] = KitchenRecord(id=kitchen_id, name="Home", owner_id=owner)
-    kitchens.memberships.append(
-        MembershipRecord(kitchen_id=kitchen_id, user_id=owner, role="owner")
+def test_second_open_lists_the_same_notebook_and_creates_nothing() -> None:
+    ana = uuid4()
+    world = _world({ana: "ana"})
+    home = _kitchen(world, ana)
+    first = _list_kitchen(world).execute(
+        ListKitchenNotebooksCommand(actor_user_id=ana, kitchen_id=home)
     )
-    notebooks = FakeNotebookRepo()
-    existing = Notebook(id=uuid4(), kitchen_id=kitchen_id)
-    notebooks.rows[existing.id] = existing
-    service = GetKitchenNotebookService(kitchens, notebooks)
 
-    view = service.execute(GetKitchenNotebookCommand(actor_user_id=owner, kitchen_id=kitchen_id))
-    assert view.notebook.id == existing.id
-    assert view.kitchen_name == "Home"
-    assert view.is_archived is False
+    world.notebooks.calls.clear()
+    second = _list_kitchen(world).execute(
+        ListKitchenNotebooksCommand(actor_user_id=ana, kitchen_id=home)
+    )
+
+    assert [view.id for view in second] == [view.id for view in first]
+    assert "create" not in world.notebooks.calls
+
+
+def test_first_open_takes_the_kitchen_lock_before_the_second_read() -> None:
+    ana = uuid4()
+    world = _world({ana: "ana"})
+    home = _kitchen(world, ana)
+
+    _list_kitchen(world).execute(ListKitchenNotebooksCommand(actor_user_id=ana, kitchen_id=home))
+
+    assert world.notebooks.calls[:3] == ["kitchen_ids_for", "lock_kitchen", "kitchen_ids_for"]
+
+
+def test_archived_kitchen_without_notebook_lists_nothing_and_creates_nothing() -> None:
+    ana = uuid4()
+    world = _world({ana: "ana"})
+    home = _kitchen(world, ana, archived=True)
+
+    views = _list_kitchen(world).execute(
+        ListKitchenNotebooksCommand(actor_user_id=ana, kitchen_id=home)
+    )
+
+    assert views == []
+    assert "create" not in world.notebooks.calls
+
+
+def test_archived_kitchen_still_lists_its_existing_notebook() -> None:
+    ana = uuid4()
+    world = _world({ana: "ana"})
+    home = _kitchen(world, ana, archived=True)
+    existing = _kitchen_notebook(world, home, "ana's (Home) Notebook", ana)
+
+    views = _list_kitchen(world).execute(
+        ListKitchenNotebooksCommand(actor_user_id=ana, kitchen_id=home)
+    )
+
+    assert [view.id for view in views] == [existing]
+    assert views[0].kitchen_is_archived is True
+
+
+def test_non_member_and_missing_kitchen_get_the_same_not_found() -> None:
+    ana, carl = uuid4(), uuid4()
+    world = _world({ana: "ana", carl: "carl"})
+    home = _kitchen(world, ana)
 
     with pytest.raises(KitchenNotFoundError):
-        service.execute(GetKitchenNotebookCommand(actor_user_id=outsider, kitchen_id=kitchen_id))
+        _list_kitchen(world).execute(
+            ListKitchenNotebooksCommand(actor_user_id=carl, kitchen_id=home)
+        )
     with pytest.raises(KitchenNotFoundError):
-        service.execute(GetKitchenNotebookCommand(actor_user_id=owner, kitchen_id=uuid4()))
+        _list_kitchen(world).execute(
+            ListKitchenNotebooksCommand(actor_user_id=ana, kitchen_id=uuid4())
+        )
 
 
-def test_kitchen_without_notebook_gets_one_on_first_read() -> None:
-    """The signup personal kitchen has no notebook until its first read."""
-    kitchens = FakeKitchenRepo()
-    owner = uuid4()
-    kitchen_id = uuid4()
-    kitchens.kitchens[kitchen_id] = KitchenRecord(id=kitchen_id, name="My kitchen", owner_id=owner)
-    kitchens.memberships.append(
-        MembershipRecord(kitchen_id=kitchen_id, user_id=owner, role="owner")
+# --- The capture notebook step (US3, FR-009 to FR-011) ---
+
+
+def test_kitchen_capture_with_no_notebook_creates_one_and_commits_once() -> None:
+    ana = uuid4()
+    world = _world({ana: "ana"})
+    my_kitchen = _kitchen(world, ana, "My kitchen")
+    _personal(world, ana, "ana's Notebook", {"onion"})
+    world.notebooks.calls.clear()
+
+    result = _resolve(world).execute(
+        ResolveCaptureNotebookCommand(actor_user_id=ana, kitchen_id=my_kitchen)
     )
-    notebooks = FakeNotebookRepo()
-    service = GetKitchenNotebookService(kitchens, notebooks)
 
-    first = service.execute(GetKitchenNotebookCommand(actor_user_id=owner, kitchen_id=kitchen_id))
-    second = service.execute(GetKitchenNotebookCommand(actor_user_id=owner, kitchen_id=kitchen_id))
+    notebook = world.notebooks.notebooks[result.notebook_id]
+    assert result.created is True
+    assert notebook.name == "ana's (My kitchen) Notebook"
+    assert notebook.owner_user_id == ana
+    assert notebook.kitchen_id == my_kitchen
+    assert world.catalog.names_for_notebook(result.notebook_id) == ["onion"]
+    assert world.notebooks.calls[:3] == ["kitchen_ids_for", "lock_kitchen", "kitchen_ids_for"]
+    assert world.committer.commits == 1
 
-    assert first.notebook.kitchen_id == kitchen_id
-    assert first.notebook.id == second.notebook.id
-    assert len(notebooks.rows) == 1
+
+def test_kitchen_capture_uses_a_notebook_created_under_the_lock_without_commit() -> None:
+    ana = uuid4()
+    world = _world({ana: "ana"})
+    my_kitchen = _kitchen(world, ana, "My kitchen")
+    racing = _kitchen_notebook(world, my_kitchen, "ana's (My kitchen) Notebook", ana)
+    world.notebooks.hide_next_kitchen_read = True
+
+    result = _resolve(world).execute(
+        ResolveCaptureNotebookCommand(actor_user_id=ana, kitchen_id=my_kitchen)
+    )
+
+    assert result == CaptureNotebook(notebook_id=racing, created=False)
+    assert world.committer.commits == 0
+
+
+def test_kitchen_capture_with_one_notebook_uses_it_without_lock_or_commit() -> None:
+    ana, ben = uuid4(), uuid4()
+    world = _world({ana: "ana", ben: "ben"})
+    home = _kitchen(world, ana)
+    _join(world, home, ben)
+    only = _kitchen_notebook(world, home, "ana's (Home) Notebook", ana)
+
+    result = _resolve(world).execute(
+        ResolveCaptureNotebookCommand(actor_user_id=ben, kitchen_id=home)
+    )
+
+    assert result == CaptureNotebook(notebook_id=only, created=False)
+    assert "lock_kitchen" not in world.notebooks.calls
+    assert world.committer.commits == 0
+
+
+def test_kitchen_capture_with_two_notebooks_needs_a_valid_pick() -> None:
+    ana, ben = uuid4(), uuid4()
+    world = _world({ana: "ana", ben: "ben"})
+    home = _kitchen(world, ana)
+    _join(world, home, ben)
+    first = _kitchen_notebook(world, home, "ana's (Home) Notebook", ana)
+    second = _kitchen_notebook(world, home, "ben's (Home) Notebook", ben)
+    other = _kitchen(world, ana, "Other")
+    stranger = _kitchen_notebook(world, other, "ana's (Other) Notebook", ana)
+
+    with pytest.raises(NotebookChoiceRequiredError) as raised:
+        _resolve(world).execute(ResolveCaptureNotebookCommand(actor_user_id=ana, kitchen_id=home))
+    assert raised.value.candidate_ids == [first, second]
+
+    with pytest.raises(NotebookNotFoundError):
+        _resolve(world).execute(
+            ResolveCaptureNotebookCommand(
+                actor_user_id=ana, kitchen_id=home, picked_notebook_id=stranger
+            )
+        )
+
+    result = _resolve(world).execute(
+        ResolveCaptureNotebookCommand(actor_user_id=ana, kitchen_id=home, picked_notebook_id=second)
+    )
+    assert result == CaptureNotebook(notebook_id=second, created=False)
+
+
+def test_kitchen_capture_by_non_member_or_in_missing_kitchen_creates_nothing() -> None:
+    ana, carl = uuid4(), uuid4()
+    world = _world({ana: "ana", carl: "carl"})
+    home = _kitchen(world, ana)
+
+    with pytest.raises(KitchenNotFoundError):
+        _resolve(world).execute(ResolveCaptureNotebookCommand(actor_user_id=carl, kitchen_id=home))
+    with pytest.raises(KitchenNotFoundError):
+        _resolve(world).execute(
+            ResolveCaptureNotebookCommand(actor_user_id=ana, kitchen_id=uuid4())
+        )
+    assert world.notebooks.notebooks == {}
+
+
+def test_archived_kitchen_refuses_capture_before_reading_notebooks() -> None:
+    ana = uuid4()
+    world = _world({ana: "ana"})
+    home = _kitchen(world, ana, archived=True)
+    _kitchen_notebook(world, home, "ana's (Home) Notebook", ana)
+    world.notebooks.calls.clear()
+
+    with pytest.raises(KitchenArchivedError):
+        _resolve(world).execute(ResolveCaptureNotebookCommand(actor_user_id=ana, kitchen_id=home))
+    assert "kitchen_ids_for" not in world.notebooks.calls
+    assert len(world.notebooks.notebooks) == 1
+
+
+def test_personal_capture_with_no_notebook_creates_the_default_and_commits() -> None:
+    ana = uuid4()
+    world = _world({ana: "ana"})
+
+    result = _resolve(world).execute(ResolveCaptureNotebookCommand(actor_user_id=ana))
+
+    assert result.created is True
+    assert world.notebooks.notebooks[result.notebook_id].name == "ana's Notebook"
+    assert world.notebooks.defaults[ana] == result.notebook_id
+    assert world.committer.commits == 1
+
+
+def test_personal_capture_with_two_notebooks_needs_a_pick_of_its_own_notebooks() -> None:
+    ana, ben = uuid4(), uuid4()
+    world = _world({ana: "ana", ben: "ben"})
+    own = _personal(world, ana, "ana's Notebook")
+    family = _personal(world, ben, "ben's Family")
+    world.notebooks.roles[(family, ana)] = "member"
+    home = _kitchen(world, ana)
+    kitchen_notebook = _kitchen_notebook(world, home, "ana's (Home) Notebook", ana)
+
+    with pytest.raises(NotebookChoiceRequiredError) as raised:
+        _resolve(world).execute(ResolveCaptureNotebookCommand(actor_user_id=ana))
+    assert raised.value.candidate_ids == [own, family]
+
+    with pytest.raises(NotebookNotFoundError):
+        _resolve(world).execute(
+            ResolveCaptureNotebookCommand(actor_user_id=ana, picked_notebook_id=kitchen_notebook)
+        )
+
+    result = _resolve(world).execute(
+        ResolveCaptureNotebookCommand(actor_user_id=ana, picked_notebook_id=family)
+    )
+    assert result == CaptureNotebook(notebook_id=family, created=False)
+
+
+# --- Reads (US4, FR-014 to FR-017) ---
+
+
+def test_my_list_has_only_my_personal_notebooks_oldest_first_and_creates_nothing() -> None:
+    ana, ben = uuid4(), uuid4()
+    world = _world({ana: "ana", ben: "ben"})
+    default = _default(world).execute(GetDefaultNotebookCommand(actor_user_id=ana))
+    family = _personal(world, ben, "ben's Family")
+    world.notebooks.roles[(family, ana)] = "member"
+    home = _kitchen(world, ana)
+    _kitchen_notebook(world, home, "ana's (Home) Notebook", ana)
+    world.notebooks.calls.clear()
+
+    views = ListMyNotebooksService(world.notebooks).execute(
+        ListMyNotebooksCommand(actor_user_id=ana)
+    )
+
+    assert [view.id for view in views] == [default.id, family]
+    assert [view.access for view in views] == ["owner", "member"]
+    assert [view.is_default for view in views] == [True, False]
+    assert all(view.kind == "personal" for view in views)
+    assert "create" not in world.notebooks.calls
+
+
+def test_get_notebook_by_id_for_personal_and_kitchen_members() -> None:
+    ana, ben = uuid4(), uuid4()
+    world = _world({ana: "ana", ben: "ben"})
+    family = _personal(world, ben, "ben's Family")
+    world.notebooks.roles[(family, ana)] = "member"
+    home = _kitchen(world, ana)
+    _join(world, home, ben)
+    kitchen_notebook = _kitchen_notebook(world, home, "ana's (Home) Notebook", ana)
+
+    family_view = GetNotebookService(world.notebooks).execute(
+        GetNotebookCommand(actor_user_id=ana, notebook_id=family)
+    )
+    kitchen_view = GetNotebookService(world.notebooks).execute(
+        GetNotebookCommand(actor_user_id=ben, notebook_id=kitchen_notebook)
+    )
+
+    assert family_view.access == "member"
+    assert family_view.owner_alias == "ben"
+    assert kitchen_view == NotebookView(
+        id=kitchen_notebook,
+        name="ana's (Home) Notebook",
+        kind="kitchen",
+        access="kitchen_member",
+        owner_alias="ana",
+        kitchen_id=home,
+        kitchen_is_archived=False,
+        is_default=False,
+    )
+
+
+def test_personal_notebook_is_not_found_for_a_kitchen_mate_or_stranger() -> None:
+    ana, ben, carl = uuid4(), uuid4(), uuid4()
+    world = _world({ana: "ana", ben: "ben", carl: "carl"})
+    ben_notebook = _personal(world, ben, "ben's Notebook")
+    home = _kitchen(world, ben)
+    _join(world, home, ana)
+    _join(world, home, carl)
+    service = GetNotebookService(world.notebooks)
+
+    with pytest.raises(NotebookNotFoundError):
+        service.execute(GetNotebookCommand(actor_user_id=ana, notebook_id=ben_notebook))
+    with pytest.raises(NotebookNotFoundError):
+        service.execute(GetNotebookCommand(actor_user_id=carl, notebook_id=ben_notebook))
+    with pytest.raises(NotebookNotFoundError):
+        service.execute(GetNotebookCommand(actor_user_id=ben, notebook_id=uuid4()))
+
+
+def test_kitchen_notebook_is_not_found_for_a_person_outside_its_kitchen() -> None:
+    ana, carl = uuid4(), uuid4()
+    world = _world({ana: "ana", carl: "carl"})
+    home = _kitchen(world, ana)
+    notebook = _kitchen_notebook(world, home, "ana's (Home) Notebook", ana)
+
+    with pytest.raises(NotebookNotFoundError):
+        GetNotebookService(world.notebooks).execute(
+            GetNotebookCommand(actor_user_id=carl, notebook_id=notebook)
+        )
+
+
+def test_kitchen_list_holds_only_that_kitchens_notebooks() -> None:
+    ana = uuid4()
+    world = _world({ana: "ana"})
+    home = _kitchen(world, ana)
+    other = _kitchen(world, ana, "Other")
+    mine = _kitchen_notebook(world, home, "ana's (Home) Notebook", ana)
+    _kitchen_notebook(world, other, "ana's (Other) Notebook", ana)
+    _personal(world, ana, "ana's Notebook")
+
+    views = _list_kitchen(world).execute(
+        ListKitchenNotebooksCommand(actor_user_id=ana, kitchen_id=home)
+    )
+
+    assert [view.id for view in views] == [mine]
