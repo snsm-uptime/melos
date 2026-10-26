@@ -149,7 +149,7 @@ Embeddings are generated via the `EmbedTextStrategy` port (Strategy pattern), de
 recipe in notebook A → copy into notebook B
   ("Copy to notebook": any recipe the person can read → a notebook they can write to;
    a snapshot copies every recipe of a personal notebook into a new kitchen notebook, flow H)
-  → normalize each ingredient name against B's catalog (ingredient_catalog.py + the S-017 matcher);
+  → normalize each ingredient name against B's catalog (ingredient_catalog.py + the S-018 matcher);
     B's names take priority
   → "Copy to notebook": the person sees every name change and confirms; a snapshot copies the catalog too, so nothing changes
   → add the missing names to B's catalog; save the copy with no link to the original; embed
@@ -163,7 +163,7 @@ personal notebook → created by a person, its owner; others join through a note
   → every person gets a default one, "{alias}'s Notebook", on first use, and can create more
   → its catalog starts as the owner's catalog (every name in the personal notebooks they belong to)
   → when someone joins, each name in their catalog is normalized against the notebook's catalog
-    (S-017 matcher); the notebook's names win; names with no match are added
+    (S-018 matcher); the notebook's names win; names with no match are added
 kitchen notebook → belongs to one kitchen; a kitchen can have several; every member of the kitchen
   reads, writes, renames and deletes it, only while they belong to the kitchen; no owner, no member rows
   → created with the kitchen by the kitchen service: "{alias}'s ({kitchen name}) Notebook", named after
@@ -306,8 +306,8 @@ The user's input (text, URL or photo) is never lost on error.
 
 ### 1.10 Shared UI components
 
-- **Add-recipe call to action** (`AddRecipeCallToAction`). A rounded-corner placeholder rectangle with a plus icon at its centre. Every page that lets a user add a recipe uses it; the first uses are a person's notebook (the Notebook tab in the bottom bar) and a kitchen's Notebook tab (J2). Tapping it opens the add-recipe options dialog: a vertical list separated by dividers, with no confirm or cancel buttons, in this order: URL (disabled, not implemented yet), Picture (disabled, "coming soon", until S-040), Text (opens the text sheet). The option list lives in this component only.
-- Built on the existing `ActionDialog` (its confirm and cancel props become optional) and `Sheet`. The picture sheet, when built (S-040), has an inner dashed border of about 2rem with the text "Upload file or drag and drop".
+- **Add-recipe call to action** (`AddRecipeCallToAction`). A rounded-corner placeholder rectangle with a plus icon at its centre. Every page that lets a user add a recipe uses it; the first uses are a person's notebook (the Notebook tab in the bottom bar) and a kitchen's Notebook tab (J2). Tapping it opens the add-recipe options dialog: a vertical list separated by dividers, with no confirm or cancel buttons, in this order: URL (disabled, not implemented yet), Picture (disabled, "coming soon", until S-041), Text (opens the text sheet). The option list lives in this component only.
+- Built on the existing `ActionDialog` (its confirm and cancel props become optional) and `Sheet`. The picture sheet, when built (S-041), has an inner dashed border of about 2rem with the text "Upload file or drag and drop".
 
 ---
 
@@ -356,7 +356,7 @@ The user signs up, signs in, signs out, resets their password by email and edits
 ### J2 · Capture a recipe
 - **Entry:** in a notebook (the member's notebook from the Notebook tab in the bottom bar, or a kitchen's Notebook tab), a placeholder image rectangle (standard rounded corners) below the page header shows a plus icon at its centre. Tapping it opens an options dialog with no confirm or cancel buttons: a vertical list separated by dividers, in this order:
   - **URL:** a link to one recipe page. Shown but disabled until built.
-  - **Picture:** one image of a cookbook page (JPEG/PNG/HEIC, up to 10 MB). Shown but disabled, marked "coming soon", until S-040. The upload sheet has an inner dashed border (about 2rem thick) with the text "Upload file or drag and drop".
+  - **Picture:** one image of a cookbook page (JPEG/PNG/HEIC, up to 10 MB). Shown but disabled, marked "coming soon", until S-041. The upload sheet has an inner dashed border (about 2rem thick) with the text "Upload file or drag and drop".
   - **Text:** a free description. Opens a text sheet with the paste input and submit control.
 - **Output:** a **draft review screen**:
   - Title, base servings (with an "estimated" badge when Gemini guessed), categories as chips, and the ingredient table and steps, all editable.

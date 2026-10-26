@@ -1,24 +1,23 @@
 # Contract: Capture UI
 
 Normative for routes, the shared component's props and behaviour, and the
-member-facing strings. Strings are in English here and get Spanish equivalents
-in `ui/lib/i18n/capture.ts`.
+member-facing strings. Strings are English in this feature, kept in `ui/lib/i18n/capture.ts`
+so that internationalization can follow after MVP, chosen by the account language
+setting (FR-034).
 
 ## Routes
 
 | Route | Shows | Tab marked |
 |-------|-------|------------|
-| `/notebook` | Header "Notebook". Reads the member's default notebook through `/api/notebooks/members/[userId]` (spec 055), with the signed-in user's id from the session. `AddRecipeCallToAction` for that notebook. No list (S-020). | `notebook` |
-| `/notebook/draft` | Draft review for the member's notebook. Redirects to `/notebook` when the store has no draft. | `notebook` |
-| `/kitchens/[kitchenId]` | Unchanged Members content plus the `KitchenSectionTabs` (Members active). | `home` |
-| `/kitchens/[kitchenId]/notebook` | Header = kitchen name. `KitchenSectionTabs` (Notebook active). Reads the kitchen's notebook through `/api/notebooks/kitchens/[kitchenId]` (spec 055). `AddRecipeCallToAction` for that notebook, **only when not archived**. No list (S-046). Non-member → the existing not-found view. | `home` |
-| `/kitchens/[kitchenId]/notebook/draft` | Draft review for that kitchen's notebook. Redirects to `/kitchens/[kitchenId]/notebook` when there is no draft, or when the stored notebook id is not that kitchen's notebook. | `home` |
+| `/notebooks` | Header "Notebook" (the tab from spec 060). Reads the default notebook through `/api/notebooks/default` and the list through `/api/notebooks` (spec 056). `AddRecipeCallToAction` above the list, preselecting the default notebook. No recipe list (S-021). | `notebook` |
+| `/notebooks/draft` | Draft review for the notebook the capture is for, whichever page opened it. Redirects to that page (the store's return path) when there is no draft. | `notebook` |
+| `/kitchens/[kitchenId]` | Members, and the notebooks section (spec 060). `AddRecipeCallToAction` above the notebook cards, **only when not archived** (FR-033). No separate Notebook tab: the section is the kitchen's notebook view. | `home` |
 
 ## `AddRecipeCallToAction` (`ui/components/AddRecipeCallToAction/`)
 
 ```ts
 type AddRecipeCallToActionProps = {
-  notebook: { id: string; kind: "member" | "kitchen"; label: string };
+  notebook: { id: string; kind: "personal" | "kitchen"; name: string };
   locale: Locale;
 };
 ```
@@ -37,7 +36,7 @@ type AddRecipeCallToActionProps = {
 
 ### `TextCaptureSheet`
 
-- `Sheet` titled with `notebook.label`: "My notebook" or the kitchen name (FR-001a).
+- `Sheet` titled with the notebook's label (FR-001a). A **notebook picker** sits under the title. Outside a kitchen it lists the member's personal notebooks they own or belong to (from spec 056's list route), with the default preselected; with one, there is no picker. In a kitchen it lists that kitchen's notebooks; with several, the member picks one. A kitchen's notebook exists from the first open of its Notebook page (spec 056 FR-008a).
 - A multi-line paste input labelled "Recipe text". A live counter appears once
   the text is over 90% of `max_text_chars`.
 - The submit control is disabled when the text is empty or whitespace, when it
@@ -72,7 +71,7 @@ a Back control.
 | Steps | Ordered, editable list. Steps can be added, removed, moved up and moved down. Error: "Add at least one step." |
 | Discard | Always enabled (FR-020). Clears the draft and the text, then returns to the Notebook page with the text sheet open and empty. |
 | Back | Returns to the Notebook page with the text sheet open and the text unchanged (FR-031). No prompt. |
-| Save | **Not shown** (S-019). |
+| Save | **Not shown** (S-020). |
 
 ### Leave guard (`LeaveDraftGuard`)
 
@@ -88,6 +87,6 @@ Reloading or closing the tab uses the browser's `beforeunload` warning.
 
 ## Bottom tab bar
 
-The items, in order, are: Home (`/home`), **Notebook** (`/notebook`, `BookIcon`,
+The Notebook tab already exists (spec 060) at `/notebooks`; this feature does not add a tab. The items, in order, are: Home (`/home`), **Notebook** (`/notebooks`), then the existing items.
 label "Notebook"), then the existing items. Cart and chat tabs come with their
 own stories.

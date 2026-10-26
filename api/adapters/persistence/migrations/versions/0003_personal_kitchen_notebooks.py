@@ -1,4 +1,4 @@
-"""Personal and kitchen notebooks, ingredient catalogs and the default notebook (spec 055).
+"""Personal and kitchen notebooks, ingredient catalogs and the default notebook (spec 056).
 
 A personal notebook belongs to people through notebook_membership (one owner, any
 number of members). A kitchen notebook has a kitchen_id, one stored owner

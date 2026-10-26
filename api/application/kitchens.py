@@ -177,7 +177,7 @@ class CreateOwnedKitchenService:
 
     Same Kitchen entity as personal kitchens; the creator is the sole owner-member.
     Kitchen creation makes no notebook: a kitchen's first notebook is created when a
-    member first opens its notebooks or saves a first capture (spec 055 FR-008).
+    member first opens its notebooks or saves a first capture (spec 056 FR-008).
     """
 
     def __init__(self, repo: KitchenRepository) -> None:

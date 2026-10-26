@@ -1,4 +1,4 @@
-/** Notebook tab and kitchen notebooks section chrome — EN/ES (spec 059). */
+/** Notebook tab and kitchen notebooks section chrome — EN/ES (spec 060). */
 
 export const notebooksMessages = {
   en: {

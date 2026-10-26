@@ -75,7 +75,7 @@ def test_create_owned_kitchen_membership_and_multi_own(
     assert memberships[0].role == "owner"
     assert str(memberships[0].user_id) == str(row.owner_id)
 
-    # Spec 055 FR-008: kitchen creation makes no notebook; the first open creates it.
+    # Spec 056 FR-008: kitchen creation makes no notebook; the first open creates it.
     notebooks = db_session.scalars(
         select(NotebookModel).where(NotebookModel.kitchen_id == kitchen_id)
     ).all()
@@ -230,7 +230,7 @@ def test_archiving_preserves_membership(client: TestClient, db_session: Session)
 
 
 def test_hide_and_unhide_routes_are_gone(client: TestClient) -> None:
-    """Spec 055 FR-024: archive is the only way to put a kitchen away."""
+    """Spec 056 FR-024: archive is the only way to put a kitchen away."""
     _register(client, "nohide@example.com")
     kitchen_id = client.post("/kitchens", json={"name": "Trip"}).json()["id"]
 

@@ -39,3 +39,11 @@ def load_vocabulary(directory: Path = VOCABULARY_DIR) -> Vocabulary:
     categories = _read_yaml(directory / "categories.yaml")
     cuisine = _read_yaml(directory / "cuisine.yml")
     return build_vocabulary(categories, cuisine)
+
+
+def load_vocabulary_documents(directory: Path = VOCABULARY_DIR) -> tuple[dict, dict]:
+    """The parsed categories.yaml and cuisine.yml, for the vocabulary answer (FR-011)."""
+    return (
+        _read_yaml(directory / "categories.yaml"),
+        _read_yaml(directory / "cuisine.yml"),
+    )

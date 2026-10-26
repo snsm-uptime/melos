@@ -132,7 +132,7 @@ describe("KitchenNotebooksSection", () => {
     expect(container.querySelector("h3")).toBeNull();
   });
 
-  it("shows name and owner only, keeps the order given, and renders no action", async () => {
+  it("shows name and owner only, keeps the order given, and adds only the add-recipe action", async () => {
     stubBff([{ status: 200, body: { notebooks: [homeNotebook, secondNotebook] } }]);
 
     render();
@@ -144,7 +144,9 @@ describe("KitchenNotebooksSection", () => {
     expect(container.textContent).toContain("Owned by unknown");
     expect(container.textContent).not.toContain("Kitchen member");
     expect(container.textContent).not.toContain("Default");
-    expect(container.querySelectorAll("a, button").length).toBe(0);
+    // The notebook cards stay inert; the one control is the shared add-recipe action (S-016).
+    const controls = Array.from(container.querySelectorAll("a, button"));
+    expect(controls.map((el) => el.getAttribute("aria-label"))).toEqual(["Add a recipe"]);
   });
 
   it("renders no add-recipe action in an archived kitchen, and still lists its notebooks", async () => {

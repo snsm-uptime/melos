@@ -19,7 +19,7 @@
 - Q: What form should the usage-limit wait hint take? → A: Whole seconds in `retry_after_seconds`, or null when the service gives none.
 - Q: What are the draft title and step rules? → A: Title required, 200 characters or fewer. At least one step.
 - Q: What servings are used when the text gives none? → A: 4, marked as estimated.
-- Q: Where are unique vague amounts saved? → A: In S-016, after the member confirms a draft. This feature stores nothing. *(Moved to S-019 on 2026-10-22; see the note in Assumptions.)*
+- Q: Where are unique vague amounts saved? → A: In S-016, after the member confirms a draft. This feature stores nothing. *(Moved to S-020 on 2026-10-22; see the note in Assumptions.)*
 - Q: How are units mapped? → A: Through the closed bilingual table in FR-006a. Units that would need conversion are invalid output.
 - Q: Who decides whether an amount is vague? → A: The model decides, guided by the PRD examples ("to taste", "a pinch", "some"). The domain rules then check the line shape. Amounts written as words, such as "a dozen", are converted by the model to a number and an allowed unit (for example 12 `unit`).
 - Q: When a text holds two or more recipes, what happens? → A: Only one recipe is allowed per process. The text is returned as "not a recipe" with the reason "Only one recipe at a time", and no draft is returned.
@@ -36,7 +36,7 @@
 
 ## User Scenarios & Testing *(mandatory)*
 
-This feature has no screen of its own. Its users are the capture feature (S-016, and later URL capture S-025 and photo capture S-040) and, through them, household members who paste a recipe and wait for a result. The stories below describe what the capture feature can rely on.
+This feature has no screen of its own. Its users are the capture feature (S-016, and later URL capture S-026 and photo capture S-041) and, through them, household members who paste a recipe and wait for a result. The stories below describe what the capture feature can rely on.
 
 ### User Story 1 - Turn pasted text into a checked result (Priority: P1)
 
@@ -171,7 +171,7 @@ Developers and automated tests can replace the assistant with a stand-in that re
 - **FR-010**: A stand-in implementation MUST exist that returns chosen results for each outcome, with no network access, for use in tests of the capture feature.
 - **FR-011**: The extraction MUST store nothing. Neither the input text nor the result is written to the database by this feature.
 - **FR-012**: The extraction MUST NOT call the assistant service for empty or whitespace-only input, and MUST refuse such input with an input refusal (FR-001).
-- **FR-013**: The wait before a timeout MUST be configurable. The default MUST be 10 seconds for text and URL input and 30 seconds for image input (see Clarifications). The wait is measured from the start of the call to the result. The image value is recorded for S-040 and is not used in this feature.
+- **FR-013**: The wait before a timeout MUST be configurable. The default MUST be 10 seconds for text and URL input and 30 seconds for image input (see Clarifications). The wait is measured from the start of the call to the result. The image value is recorded for S-041 and is not used in this feature.
 - **FR-014**: Logs MUST NOT contain the key, the full pasted text, or a full service response. A short error class and a request reference are enough for the operator. The request reference is a random UUID created once per service call; calls that share one in-progress call (FR-016) share it. It is logged and never stored.
 - **FR-015**: After the member's last attempt fails, the capture feature MUST show a message based on the failure class and the action that failed. The failure result MUST carry the class and, for "limit reached", the optional wait hint, but no raw service text. The wording of the messages is defined in S-016; this feature defines only the class and the wait hint.
 - **FR-016**: Every extraction MUST reduce its text to a SHA-256 hash of the trimmed text. Concurrent calls with the same hash MUST share one in-progress service call, so only one version of the same text is evaluated at a time. The hash MUST NOT be stored in the database or any file, and MUST be released when the call ends.
@@ -205,13 +205,13 @@ Developers and automated tests can replace the assistant with a stand-in that re
 - If the provider rejects the response schema, the extraction returns "invalid output". It does not parse free text as a fallback.
 - The PRD this spec follows is `dev/docs/prd.md` as of 2026-10-21. A later PRD change does not change this spec until it is re-reviewed.
 - This spec is normative for behaviour. The contract in `contracts/recipe-extraction-port.md` is normative for field names and shape, which S-016 builds against. A conflict is fixed in this spec first.
-- Only text input is in scope. URL capture (S-025) and photo capture (S-040) reuse this boundary and are built with those stories.
+- Only text input is in scope. URL capture (S-026) and photo capture (S-041) reuse this boundary and are built with those stories.
 - *Note (2026-10-22, notebooks decision):* "the kitchen's existing ingredient names" in this spec means the ingredient catalog of the capture's notebook: a kitchen's catalog, or a member's personal catalog for their own notebook (PRD §1.6). The port takes a list of names either way and does not change.
-- Ingredient matching against the catalog (S-017) is not part of this feature. The extraction only receives the catalog names so it can prefer them; it does not decide the final match.
-- The assistant's result is judged by the recipe rules alone. Saving a draft (S-019) and showing its review screen (S-016) are separate stories.
+- Ingredient matching against the catalog (S-018) is not part of this feature. The extraction only receives the catalog names so it can prefer them; it does not decide the final match.
+- The assistant's result is judged by the recipe rules alone. Saving a draft (S-020) and showing its review screen (S-016) are separate stories.
 - The constitution's answer-from-recipes rule (§5) governs the kitchen assistant's answers. This adapter answers no questions; it only turns pasted text into a draft or a "not a recipe" result, so no exception is needed.
 - The input length limit (10,000 characters) and the timeouts are fixed in Clarifications, not in the PRD.
 - Added 2026-10-22 (spec 016 plan review): each ingredient line gains an optional `preparation` ("chopped"), returned by the extractor and kept out of the name. Spec 016 FR-007, FR-010 and FR-012 need it. The data model and the prompt carry it.
 - Retry: the extraction makes one attempt per call, and the member retries manually (see Clarifications).
 - Loading state: the loading indicator is specified in S-016, not here.
-- Unique vague amounts are saved by S-016 after the member confirms a draft. This feature stores nothing (FR-011, SC-007). *Note (2026-10-22, S-016 clarification): this storage moved to S-019, which owns Save; S-016 offers Discard only.*
+- Unique vague amounts are saved by S-016 after the member confirms a draft. This feature stores nothing (FR-011, SC-007). *Note (2026-10-22, S-016 clarification): this storage moved to S-020, which owns Save; S-016 offers Discard only.*

@@ -14,8 +14,19 @@ services:
       retries: 30
 
   api:
+    build:
+      args:
+        # Empty: `uv sync --frozen` with no --no-dev, so the dev group (debugpy) is installed.
+        UV_SYNC_ARGS: ""
+    # Runs under debugpy so Cursor/VS Code can attach (.vscode/launch.json, "Attach: melos api").
+    # The app starts at once; breakpoints work after the attach. Port 5678 is on localhost only.
+    command: ["python", "-m", "debugpy", "--listen", "0.0.0.0:5678", "-m", "scripts.entrypoint"]
+    ports:
+      - "${DEBUG_PORT:-5678}:5678"
     environment:
-      DEV_RELOAD: "true"
+      # Off: uvicorn's reloader forks processes that the debugger does not follow.
+      # Source edits need `docker compose restart api`. The ui still hot-reloads.
+      DEV_RELOAD: "false"
       LOG_LEVEL: "DEBUG"
       # Dev default: seed a pre-verified account + kitchen so a fresh stack is
       # testable immediately. Set SEED_DEV_USER=0 in .env to opt out.

@@ -1,4 +1,4 @@
-"""Notebook use cases against fake ports (spec 055 FR-007 to FR-016, SC-001 to SC-006)."""
+"""Notebook use cases against fake ports (spec 056 FR-007 to FR-016, SC-001 to SC-006)."""
 
 from __future__ import annotations
 

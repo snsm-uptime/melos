@@ -1,4 +1,4 @@
-"""Notebook reads and writes for people and kitchens (spec 055).
+"""Notebook reads and writes for people and kitchens (spec 056).
 
 Creation happens in three places, each under a lock: a person's default notebook
 (first use), a kitchen's first notebook (first open or first capture) and a capture

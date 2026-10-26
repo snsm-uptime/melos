@@ -1,4 +1,4 @@
-"""Pydantic DTOs for notebook reads (spec 055, contracts/notebooks-api.md)."""
+"""Pydantic DTOs for notebook reads (spec 056, contracts/notebooks-api.md)."""
 
 from __future__ import annotations
 

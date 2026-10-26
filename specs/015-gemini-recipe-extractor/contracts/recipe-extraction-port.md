@@ -35,7 +35,7 @@ RecipeExtractor.extract(
 
 ## Caller rules (for S-016)
 
-- Pass the timeout for the input kind: 10 s for text. The image value (30 s) is recorded for S-040 and is not used in this feature.
+- Pass the timeout for the input kind: 10 s for text. The image value (30 s) is recorded for S-041 and is not used in this feature.
 - Do not retry automatically. On `Unavailable` or `LimitReached`, keep the
   member's text and show the message for that class.
 - On `InvalidOutput`, show the "could not read that recipe" message. Keep the
@@ -52,4 +52,4 @@ RecipeExtractor.extract(
 | `GEMINI_API_KEY` | Service key. Secret. Empty means every call returns `AIProviderError`. | none |
 | `GEMINI_CHAT_MODEL` | Model name. | from `.env.example` |
 | `GEMINI_TEXT_TIMEOUT_S` | Wait for text and URL input. | 10 |
-| `GEMINI_IMAGE_TIMEOUT_S` | Wait for image input (recorded for S-040; not used in this feature). | 30 |
+| `GEMINI_IMAGE_TIMEOUT_S` | Wait for image input (recorded for S-041; not used in this feature). | 30 |

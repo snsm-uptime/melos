@@ -28,7 +28,7 @@ class Notebook:
     id: UUID
     name: str
     kitchen_id: UUID | None = None
-    # Origin label of a snapshot (S-034 sets it). Only a kitchen notebook may carry one.
+    # Origin label of a snapshot (S-035 sets it). Only a kitchen notebook may carry one.
     source_notebook_id: UUID | None = None
     # The member who created a kitchen notebook (FR-002). A personal notebook keeps
     # its owner in notebook_membership instead.

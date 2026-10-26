@@ -33,7 +33,7 @@ Kitchens are shared spaces where users collaborate on recipes, shopping lists, a
 | `kitchen_id` | UUID | Foreign key to kitchen |
 | `user_id` | UUID | Foreign key to user |
 | `role` | Enum | `'owner'` or `'member'` |
-| `is_hidden` | Boolean | Superseded 2026-10-25 (spec 055 FR-024): removed, archive covers it |
+| `is_hidden` | Boolean | Superseded 2026-10-25 (spec 056 FR-024): removed, archive covers it |
 | `created_at` | Timestamp | When user joined |
 
 **Constraint:** Unique (kitchen_id, user_id) pair.
@@ -283,7 +283,7 @@ Unarchive a kitchen (owner only).
 ---
 
 
-> **Superseded 2026-10-25 (spec 055 FR-024):** the per-member hide is removed; archive
+> **Superseded 2026-10-25 (spec 056 FR-024):** the per-member hide is removed; archive
 > covers it. This route no longer exists.
 
 ### POST /kitchens/{kitchen_id}/hide
@@ -312,7 +312,7 @@ Hide a kitchen from the authenticated user's list (member only; owner cannot hid
 ---
 
 
-> **Superseded 2026-10-25 (spec 055 FR-024):** the per-member hide is removed; archive
+> **Superseded 2026-10-25 (spec 056 FR-024):** the per-member hide is removed; archive
 > covers it. This route no longer exists.
 
 ### POST /kitchens/{kitchen_id}/unhide

@@ -1,4 +1,4 @@
-/** Client helpers for notebook reads via same-origin BFF (spec 055 routes). */
+/** Client helpers for notebook reads via same-origin BFF (spec 056 routes). */
 
 export type NotebookResponse = {
   id: string;

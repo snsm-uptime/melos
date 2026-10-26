@@ -53,10 +53,11 @@ Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
     member of the kitchen reads, writes, renames and deletes it, only while
     they belong to the kitchen. It has no owner and no membership rows. It is
     deleted with the kitchen.
-- A kitchen notebook is created with the kitchen by the kitchen service, as
-  "{alias}'s ({kitchen name}) Notebook" named after the creator; by the first
-  capture in a kitchen that has none (for example "My kitchen", which signup
-  makes); or as a snapshot. A snapshot is an independent kitchen copy of a
+- A kitchen notebook is created on the first open of the kitchen's notebook
+  list, as "{alias}'s ({kitchen name}) Notebook" named after the member who
+  opens it (spec 056 FR-008a); or by the first saved capture in a kitchen that
+  has none (FR-009). A kitchen made at signup, such as "My kitchen", starts with
+  none; or as a snapshot. A snapshot is an independent kitchen copy of a
   personal notebook, added by any kitchen member. It keeps only an origin
   label (`source_notebook_id`, cleared if the original is deleted); the two
   never sync.
@@ -104,7 +105,7 @@ Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
   - Tapping it opens the add-recipe options dialog: a vertical list separated
     by dividers, with no confirm or cancel buttons, in this order:
     1. URL: shown, disabled, not implemented yet.
-    2. Picture: shown, disabled, marked "coming soon", until S-040.
+    2. Picture: shown, disabled, marked "coming soon", until S-041.
     3. Text: opens the text sheet with the paste input and submit control.
   - Built on `ActionDialog` (its confirm and cancel props become optional so
     it can render without footer buttons) and `Sheet`. The picture sheet, when
@@ -157,7 +158,7 @@ new folders without asking.
 
 Each speckit spec lives in `specs/NNN-short-name/`, where `NNN` is the number of
 the backlog story it specifies, zero-padded to three digits: S-016 is
-`specs/016-capture-recipe-text/`, S-055 is `specs/055-notebooks/`. The one
+`specs/016-capture-recipe-text/`, S-056 is `specs/056-notebooks/`. The one
 exception is `specs/001-finance-dashboard-reuse/`, the bootstrap spec, which
 covers S-001 to S-014. Create a spec with
 `.specify/scripts/bash/create-new-feature.sh --number <story number> --short-name <name> "<description>"`

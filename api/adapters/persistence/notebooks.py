@@ -1,4 +1,4 @@
-"""SQLAlchemy notebook repository, default-notebook pointer and committer (spec 055)."""
+"""SQLAlchemy notebook repository, default-notebook pointer and committer (spec 056)."""
 
 from __future__ import annotations
 

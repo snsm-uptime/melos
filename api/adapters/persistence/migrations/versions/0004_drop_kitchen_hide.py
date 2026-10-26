@@ -1,4 +1,4 @@
-"""Drop the per-member kitchen hide (spec 055 FR-024).
+"""Drop the per-member kitchen hide (spec 056 FR-024).
 
 Archive is the only way to put a kitchen away. The downgrade restores the column
 as false for every membership, which is the state the hide feature started from.

@@ -8,6 +8,7 @@ in-progress call between concurrent identical texts. Nothing is stored.
 from __future__ import annotations
 
 import hashlib
+import logging
 import threading
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -16,6 +17,7 @@ from typing import Protocol
 from domain.errors import DomainError
 from domain.recipe_draft import DraftRecipe, InvalidDraftError, Vocabulary, check_draft
 
+logger = logging.getLogger(__name__)
 MAX_TEXT_CHARS = 10_000
 ONE_RECIPE_REASON = "Only one recipe at a time"
 
@@ -60,7 +62,9 @@ class AIProviderError:
     pass
 
 
-ExtractionResult = Draft | NotARecipe | Unavailable | LimitReached | InvalidOutput | AIProviderError
+ExtractionResult = (
+    Draft | NotARecipe | Unavailable | LimitReached | InvalidOutput | AIProviderError
+)
 
 
 class RecipeExtractor(Protocol):
@@ -139,6 +143,8 @@ class RecipeExtraction:
             return result
         try:
             recipe = check_draft(result.recipe, ingredient_names, self._vocabulary)
-        except InvalidDraftError:
+        except InvalidDraftError as exc:
+            # The rule that broke, by name only: no values and no text.
+            logger.warning("draft rejected by a recipe rule: %s", exc.MESSAGE)
             return InvalidOutput()
         return Draft(recipe=recipe)

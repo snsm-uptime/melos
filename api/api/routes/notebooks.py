@@ -1,4 +1,4 @@
-"""Notebook reads: my notebooks, my default, a kitchen's notebooks and one notebook (spec 055).
+"""Notebook reads: my notebooks, my default, a kitchen's notebooks and one notebook (spec 056).
 
 Static segments are declared before /{notebook_id} so "default" and "kitchens" are not
 read as ids. The capture notebook step has no route (FR-013).

@@ -5,17 +5,29 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterator
 
+from adapters.llm.gemini_extractor import GeminiRecipeExtractor
+from adapters.llm.vocabulary import load_vocabulary, load_vocabulary_documents
 from adapters.persistence.db import get_session_factory
+from adapters.persistence.ingredient_catalog import SqlAlchemyIngredientCatalog
+from adapters.persistence.notebooks import SqlAlchemyNotebookRepository
 from adapters.persistence.password_hasher import Argon2PasswordHasher
 from adapters.persistence.repositories import SqlAlchemyAuthUserRepository
 from adapters.persistence.sessions import SqlAlchemySessionStore
 from application.ports import PasswordHasher, PreferencesRepository, SessionStore
 from application.rate_limit import SlidingWindowRateLimiter, resolve_trusted_client_ip
+from application.recipe_capture import CaptureRecipeText
+from application.recipe_extraction import RecipeExtraction
+from application.recipe_vocabulary import vocabulary_answer
 from domain.errors import AliasRequiredError
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from api.settings import AuthSettings, load_auth_settings
+from api.settings import (
+    AuthSettings,
+    load_auth_settings,
+    load_gemini_settings,
+    load_recipe_text_max_chars,
+)
 
 
 def get_db() -> Iterator[Session]:
@@ -99,3 +111,43 @@ def require_user_alias(
     if not row.alias:
         raise AliasRequiredError()
     return user_id
+
+
+def get_vocabulary_answer(request: Request) -> dict:
+    """The controlled lists for GET /recipe-vocabulary, read once per process (spec 016 FR-011)."""
+    cached = getattr(request.app.state, "recipe_vocabulary_answer", None)
+    if cached is None:
+        categories, cuisine = load_vocabulary_documents()
+        cached = vocabulary_answer(categories, cuisine, max_text_chars=load_recipe_text_max_chars())
+        request.app.state.recipe_vocabulary_answer = cached
+    return cached
+
+
+def get_recipe_extraction(request: Request) -> RecipeExtraction:
+    """The S-015 use case, one per process so concurrent identical texts share a call (FR-016)."""
+    cached = getattr(request.app.state, "recipe_extraction", None)
+    if cached is None:
+        settings = load_gemini_settings()
+        vocabulary = load_vocabulary()
+        extractor = GeminiRecipeExtractor(
+            api_key=settings.api_key,
+            model=settings.chat_model,
+            vocabulary=vocabulary,
+        )
+        cached = RecipeExtraction(extractor, vocabulary)
+        request.app.state.recipe_extraction = cached
+    return cached
+
+
+def get_capture_recipe_text(
+    db: Session = Depends(get_db),
+    extraction: RecipeExtraction = Depends(get_recipe_extraction),
+) -> CaptureRecipeText:
+    settings = load_gemini_settings()
+    return CaptureRecipeText(
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyIngredientCatalog(db),
+        extraction,
+        max_chars=load_recipe_text_max_chars(),
+        timeout_s=settings.text_timeout_s,
+    )

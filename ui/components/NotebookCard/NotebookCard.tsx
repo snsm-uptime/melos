@@ -15,8 +15,8 @@ export type NotebookCardProps = {
 };
 
 /**
- * Inert notebook card: no link, no button, no click handler (spec 059 FR-014).
- * Tapping a card does nothing until recipes and the notebook page land (S-016, S-020).
+ * Inert notebook card: no link, no button, no click handler (spec 060 FR-014).
+ * Tapping a card does nothing until recipes and the notebook page land (S-016, S-021).
  */
 export function NotebookCard({
   name,

@@ -263,6 +263,16 @@ def test_cuisine_steps_rule_matches_at_four_ingredients() -> None:
     assert "mexican" in cuisines("Zzqx plate", [", ".join(four) + "."], 5)
 
 
+def test_preparation_is_trimmed_and_blank_becomes_none() -> None:
+    checked = check(
+        draft(lines=(line(preparation="  chopped  "), line(name="onion", preparation="   "))),
+        CATALOG,
+    )
+
+    assert checked.ingredient_lines[0].preparation == "chopped"
+    assert checked.ingredient_lines[1].preparation is None
+
+
 @pytest.mark.parametrize("name", ["categories.yaml", "cuisine.yml"])
 def test_vocabulary_copies_in_domain_match_dev_docs(name: str) -> None:
     source = Path(__file__).resolve().parents[2] / "dev" / "docs" / name
