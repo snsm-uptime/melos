@@ -7,25 +7,28 @@ the stand-in (FR-010, SC-001, SC-007).
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
+from dataclasses import replace
 
 import pytest
 from adapters.llm.fake_extractor import FakeRecipeExtractor
 from adapters.llm.vocabulary import load_vocabulary
 from application.recipe_extraction import (
     MAX_TEXT_CHARS,
-    ONE_RECIPE_REASON,
     AIProviderError,
     Draft,
+    DraftIncomplete,
     InvalidOutput,
     LimitReached,
     NotARecipe,
+    NotRecipeReason,
     RecipeExtraction,
     RecipeTextRefusedError,
     Unavailable,
 )
-from domain.recipe_draft import DraftRecipe, IngredientLine
+from domain.recipe_draft import DraftRecipe, IngredientLine, LineProblem, LineProblemKind
 
 VOCABULARY = load_vocabulary()
 ACCEPTANCE_TEXT = "Onion soup\n\n- a pinch of salt\n- 2 large onions\n\n1. Simmer with the salt."
@@ -75,16 +78,75 @@ def test_acceptance_draft_is_checked_and_uses_catalog_name() -> None:
 def test_rule_breaking_draft_becomes_invalid_output_and_no_draft() -> None:
     broken = DraftRecipe(
         title="Soup",
-        base_servings=2,
+        base_servings=0,
         servings_estimated=False,
         main_ingredients=(),
         cuisines=(),
-        ingredient_lines=(IngredientLine(name="onion", vague=False, quantity=None, unit="unit"),),
+        ingredient_lines=(IngredientLine(name="onion", vague=False, quantity=2.0, unit="unit"),),
         steps=("Stir.",),
     )
     service, _ = use_case(Draft(recipe=broken))
 
     assert isinstance(service.extract(ACCEPTANCE_TEXT, [], 10.0), InvalidOutput)
+
+
+# ── incomplete drafts (User Story 1, FR-003) ────────────────────────────────
+
+
+def test_missing_title_returns_draft_incomplete_naming_the_title() -> None:
+    no_title = replace(acceptance_draft(), title="")
+    service, _ = use_case(Draft(recipe=no_title))
+
+    result = service.extract(ACCEPTANCE_TEXT, ["onion"], 10.0)
+
+    assert isinstance(result, DraftIncomplete)
+    assert result.problems.missing == ("title",)
+    assert result.problems.line_problems == ()
+
+
+def test_unit_missing_line_returns_draft_incomplete_with_the_line_problem() -> None:
+    no_unit = DraftRecipe(
+        title="Butter sauce",
+        base_servings=None,
+        servings_estimated=False,
+        main_ingredients=(),
+        cuisines=(),
+        ingredient_lines=(IngredientLine(name="butter", vague=False, quantity=0.25),),
+        steps=("Melt the butter.",),
+    )
+    service, _ = use_case(Draft(recipe=no_unit))
+
+    result = service.extract(ACCEPTANCE_TEXT, [], 10.0)
+
+    assert isinstance(result, DraftIncomplete)
+    assert result.problems.line_problems == (
+        LineProblem("butter", LineProblemKind.UNIT_MISSING),
+    )
+
+
+def test_incomplete_draft_log_names_kinds_only(caplog, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Alembic's fileConfig, run by the Postgres integration fixtures, disables
+    # existing loggers for the rest of the session. Re-enable this one for log checks.
+    monkeypatch.setattr(logging.getLogger("application.recipe_extraction"), "disabled", False)
+    incomplete = DraftRecipe(
+        title="Secret Title Soup",
+        base_servings=None,
+        servings_estimated=False,
+        main_ingredients=(),
+        cuisines=(),
+        ingredient_lines=(IngredientLine(name="secretingredient", vague=False, quantity=2.0),),
+        steps=("   ",),
+    )
+    service, _ = use_case(Draft(recipe=incomplete))
+
+    with caplog.at_level(logging.WARNING, logger="application.recipe_extraction"):
+        result = service.extract(ACCEPTANCE_TEXT, [], 10.0)
+
+    assert isinstance(result, DraftIncomplete)
+    assert "missing=steps" in caplog.text
+    assert "line_problems=unit_missing" in caplog.text
+    assert "secretingredient" not in caplog.text.lower()
+    assert "secret title" not in caplog.text.lower()
 
 
 # ── input refusal (FR-001, FR-012) ──────────────────────────────────────────
@@ -143,12 +205,12 @@ def test_not_a_recipe_passes_through_unchanged() -> None:
     assert service.extract("What's the weather tomorrow?", [], 10.0) is weather
 
 
-def test_two_recipes_reason_is_exact_and_not_a_failure() -> None:
-    service, _ = use_case(NotARecipe(reason=ONE_RECIPE_REASON))
+def test_two_recipes_reason_is_the_enum_and_not_a_failure() -> None:
+    service, _ = use_case(NotARecipe(reason=NotRecipeReason.MULTIPLE_RECIPES))
 
     result = service.extract("Soup\n...\n\nCake\n...", [], 10.0)
 
-    assert result == NotARecipe(reason="Only one recipe at a time")
+    assert result == NotARecipe(reason=NotRecipeReason.MULTIPLE_RECIPES)
 
 
 @pytest.mark.parametrize(

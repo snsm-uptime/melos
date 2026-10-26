@@ -20,16 +20,18 @@ from application.recipe_capture import (
     TextTooLongError,
 )
 from application.recipe_extraction import (
-    ONE_RECIPE_REASON,
     AIProviderError,
+    DraftIncomplete,
     InvalidOutput,
     LimitReached,
     NotARecipe,
+    NotRecipeReason,
     Unavailable,
 )
 from domain.errors import KitchenArchivedError, NotebookNotFoundError
 from domain.labels import pick_label
 from domain.preferences import effective_language
+from domain.recipe_draft import clean_display_name
 from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import JSONResponse
 
@@ -43,8 +45,6 @@ from api.schemas.recipe_capture import CaptureTextBody
 from api.settings import load_recipe_text_max_chars
 
 router = APIRouter(tags=["recipe-capture"])
-
-MAX_REASON_CHARS = 120
 
 
 def _error(
@@ -111,22 +111,49 @@ def _outcome_response(outcome: CaptureOutcome, vocabulary: dict[str, Any]) -> JS
             status_code=status.HTTP_200_OK, content=_draft_body(outcome, vocabulary)
         )
     if isinstance(outcome, NotARecipe):
-        if outcome.reason == ONE_RECIPE_REASON:
+        if outcome.reason == NotRecipeReason.MULTIPLE_RECIPES:
             return _error(
                 status.HTTP_422_UNPROCESSABLE_CONTENT,
                 "one_recipe_at_a_time",
-                "Upload only one recipe at a time.",
+                "",
             )
-        return _error(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
-            "not_a_recipe",
-            outcome.reason[:MAX_REASON_CHARS],
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={
+                "detail": outcome.reason.value,
+                "code": "not_a_recipe",
+                "ingredient": outcome.ingredient,
+            },
+        )
+    if isinstance(outcome, DraftIncomplete):
+        problems = outcome.problems
+        line_problems = [
+            {"name": clean_display_name(problem.name), "kind": problem.kind.value}
+            for problem in problems.line_problems
+        ]
+        if problems.missing:
+            return JSONResponse(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                content={
+                    "detail": "",
+                    "code": "draft_incomplete",
+                    "missing": list(problems.missing),
+                    "line_problems": line_problems,
+                },
+            )
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={
+                "detail": "",
+                "code": "ingredient_line_problem",
+                "line_problems": line_problems,
+            },
         )
     if isinstance(outcome, InvalidOutput):
         return _error(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
             "ai_invalid_output",
-            "The assistant's answer could not be read as a recipe.",
+            "",
         )
     if isinstance(outcome, LimitReached):
         headers = None

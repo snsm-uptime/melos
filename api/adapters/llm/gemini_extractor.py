@@ -16,16 +16,16 @@ from typing import Any, Literal
 
 import httpx
 from application.recipe_extraction import (
-    ONE_RECIPE_REASON,
     AIProviderError,
     Draft,
     ExtractionResult,
     InvalidOutput,
     LimitReached,
     NotARecipe,
+    NotRecipeReason,
     Unavailable,
 )
-from domain.recipe_draft import DraftRecipe, IngredientLine, Vocabulary
+from domain.recipe_draft import DraftRecipe, IngredientLine, Vocabulary, clean_display_name
 from google import genai
 from google.genai import types
 from google.genai.errors import APIError, ClientError, ServerError
@@ -35,14 +35,17 @@ from adapters.llm.prompt import build_contents, system_instruction
 
 logger = logging.getLogger(__name__)
 
-MAX_REASON_CHARS = 120
 RETRY_DELAY_PATTERN = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*s?\s*$")
 
 RESPONSE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "outcome": {"type": "string", "enum": ["recipe", "not_a_recipe", "multiple_recipes"]},
-        "reason": {"type": "string"},
+        "reason": {
+            "type": "string",
+            "enum": ["question_or_request", "not_food", "story_or_article"],
+        },
+        "ingredient": {"type": "string"},
         "recipe": {
             "type": "object",
             "properties": {
@@ -95,17 +98,31 @@ class _RecipePayload(BaseModel):
 class _ExtractionPayload(BaseModel):
     outcome: Literal["recipe", "not_a_recipe", "multiple_recipes"]
     reason: str | None = None
+    ingredient: str | None = None
     recipe: _RecipePayload | None = None
+
+
+# The model may only pick one of these for a refusal; the app words the sentence itself.
+_REFUSAL_REASONS = {
+    reason.value
+    for reason in (
+        NotRecipeReason.QUESTION_OR_REQUEST,
+        NotRecipeReason.NOT_FOOD,
+        NotRecipeReason.STORY_OR_ARTICLE,
+    )
+}
 
 
 def _payload_to_result(payload: _ExtractionPayload) -> ExtractionResult:
     if payload.outcome == "multiple_recipes":
-        return NotARecipe(reason=ONE_RECIPE_REASON)
+        return NotARecipe(reason=NotRecipeReason.MULTIPLE_RECIPES)
     if payload.outcome == "not_a_recipe":
-        reason = (payload.reason or "").strip()
-        if not reason or len(reason) > MAX_REASON_CHARS or "\n" in reason:
+        if payload.reason not in _REFUSAL_REASONS:
             return InvalidOutput()
-        return NotARecipe(reason=reason)
+        return NotARecipe(
+            reason=NotRecipeReason(payload.reason),
+            ingredient=clean_display_name(payload.ingredient),
+        )
     if payload.recipe is None:
         return InvalidOutput()
 

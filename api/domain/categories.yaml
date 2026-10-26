@@ -81,7 +81,7 @@ ambiguous_aliases:
 # Canonical ingredient vocabulary: id → aliases (en + es, singular form).
 ingredients:
   # aromatics
-  garlic: [garlic, ajo, diente de ajo]
+  garlic: [garlic, ajo, diente de ajo, diente]
   onion: [onion, cebolla]
   shallot: [shallot, chalota, echalote, echalota]
   scallion: [scallion, green onion, spring onion, cebollino, cebolleta, cebollin, cebolla de verdeo]
