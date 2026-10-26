@@ -48,7 +48,7 @@
 | `kitchen_id` | UUID FK → kitchens (CASCADE) | unique with `user_id` (`uq_kitchen_membership`) |
 | `user_id` | UUID FK → users (CASCADE) | |
 | `role` | varchar(32) | `owner` / `member` |
-| `is_hidden` | bool | superseded 2026-10-25 (spec 055 FR-024): removed, archive covers it |
+| `is_hidden` | bool | superseded 2026-10-25 (spec 056 FR-024): removed, archive covers it |
 | `created_at` | timestamptz | |
 
 **Rules (domain/application):**

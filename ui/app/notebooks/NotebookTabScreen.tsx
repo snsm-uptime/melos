@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { AddRecipeCallToAction } from "@/components/AddRecipeCallToAction";
 import { NotebookCard } from "@/components/NotebookCard/NotebookCard";
 import type { Locale } from "@/lib/i18n/locale";
 import { notebooksMessages } from "@/lib/i18n/notebooks";
@@ -79,6 +80,18 @@ export function NotebookTabScreen({
   return (
     <main className={styles.main}>
       <h1 className={styles.title}>{t.title}</h1>
+      {state.status === "ready" && state.notebooks.length > 0 ? (
+        <AddRecipeCallToAction
+          candidates={state.notebooks.map((notebook) => ({
+            id: notebook.id,
+            name: notebook.name,
+            kind: "personal",
+            kitchenId: null,
+          }))}
+          defaultId={state.notebooks.find((notebook) => notebook.is_default)?.id ?? null}
+          returnPath="/notebooks"
+        />
+      ) : null}
       {state.status === "error" ? (
         <div className={styles.state}>
           <p className={styles.copy} role="alert">

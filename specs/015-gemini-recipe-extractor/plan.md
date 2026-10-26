@@ -129,7 +129,7 @@ documented in AGENTS.md, so no new top-level folder is needed.
    ("tablespoon" → "tbsp"), one-edit typo matching for units of 5 or more characters ("tablespon" → "tbsp"), and size removal (size with non-"unit" unit, or a size outside small, medium, large) are
    applied here, before the rule check, as the spec's edge cases require.
 5. **Timeouts and attempts**: per-call timeout chosen by the caller's input
-   kind (text/URL 10 s; image 30 s is recorded for S-040 and not used here), passed to the SDK as its per-request
+   kind (text/URL 10 s; image 30 s is recorded for S-041 and not used here), passed to the SDK as its per-request
    timeout. The SDK's built-in retry is disabled so there is exactly one
    attempt.
 6. **Stand-in**: `FakeRecipeExtractor` takes a scripted result and returns it

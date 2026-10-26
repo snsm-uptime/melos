@@ -2,45 +2,38 @@
 
 Normative status: this contract is normative for paths, status codes, `code`
 values and field names. `spec.md` is normative for behaviour and member-facing
-wording. The ui shows its own i18n text for each `code`. It never shows
-`detail` or any upstream text (FR-029).
+wording. The ui shows its own text for each `code`. It never shows `detail` or
+any upstream text (FR-029).
 
 All routes need the session cookie and an alias (`require_user_alias`):
 401 when signed out, 403 `alias_required` without an alias (existing
 behaviour). The browser calls them only through the BFF (below).
 
-## Notebook reads (defined in spec 055-notebooks)
+Revised 2026-10-25 to spec 056's final routes. A capture is addressed by one
+notebook id, personal or kitchen, so there is one capture route.
 
-This feature uses two reads that spec 055 delivers. Their shapes are listed here
-for reference only.
+## Notebook reads (defined in spec 056-notebooks)
 
-- `GET /notebooks/kitchens/{kitchen_id}`: any member may read it. A missing kitchen
-  and a non-member give the same 404 `kitchen_not_found`.
+This feature uses these reads. Their answers are the `NotebookResponse` shape of
+[spec 056's contract](../../056-notebooks/contracts/notebooks-api.md#the-notebook-object);
+`kind` is `"personal"` or `"kitchen"`.
 
-  ```json
-  { "id": "<uuid>", "kind": "kitchen", "kitchen_id": "<uuid>", "name": "Test Kitchen", "is_archived": false }
-  ```
+- `GET /notebooks/default`: the caller's default personal notebook (created on the first call).
+  The member's Notebook page uses it.
+- `GET /notebooks`: the caller's personal notebooks, for the picker outside a kitchen.
+- `GET /notebooks/kitchens/{kitchen_id}`: the kitchen's notebooks. Its first call creates
+  the kitchen's notebook (FR-008a). The kitchen's Notebook page uses it, so a capture from
+  that page always has a notebook id.
+- `GET /notebooks/{notebook_id}`: one notebook, with `kitchen_is_archived` for a kitchen
+  notebook. A missing notebook and one the caller does not belong to give the same
+  404 `notebook_not_found`.
 
-- `GET /notebooks/members/{user_id}/{notebook_id}`: only the owner may read it. Any
-  other caller, and a missing notebook, get the same 404 `notebook_not_found`.
+## `POST /notebooks/{notebook_id}/captures/text`
 
-  ```json
-  { "id": "<uuid>", "kind": "member", "user_id": "<uuid>", "name": "Ana's Notebook" }
-  ```
-
-- `GET /notebooks/members/{user_id}`: returns the member's default notebook in the
-  same shape. The first call creates it when the member has none, and a deleted
-  default is created again on the next call. The answer has the same shape and
-  status either way, so the ui never sees whether it was created. The member's
-  page uses this route.
-
-## `POST /notebooks/kitchens/{kitchen_id}/captures/text` and `POST /notebooks/members/{user_id}/{notebook_id}/captures/text`
-
-Capture for one notebook. The kitchen route targets the kitchen's notebook: the
-caller must be a member, and then the kitchen's archive state is checked
-(FR-022, FR-030, FR-033). The member route targets the member's own notebook: the
-path `user_id` must be the caller, and any other caller gets 404
-`notebook_not_found`.
+Capture for one notebook the caller can write to: a personal notebook the caller owns or
+belongs to, or a kitchen notebook of a kitchen the caller is a member of (FR-001a,
+FR-022). Membership is checked first; then, for a kitchen notebook, the archive state is
+checked (FR-030, FR-033). Nothing is stored (FR-019).
 
 ### Request
 
@@ -48,18 +41,17 @@ path `user_id` must be the caller, and any other caller gets 404
 { "text": "string" }
 ```
 
-The body is guarded by pydantic at twice `RECIPE_TEXT_MAX_CHARS` (10,000 with
-the default) to reject grossly oversized payloads. Over that guard the response
-is 422 `text_too_long`, with the same message as the use case. The limit after
-trimming, `RECIPE_TEXT_MAX_CHARS` (5,000 by default), is checked in `application/`
-before any assistant call.
+The body is guarded by pydantic at twice `RECIPE_TEXT_MAX_CHARS` (10,000 with the
+default). Over that guard the response is 422 `text_too_long`, with the same message as
+the use case. The limit after trimming, `RECIPE_TEXT_MAX_CHARS` (5,000 by default), is
+checked in `application/` before any assistant call.
 
 ### 200: draft
 
 ```json
 {
   "outcome": "draft",
-  "notebook": { "id": "<uuid>", "kind": "member", "label": null },
+  "notebook": { "id": "<uuid>", "kind": "personal", "name": "ana's Notebook" },
   "language": "en",
   "draft": {
     "title": "Onion soup",
@@ -80,17 +72,20 @@ before any assistant call.
 }
 ```
 
-- For a kitchen notebook, `notebook` is `{ "id": "<uuid>", "kind": "kitchen", "label": "<kitchen name>" }`.
+- `notebook` is the notebook the capture was made for: `kind` `"personal"` or `"kitchen"`,
+  with `name` (the stored name, spec 056) and, for a kitchen, `kitchen_id`.
 - A cuisine `tag` is `{ "id", "label" }` when the cuisine is a variant, otherwise null.
-- `language` is the member's configured language. Chip labels use it, and the other language for a label missing in it (research R4).
+- `language` is the member's account language (`users.language`, through
+  `effective_language`). Chip labels use it, and the other language for a label missing in
+  it (research R4).
 - Ingredient names are exactly as returned by the assistant (FR-024).
 
 ### Errors
 
 | Status | `code` | When | Extra fields |
 |--------|--------|------|--------------|
-| 404 | `notebook_not_found` | Notebook missing, another member's, or a kitchen notebook the caller is not a member of. Same body in every case. | |
-| 409 | `kitchen_archived` | The notebook's kitchen is archived. No assistant call. | |
+| 404 | `notebook_not_found` | Notebook missing, a personal notebook the caller neither owns nor belongs to, or a kitchen notebook of a kitchen the caller is not a member of. Same body in every case. | |
+| 409 | `kitchen_archived` | The kitchen notebook's kitchen is archived. Only members get this answer. No assistant call. | |
 | 422 | `text_empty` | Empty or whitespace-only. No assistant call. | |
 | 422 | `text_too_long` | More than `RECIPE_TEXT_MAX_CHARS` after trimming (default 5,000). No assistant call. | |
 | 422 | `not_a_recipe` | `NotARecipe` with any reason other than the one-recipe reason. | `reason` (string, at most 120 characters) |
@@ -110,8 +105,8 @@ Error body shape (as in the existing routes):
 
 ## `GET /recipe-vocabulary`
 
-Read-only controlled lists for the draft editor (FR-011, FR-012). Same for
-every member, so it can be cached.
+Read-only controlled lists for the draft editor (FR-011, FR-012). Same for every member,
+so it can be cached.
 
 ### 200
 
@@ -136,26 +131,26 @@ every member, so it can be cached.
 `max_text_chars` is the configured paste limit (`RECIPE_TEXT_MAX_CHARS`), so the ui
 shows the same limit as the api.
 
-Cuisines include every tag and variant node that `score_cuisines` can assign,
-plus the fallback. `tag` is the parent tag id for a variant.
+Cuisines include every tag and variant node that `score_cuisines` can assign, plus the
+fallback. `tag` is the parent tag id for a variant.
 
 ## BFF (ui → api)
 
 | ui route | Method | api route |
 |----------|--------|-----------|
-| `/api/notebooks/kitchens/[kitchenId]/captures/text` | POST | `/notebooks/kitchens/{kitchen_id}/captures/text` |
-| `/api/notebooks/members/[userId]/[notebookId]/captures/text` | POST | `/notebooks/members/{user_id}/{notebook_id}/captures/text` |
+| `/api/notebooks/[notebookId]/captures/text` | POST | `/notebooks/{notebook_id}/captures/text` |
 | `/api/recipe-vocabulary` | GET | `/recipe-vocabulary` |
 
-The two read BFF routes (`/api/notebooks/kitchens/[kitchenId]`, `/api/notebooks/members/[userId]/[notebookId]`) are delivered by spec 055.
+The read BFF routes (`/api/notebooks/default`, `/api/notebooks`,
+`/api/notebooks/kitchens/[kitchenId]`, `/api/notebooks/[notebookId]`) are delivered by
+spec 056.
 
-- Forwards the `cookie` header, `Content-Type: application/json`, and the
-  status, body and `Retry-After` as received.
-- The capture routes abort the upstream call after
-  `(GEMINI_TEXT_TIMEOUT_S || 10) + 2` seconds. On abort or network failure they
-  answer 503 `{ "code": "ai_unavailable" }` (research R9). Other upstream
-  failures answer 502 `bad_gateway`, as the existing BFF routes do. The ui
-  treats 502 like `ai_unavailable` for messages.
+- Forwards the `cookie` header, `Content-Type: application/json`, and the status, body
+  and `Retry-After` as received.
+- The capture route aborts the upstream call after `(GEMINI_TEXT_TIMEOUT_S || 10) + 2`
+  seconds. On abort or network failure it answers 503 `{ "code": "ai_unavailable" }`
+  (research R9). Other upstream failures answer 502 `bad_gateway`, as the existing BFF
+  routes do. The ui treats 502 like `ai_unavailable` for messages.
 - An invalid JSON body answers 400 `invalid_body` without calling the api.
 
 ## ui message per code (`ui/lib/i18n/capture.ts`, en)
@@ -171,5 +166,5 @@ The two read BFF routes (`/api/notebooks/kitchens/[kitchenId]`, `/api/notebooks/
 | `text_too_long` | "That text is too long. Paste up to {max_text_chars} characters." (the configured limit) |
 | `text_empty` | (not shown; submit is disabled) |
 | `kitchen_archived` | "This kitchen is archived, so recipes can't be added." |
-| `notebook_not_found`, `kitchen_not_found` | The sheet shows the kitchen's not-found text (`kitchensMessages.detailNotFound`), and the text is kept. |
+| `notebook_not_found` | The sheet shows the kitchen's not-found text (`kitchensMessages.detailNotFound`), and the text is kept. |
 | any other | The `ai_unavailable` message. |

@@ -153,6 +153,14 @@ def _env_float(name: str, default: float) -> float:
     return value
 
 
+def load_recipe_text_max_chars() -> int:
+    """The paste limit after trimming, in characters (spec 016 FR-002)."""
+    value = _env_int("RECIPE_TEXT_MAX_CHARS", 5000)
+    if value <= 0:
+        raise ValueError(f"RECIPE_TEXT_MAX_CHARS must be > 0, got {value}")
+    return value
+
+
 def load_gemini_settings() -> GeminiSettings:
     return GeminiSettings(
         api_key=(os.environ.get("GEMINI_API_KEY") or "").strip(),

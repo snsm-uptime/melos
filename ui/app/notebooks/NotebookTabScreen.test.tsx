@@ -112,7 +112,9 @@ describe("NotebookTabScreen", () => {
     const names = Array.from(container.querySelectorAll("h3")).map((h) => h.textContent);
     expect(names).toEqual(["ana's Notebook", "Family list"]);
     expect(container.textContent).toContain("Default");
-    expect(container.querySelectorAll("a, button").length).toBe(0);
+    // The notebook cards stay inert; the one control is the shared add-recipe action (S-016).
+    const controls = Array.from(container.querySelectorAll("a, button"));
+    expect(controls.map((el) => el.getAttribute("aria-label"))).toEqual(["Add a recipe"]);
   });
 
   it("shows the empty state when the list is empty", async () => {

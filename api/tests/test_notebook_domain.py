@@ -1,4 +1,4 @@
-"""Pure notebook rules (spec 055 FR-001 to FR-011, data-model.md "Domain")."""
+"""Pure notebook rules (spec 056 FR-001 to FR-011, data-model.md "Domain")."""
 
 from __future__ import annotations
 

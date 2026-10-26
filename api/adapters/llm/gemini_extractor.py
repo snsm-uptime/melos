@@ -60,6 +60,7 @@ RESPONSE_SCHEMA: dict[str, Any] = {
                             "unit": {"type": "string"},
                             "size": {"type": "string"},
                             "note": {"type": "string"},
+                            "preparation": {"type": "string"},
                         },
                         "required": ["name", "vague"],
                     },
@@ -80,6 +81,7 @@ class _LinePayload(BaseModel):
     unit: str | None = None
     size: str | None = None
     note: str | None = None
+    preparation: str | None = None
 
 
 class _RecipePayload(BaseModel):
@@ -123,6 +125,7 @@ def _payload_to_result(payload: _ExtractionPayload) -> ExtractionResult:
                     unit=line.unit,
                     size=line.size,
                     note=line.note,
+                    preparation=line.preparation,
                 )
                 for line in recipe.ingredient_lines
             ),
@@ -237,7 +240,12 @@ class GeminiRecipeExtractor:
             return InvalidOutput()
         try:
             payload = _ExtractionPayload.model_validate_json(body)
-        except ValidationError:
+        except ValidationError as exc:
+            # Field paths and error types only: never the values, never the pasted text.
+            logger.warning(
+                "extraction output failed the schema: %s",
+                [(error["loc"], error["type"]) for error in exc.errors()],
+            )
             return InvalidOutput()
         return _payload_to_result(payload)
 

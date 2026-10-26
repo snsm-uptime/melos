@@ -1,4 +1,4 @@
-"""Postgres integration tests for notebooks, the capture step and the catalog (spec 055).
+"""Postgres integration tests for notebooks, the capture step and the catalog (spec 056).
 
 Requires DATABASE_URL (Compose db or CI Postgres 16). Skips when unset.
 
@@ -838,8 +838,11 @@ def test_capture_race_on_one_kitchen_makes_one_notebook(engine: Engine) -> None:
 
 def test_notebook_routes_are_gets_on_the_four_contract_paths(client: TestClient) -> None:
     paths = client.app.openapi()["paths"]
+    # The capture route (spec 016) is the one POST under /notebooks; it is checked below.
     notebook_paths = {
-        path: set(operations) for path, operations in paths.items() if path.startswith("/notebooks")
+        path: set(operations)
+        for path, operations in paths.items()
+        if path.startswith("/notebooks") and "/captures/" not in path
     }
 
     assert set(notebook_paths) == {
@@ -849,6 +852,8 @@ def test_notebook_routes_are_gets_on_the_four_contract_paths(client: TestClient)
         "/notebooks/{notebook_id}",
     }
     assert {method for operations in notebook_paths.values() for method in operations} == {"get"}
+    capture_paths = {path: set(ops) for path, ops in paths.items() if "/captures/" in path}
+    assert capture_paths == {"/notebooks/{notebook_id}/captures/text": {"post"}}
 
 
 def test_read_routes_show_each_person_only_what_they_may_see(

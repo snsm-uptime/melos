@@ -49,6 +49,8 @@ Recipe fields (only when outcome is "recipe"):
   and spices are never a main ingredient.
 - ingredient_lines: one entry per ingredient, with:
   - name: lower-case, singular, in the pasted text's language.
+  - preparation: how the ingredient is cut or prepared, as written ("chopped"),
+    in the pasted text's language. Never part of name. Null when none.
   - vague: true when the amount is vague, using these phrases as examples:
     {VAGUE_PHRASES}.
     A phrase is vague only when it is the whole amount and no number is given.

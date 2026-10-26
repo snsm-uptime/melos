@@ -230,7 +230,7 @@ class NotebookModel(Base):
         nullable=True,
         index=True,
     )
-    # Origin label of a snapshot (S-034). Never set by this feature.
+    # Origin label of a snapshot (S-035). Never set by this feature.
     source_notebook_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("notebook.id", ondelete="SET NULL"),

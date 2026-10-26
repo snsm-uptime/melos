@@ -45,13 +45,23 @@ UNIT_SPELLINGS: dict[str, tuple[str, ...]] = {
         "cda",
         "cdas",
     ),
-    "tsp": ("teaspoon", "teaspoons", "tsp", "cucharadita", "cucharaditas", "cdta", "cdtas"),
+    "tsp": (
+        "teaspoon",
+        "teaspoons",
+        "tsp",
+        "cucharadita",
+        "cucharaditas",
+        "cdta",
+        "cdtas",
+    ),
     "unit": (
         "piece",
         "pieces",
         "whole",
         "each",
         "pieza",
+        "caja",
+        "box",
         "piezas",
         "unidad",
         "unidades",
@@ -78,6 +88,8 @@ class IngredientLine:
     unit: str | None = None
     size: str | None = None
     note: str | None = None
+    # How the ingredient is cut or prepared ("chopped"). Never part of name (FR-010).
+    preparation: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -221,7 +233,9 @@ def _build_matching(categories: Mapping[str, Any]) -> _Matching:
     for alias, ids in (categories.get("ambiguous_aliases") or {}).items():
         alias_to_ids.setdefault(_normalize(alias), set()).update(ids)
     items = tuple(
-        (alias, tuple(sorted(ids))) for alias, ids in sorted(alias_to_ids.items()) if alias
+        (alias, tuple(sorted(ids)))
+        for alias, ids in sorted(alias_to_ids.items())
+        if alias
     )
 
     cuisine_rules = matching["cuisine"]
@@ -265,17 +279,23 @@ def _build_cuisine_nodes(cuisines: Mapping[str, Any]) -> tuple[_CuisineNode, ...
                     + ingredients.get("common", [])
                 ),
                 techniques=tuple(
-                    t for t in (_normalize(x) for x in signals.get("techniques") or []) if t
+                    t
+                    for t in (_normalize(x) for x in signals.get("techniques") or [])
+                    if t
                 ),
             )
         )
     return tuple(nodes)
 
 
-def build_vocabulary(categories: Mapping[str, Any], cuisine: Mapping[str, Any]) -> Vocabulary:
+def build_vocabulary(
+    categories: Mapping[str, Any], cuisine: Mapping[str, Any]
+) -> Vocabulary:
     """Build the vocabulary from the parsed categories.yaml and cuisine.yml contents."""
     return Vocabulary(
-        main_ingredient_keys=tuple(categories["categories"]["main_ingredient"]["values"]),
+        main_ingredient_keys=tuple(
+            categories["categories"]["main_ingredient"]["values"]
+        ),
         matching=_build_matching(categories),
         cuisine_nodes=_build_cuisine_nodes(cuisine["cuisines"]),
     )
@@ -322,7 +342,9 @@ def _title_coverage(
         return 0, 0.0
     phrase_items = [(phrase, ("",)) for phrase in phrases]
     spans = _spans(title, phrase_items)
-    covered = sum(1 for s, e, _ in content if any(a <= s and e <= b for a, b, _ in spans))
+    covered = sum(
+        1 for s, e, _ in content if any(a <= s and e <= b for a, b, _ in spans)
+    )
     return len(spans), covered / len(content)
 
 
@@ -350,13 +372,19 @@ def score_cuisines(
 
     scored: list[tuple[tuple[int, float, int], str, str]] = []
     for node in vocabulary.cuisine_nodes:
-        title_matches, coverage = _title_coverage(title_norm, node.phrases, rules.stopwords)
+        title_matches, coverage = _title_coverage(
+            title_norm, node.phrases, rules.stopwords
+        )
         step_ids = node.ingredient_ids & found_ids if steps_on else set()
-        matched = coverage >= rules.min_coverage or len(step_ids) >= rules.min_ingredients
+        matched = (
+            coverage >= rules.min_coverage or len(step_ids) >= rules.min_ingredients
+        )
         if not matched:
             continue
         techniques = (
-            sum(1 for t in node.techniques if _occurrences(steps_norm, t)) if steps_on else 0
+            sum(1 for t in node.techniques if _occurrences(steps_norm, t))
+            if steps_on
+            else 0
         )
         body = len(step_ids) + techniques if steps_on else 0
         total = title_matches + len(step_ids)
@@ -410,19 +438,28 @@ def _check_name(raw: str, catalog: dict[str, str]) -> str:
 def _check_line(line: IngredientLine, catalog: dict[str, str]) -> IngredientLine:
     name = _check_name(line.name, catalog)
     note = line.note.strip() or None if line.note else None
+    preparation = line.preparation.strip() or None if line.preparation else None
     if line.vague:
         if line.quantity is not None or line.unit:
             raise InvalidDraftError("vague line")
-        return IngredientLine(name=name, vague=True, note=note)
+        return IngredientLine(name=name, vague=True, note=note, preparation=preparation)
 
     if line.quantity is None or not math.isfinite(line.quantity) or line.quantity <= 0:
         raise InvalidDraftError("quantity")
     unit = lookup_unit(line.unit or "")
     if unit is None:
-        raise InvalidDraftError("unit")
+        raise InvalidDraftError(
+            f"{line.name} unit: {line.unit} quantity: {line.quantity}"
+        )
     size = _clean_size(line.size) if unit == "unit" else None
     return IngredientLine(
-        name=name, vague=False, quantity=float(line.quantity), unit=unit, size=size, note=note
+        name=name,
+        vague=False,
+        quantity=float(line.quantity),
+        unit=unit,
+        size=size,
+        note=note,
+        preparation=preparation,
     )
 
 
@@ -451,7 +488,9 @@ def check_draft(
     Returns the checked draft with its cuisines scored by the app. Raises
     InvalidDraftError when any rule breaks. The whole draft is then invalid.
     """
-    catalog = {n.strip().casefold(): n.strip() for n in catalog_names if n and n.strip()}
+    catalog = {
+        n.strip().casefold(): n.strip() for n in catalog_names if n and n.strip()
+    }
     title = _check_title(draft.title)
     steps = _check_steps(draft.steps)
     servings, estimated = _check_servings(draft.base_servings)

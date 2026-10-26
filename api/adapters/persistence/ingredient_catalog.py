@@ -1,4 +1,4 @@
-"""SQLAlchemy ingredient catalog per notebook and the personal catalog (spec 055, research R9)."""
+"""SQLAlchemy ingredient catalog per notebook and the personal catalog (spec 056, research R9)."""
 
 from __future__ import annotations
 

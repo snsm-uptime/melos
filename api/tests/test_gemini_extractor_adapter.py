@@ -189,6 +189,32 @@ def test_recipe_payload_becomes_raw_draft_for_the_domain_to_check() -> None:
     assert recipe.steps == ("Simmer with the salt.",)
 
 
+def test_preparation_maps_to_its_own_field_not_the_name() -> None:
+    payload = {
+        "outcome": "recipe",
+        "recipe": {
+            "title": "Onion soup",
+            "ingredient_lines": [
+                {
+                    "name": "onion",
+                    "vague": False,
+                    "quantity": 2,
+                    "unit": "unit",
+                    "size": "large",
+                    "preparation": "chopped",
+                }
+            ],
+            "steps": ["Simmer."],
+        },
+    }
+    extractor_, _ = extractor(response(payload))
+
+    line = extractor_.extract("text", [], 10.0).recipe.ingredient_lines[0]
+
+    assert line.name == "onion"
+    assert line.preparation == "chopped"
+
+
 def test_not_a_recipe_keeps_the_model_reason() -> None:
     extractor_, _ = extractor(
         response({"outcome": "not_a_recipe", "reason": "This is a weather question."})

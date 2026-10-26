@@ -13,14 +13,14 @@ export type ActionDialogProps = {
   title: string;
   /** Main content of the dialog (accepts any ReactNode — text, chips, forms, etc.) */
   children: ReactNode;
-  /** Label for the confirm action button */
-  confirmLabel: string;
+  /** Label for the confirm action button. Omit both labels and onConfirm for a dialog without footer buttons. */
+  confirmLabel?: string;
   /** Label for the cancel button */
-  cancelLabel: string;
+  cancelLabel?: string;
   /** Callback when dialog should close */
   onOpenChange: (open: boolean) => void;
   /** Callback when user confirms */
-  onConfirm: () => void;
+  onConfirm?: () => void;
   /** Whether an async operation is pending (disables buttons, shows loading state) */
   pending?: boolean;
 };
@@ -46,6 +46,8 @@ export function ActionDialog({
   onConfirm,
   pending = false,
 }: ActionDialogProps) {
+  // A dialog with neither label renders no footer (spec 016 contracts/capture-ui.md).
+  const hasFooter = confirmLabel !== undefined || cancelLabel !== undefined;
   const panelRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
 
@@ -76,18 +78,20 @@ export function ActionDialog({
           {title}
         </h2>
         <div className="mt-4">{children}</div>
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
-          <GhostButton
-            ref={cancelRef}
-            onClick={() => onOpenChange(false)}
-            disabled={pending}
-          >
-            {cancelLabel}
-          </GhostButton>
-          <PrimaryButton onClick={onConfirm} disabled={pending} loading={pending}>
-            {confirmLabel}
-          </PrimaryButton>
-        </div>
+        {hasFooter ? (
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <GhostButton
+              ref={cancelRef}
+              onClick={() => onOpenChange(false)}
+              disabled={pending}
+            >
+              {cancelLabel}
+            </GhostButton>
+            <PrimaryButton onClick={onConfirm} disabled={pending} loading={pending}>
+              {confirmLabel}
+            </PrimaryButton>
+          </div>
+        ) : null}
       </div>
     </div>
   );

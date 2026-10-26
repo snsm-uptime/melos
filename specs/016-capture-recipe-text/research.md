@@ -7,22 +7,24 @@ reading the current code (S-015 adapter, kitchens access layer, ui shell).
 
 ## R1. Notebook as an entity, and where the ingredient catalog comes from
 
+> Superseded in part (2026-10-25): the schema below (`kitchen_id?`, `user_id?`, one notebook per kitchen) predates spec 056's final model (`notebook.kitchen_id` and `owner_user_id`, `notebook_membership`, `source_notebook_id`). The current model is in `data-model.md` and `specs/056-notebooks`.
+
 - **Decision**: A notebook is its own entity, not a synonym for a kitchen or a
   member. Alembic `0003` creates:
   - `notebook(id, kitchen_id?, user_id?, created_at)` with exactly one owner
     (`CHECK ((kitchen_id IS NULL) <> (user_id IS NULL))`) and `UNIQUE (kitchen_id)`:
     one notebook per kitchen. `user_id` is not unique, so the schema allows many
     notebooks per member; the user table gains a nullable `default_notebook_id`
-    (2026-10-22). Spec 055-notebooks creates these tables.
+    (2026-10-22). Spec 056-notebooks creates these tables.
   - `ingredient(id, notebook_id, name, created_at)` with
     `UNIQUE (notebook_id, name)`. Each notebook has its own catalog.
   The migration backfills one notebook for every existing kitchen and for every
   existing user that has an alias.
-  Recipes, when S-019 adds them, point at `notebook_id`. A copy between
-  notebooks (S-034, S-047) finds its source and target by notebook id. Reading
+  Recipes, when S-020 adds them, point at `notebook_id`. A copy between
+  notebooks (S-035, S-048) finds its source and target by notebook id. Reading
   the catalog goes through an `IngredientCatalogReader` port
   (`names_for_notebook(notebook)`). Nothing in this feature writes to either
-  table; notebooks are created by spec 055 (R13).
+  table; notebooks are created by spec 056 (R13).
 - **Rationale**: The notebook id is what identifies the source and the target
   of a copy, and a kitchen and its notebook are different concepts. FR-003 and
   FR-022 need a real catalog read, so tests can prove that a capture only sees
@@ -49,7 +51,7 @@ reading the current code (S-015 adapter, kitchens access layer, ui shell).
 - **Rationale**: It is the smallest change that meets FR-010. It is additive, so
   existing fake scripts and tests still build.
 - **Alternatives considered**: Put preparation in `note` and split it in the ui.
-  Rejected: this mixes vague notes and preparation, and S-019 stores them in
+  Rejected: this mixes vague notes and preparation, and S-020 stores them in
   separate columns (`recipe_ingredient.preparation`, `vague_note`).
 
 ## R3. Use-case shape and check order
@@ -75,7 +77,7 @@ reading the current code (S-015 adapter, kitchens access layer, ui shell).
   member's notebook give the same 404, so ids are no existence oracle.
 - **Access action**: add `capture_recipe` to the member actions that deny as
   not found (`_MEMBER_READ_ACTIONS`), with a comment that capture writes
-  nothing. S-019's save will need its own action.
+  nothing. S-020's save will need its own action.
 - **Alternatives considered**: Put the checks in the route. Rejected: the
   constitution requires membership checks in `application/`.
 
@@ -162,7 +164,7 @@ reading the current code (S-015 adapter, kitchens access layer, ui shell).
   key. The units list and limits are constants in the same file, with a test
   that they match the api's `GET /recipe-vocabulary` `units` field.
 - **Rationale**: Edits never leave the browser in this feature, so a
-  server round trip per edit would add latency for no safety gain. S-019 runs
+  server round trip per edit would add latency for no safety gain. S-020 runs
   `check_draft` on save.
 - **Alternatives considered**: A `POST /drafts/check` route. Rejected for now:
   it adds no value until there is a save.
@@ -191,7 +193,7 @@ reading the current code (S-015 adapter, kitchens access layer, ui shell).
 - **Rationale**: Existing links, tests and the invite flow stay as they are,
   and members and invites stay reachable (FR-001b).
 - **Alternatives considered**: Make Notebook the default kitchen view. Deferred
-  to S-020/S-046, when the kitchen has a recipe list to show.
+  to S-021/S-047, when the kitchen has a recipe list to show.
 
 ## R11. Extraction use-case lifetime
 
@@ -213,19 +215,22 @@ reading the current code (S-015 adapter, kitchens access layer, ui shell).
   `BookIcon` follows `ui/app/icons/README.md`.
 - **Rationale**: `TabBar` is already data-driven. No `TabBar` change is needed.
 
-## R13. Creating notebooks (moved to spec 055-notebooks)
+## R13. Creating notebooks (moved to spec 056-notebooks)
+
+> Superseded in part (2026-10-25): a kitchen's notebook is created on the first open of its notebook list, or on the first saved capture (spec 056 FR-008a, FR-009), not with the kitchen. The member's default is read through `GET /notebooks/default`. The `/notebooks/members/...` routes no longer exist.
 
 - **Decision (2026-10-22, revised)**: Notebook creation and the notebook reads are
-  delivered by `specs/055-notebooks`, merged before this feature starts.
-  - A kitchen's notebook is created with the kitchen, in the same transaction as
-    the kitchen and its owner membership (`CreateOwnedKitchenService`).
+  delivered by `specs/056-notebooks`, merged before this feature starts.
+  - A kitchen's notebook is created on the first open of its notebook list (spec 056
+    FR-008a) or on the first saved capture (FR-009), not with the kitchen. Signup's
+    kitchen starts with none.
   - A member's notebook is created the first time the member asks for their
     default notebook (`GET /notebooks/members/{user_id}`). Its id is stored in the
     new nullable `users.default_notebook_id`, and a null value triggers the
     creation. The alias claim and the auth routes are not changed; the user
     model gains one column, approved by the owner on 2026-10-22. This replaces
     the earlier alias-claim hook.
-  - Backfill in `0003` (spec 055): one notebook per existing kitchen and per
+  - Backfill in `0003` (spec 056): one notebook per existing kitchen and per
     existing user that has an alias, named "{alias}'s Notebook". Deleting the
     default notebook sets `default_notebook_id` to null, and the next call
     creates a new one silently.
@@ -233,3 +238,16 @@ reading the current code (S-015 adapter, kitchens access layer, ui shell).
   FR-019 and SC-005 hold as written. The member's read route is owner-only: any
   other caller gets 404 `notebook_not_found`. The member's page calls the default
   route, so it does not need to know the notebook id first.
+
+## R11. Notebook choice and a kitchen with no notebook (2026-10-25)
+
+- **Decision**: The capture sends one notebook id, chosen by the member in the text sheet's picker. Outside a kitchen the picker lists the personal notebooks the member owns or belongs to, with the default preselected, and is hidden when there is only one. Inside a kitchen it lists the kitchen's notebooks. The kitchen's Notebook page creates the notebook on its first open (spec 056 FR-008a), so the capture has one. A capture that reaches a kitchen with none is accepted with a null notebook id, and the save creates it (FR-009).
+- **Rationale**: Spec 016 clarifications (2026-10-25): the picker and the no-notebook answer. Checking the notebook on the server keeps the membership rule (FR-022) in one place.
+- **Alternatives considered**: Refuse capture until a kitchen notebook exists (rejected: dead end for "My kitchen" at signup). Create the notebook when the sheet opens (rejected: breaks "a capture never creates a notebook").
+- **Resolved (2026-10-25, owner)**: the first open of the kitchen's Notebook page creates the notebook (spec 056 FR-008a). AGENTS.md still says the first capture creates it; that line needs updating.
+
+## R12. Strings and language (2026-10-25, revised)
+
+- **Decision**: Strings are English in this feature, in `ui/lib/i18n/capture.ts`. Chip labels follow `users.language` (`en` or `es`), through `effective_language`. Internationalization, with Spanish for every message chosen by the account language, is a story after MVP.
+- **Rationale**: The owner's answer on 2026-10-25: the account language setting is the language source, and internationalization comes after MVP, as in the finance-helper repo. The PRD (§1.3) says the UI is English and Spanish.
+- **Alternatives considered**: Bilingual messages now (rejected by the owner: after MVP). AGENTS.md's "English for the UI" matches the decision for now.

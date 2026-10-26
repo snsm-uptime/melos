@@ -15,7 +15,7 @@
 - [x] CHK003 Are the draft screen's editable fields and their limits (title, servings, lines, steps, chips) enumerated in one place? [Completeness, Spec §FR-005–FR-013]
 - [x] CHK004 Are loading-state requirements defined for the wait between submit and result, beyond blocking a second submission? [Gap, Spec §FR-004]
 - [x] CHK005 Are requirements defined for what the member sees when leaving the draft via Back versus a bottom-bar tab? [Completeness, Spec §FR-032]
-- [x] CHK006 Is the removal of unique vague amounts from this feature (moved to S-019) reflected in every place that previously mentioned it, including spec 015? [Consistency, Spec §FR-019]
+- [x] CHK006 Is the removal of unique vague amounts from this feature (moved to S-020) reflected in every place that previously mentioned it, including spec 015? [Consistency, Spec §FR-019]
 
 ## Requirement Clarity
 
@@ -66,11 +66,11 @@
 
 - [x] CHK034 Is the dependency on the S-015 stand-in extractor and its failure-class mapping documented with the version or contract it relies on? [Dependency, Spec §Assumptions]
 - [x] CHK035 Is the assumption "no per-member capture limit" validated against the shared usage limit risk? [Assumption, Spec §FR-017]
-- [x] CHK036 Are the boundaries with S-017, S-019, S-020, S-034, S-046 and S-047 stated so no requirement is orphaned or duplicated? [Dependency, Spec §Assumptions]
+- [x] CHK036 Are the boundaries with S-018, S-020, S-021, S-035, S-047 and S-048 stated so no requirement is orphaned or duplicated? [Dependency, Spec §Assumptions]
 
 ## Decisions of 2026-10-22 (added after the analysis)
 
-- [x] CHK037 Is the build order between spec 055-notebooks and this feature stated in both specs, with what spec 055 provides (notebook entity, default notebook, read routes)? [Dependency, Spec §Assumptions]
+- [x] CHK037 Is the build order between spec 056-notebooks and this feature stated in both specs, with what spec 056 provides (notebook entity, default notebook, read routes)? [Dependency, Spec §Assumptions]
 - [x] CHK038 Is the "edited draft" rule (content hash compared with the hash taken when the draft was shown) stated measurably and consistently in FR-032, the data model and the tasks? [Measurability, Spec §FR-032]
 - [x] CHK039 Is the configured paste limit (`RECIPE_TEXT_MAX_CHARS`) stated consistently in FR-002, SC-001, the edge cases, the contracts and the messages? [Consistency, Spec §FR-002]
 - [x] CHK040 Are requirements defined for an invalid `RECIPE_TEXT_MAX_CHARS` (non-numeric, zero, or above spec 015's 10,000-character limit)? [Gap, Edge Case]
@@ -78,7 +78,7 @@
 - [x] CHK042 Is the label "My notebook" (FR-001a) consistent with the stored notebook name "{alias}'s Notebook"? [Conflict, Spec §FR-001a]
 - [x] CHK043 Are requirements defined for the Notebook page when the default-notebook call fails? [Gap, Exception Flow]
 - [x] CHK044 Is it specified that notebook creation and re-creation are invisible to the ui (same response shape and status)? [Clarity, Spec §Assumptions]
-- [x] CHK045 Is the behaviour defined in spec 055 when the default notebook is deleted (default cleared, next call creates a new one)? [Dependency, Gap]
+- [x] CHK045 Is the behaviour defined in spec 056 when the default notebook is deleted (default cleared, next call creates a new one)? [Dependency, Gap]
 
 ## Notes
 

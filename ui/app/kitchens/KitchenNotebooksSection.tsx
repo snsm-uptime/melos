@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { AddRecipeCallToAction } from "@/components/AddRecipeCallToAction";
 import { NotebookCard } from "@/components/NotebookCard/NotebookCard";
 import { SectionLabel } from "@/components/soft-ledger/SectionLabel";
 import type { Locale } from "@/lib/i18n/locale";
@@ -17,10 +18,7 @@ import styles from "../notebooks/notebooks.module.scss";
 
 type KitchenNotebooksSectionProps = {
   kitchenId: string;
-  /**
-   * Accepted for the add-recipe action (S-016). This feature shows no add-recipe
-   * action either way, so the archive state does not change the output yet.
-   */
+  /** An archived kitchen shows no add-recipe action (spec 016 FR-033). */
   isArchived: boolean;
   /** The signed-in person's alias. The owner line is hidden when the owner is this person. */
   viewerAlias: string | null;
@@ -33,9 +31,10 @@ type SectionState =
   | { status: "not_found" }
   | { status: "error" };
 
-/** A kitchen's notebooks for its members, inert cards only (spec 059 FR-004 to FR-007). */
+/** A kitchen's notebooks for its members, inert cards only (spec 060 FR-004 to FR-007). */
 export function KitchenNotebooksSection({
   kitchenId,
+  isArchived,
   viewerAlias,
   locale,
 }: KitchenNotebooksSectionProps) {
@@ -101,6 +100,18 @@ export function KitchenNotebooksSection({
       ) : null}
       {state.status === "ready" && state.notebooks.length === 0 ? (
         <p className={styles.copy}>{t.kitchenEmpty}</p>
+      ) : null}
+      {state.status === "ready" && state.notebooks.length > 0 && !isArchived ? (
+        <AddRecipeCallToAction
+          candidates={state.notebooks.map((notebook) => ({
+            id: notebook.id,
+            name: notebook.name,
+            kind: "kitchen",
+            kitchenId,
+          }))}
+          defaultId={state.notebooks[0]?.id ?? null}
+          returnPath={`/kitchens/${kitchenId}`}
+        />
       ) : null}
       {state.status === "ready" && state.notebooks.length > 0 ? (
         <ul className={styles.grid}>

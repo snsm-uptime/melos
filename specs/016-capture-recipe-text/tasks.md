@@ -2,250 +2,252 @@
 
 **Input**: Design documents from `/specs/016-capture-recipe-text/`
 
-**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/capture-api.md, contracts/capture-ui.md, quickstart.md
+**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/capture-api.md, contracts/capture-ui.md, quickstart.md. Spec 056-notebooks must be merged first (T001).
 
-**Tests**: Included. The constitution (§6) requires domain tests, use-case tests against fake ports, Compose integration tests and vitest for components, and SC-005 and SC-008 are measured by automated tests. No test needs the network: the Compose overlay replaces the extractor with `FakeRecipeExtractor`.
+**Tests**: Included. The constitution (§6) requires domain tests, use-case tests against fake ports, Compose integration tests and vitest for components. SC-005 and SC-008 are checked by automated tests. No test needs the network: the Compose overlay replaces the extractor with `FakeRecipeExtractor`.
 
-**Organization**: Tasks are grouped by user story. Phase 2 holds what every story needs: the S-015 touch-ups, capture errors, access rules, and the ui basics (the notebook entity and its migration are in spec 055-notebooks).
+**Organization**: Tasks are grouped by user story (US1 to US4 from spec.md). Phase 2 holds what every story needs: the S-015 touch-ups, the capture use case, the route, the BFF proxy, the store and the shared component changes.
 
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependency on an unfinished task)
 - **[Story]**: US1 to US4, from spec.md
-- All paths are relative to the repository root. api paths use the `api/` layout and ui paths use `ui/`, as in plan.md.
+- All paths are relative to the repository root.
 
 ## Notes that apply to every task
 
-- No new library in `api/` or `ui/` (plan Technical Context). Do not edit `uv.lock` or `package-lock.json`.
-- English for code, comments and UI text; Spanish equivalents go in the same i18n file (AGENTS.md).
-- Invented data only in tests (constitution §4). Never read or print `.env`.
-- Authentication and signup code is not changed (AGENTS.md). Notebook creation and the notebook read routes are in spec 055-notebooks (research R13).
-- The draft is never saved: no task writes a recipe, ingredient, category, source or step row (FR-019). This feature creates no rows.
-- Commit one task or one small group at a time. Do not push (AGENTS.md).
-- No task in this feature changes an existing constructor.
+- No new library in `api/` or `ui/`. Do not edit `uv.lock` or `package-lock.json` by hand.
+- Add libraries only with `uv add` or `npm install` (none planned).
+- English for code, comments and UI text (AGENTS.md). Internationalization is a later story after MVP (FR-034); keep every message in `ui/lib/i18n/capture.ts` so that story can add Spanish.
+- Use `uv run` for every Python command and `npm` for every Node command.
+- The draft is never saved (FR-019). No task in this feature writes a recipe, ingredient, category, source, step or cart row.
+- Messages to members never contain raw service text, keys or traces (FR-029).
 
 ---
 
-## Phase 1: Setup
+## Phase 1: Setup (shared checks and configuration)
 
-**Purpose**: Know the baseline and give the new code a home.
-
-- [ ] T001 Run the baseline checks and note the result: `docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api`, then `cd ui && npm test && npm run lint && npm run typecheck`. Everything must be green before any change, so later failures are ours
-- [ ] T002 [P] Create the empty folders with an `index.ts` barrel each: `ui/lib/capture/`, `ui/components/AddRecipeCallToAction/`, `ui/components/RecipeDraft/` (plan Source Code; `ui/lib/capture/` is flagged for review in plan.md)
+- [X] T001 Confirm spec 056 is in place: `api/domain/errors.py` defines `NotebookNotFoundError`, `KitchenArchivedError` and `NotebookChoiceRequiredError`; `api/api/routes/notebooks.py` serves `GET /notebooks`, `GET /notebooks/default`, `GET /notebooks/kitchens/{kitchen_id}` and `GET /notebooks/{notebook_id}`; `cd api && uv run alembic heads` shows `0003_notebooks_ingredients`. Stop and report if any is missing.
+- [X] T002 [P] Add `RECIPE_TEXT_MAX_CHARS` (integer, default `5000`, applied after trimming) to the settings class in `api/api/settings.py`, and to `.env.example` with a comment and no real value.
 
 ---
 
-## Phase 2: Foundational (Blocking Prerequisites)
+## Phase 2: Foundational (blocking prerequisites for every story)
 
-**Purpose**: S-015 touch-ups, capture errors, access rules, and the ui basics that every story uses. Spec 055-notebooks must be merged first.
+**⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-**⚠️ CRITICAL**: No user story work can begin until this phase is complete
+### S-015 touch-ups (domain, adapter, prompt)
 
-### S-015 touch-ups (research R2, R6)
+- [X] T003 [P] Add `preparation: str | None` to `IngredientLine` in `api/domain/recipe_draft.py`. Trimmed; a blank value becomes `None`. It is never part of `name` (data-model: `IngredientLine`; FR-010).
+- [X] T004 [P] Add domain tests in `api/tests/test_recipe_draft_domain.py`: `preparation` is kept, trimmed, and a blank string becomes `None`.
+- [X] T005 Map the new field in `api/adapters/llm/gemini_extractor.py`: `_LinePayload.preparation` → `IngredientLine.preparation`.
+- [X] T006 Add the preparation rule to the ingredient fields in `api/adapters/llm/prompt.py`: how the ingredient is cut or prepared goes in `preparation` ("chopped") and never in `name` (FR-010). Quote the pasted text inside the existing delimiters (constitution §4).
+- [X] T007 [P] Add an adapter test in `api/tests/test_gemini_extractor_adapter.py`: a line with a preparation maps to `IngredientLine.preparation`.
+- [X] T008 Make the too-long refusal in `api/application/recipe_extraction.py` use the configured limit: "That text is too long. Paste up to {limit} characters." The limit comes from `RECIPE_TEXT_MAX_CHARS` (FR-002). The spec 015 10,000-character refusal stays as the upper bound.
 
-- [ ] T003 [P] Add `preparation: str | None = None` to `IngredientLine` in `api/domain/recipe_draft.py`. `check_draft` trims it and turns a blank value into `None`. "How the ingredient is cut or prepared ("chopped"). Trimmed; blank becomes None. Never part of `name`. No other rule." Add cases to `api/tests/test_recipe_draft_domain.py`: kept, trimmed, blank becomes `None`, a name never contains it
-- [ ] T004 [P] Add `preparation: str | None = None` to `_LinePayload` in `api/adapters/llm/gemini_extractor.py` and map it into `IngredientLine`. Add the rule to the ingredient fields in `api/adapters/llm/prompt.py`: preparation is how the ingredient is cut or prepared, for example "chopped", and never goes in the name. Extend `api/tests/test_gemini_extractor_adapter.py` so a stubbed reply with a preparation reaches the draft
-- [ ] T005 [P] Add `RECIPE_TEXT_MAX_CHARS` (default 5000) to the settings object next to `GEMINI_TEXT_TIMEOUT_S`, and document it in the env example and the README env table (constitution §4). Test the default and an override in the settings tests. The use case in T024 enforces it, so spec 015's own 10,000-character refusal stays unchanged (FR-002, research R6)
+### Domain rules for this feature
 
-### Capture errors and access
+- [X] T009 [P] Add the `capture_recipe` action to `api/domain/kitchen_access.py`: allowed for any member (owner or member role). A non-member is denied as `NotebookNotFoundError` at the route, so the kitchen's existence is not revealed (FR-022, FR-030).
+- [X] T010 [P] Create `api/domain/labels.py` with `pick_label(labels: dict[str, str], language: str) -> str`: the label in `language`, otherwise the other language. No text detection (research R4). Add `api/tests/test_labels_domain.py`: the member's language wins, and a missing label falls back to the other language.
 
-- [ ] T007 [P] Add `KitchenArchivedError` (409 `kitchen_archived`, message "This kitchen is archived, so recipes can't be added.") to `api/domain/errors.py`, following the `MESSAGE` and `CODE` style of the existing errors. `NotebookNotFoundError` (404 `notebook_not_found`) comes from spec 055, which needs it for its own read routes; the capture use case reuses it for a missing notebook, another member's notebook and a kitchen notebook of a non-member
-- [ ] T008 [P] Add the `capture_recipe` action to `KitchenAccessAction` and to `_MEMBER_READ_ACTIONS` in `api/domain/kitchen_access.py` (member, denied as 404), with a comment that capture writes nothing and S-019's save needs its own action (research R3). Extend `api/tests/test_kitchen_access_domain.py`: an owner and a member are granted; a non-member and a missing kitchen are denied as not found
+### Application: the capture use case and the vocabulary
 
-### Moved to spec 055-notebooks (merged before this feature starts)
+- [X] T011 Create `api/application/recipe_capture.py` with `CaptureRecipeText.execute(actor_user_id, notebook_id, text, language)`. Order: (1) text is empty or longer than `RECIPE_TEXT_MAX_CHARS` after trimming → refuse, with no read and no extractor call; (2) load the notebook through the spec 056 `NotebookRepository.get`; (3) personal notebook: the caller must hold a `notebook_membership` row, otherwise `NotebookNotFoundError`; kitchen notebook: the caller must be a kitchen member, otherwise `NotebookNotFoundError`; (4) kitchen notebook of an archived kitchen → `KitchenArchivedError` (after membership); (5) read the catalog with `IngredientCatalog.names_for_notebook`; (6) call the S-015 `RecipeExtraction` use case with the text and the catalog; (7) return the S-015 result unchanged, wrapped as `CapturedDraft` (with `notebook`, `language`) on success.
+- [X] T012 [P] Create `api/tests/test_recipe_capture_application.py` with fake ports (fake notebook repository, fake catalog, `FakeRecipeExtractor`). Prove: a capture sends only its notebook's catalog; a missing notebook, another member's personal notebook, and a kitchen notebook of a non-member each raise `NotebookNotFoundError` before any catalog read or extractor call; an archived kitchen raises `KitchenArchivedError` with zero extractor calls; a too-long text is refused with zero extractor calls; each S-015 result passes through unchanged.
+- [X] T013 [P] Create `api/application/recipe_vocabulary.py`: the vocabulary answer (units, sizes, the two limits, the main ingredient and cuisine lists with `{en, es}` labels and tags, the paste limit) built from the spec 015 controlled lists `api/domain/categories.yaml` and `api/domain/cuisine.yml`. Include every cuisine variant and tag that `score_cuisines` (`api/domain/recipe_draft.py`) can assign, plus `international`.
 
-- T006 (notebook entity), T009 (ports), T010 (models), T011 (migration and backfill), T012 (notebook repository), T013 (ingredient catalog reader), T014 (integration test), T015 (member notebook on first use, replacing the alias-claim hook), and T016 (kitchen notebook with the kitchen) are delivered there.
-- The read routes formerly T028 and T029 are delivered there too.
-- `pick_label` (chip label fallback, research R4) stays in this feature, in `api/domain/labels.py`, because the capture route needs it (T027).
+### API: schemas, route, dependencies
 
-### UI basics
+- [X] T014 Create `api/api/schemas/recipe_capture.py` with the request model (`text: str`) and the response models for the 200 draft answer and the vocabulary answer, matching `contracts/capture-api.md`.
+- [X] T015 Create `api/api/routes/recipe_capture.py` with `POST /notebooks/{notebook_id}/captures/text` and `GET /recipe-vocabulary`. Map results exactly as the contract's error table: `NotebookNotFoundError` → 404 `notebook_not_found`; `KitchenArchivedError` → 409 `kitchen_archived`; `RecipeTextRefusedError` → 422 `text_empty` / `text_too_long`; `NotARecipe` → 422 `not_a_recipe` (reason at most 120 characters) or `one_recipe_at_a_time`; `InvalidOutput` → 422 `ai_invalid_output`; `LimitReached` → 429 `ai_limit_reached` with `Retry-After` when hinted; `Unavailable` → 503 `ai_unavailable`; `AIProviderError` → 503 `ai_misconfigured`. Every body is `{ "detail": "<plain sentence>", "code": "<code>" }` and never carries service text (FR-029). Read the member's language from `users.language` through `effective_language`.
+- [X] T016 Register the router in `api/api/app.py` with `dependencies=[Depends(require_user_alias)]`, next to the notebooks router.
+- [X] T017 Add dependencies in `api/api/deps.py`: `get_recipe_extraction`, a singleton on `app.state` (like `get_rate_limiter`), and `get_vocabulary`. Tests replace the extractor with `app.dependency_overrides[get_recipe_extraction]`.
 
-- [ ] T017 [P] Make `confirmLabel`, `cancelLabel` and `onConfirm` optional in `ui/components/ActionDialog/ActionDialog.tsx`. When both labels are absent the footer is not rendered and focus goes to the first focusable child; existing callers render exactly as before (contracts/capture-ui.md). Add `ui/components/ActionDialog/ActionDialog.test.tsx`: renders without buttons, Escape and backdrop close, a call with all three props is unchanged
-- [ ] T018 [P] Add `ui/app/icons/BookIcon.tsx` (24×24 stroke icon following `ui/app/icons/stroke.ts`), export it from `ui/app/icons/index.ts`, and add it to the catalog in `ui/app/icons/README.md`
-- [ ] T019 Add the Notebook tab: in `ui/lib/appChrome.ts` add `/notebook` to `APP_CHROME_PREFIXES` and map `/notebook` and `/notebook/*` to `"notebook"` in `tabKeyFromPath` (kitchen routes, including `/kitchens/[id]/notebook`, stay on `"home"`); add `tabNotebook` ("Notebook" / "Cuaderno") to `ui/lib/i18n/kitchens.ts`; add `{ key: "notebook", href: "/notebook", label: t.tabNotebook, Icon: BookIcon }` after Home in `ui/components/AppShell.tsx`. Extend `ui/components/AppShell.test.tsx` and add a `tabKeyFromPath` test
-- [ ] T020 [P] Create `ui/lib/i18n/capture.ts` with English and Spanish strings for everything in contracts/capture-ui.md and the message table in contracts/capture-api.md, using the exact English wording from spec.md (FR-002, FR-014 to FR-018, FR-028, FR-032, FR-033, "Add a recipe", "Not available yet", "Coming soon", "My notebook", draft field errors). Follow the shape of `ui/lib/i18n/kitchens.ts`
+### UI: shared component changes, store, client, BFF
 
-**Checkpoint**: Foundation ready. Spec 055-notebooks is merged, and capture errors, access rules and ui basics are in place. User story work can begin.
+- [X] T018 [P] Make `confirmLabel`, `cancelLabel` and `onConfirm` optional in `ui/components/ActionDialog/ActionDialog.tsx`. When both labels are absent, do not render the footer and move focus to the first focusable child. Existing callers pass all three and render as before. Update `ui/components/ActionDialog/` tests.
+- [X] T019 [P] Create `ui/lib/i18n/capture.ts` with every English message and label from `contracts/capture-api.md` ("ui message per code") and `contracts/capture-ui.md`, quoted exactly. Strings are English for now (FR-034).
+- [X] T020 Create `ui/lib/capture/captureStore.ts`, a module store read with `useSyncExternalStore` (same pattern as `membershipKitchensStore.ts`). Fields as in data-model "Client-only state": `notebook`, `text`, `sheetOpen`, `phase`, `message`, `draft`, `originalHash`, `language`. `edited` is derived. Reload clears the store.
+- [X] T021 [P] Create `ui/lib/capture/draftRules.ts` with the FR-013 checks: a measured line has `quantity > 0` and a unit from `g, kg, oz, lb, ml, l, cup, tbsp, tsp, unit`; a vague line has no quantity and no unit; `size` only when `unit === "unit"`, one of small, medium, large; base servings an integer of at least 1; title 1–200 characters after trimming; at least one non-empty step; at most 2 main ingredients and 2 cuisines. Add `ui/lib/capture/draftRules.test.ts`.
+- [X] T022 [P] Create `ui/lib/capture/draftHash.ts`: a content hash of the title, servings, categories, ingredient lines and steps, in order, that decides `edited` (FR-032: changing a value and changing it back is not an edit). Add `ui/lib/capture/draftHash.test.ts`.
+- [X] T023 Create `ui/lib/capture/captureClient.ts`: POST `/api/notebooks/{notebookId}/captures/text` and GET `/api/recipe-vocabulary`; map each response `code` to a key in `ui/lib/i18n/capture.ts`; treat 502 like `ai_unavailable`; any unknown code shows the `ai_unavailable` message. Add `ui/lib/capture/captureClient.test.ts`.
+- [X] T024 Create the BFF route `ui/app/api/notebooks/[notebookId]/captures/text/route.ts` (POST): forward the `cookie` header and `Content-Type`; return status, body and `Retry-After` as received; abort after `(GEMINI_TEXT_TIMEOUT_S || 10) + 2` seconds and answer 503 `{ "code": "ai_unavailable" }`; other upstream failures answer 502 `bad_gateway`; invalid JSON answers 400 `invalid_body` without calling the api.
+- [X] T025 Create the BFF route `ui/app/api/recipe-vocabulary/route.ts` (GET), forwarding to `/recipe-vocabulary` with the same status handling.
+- [X] T026 [P] Add BFF tests for both routes to `ui/app/api/notebooks.bff.test.ts`: abort after the deadline → 503 `ai_unavailable`; invalid JSON → 400 `invalid_body`; upstream failure → 502 `bad_gateway`; status and `Retry-After` pass through unchanged.
+
+### API integration foundation
+
+- [X] T027 Create `api/tests/test_recipe_capture_integration.py` (Compose, real Postgres, `FakeRecipeExtractor` through the dependency override). Start with the access and row-count checks: a non-member and a missing notebook get the same 404 body; `ingredient` row count is unchanged after every capture (SC-005, SC-008).
+
+**Checkpoint**: Foundation ready. The use case, route, BFF, store and shared dialog exist, so the user stories can start.
 
 ---
 
 ## Phase 3: User Story 1 - Turn pasted recipe text into a reviewable draft (Priority: P1) 🎯 MVP
 
-**Goal**: From either Notebook page, a member pastes text, submits, and sees an editable draft page. Back returns to the text with the text kept. Nothing is saved.
+**Goal**: A member opens their Notebook page or a kitchen's Notebook tab, taps the plus, pastes a recipe, submits, and gets a draft review page where they can edit and go back. Nothing is saved.
 
-**Independent Test**: Quickstart section 3, steps 1 to 9 and 13. With the fake extractor scripted with a draft, the draft page shows each part of the draft and `ingredient` and `notebook` row counts are unchanged afterwards.
+**Independent Test**: Sign in, open the Notebook tab, paste "a pinch of salt" and "2 large onions", submit, and check the draft (quickstart section 3, steps 1–7). Nothing in the notebook changes.
 
 ### Tests for User Story 1
 
-- [ ] T021 [P] [US1] Write `api/tests/test_recipe_capture_application.py` against `FakeRecipeExtractor` and fake ports: a draft result becomes a `CapturedDraft` with the notebook and the chip language; the extractor receives only the names of the given notebook (spec FR-003, FR-022); another member's notebook, a missing notebook and a kitchen notebook of a non-member all raise `NotebookNotFoundError` before any catalog read or extractor call; check order from research R3
-- [ ] T022 [P] [US1] Write `ui/lib/capture/draftRules.test.ts` for the FR-013 rules: a measured line has `quantity > 0` and a unit; a vague line has neither; size only with unit "unit" and one of small, medium or large; servings a whole number of at least 1; title not empty and 200 characters or fewer; at least one step; at most two main ingredients and two cuisines. Include a test that the unit list equals the `units` field of the vocabulary fixture (research R8)
-- [ ] T023 [P] [US1] Write `ui/lib/capture/captureStore.test.ts`: state transitions from data-model.md (submit, draft, Back keeps the text, leave clears, `edited` is true only while the content hash differs from `originalHash` (a change reverted by hand is not an edit), a second submit is blocked while `phase` is `submitting`)
+- [X] T028 [P] [US1] Add integration tests to `api/tests/test_recipe_capture_integration.py`: a personal notebook and a kitchen notebook each give a 200 draft with `notebook.kind` `"personal"` or `"kitchen"` and the fake extractor's draft; the response contains a `language` field from the member's account setting.
+- [X] T029 [P] [US1] Add a component test `ui/components/AddRecipeCallToAction/AddRecipeCallToAction.test.tsx`: the placeholder is a button named "Add a recipe" with a centred plus icon; activating it opens the options dialog.
+- [X] T030 [P] [US1] Add a component test `ui/components/AddRecipeCallToAction/AddRecipeOptionsDialog.test.tsx`: no confirm or cancel buttons; order URL (aria-disabled, "Not available yet"), Picture (aria-disabled, "Coming soon"), Text; Escape and a backdrop click close it and change nothing.
+- [X] T031 [P] [US1] Add a component test `ui/components/RecipeDraft/RecipeDraftEditor.test.tsx`: title, servings with the "estimated" badge, chips in the account language, the ingredient rows, steps, the "For: <notebook name>" line, Back, and no Save control.
 
-### Implementation for User Story 1: api
+### Implementation for User Story 1
 
-- [ ] T024 [US1] Create `api/application/recipe_capture.py` with `CaptureRecipeText.execute(actor_user_id, owner, text, language) -> CaptureOutcome`, where `owner` is the kitchen id, or the user id and notebook id, from the route, resolved to a notebook through the spec 055 repository and `CapturedDraft(recipe, language, notebook, kitchen_name)`. Order (research R3): trim and check the length against `RECIPE_TEXT_MAX_CHARS` (refuse with `text_too_long` and the configured limit in the message), load the notebook, a member-owned notebook must belong to the caller, a kitchen-owned notebook goes through `capture_recipe` authorization and then the archive check (`KitchenArchivedError`), read the catalog, call `RecipeExtraction.extract(text, names, timeout_s)` with the text timeout from settings, pass every non-draft S-015 result through unchanged. It stores nothing
-- [ ] T025 [US1] Add the capture dependencies to `api/api/deps.py`: `get_recipe_extraction(request)` builds one `RecipeExtraction(GeminiRecipeExtractor(...), load_vocabulary())` per app and caches it on `app.state` like `get_rate_limiter` (research R11), `get_vocabulary`, `get_notebook_repository` and `get_ingredient_catalog_reader` (both from spec 055), and `get_member_language` (reads `users.language` through the preferences repository with `effective_language` as fallback)
-- [ ] T026 [US1] Create `api/api/schemas/recipe_capture.py`: the request body `{ "text": str }` with a `max_length` of twice `RECIPE_TEXT_MAX_CHARS` (a size guard; the limit itself is checked in the use case, with the same `text_too_long` code); the draft response exactly as in contracts/capture-api.md (`outcome`, `notebook`, `language`, `draft` with chips as `{id, label}` and a cuisine `tag`, ingredient lines including `preparation`); the error body `{ "detail", "code" }`
-- [ ] T027 [US1] Create `api/api/routes/recipe_capture.py` with `POST /notebooks/kitchens/{kitchen_id}/captures/text` and `POST /notebooks/members/{user_id}/{notebook_id}/captures/text` returning 200 for a draft and 404 `notebook_not_found` through the domain error. Chip labels come from `pick_label` with the member's language (research R4). Other outcomes are mapped in US2 and US3
-- T028 — moved to spec 055-notebooks (member notebook read routes: the default notebook, and by notebook id).
-- T029 — moved to spec 055-notebooks (kitchen notebook read route, `GET /notebooks/kitchens/{kitchen_id}`).
-- [ ] T030 [US1] Add `GET /recipe-vocabulary` to `api/api/routes/recipe_capture.py`: `units`, `sizes`, `max_main_ingredients`, `max_cuisines`, `max_text_chars` (from `RECIPE_TEXT_MAX_CHARS`), every main ingredient with both labels, every assignable cuisine (tags and variants, with the variant's tag) plus the `international` fallback, as in contracts/capture-api.md. Read from the `Vocabulary` built by `load_vocabulary()`
-- [ ] T031 [US1] Include the new router in `api/api/app.py` with `dependencies=[Depends(require_user_alias)]`, as the kitchens router does
-- [ ] T032 [US1] Write `api/tests/test_recipe_capture_integration.py` (Compose, `app.dependency_overrides[get_recipe_extraction]` with a `FakeRecipeExtractor` that returns a draft): 200 body for a member notebook and a kitchen notebook; chips in `es` when the member's language is `es` and in `en` otherwise; 404 `notebook_not_found` is the same body for a missing notebook, another member's notebook and a kitchen the caller is not in; `GET /notebooks/{user_id}` for self, for someone else and for a member with no notebook; `GET /kitchens/{id}/notebook` for a member and a non-member; `GET /recipe-vocabulary` contents. After every call, the `ingredient` and `notebook` row counts are unchanged (SC-005)
+- [ ] T032 [P] [US1] Create the icon `ui/app/icons/BookIcon.tsx` following `ui/app/icons/README.md`, and export it from the icon index.
+- [ ] T033 [US1] Add the Notebook tab to `ui/components/AppShell.tsx` after Home, with `{ key: "notebook", href: "/notebook", Icon: BookIcon }` and label "Notebook". In `ui/lib/appChrome.ts`, add `/notebook` to `APP_CHROME_PREFIXES` and map `/notebook` and `/notebook/*` to `"notebook"` in `tabKeyFromPath`. The kitchen's Notebook route stays under `"home"`. Update `ui/lib/appChrome.test.ts` and `ui/components/AppShell.test.tsx`.
+- [X] T034 [P] [US1] Create `ui/components/AddRecipeCallToAction/AddRecipeCallToAction.tsx` (rounded placeholder rectangle, centred `PlusIcon`, accessible name "Add a recipe"; opens the options dialog; reopens the sheet from the store when `sheetOpen` is set for the same notebook) and `ui/components/AddRecipeCallToAction/index.ts`.
+- [X] T035 [P] [US1] Create `ui/components/AddRecipeCallToAction/AddRecipeOptionsDialog.tsx`: `ActionDialog` without footer buttons, with the three options in order and dividers between them. URL and Picture are `aria-disabled`; Text opens the text sheet.
+- [X] T036 [US1] Create `ui/components/AddRecipeCallToAction/TextCaptureSheet.tsx` on the existing `ui/app/kitchens/Sheet.tsx`: a notebook picker (outside a kitchen, the personal notebooks from `GET /api/notebooks` with the default preselected, hidden when there is one; inside a kitchen, the kitchen's notebooks from `GET /api/notebooks/kitchens/{id}`), the title is the chosen notebook's name, a "Recipe text" paste input, a live counter once the text passes 90% of the limit, submit disabled per FR-002, a progress state "Reading your recipe…" with the input read-only during submit (FR-004), and a second submit blocked while one is running. On 200, store the draft and navigate to the notebook's draft route.
+- [X] T037 [US1] Create `ui/app/notebook/page.tsx` (server component): sign-in and alias checks as in `ui/app/kitchens/[kitchenId]/page.tsx`; read the default notebook through `GET /api/notebooks/default` (spec 056) with `ui/lib/notebooksClient.ts`; header "Notebook"; render `AddRecipeCallToAction`; no recipe list (S-021).
+- [X] T038 [US1] Create `ui/app/notebook/draft/page.tsx`: when the store has no draft, redirect to `/notebook`; otherwise render `RecipeDraftEditor` as a full-screen page with the chrome header "Review recipe" and a Back control.
+- [ ] T039 [P] [US1] Create the kitchen tabs `ui/app/kitchens/KitchenSectionTabs.tsx` (Members | Notebook links). Members is the default, so existing links keep working.
+- [ ] T040 [US1] Edit `ui/app/kitchens/[kitchenId]/page.tsx` to render `KitchenSectionTabs` under the header, with Members active. Existing Members content is unchanged.
+- [X] T041 [US1] Create `ui/app/kitchens/[kitchenId]/notebook/page.tsx`: header is the kitchen name; read the kitchen's notebooks from `GET /api/notebooks/kitchens/[kitchenId]` (the first open creates the notebook, spec 056 FR-008a) and use the first one; `KitchenSectionTabs` with Notebook active; `AddRecipeCallToAction` for that notebook. A non-member sees the existing not-found view. No recipe list (S-047).
+- [X] T042 [US1] Create `ui/app/kitchens/[kitchenId]/notebook/draft/page.tsx`: as T038, redirecting to `/kitchens/[kitchenId]/notebook` when there is no draft or when the stored notebook id is not that kitchen's notebook.
+- [X] T043 [P] [US1] Create `ui/components/RecipeDraft/RecipeDraftEditor.tsx` (the draft page body): notebook line "For: <name>" (FR-001a); title (error "Add a title." / "Keep the title under 200 characters."); servings with the "estimated" badge (error "Servings must be a whole number of at least 1."); categories from `CategoryChips`; the ingredient table; the steps list; Back returns to the Notebook page with the sheet open and the text unchanged (FR-031). No Save control (S-020).
+- [X] T044 [P] [US1] Create `ui/components/RecipeDraft/CategoryChips.tsx`: two groups (main ingredients, cuisines) with labels from `pick_label` in the account language; a variant chip reads "Variant · Tag"; add pickers (`ui/components/ChipPicker`) fed by `GET /api/recipe-vocabulary`, hidden at two; a remove control on each chip.
+- [X] T045 [P] [US1] Create `ui/components/RecipeDraft/IngredientLineRow.tsx`: name, quantity, unit select (allowed set only), size select (only when unit is `unit`), preparation, note, and a "vague amount" toggle that clears quantity and unit. Rows can be added, removed, moved up and moved down (FR-012). Line errors appear under the row: "Add an amount and a unit, or mark it as vague." / "A vague amount has no number or unit." / "Size is only for counted items."
+- [X] T046 [US1] Create `ui/components/RecipeDraft/index.ts` and wire the steps list (ordered, add, remove, move up and down; error "Add at least one step.") inside `RecipeDraftEditor.tsx`.
+- [X] T047 [US1] Create `ui/components/RecipeDraft/LeaveDraftGuard.tsx`: while `edited`, listen for clicks on same-origin `<a>` elements in the capture phase and show an `ActionDialog` titled "Leave without saving?" with the body "Your changes to this draft will be lost.", buttons "Stay" (keeps the draft) and "Leave" (clears the store and follows the link). Register `beforeunload` while edited (FR-032). Back and Discard bypass it.
+- [X] T048 [US1] Mount `LeaveDraftGuard` in `ui/app/notebook/draft/page.tsx` and `ui/app/kitchens/[kitchenId]/notebook/draft/page.tsx`.
 
-### Implementation for User Story 1: ui
-
-- [ ] T033 [P] [US1] Create the same-origin BFF routes, forwarding the `cookie` header and returning status and body as received (pattern of `ui/app/api/kitchens/[kitchenId]/route.ts`): `ui/app/api/notebooks/kitchens/[kitchenId]/captures/text/route.ts` (POST), `ui/app/api/notebooks/members/[userId]/[notebookId]/captures/text/route.ts` (POST; the read BFF routes are in spec 055; an invalid JSON body answers 400 `invalid_body` without calling the api), `ui/app/api/recipe-vocabulary/route.ts` (GET). Add a route test for each in the style of `ui/app/api/kitchens-invites.bff.test.ts`
-- [ ] T034 [P] [US1] Create `ui/lib/capture/captureStore.ts`: a module store with `useSyncExternalStore`, the same pattern as `ui/app/kitchens/membershipKitchensStore.ts`, holding the fields in data-model.md "Client-only state" (`notebook {id, kind, label}`, `text`, `sheetOpen`, `phase`, `message`, `draft`, `edited`, `language`) and the transitions listed there. Add `ui/lib/capture/draftHash.ts` with a synchronous hash (for example cyrb53, because the `beforeunload` handler cannot await `crypto.subtle`) over a canonical serialization of the title, servings, categories, ingredient lines and steps, and a test: the same content gives the same hash, any edit changes it, and reverting an edit restores it
-- [ ] T035 [P] [US1] Create `ui/lib/capture/draftRules.ts` implementing the rules tested in T022 and returning a map from field path to message key. It also holds the units and size constants
-- [ ] T036 [US1] Create `ui/lib/capture/captureClient.ts`: `submitCapture(owner, text)` posting to the kitchen or member capture route, `fetchMemberNotebook(userId)`, `fetchKitchenNotebook(kitchenId)`, `fetchVocabulary()`, and a mapper from the draft response to `DraftView`. Non-200 handling is added in US2 and US3. Add `ui/lib/capture/captureClient.test.ts`
-- [ ] T037 [P] [US1] Create `ui/components/AddRecipeCallToAction/AddRecipeOptionsDialog.tsx` on `ActionDialog` without confirm and cancel labels: a vertical list with dividers in this order: URL (`aria-disabled`, "Not available yet"), Picture (`aria-disabled`, "Coming soon"), Text (enabled). Escape or a backdrop click closes it without change (FR-023). Add `AddRecipeOptionsDialog.test.tsx`
-- [ ] T038 [P] [US1] Create `ui/components/AddRecipeCallToAction/TextCaptureSheet.tsx` on `Sheet`, titled with `notebook.label`: a multi-line "Recipe text" input; submit disabled when the text is empty, whitespace-only, over `max_text_chars` (from the vocabulary route) after trimming (with "That text is too long. Paste up to {max_text_chars} characters."), or while submitting; a counter once the text is over 90% of `max_text_chars`; a progress state ("Reading your recipe…") with a read-only input while submitting (FR-002, FR-004). On a 200 it moves the store to `draft` and navigates to the notebook's draft route. Add `TextCaptureSheet.test.tsx`
-- [ ] T039 [US1] Create `ui/components/AddRecipeCallToAction/AddRecipeCallToAction.tsx` and its `index.ts`: the rounded placeholder with a centred `PlusIcon`, a `<button>` named "Add a recipe", opening the options dialog and then the text sheet. On mount, when the store has `sheetOpen` for the same notebook id, it reopens the sheet with the stored text. Props as in contracts/capture-ui.md. Add `AddRecipeCallToAction.test.tsx` (shared component; do not rebuild it on a page, AGENTS.md)
-- [ ] T040 [US1] Create `ui/app/notebook/page.tsx` (server component): sign-in and alias checks as in `ui/app/kitchens/[kitchenId]/page.tsx`, header "Notebook", the member's default notebook from `/api/notebooks/members/{user_id}` (spec 055), with the user id from `fetchSession()`, then `AddRecipeCallToAction` with `{ id, kind: "member", label: "My notebook" }`. No recipe list (S-020). Show a plain error line when the notebook cannot be loaded
-- [ ] T041 [P] [US1] Create `ui/app/kitchens/KitchenSectionTabs.tsx` (Members | Notebook links, active state, styled like `ButtonGroup`) and render it in `ui/app/kitchens/[kitchenId]/page.tsx` with Members active. Existing content, links and tests stay as they are (research R10, FR-001b). Add a component test
-- [ ] T042 [US1] Create `ui/app/kitchens/[kitchenId]/notebook/page.tsx`: header is the kitchen name, `KitchenSectionTabs` with Notebook active, the notebook from `/api/notebooks/kitchens/{id}` (spec 055), `AddRecipeCallToAction` with `{ id, kind: "kitchen", label: kitchen name }`. A non-member sees the existing not-found view (FR-022). No recipe list (S-046)
-- [ ] T043 [P] [US1] Create the draft editor in `ui/components/RecipeDraft/`: `RecipeDraftEditor.tsx` (notebook line "For: " + `notebook.label`, title, servings with the "estimated" badge while `servingsEstimated` is true, steps list, Back control, no Save), `IngredientLineRow.tsx` (name, quantity, unit select from the allowed set, size select shown only when unit is `unit`, preparation, note, "vague amount" toggle that clears quantity and unit), `CategoryChips.tsx` (chips in the member's `language`, variant chips read "Variant · Tag", `ChipPicker` fed by `/api/recipe-vocabulary`, picker hidden at two). Ingredient lines and steps can be added, removed, moved up and moved down (FR-012). Field errors from `draftRules.ts` appear next to the field or line (FR-013). Any change sets `edited`. Add component tests for each file
-- [ ] T044 [US1] Create the draft pages `ui/app/notebook/draft/page.tsx` and `ui/app/kitchens/[kitchenId]/notebook/draft/page.tsx` (client pages with chrome header "Review recipe"). With no draft in the store, or a stored notebook id that is not this page's notebook, `router.replace` to the notebook's Notebook page (research R5). Back clears the draft, sets `sheetOpen` with the text kept, and returns to the Notebook page with no prompt (FR-031)
-- [ ] T045 [US1] Create `ui/components/RecipeDraft/LeaveDraftGuard.tsx`, mounted by the editor while `edited` is true: a capture-phase `click` listener for same-origin `<a href>` that leave the draft route opens an `ActionDialog` "Leave without saving?" / "Your changes to this draft will be lost." with Stay (cancel) and Leave (confirm: clear the store, follow the link); `beforeunload` while edited. Back and Discard are not intercepted; an unedited draft leaves without a prompt (FR-032, research R7). Add `LeaveDraftGuard.test.tsx`
-- [ ] T046 [US1] Walk quickstart section 3, steps 1 to 9 and 13, with the fake extractor and then with a real key if available; fix what differs from spec scenarios 1 to 12 of User Story 1. Record the result in `dev/memory/`
-
-**Checkpoint**: User Story 1 works on its own. A member can capture, review, edit and go back, and nothing is saved. This is the MVP.
+**Checkpoint**: US1 works end to end on both Notebook pages: capture, draft, edit, Back, leave guard. Run quickstart section 3, steps 1–9 and 11.
 
 ---
 
 ## Phase 4: User Story 2 - Reject input that is not a recipe (Priority: P2)
 
-**Goal**: Text that is not a recipe, or has two recipes, shows its message, creates no draft and no data, and the text stays in the box.
+**Goal**: Text that is not a recipe, or that holds two recipes, shows a clear message, keeps the text, and creates nothing.
 
-**Independent Test**: Quickstart steps 10 and 11. "What's the weather tomorrow?" shows "That doesn't look like a recipe." with a reason; `two_recipes.txt` shows "Upload only one recipe at a time"; `sauce_subsection.txt` gives one draft.
+**Independent Test**: Paste "What's the weather tomorrow?" and submit: "That doesn't look like a recipe." appears with a reason and the text stays. Paste two recipes: "Upload only one recipe at a time" appears.
 
-- [ ] T047 [US2] Map `NotARecipe` in `api/api/routes/recipe_capture.py`: reason "Only one recipe at a time" (`ONE_RECIPE_REASON`) → 422 `one_recipe_at_a_time`; any other reason → 422 `not_a_recipe` with `reason` (at most 120 characters). Extend `api/tests/test_recipe_capture_integration.py` with both cases and row counts unchanged (FR-014, FR-015, SC-003)
-- [ ] T048 [US2] In `ui/lib/capture/captureClient.ts` map the codes `not_a_recipe` and `one_recipe_at_a_time` to message keys, carrying `reason` for the first. `TextCaptureSheet.tsx` shows the message in an `alert` region ("That doesn't look like a recipe." followed by the reason, or "Upload only one recipe at a time"), keeps the text unchanged and editable, and shows no draft. Extend `captureClient.test.ts` and `TextCaptureSheet.test.tsx`
-- [ ] T049 [US2] Walk quickstart steps 10 and 11 and fix any difference from User Story 2 scenarios 1 to 4. Record the result in `dev/memory/`
+### Tests for User Story 2
 
-**Checkpoint**: User Stories 1 and 2 both work.
+- [X] T049 [P] [US2] Add integration tests to `api/tests/test_recipe_capture_integration.py`: `NotARecipe` gives 422 `not_a_recipe` with `reason` at most 120 characters; the one-recipe reason gives 422 `one_recipe_at_a_time`; no row is created in any table (SC-003, SC-005).
+- [X] T050 [P] [US2] Add a component test `ui/components/AddRecipeCallToAction/TextCaptureSheet.test.tsx` (new file, used by US2–US4): "That doesn't look like a recipe." followed by the reason is shown; "Upload only one recipe at a time" is shown; the text stays in the input and can be edited and submitted again.
+
+### Implementation for User Story 2
+
+- [X] T051 [US2] Confirm the mapping in `ui/lib/capture/captureClient.ts` (T023) returns `not_a_recipe` with its `reason` and `one_recipe_at_a_time` as separate keys; the sheet shows the reason in role `alert`.
+
+**Checkpoint**: US2 works on its own with the fake extractor scripted to return `NotARecipe`.
 
 ---
 
 ## Phase 5: User Story 3 - Keep the pasted text when the assistant fails (Priority: P2)
 
-**Goal**: Every failure shows its own plain message within the time limit, never raw service text, and the text stays in the box. Archived kitchens refuse capture before any assistant call.
+**Goal**: Timeouts, usage limits, unreadable results and a missing setup show the matching message, keep the text, and let the member retry.
 
-**Independent Test**: Quickstart "Failure messages" table and steps 12 and 14, plus the integration tests below.
+**Independent Test**: Make the assistant fail in each way (quickstart "Failure messages"). Each case shows its message and the text stays in the box.
 
-- [ ] T050 [US3] Map the remaining results in `api/api/routes/recipe_capture.py` as in contracts/capture-api.md: `InvalidOutput` → 422 `ai_invalid_output`; `Unavailable` → 503 `ai_unavailable`; `LimitReached` → 429 `ai_limit_reached` with a `Retry-After` header only when `retry_after_seconds` is set; `AIProviderError` → 503 `ai_misconfigured`; `RecipeTextRefusedError` → 422 `text_empty` or `text_too_long`; `KitchenArchivedError` → 409 `kitchen_archived`. Every `detail` is a plain sentence with no service text, key or trace (FR-029)
-- [ ] T051 [US3] Extend `api/tests/test_recipe_capture_integration.py` and `api/tests/test_recipe_capture_application.py`: one case per code above; over-length and empty text and an archived kitchen leave the `FakeRecipeExtractor` with zero calls (FR-033, SC-008); an archived kitchen answers 409 only after membership passes (a non-member of an archived kitchen gets 404); a member's own notebook is never affected by a kitchen's archive state; a failure body never contains the key or any raw text
-- [ ] T052 [US3] Add the safety deadline to the two capture BFF routes (kitchen and member): `AbortSignal.timeout(((Number(process.env.GEMINI_TEXT_TIMEOUT_S) || 10) + 2) * 1000)` on the upstream call; on abort or network failure answer 503 `{ "code": "ai_unavailable" }`; other upstream failures answer 502 `bad_gateway` as the existing routes do (research R9, FR-026). Add a route test with a stalled upstream
-- [ ] T053 [US3] In `ui/lib/capture/captureClient.ts` map `ai_unavailable` and `bad_gateway` ("The assistant isn't responding. Your text is kept — try again."), `ai_limit_reached` ("We've hit the assistant's limit. Try again in a minute."), `ai_invalid_output` ("We couldn't read that recipe. Try rephrasing or adding detail."), `ai_misconfigured` ("Assistant misconfigured. Your text is kept"), `text_too_long`, `kitchen_archived` ("This kitchen is archived, so recipes can't be added."), `notebook_not_found` and `kitchen_not_found` (the kitchen not-found text), and any other code to the `ai_unavailable` message. The text is kept in every case and a second submission works (FR-016 to FR-018, FR-028). Extend `captureClient.test.ts` and `TextCaptureSheet.test.tsx`
-- [ ] T054 [US3] Hide the add-recipe call to action on an archived kitchen's Notebook page in `ui/app/kitchens/[kitchenId]/notebook/page.tsx`, using `is_archived` from the notebook response (FR-033). Add a page test
-- [ ] T055 [US3] Walk quickstart "Failure messages", step 12 and step 14, and fix any difference from User Story 3 scenarios 1 to 5. Record the result in `dev/memory/`
+### Tests for User Story 3
 
-**Checkpoint**: User Stories 1 to 3 work. Every failure keeps the text.
+- [X] T052 [P] [US3] Add integration tests to `api/tests/test_recipe_capture_integration.py`: `Unavailable` → 503 `ai_unavailable`; `LimitReached` → 429 `ai_limit_reached` with `Retry-After` when a hint is set; `InvalidOutput` → 422 `ai_invalid_output`; `AIProviderError` → 503 `ai_misconfigured`. No `detail` contains service text, a key or a trace (FR-029).
+- [X] T053 [P] [US3] Add a unit test `ui/lib/capture/captureClient.test.ts` (extend T023): each code maps to its message key; 502 maps like `ai_unavailable`; an unknown code shows the `ai_unavailable` message.
+- [X] T054 [P] [US3] Add component tests to `ui/components/AddRecipeCallToAction/TextCaptureSheet.test.tsx`: each failure message appears in role `alert`; the text is unchanged; submitting again sends a new request (one attempt per submission, FR-025).
+
+### Implementation for User Story 3
+
+- [X] T055 [US3] Wire the failure messages in `TextCaptureSheet.tsx`: on any non-200, show the message for its `code` and leave the text editable (FR-016, FR-017, FR-018, FR-028).
+
+**Checkpoint**: US3 works on its own with the fake extractor set to fail in each way.
 
 ---
 
 ## Phase 6: User Story 4 - Discard a draft (Priority: P3)
 
-**Goal**: Discard is always available on the draft; it removes the draft and returns to an empty text sheet, and nothing is saved.
+**Goal**: The member discards a draft. The draft is gone, the sheet returns empty, and nothing is saved.
 
-**Independent Test**: Quickstart step 8. After Discard the sheet is open and empty, and the notebook and ingredient counts are unchanged.
+**Independent Test**: Create a draft, choose Discard, and check that the notebook is unchanged and the text sheet is empty.
 
-- [ ] T056 [US4] Add a Discard control to `ui/components/RecipeDraft/RecipeDraftEditor.tsx`, always enabled even when a field has an error (FR-020). It clears the draft and the text, sets `sheetOpen`, and returns to the notebook's Notebook page. It is not intercepted by `LeaveDraftGuard`. Add a store action `discard()` in `ui/lib/capture/captureStore.ts`. Extend `captureStore.test.ts` and `RecipeDraftEditor.test.tsx`: Discard works with a broken line, leaves an empty text, and Back (T044) still keeps the text
-- [ ] T057 [US4] Walk quickstart step 8 and run the quickstart "Data unchanged" count after it; fix any difference from User Story 4 scenarios 1 and 2. Record the result in `dev/memory/`
+### Tests for User Story 4
 
-**Checkpoint**: All four user stories work.
+- [X] T056 [P] [US4] Add a store test `ui/lib/capture/captureStore.test.ts`: Discard clears the draft and the text; Back keeps the text and drops the draft; reload empties the store.
+- [X] T057 [P] [US4] Add to `ui/components/RecipeDraft/RecipeDraftEditor.test.tsx`: Discard is enabled even when the draft has validation errors, and returns to the Notebook page with the sheet open and empty.
 
----
+### Implementation for User Story 4
 
-## Phase 7: Polish & Cross-Cutting Concerns
+- [X] T058 [US4] Add the Discard control to `ui/components/RecipeDraft/RecipeDraftEditor.tsx`: always enabled (FR-020); clears the draft and the text in the store, then navigates to the Notebook page with the sheet open and empty (no leave prompt).
 
-- [ ] T058 [P] Run `cd api && uv run ruff check .` and fix every finding in the files this feature touched
-- [ ] T059 [P] Run `cd ui && npm test && npm run lint && npm run typecheck`; there must be no deprecation warning (AGENTS.md "Node")
-- [ ] T060 Run the canonical api suite in Compose: `docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api`, and check that `alembic current` reports `0003_notebooks_ingredients` (migration from spec 055) (quickstart sections 1 and 2)
-- [ ] T061 Walk all of quickstart section 3 once more in a browser, including the language check (Ana's language set to Spanish gives Spanish chips), and the "Data unchanged" counts (SC-005)
-- [ ] T062 Run the manual AI evaluation with a real key (quickstart section 4): each file in `api/tests/fixtures/ai_eval/` ten times for SC-002, and the 90% check for SC-006, including `injected_instruction.txt` (FR-021). Record the results in `dev/memory/`
-- [ ] T063 Update `dev/docs/backlog.yaml` (S-016 status once verified) and `specs/016-capture-recipe-text/checklists/requirements.md`; append the finished change to `dev/memory/` with the command in `dev/skills/save_to_memory.md`. Do not push or deploy without review (AGENTS.md)
-- [ ] T064 Usability check (SC-007): each of the two household members completes one capture and one discard on the staging build, without help. Record the observations in `dev/memory/`. Needs both members' time before release.
+**Checkpoint**: US4 works on its own: create a draft, Discard, notebook unchanged.
 
 ---
 
-## Dependencies & Execution Order
+## Final Phase: Polish & cross-cutting concerns
 
-### Phase dependencies
+- [X] T059 Hide the add-recipe call to action on an archived kitchen's Notebook tab in `ui/app/kitchens/[kitchenId]/notebook/page.tsx` (FR-033): the page reads `kitchen_is_archived` from the notebook answer and renders no `AddRecipeCallToAction`. Add a vitest case in `ui/app/kitchens/` tests.
+- [X] T060 Add a logging test in `api/tests/test_recipe_capture_application.py` (`caplog`): a capture logs the text length and the outcome, and never the pasted text (constitution §4).
+- [X] T061 [P] Run the automated checks: `cd api && uv run ruff check .`, `docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api`, `cd ui && npm test && npm run lint && npm run typecheck`.
+- [ ] T062 Run the browser walkthrough in quickstart.md section 3 (steps 1–15), including the Spanish-account check for chip labels.
+- [ ] T063 Run the data-unchanged check in quickstart.md section 5: `ingredient` and `notebook` row counts are unchanged by captures, edits and discards (SC-005).
+- [ ] T064 Manual AI evaluation (not CI, constitution §6) with a real key: each file in `api/tests/fixtures/ai_eval/` through the ui 10 times, compare with the expected draft (SC-002, SC-006: at least 90% correct title, servings and lines). Check `injected_instruction.txt` does not change the draft (FR-021). Record results in `dev/memory/` per AGENTS.md.
+- [ ] T065 Note for later: internationalization (Spanish for every message, chosen by `users.language`) is a story after MVP, not in this feature. Add it to `dev/docs/backlog.yaml` when MVP is done.
 
-- **Phase 1 (Setup)**: none.
-- **Phase 2 (Foundational)**: after Phase 1. Blocks every story.
-- **Phase 3 to 6 (User Stories)**: after Phase 2. US2, US3 and US4 build on the route, client and sheet created in US1, so US1 comes first; after US1 they are independent of one another.
-- **Phase 7 (Polish)**: after the stories you want to ship.
+---
 
-### Inside Phase 2
+## Dependencies & execution order
 
-- T003, T004, T005, T007, T008 can run together.
-- Notebook tasks are in spec 055-notebooks, which this phase needs merged.
-- T017, T018, T020 can run together; T019 needs T018.
+- **Phase 1 (T001–T002)** → **Phase 2 (T003–T027)** → user stories.
+- **Phase 2 blocks every story.** Within it, the S-015 touch-ups (T003–T008), the domain rules (T009–T010), the use case (T011–T013), the API (T014–T017), and the UI foundation (T018–T026) can run in parallel where marked [P].
+- **US1 (P1)** is the MVP. US2 and US3 only add tests and messages on top of US1's sheet; they can follow US1 in any order. US4 depends on US1's draft page.
+- **Polish** waits for every story.
 
-### Inside User Story 1
+### Within User Story 1
 
-- Tests T021 to T023 can be written first and run together.
-- api: T024 → T025 → T026 → T027, then T030 (vocabulary route), then T031 and T032. T028 and T029 are in spec 055.
-- ui: T033, T034, T035 can run together. T036 needs T034. T037 and T038 can run together; T039 needs both. T040, T042 need T039 and T036. T041 can run any time. T043 needs T034 and T035. T044 needs T043. T045 needs T043.
-- The api group and the ui group can run in parallel; T046 needs both.
+- Tests (T028–T031) are written first and fail until the components exist.
+- T032 and T034–T035 are independent; T036 needs T034 and the store (T020); T037–T042 need the components; T043–T045 are the draft page body; T047 comes after T043.
 
-### Story dependencies
+## Parallel execution examples
 
-- **US1**: after Phase 2. No dependency on other stories.
-- **US2**: after US1 (route and sheet).
-- **US3**: after US1 (route and sheet). Independent of US2.
-- **US4**: after US1 (editor and store). Independent of US2 and US3.
-
-### Parallel example: Foundational
-
+**Phase 2, S-015 and domain**:
 ```text
-T003  api/domain/recipe_draft.py (preparation)
-T004  api/adapters/llm/gemini_extractor.py + prompt.py
-T005  api/settings (RECIPE_TEXT_MAX_CHARS)
-T007  api/domain/errors.py
-T008  api/domain/kitchen_access.py
-T017  ui/components/ActionDialog/ActionDialog.tsx
-T018  ui/app/icons/BookIcon.tsx
-T020  ui/lib/i18n/capture.ts
+T003 (IngredientLine.preparation)  |  T009 (capture_recipe action)  |  T010 (pick_label)
+T004 (domain test)                 |  T012 (application test)       |  T013 (vocabulary)
 ```
 
-### Parallel example: User Story 1
-
+**Phase 2, UI foundation**:
 ```text
-T033  ui BFF routes            T034  captureStore.ts        T035  draftRules.ts
-T037  AddRecipeOptionsDialog   T038  TextCaptureSheet       T043  RecipeDraft components
-T024..T032  api use case, deps, schemas and routes (one developer, in order)
+T018 (ActionDialog optional)  |  T019 (i18n strings)  |  T021 (draftRules)  |  T022 (draftHash)
 ```
 
----
+**User Story 1, components**:
+```text
+T032 (BookIcon)  |  T034 (CTA)  |  T035 (options dialog)  |  T044 (CategoryChips)  |  T045 (IngredientLineRow)
+```
 
-## Implementation Strategy
+## Implementation strategy
 
-### MVP first (User Story 1 only)
+1. **MVP first**: Phase 1, Phase 2, Phase 3 (US1). Stop there and check quickstart sections 1–3 with the fake extractor.
+2. **Incremental**: add US2 (not-a-recipe), then US3 (failure messages), then US4 (discard). Each story is checked on its own.
+3. **Then polish**: archived-kitchen rule, logging, automated checks, walkthrough, data-unchanged check, manual AI evaluation.
 
-1. Spec 055-notebooks merged. Then Phase 1 and Phase 2: S-015 touch-ups, capture errors, access, ui basics.
-2. Phase 3: capture, review, edit, Back. Nothing is saved.
-3. **Stop and check**: walk quickstart steps 1 to 9 and 13. This is the smallest slice that gives a usable draft.
+## Open items for review (not tasks)
 
-### Incremental delivery
+- **AGENTS.md "English for the UI"** matches the MVP decision (FR-034). Internationalization is T065.
+- **`ui/lib/capture/`** is a new folder under `ui/lib/`, flagged in plan.md for review (AGENTS.md: do not add folders without asking).
+- **Spec 056 status**: the backlog marks S-056 `in_progress`. T001 must pass before any task here.
 
-1. US2 adds the not-a-recipe messages (small, mostly mapping).
-2. US3 adds failure messages, the archive refusal and the time limit.
-3. US4 adds Discard.
-4. Polish: lint, full suites, the browser walkthrough and the manual AI evaluation.
-
-### Cut lines
-
-- The counter at 90% of the limit (T038) is optional; the limit itself is not.
-- The manual AI evaluation (T062) needs a real key and is not part of CI.
 
 ---
 
-## Notes
+## Implementation notes (2026-10-25)
 
-- Each task names the files it touches. Tasks that share a file (`recipe_capture.py` routes, `captureClient.ts`, `TextCaptureSheet.tsx`, `test_recipe_capture_integration.py`) are never marked [P] against each other.
-- This feature saves nothing: Save, the name-change list and "matched" / "new ingredient" labels, copying between notebooks and the recipe lists are S-019, S-017, S-034 and S-020 / S-046.
-- Cross-spec changes in this plan are already written into the PRD, AGENTS.md and specs 016 and 015 (notebook entity, preparation, member language, categories as ids).
+Marked `[X]`: the work is in the tree and checked by the automated suites (API in Compose, UI in vitest, lint and type check). Left open, with the reason:
+
+- **T032, T033, T039, T040 (not needed).** The Notebook tab already exists from spec 060 at `/notebooks`, with its icon, and the kitchen's notebooks are a section (`KitchenNotebooksSection`), not a tab. The capture reuses both. The tab and kitchen section changes are in `ui/app/notebooks/NotebookTabScreen.tsx` and `ui/app/kitchens/KitchenNotebooksSection.tsx`.
+- **T037, T041, T038/T042 (routes changed).** The member's capture button is on `/notebooks`. The kitchen's is in the notebooks section. One draft route, `/notebooks/draft`, serves both, and Back and Discard return to the page that opened the capture.
+- **T008, T009 (no change needed).** The capture use case enforces the configured limit (`RECIPE_TEXT_MAX_CHARS`) before the S-015 use case runs; the S-015 10,000-character bound stays. Access uses spec 056's `notebook_view`, so no separate `capture_recipe` action was added.
+- **T044 (native select).** The category editor adds values with a native select instead of `ChipPicker`. It is simpler and gives the same choices.
+- **T001 (migration head).** Spec 056's head is `0004_drop_kitchen_hide`, not `0003`. T001 checked it.
+- **T062 (browser walkthrough) and T064 (manual AI evaluation).** Not run here. The walkthrough needs a browser and two signed-in accounts, and the AI evaluation needs a real Gemini key.
+- **T063 (data-unchanged check).** The integration tests check the `ingredient` and `notebook` row counts after each capture. The manual `psql` check was not run.
+- **T065.** The i18n story is for after MVP. Add it to `dev/docs/backlog.yaml` when MVP is done.
+
+Changes to other specs (done in this feature's work, for review):
+- **Spec 056 route guard** (`api/tests/test_notebook_integration.py`): the GET-only check now excludes the capture route, which is the one POST under `/notebooks`, and asserts it separately.
+- **`ui/lib/capture/`** is a new folder under `ui/lib/`, as flagged in plan.md. AGENTS.md asks for approval before new folders.
