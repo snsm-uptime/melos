@@ -191,7 +191,7 @@ stories:
     title: Notebook list and tabs in the UI (kitchen page lists its notebooks; personal Notebook tab lists mine)
     epic: Recipes
     priority: must
-    status: backlog
+    status: done
     journey: J1a
     source: spec 056 US1, US2 and US4 ("Notebook tab"); prd.md 1.5H, J1a
     notes: >
@@ -227,7 +227,7 @@ stories:
     title: Clear capture error messages (name the missing recipe parts, or say how to fix the text)
     epic: Capture
     priority: must
-    status: in_design
+    status: done
     journey: J2
     source: specs/016-capture-recipe-text (error messages, AC2.4 and AC2.5); spec 017 (clarify session 2026-10-25)
     notes: >
