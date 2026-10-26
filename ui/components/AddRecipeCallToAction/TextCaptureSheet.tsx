@@ -108,7 +108,7 @@ export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCapture
   }
 
   const message = capture.message
-    ? messageForCode(capture.message.code, capture.message.reason, max)
+    ? messageForCode(capture.message, max)
     : tooLong
       ? captureMessages.tooLong(max)
       : null;
