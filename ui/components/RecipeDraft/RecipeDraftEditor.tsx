@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { ArrowIcon } from "@/app/icons";
 import {
   fetchVocabulary,
   type VocabularyResponse,
@@ -26,6 +27,14 @@ const MAX_MAIN = 2;
 const MAX_CUISINES = 2;
 
 let keyCounter = 0;
+/** Rows for a step's textarea so the whole text shows (about 45 characters per line). */
+function rowsFor(text: string): number {
+  const lines = text
+    .split("\n")
+    .reduce((count, line) => count + Math.max(1, Math.ceil(line.length / 45)), 0);
+  return Math.max(2, lines);
+}
+
 function nextKey(): string {
   keyCounter += 1;
   return `draft-new-${keyCounter}`;
@@ -39,6 +48,14 @@ export function RecipeDraftEditor() {
   const router = useRouter();
   const capture = useCaptureState();
   const [vocabulary, setVocabulary] = useState<VocabularyResponse | null>(null);
+  // Step keys whose text is hidden. Steps are open by default, so the full text shows.
+  const [collapsedSteps, setCollapsedSteps] = useState<string[]>([]);
+
+  function toggleStep(key: string) {
+    setCollapsedSteps((current) =>
+      current.includes(key) ? current.filter((item) => item !== key) : [...current, key],
+    );
+  }
 
   useEffect(() => {
     let current = true;
@@ -221,10 +238,22 @@ export function RecipeDraftEditor() {
         <ol className="m-0 flex list-none flex-col gap-2 p-0">
           {draft.steps.map((step, index) => (
             <li key={step.key} className="flex flex-col gap-1">
-              <label className="flex flex-col gap-1 text-[0.8rem] text-muted">
+              <button
+                type="button"
+                aria-expanded={!collapsedSteps.includes(step.key)}
+                onClick={() => toggleStep(step.key)}
+                className="flex items-center gap-1 self-start text-[0.8rem] text-muted"
+              >
+                <ArrowIcon
+                  className={`h-3 w-3 ${collapsedSteps.includes(step.key) ? "rotate-180" : "-rotate-90"}`}
+                />
                 {captureMessages.stepLabel(index + 1)}
+              </button>
+              {collapsedSteps.includes(step.key) ? null : (
                 <textarea
-                  className="w-full rounded-[0.75rem] border border-border bg-background px-3 py-2 text-[0.95rem] text-foreground"
+                  aria-label={captureMessages.stepLabel(index + 1)}
+                  rows={rowsFor(step.text)}
+                  className="w-full resize-y rounded-[0.75rem] border border-border bg-background px-3 py-2 text-[0.95rem] text-foreground"
                   value={step.text}
                   onChange={(event) =>
                     update({
@@ -234,7 +263,7 @@ export function RecipeDraftEditor() {
                     })
                   }
                 />
-              </label>
+              )}
               <div className="flex gap-2 text-[0.8rem]">
                 <button
                   type="button"

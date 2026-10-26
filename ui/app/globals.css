@@ -146,7 +146,13 @@
   --lift-ambient: color-mix(in srgb, var(--lift-ink) 50%, transparent);
 }
 
+html.light {
+  color-scheme: light;
+}
+
 html.dark {
+  /* Native controls (number spinners, select arrows) follow the app theme. */
+  color-scheme: dark;
   --wb-bg: #17140f;
   --wb-surface: #221e17;
   --wb-text: #f0e9dc;
@@ -186,6 +192,7 @@ html.dark {
  */
 @media (prefers-color-scheme: dark) {
   html:not(.light):not(.dark) {
+    color-scheme: dark;
     --wb-bg: #17140f;
     --wb-surface: #221e17;
     --wb-text: #f0e9dc;

@@ -18,7 +18,13 @@ export type CaptureNotebook = {
   returnPath: string;
 };
 
-export type CaptureMessage = { code: string; reason?: string };
+export type CaptureMessage = {
+  code: string;
+  reason?: string;
+  missing?: string[];
+  lineProblems?: { name: string | null; kind: string }[];
+  ingredient?: string | null;
+};
 
 export type CategoryRef = { id: string; label: string; tag: string | null };
 

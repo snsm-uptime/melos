@@ -68,21 +68,58 @@ export async function submitCapture(notebookId: string, text: string): Promise<C
 
   if (response.ok && isDraftResponse(data)) return { ok: true, value: data };
 
-  const body = (data ?? {}) as { code?: unknown; detail?: unknown };
+  const body = (data ?? {}) as {
+    code?: unknown;
+    detail?: unknown;
+    ingredient?: unknown;
+    missing?: unknown;
+    line_problems?: unknown;
+  };
   const code = typeof body.code === "string" ? body.code : "ai_unavailable";
-  const reason = code === "not_a_recipe" && typeof body.detail === "string" ? body.detail : undefined;
   const max = code === "text_too_long" ? extractMax(body.detail) : undefined;
   return {
     ok: false,
-    message: { code: code === "bad_gateway" ? "ai_unavailable" : code, reason },
+    message: {
+      code: code === "bad_gateway" ? "ai_unavailable" : code,
+      reason: code === "not_a_recipe" ? readReason(body.detail) : undefined,
+      ingredient: code === "not_a_recipe" ? readIngredient(body.ingredient) : undefined,
+      missing: readMissing(body.missing),
+      lineProblems: readLineProblems(body.line_problems),
+    },
     max,
   };
+}
+
+const NOT_A_RECIPE_REASONS = ["question_or_request", "not_food", "story_or_article"];
+
+/** `detail` on not_a_recipe is a reason enum value only; any other text is dropped, never shown. */
+function readReason(value: unknown): string | undefined {
+  return typeof value === "string" && NOT_A_RECIPE_REASONS.includes(value) ? value : undefined;
+}
+
+function readIngredient(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
 }
 
 function extractMax(detail: unknown): number | undefined {
   if (typeof detail !== "string") return undefined;
   const match = /up to (\d+) characters/.exec(detail);
   return match ? Number(match[1]) : undefined;
+}
+
+function readMissing(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.filter((item): item is string => typeof item === "string");
+}
+
+function readLineProblems(value: unknown): CaptureMessage["lineProblems"] {
+  if (!Array.isArray(value)) return undefined;
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as { name?: unknown; kind?: unknown };
+    if (typeof row.kind !== "string") return [];
+    return [{ name: typeof row.name === "string" ? row.name : null, kind: row.kind }];
+  });
 }
 
 export async function fetchVocabulary(): Promise<VocabularyResponse | null> {
