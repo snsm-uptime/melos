@@ -26,12 +26,12 @@ from adapters.llm.prompt import (
 from adapters.llm.vocabulary import load_vocabulary
 from api.settings import GeminiSettings
 from application.recipe_extraction import (
-    ONE_RECIPE_REASON,
     AIProviderError,
     Draft,
     InvalidOutput,
     LimitReached,
     NotARecipe,
+    NotRecipeReason,
     Unavailable,
 )
 from google import genai
@@ -215,24 +215,70 @@ def test_preparation_maps_to_its_own_field_not_the_name() -> None:
     assert line.preparation == "chopped"
 
 
-def test_not_a_recipe_keeps_the_model_reason() -> None:
+@pytest.mark.parametrize(
+    ("reason", "expected"),
+    [
+        ("question_or_request", NotRecipeReason.QUESTION_OR_REQUEST),
+        ("not_food", NotRecipeReason.NOT_FOOD),
+        ("story_or_article", NotRecipeReason.STORY_OR_ARTICLE),
+    ],
+)
+def test_not_a_recipe_maps_each_reason_to_the_enum(reason: str, expected: NotRecipeReason) -> None:
+    extractor_, _ = extractor(response({"outcome": "not_a_recipe", "reason": reason}))
+
+    assert extractor_.extract("weather", [], 10.0) == NotARecipe(reason=expected)
+
+
+def test_not_a_recipe_keeps_a_clean_ingredient_name() -> None:
     extractor_, _ = extractor(
-        response({"outcome": "not_a_recipe", "reason": "This is a weather question."})
+        response(
+            {
+                "outcome": "not_a_recipe",
+                "reason": "question_or_request",
+                "ingredient": "butter",
+            }
+        )
     )
 
-    assert extractor_.extract("weather", [], 10.0) == NotARecipe(
-        reason="This is a weather question."
+    assert extractor_.extract("grams of butter?", [], 10.0) == NotARecipe(
+        reason=NotRecipeReason.QUESTION_OR_REQUEST, ingredient="butter"
     )
 
 
-def test_two_recipes_gets_the_exact_one_recipe_reason() -> None:
+def test_not_a_recipe_drops_an_ingredient_name_that_fails_the_check() -> None:
+    extractor_, _ = extractor(
+        response(
+            {
+                "outcome": "not_a_recipe",
+                "reason": "question_or_request",
+                "ingredient": "2 x butter!",
+            }
+        )
+    )
+
+    assert extractor_.extract("grams of butter?", [], 10.0) == NotARecipe(
+        reason=NotRecipeReason.QUESTION_OR_REQUEST, ingredient=None
+    )
+
+
+def test_two_recipes_maps_to_the_multiple_recipes_reason() -> None:
     extractor_, _ = extractor(response({"outcome": "multiple_recipes"}))
 
-    assert extractor_.extract("two", [], 10.0) == NotARecipe(reason=ONE_RECIPE_REASON)
+    assert extractor_.extract("two", [], 10.0) == NotARecipe(
+        reason=NotRecipeReason.MULTIPLE_RECIPES
+    )
 
 
-def test_reason_over_120_characters_is_invalid_output() -> None:
-    extractor_, _ = extractor(response({"outcome": "not_a_recipe", "reason": "x" * 121}))
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"outcome": "not_a_recipe", "reason": "The text is about the weather"},
+        {"outcome": "not_a_recipe"},
+        {"outcome": "not_a_recipe", "reason": "multiple_recipes"},
+    ],
+)
+def test_unknown_or_missing_reason_is_invalid_output(payload: dict) -> None:
+    extractor_, _ = extractor(response(payload))
 
     assert extractor_.extract("weather", [], 10.0) == InvalidOutput()
 

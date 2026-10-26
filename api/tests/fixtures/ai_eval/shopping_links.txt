@@ -1,0 +1,3 @@
+https://example.com/bakery/sourdough-loaf
+https://example.com/market/seasonal-vegetables
+https://example.com/shop/cast-iron-pan

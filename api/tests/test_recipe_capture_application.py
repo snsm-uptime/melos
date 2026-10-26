@@ -19,11 +19,11 @@ from application.recipe_capture import (
     TextTooLongError,
 )
 from application.recipe_extraction import (
-    ONE_RECIPE_REASON,
     AIProviderError,
     Draft,
     LimitReached,
     NotARecipe,
+    NotRecipeReason,
     RecipeExtraction,
     Unavailable,
 )
@@ -252,8 +252,8 @@ def test_text_at_the_limit_after_trimming_is_accepted() -> None:
 @pytest.mark.parametrize(
     "result",
     [
-        NotARecipe(reason="That is a weather question."),
-        NotARecipe(reason=ONE_RECIPE_REASON),
+        NotARecipe(reason=NotRecipeReason.QUESTION_OR_REQUEST, ingredient="butter"),
+        NotARecipe(reason=NotRecipeReason.MULTIPLE_RECIPES),
         Unavailable(),
         LimitReached(retry_after_seconds=30),
         AIProviderError(),

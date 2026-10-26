@@ -6,6 +6,7 @@ replaced by FakeRecipeExtractor through the dependency override, so no test need
 
 from __future__ import annotations
 
+from dataclasses import replace
 from uuid import UUID
 
 import pytest
@@ -14,12 +15,12 @@ from adapters.llm.vocabulary import load_vocabulary
 from adapters.persistence.models import IngredientModel, NotebookModel
 from api.deps import get_recipe_extraction
 from application.recipe_extraction import (
-    ONE_RECIPE_REASON,
     AIProviderError,
     Draft,
     InvalidOutput,
     LimitReached,
     NotARecipe,
+    NotRecipeReason,
     RecipeExtraction,
     Unavailable,
 )
@@ -184,8 +185,8 @@ def test_archived_kitchen_is_refused_for_a_member_before_any_assistant_call(
 @pytest.mark.parametrize(
     ("result", "status", "code"),
     [
-        (NotARecipe(reason="That is a weather question."), 422, "not_a_recipe"),
-        (NotARecipe(reason=ONE_RECIPE_REASON), 422, "one_recipe_at_a_time"),
+        (NotARecipe(reason=NotRecipeReason.QUESTION_OR_REQUEST), 422, "not_a_recipe"),
+        (NotARecipe(reason=NotRecipeReason.MULTIPLE_RECIPES), 422, "one_recipe_at_a_time"),
         (InvalidOutput(), 422, "ai_invalid_output"),
         (Unavailable(), 503, "ai_unavailable"),
         (AIProviderError(), 503, "ai_misconfigured"),
@@ -211,17 +212,54 @@ def test_refusals_and_failures_map_to_their_code(
     assert _row_counts(db_session) == before
 
 
-def test_not_a_recipe_reason_is_kept_and_limited_to_120_characters(
+def test_not_a_recipe_sends_the_reason_value_and_the_ingredient(
     client: TestClient, script: FakeRecipeExtractor
 ) -> None:
-    _register(client, "reason_capture@example.com")
+    _register(client, "reason_butter@example.com")
     notebook_id = _personal_notebook(client)
-    _set_result(script, NotARecipe(reason="x" * 200))
+    _set_result(
+        script,
+        NotARecipe(reason=NotRecipeReason.QUESTION_OR_REQUEST, ingredient="butter"),
+    )
 
     response = _capture(client, notebook_id)
 
     assert response.status_code == 422
-    assert len(response.json()["detail"]) == 120
+    assert response.json() == {
+        "detail": "question_or_request",
+        "code": "not_a_recipe",
+        "ingredient": "butter",
+    }
+
+
+def test_not_a_recipe_without_an_ingredient_sends_null(
+    client: TestClient, script: FakeRecipeExtractor
+) -> None:
+    _register(client, "reason_story@example.com")
+    notebook_id = _personal_notebook(client)
+    _set_result(script, NotARecipe(reason=NotRecipeReason.STORY_OR_ARTICLE))
+
+    response = _capture(client, notebook_id)
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": "story_or_article",
+        "code": "not_a_recipe",
+        "ingredient": None,
+    }
+
+
+def test_unreadable_answer_sends_no_detail_text(
+    client: TestClient, script: FakeRecipeExtractor
+) -> None:
+    _register(client, "unreadable_answer@example.com")
+    notebook_id = _personal_notebook(client)
+    _set_result(script, InvalidOutput())
+
+    response = _capture(client, notebook_id)
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "", "code": "ai_invalid_output"}
 
 
 def test_limit_reached_sets_retry_after_when_hinted(
@@ -279,3 +317,111 @@ def test_vocabulary_lists_the_controlled_values(client: TestClient) -> None:
     assert body["max_main_ingredients"] == 2 and body["max_cuisines"] == 2
     assert "international" in [c["id"] for c in body["cuisines"]]
     assert {"id": "poultry", "label": {"en": "Poultry", "es": "Aves"}} in body["main_ingredients"]
+
+
+def _draft_with(
+    script: FakeRecipeExtractor,
+    *,
+    title: str = "Onion soup",
+    steps: tuple[str, ...] = ("Simmer the onion.",),
+    lines: tuple[IngredientLine, ...] | None = None,
+) -> None:
+    recipe = _good_draft()
+    if lines is None:
+        lines = recipe.ingredient_lines
+    _set_result(
+        script,
+        Draft(recipe=replace(recipe, title=title, steps=steps, ingredient_lines=lines)),
+    )
+
+
+def test_missing_title_is_draft_incomplete_naming_the_title(
+    client: TestClient, script: FakeRecipeExtractor
+) -> None:
+    _register(client, "no_title_capture@example.com")
+    notebook_id = _personal_notebook(client)
+    _draft_with(script, title="")
+
+    response = _capture(client, notebook_id)
+
+    assert response.status_code == 422, response.text
+    body = response.json()
+    assert body["code"] == "draft_incomplete"
+    assert body["missing"] == ["title"]
+    assert body["line_problems"] == []
+
+
+def test_missing_steps_is_draft_incomplete_naming_the_steps(
+    client: TestClient, script: FakeRecipeExtractor
+) -> None:
+    _register(client, "no_steps_capture@example.com")
+    notebook_id = _personal_notebook(client)
+    _draft_with(script, steps=("  ",))
+
+    response = _capture(client, notebook_id)
+
+    assert response.status_code == 422, response.text
+    assert response.json()["code"] == "draft_incomplete"
+    assert response.json()["missing"] == ["steps"]
+
+
+def test_butter_without_unit_is_an_ingredient_line_problem(
+    client: TestClient, script: FakeRecipeExtractor
+) -> None:
+    _register(client, "butter_capture@example.com")
+    notebook_id = _personal_notebook(client)
+    _draft_with(script, lines=(IngredientLine("butter", False, 0.25),))
+
+    response = _capture(client, notebook_id)
+
+    assert response.status_code == 422, response.text
+    body = response.json()
+    assert body["code"] == "ingredient_line_problem"
+    assert body["line_problems"] == [{"name": "butter", "kind": "unit_missing"}]
+
+
+def test_ingredient_name_with_digits_is_sent_as_null(
+    client: TestClient, script: FakeRecipeExtractor
+) -> None:
+    _register(client, "digits_capture@example.com")
+    notebook_id = _personal_notebook(client)
+    _draft_with(script, lines=(IngredientLine("2 x butter!", False, 1.0),))
+
+    response = _capture(client, notebook_id)
+
+    assert response.status_code == 422, response.text
+    body = response.json()
+    assert body["code"] == "ingredient_line_problem"
+    assert body["line_problems"] == [{"name": None, "kind": "unit_missing"}]
+
+
+def test_missing_title_and_a_bad_line_are_both_filled(
+    client: TestClient, script: FakeRecipeExtractor
+) -> None:
+    _register(client, "both_capture@example.com")
+    notebook_id = _personal_notebook(client)
+    _draft_with(script, title="", lines=(IngredientLine("butter", False, 0.25),))
+
+    response = _capture(client, notebook_id)
+
+    assert response.status_code == 422, response.text
+    body = response.json()
+    assert body["code"] == "draft_incomplete"
+    assert body["missing"] == ["title"]
+    assert body["line_problems"] == [{"name": "butter", "kind": "unit_missing"}]
+
+
+def test_line_problem_refusals_carry_no_assistant_text(
+    client: TestClient, script: FakeRecipeExtractor
+) -> None:
+    _register(client, "text_capture@example.com")
+    notebook_id = _personal_notebook(client)
+    _draft_with(script, steps=("  ",), lines=(IngredientLine("butter", False, 0.25),))
+
+    response = _capture(client, notebook_id)
+
+    assert response.status_code == 422, response.text
+    assert set(response.json()) == {"detail", "code", "missing", "line_problems"}
+    assert response.json()["detail"] == ""
+    assert "Onion soup" not in response.text
+    assert "Simmer" not in response.text

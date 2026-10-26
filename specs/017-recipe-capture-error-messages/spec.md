@@ -10,21 +10,31 @@
 
 **Related**: Builds on spec 016 (capture recipe text). Where this spec gives new wording for a message, it replaces the wording in 016 for that message only.
 
+## Clarifications
+
+### Session 2026-10-25
+
+- Q: Which parts must a pasted recipe have before the app builds a draft from it? → A: Title and steps only, as the app enforces today; a recipe with no ingredient list still gets a draft.
+- Q: When a recipe breaks a rule that is not about a missing part (for example, an unknown unit or a bad quantity on one ingredient), should the message name that ingredient? → A: Tell the member which problem applies: quantity missing, unit missing, or unit not recognized. Other rule breaks keep the generic message.
+- Q: Reason for text that is a question or request? → A: Keep the "question or request" reason. The message tells the member to clarify the text by pasting the full recipe, with its ingredients and steps.
+- Q: Should the message name the ingredient? → A: Yes. A line problem names its ingredient, so "1/4 butter" with no unit says the unit is missing for butter. A question about one ingredient (for example, "what's the total grams of a bar of butter?") names that ingredient too.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Member learns which part of the recipe is missing (Priority: P1)
 
-A member pastes text that looks like a recipe but does not have enough to build a draft, such as no ingredient list or no steps. The message names the missing part in plain words and says what to add. The pasted text stays in the box so the member can add the part and submit again.
+A member pastes text that looks like a recipe but does not have enough to build a draft, such as no title or no steps. The message names the missing part in plain words and says what to add. The pasted text stays in the box so the member can add the part and submit again.
 
 **Why this priority**: This is the most common way a capture fails for a real recipe, and a generic message leaves the member guessing what to change.
 
-**Independent Test**: Paste a recipe with a title and steps but no ingredients, then submit. The message names the ingredient list as missing and the text is still in the box.
+**Independent Test**: Paste a recipe with ingredients and steps but no title, then submit. The message names the title as missing and the text is still in the box.
 
 **Acceptance Scenarios**:
 
-1. **Given** a pasted text with no ingredient list, **When** the member submits it, **Then** the message says the ingredient list is missing and asks them to add it, and the text stays in the box.
+1. **Given** a pasted text with no title, **When** the member submits it, **Then** the message says the title is missing and asks them to add it, and the text stays in the box.
 2. **Given** a pasted text with ingredients but no steps, **When** the member submits it, **Then** the message says the steps are missing and asks them to add them, and the text stays in the box.
 3. **Given** a pasted text missing more than one part, **When** the member submits it, **Then** the message names every missing part, not only the first one found.
+4. **Given** an ingredient line with no quantity, no unit, or a unit the app does not recognize, **When** the member submits the text, **Then** the message names the ingredient, says which of these applies (quantity missing, unit missing, or unit not recognized), suggests how to fix it, and the text stays in the box. For example, "1/4 butter" gives "Add a unit to butter."
 
 ---
 
@@ -88,10 +98,12 @@ All capture messages are written in English for this feature. Each message is de
 
 - **FR-001**: Every refused or failed capture MUST show a message that says in plain words what went wrong.
 - **FR-002**: Where the member can act on the message, it MUST also give one concrete next step.
-- **FR-003**: When a draft cannot be built because a required part of the recipe is missing, the message MUST name each missing part (for example, the ingredient list or the steps) and ask the member to add it.
+- **FR-003**: When a draft cannot be built because a required part of the recipe is missing, the message MUST name each missing part (the title or the steps) and ask the member to add it. The ingredient list is not a required part.
 - **FR-004**: When the text is not a recipe, the message MUST say so, give the reason in plain words, and suggest pasting the full recipe with its ingredients and steps.
 - **FR-005**: When the text holds more than one recipe, the message MUST say that only one recipe can be added at a time and suggest pasting them one by one.
-- **FR-006**: When the assistant's answer cannot be turned into a recipe, the message MUST say that the app could not build a recipe from the text and suggest trying again or shortening the text to one recipe.
+- **FR-006**: When the assistant's answer cannot be turned into a recipe for any reason other than those in FR-012, the message MUST say that the app could not build a recipe from the text and suggest trying again or shortening the text to one recipe.
+- **FR-012**: When an ingredient line has no quantity, no unit, or a unit the app does not recognize, the message MUST name that ingredient, say which of these applies (quantity missing, unit missing, or unit not recognized) and suggest how to fix it. If a line lacks both quantity and unit, the message MUST name both.
+- **FR-013**: When the text is a question or request about one ingredient, the message MUST name that ingredient.
 - **FR-007**: The message MUST NOT show raw assistant text, service errors, keys, codes or technical traces. Any reason shown MUST come from fixed wording chosen by the app.
 - **FR-008**: The pasted text MUST stay in the box after every refused or failed capture.
 - **FR-009**: Capture messages MUST be in English for this feature.
@@ -114,7 +126,7 @@ Not applicable. This feature changes wording and the choice of message only; it 
 
 ## Assumptions
 
-- The required parts of a recipe are the ones the recipe rules already need to build a draft. The exact list is confirmed during planning.
+- The required parts of a recipe are its title and its steps, as the recipe rules enforce them today (clarified 2026-10-25). A recipe with no ingredient list still gets a draft.
 - Language is English only for this feature. Choosing the language from the member's account setting is a later story, as set in spec 016 (FR-034). The message wording is kept in one place so that story is simple.
 - The new wording replaces the wording of spec 016 for the not-a-recipe and unreadable-answer messages only. Spec 016's other messages stay as they are.
 - The current change in the recipe extraction code, which logs the name of the broken recipe rule on the server, stays server-side. The member never sees it.

@@ -7,10 +7,14 @@ from pathlib import Path
 import pytest
 from adapters.llm.vocabulary import VOCABULARY_DIR, load_vocabulary
 from domain.recipe_draft import (
+    DraftProblems,
     DraftRecipe,
     IngredientLine,
     InvalidDraftError,
+    LineProblem,
+    LineProblemKind,
     check_draft,
+    clean_display_name,
     lookup_unit,
     score_cuisines,
 )
@@ -74,6 +78,8 @@ def line(**overrides) -> IngredientLine:
         ("tablespon", "tbsp"),
         ("cupss", "cup"),
         ("gramz", "g"),
+        ("dientes de ajo", "unit"),
+        ("Diente de ajo", "unit"),
     ],
 )
 def test_known_and_one_edit_units_map_to_allowed_unit(raw: str, expected: str) -> None:
@@ -102,17 +108,17 @@ def test_non_vague_line_maps_unit_and_keeps_quantity_unconverted() -> None:
 
 @pytest.mark.parametrize("quantity", [None, 0, -1, float("nan")])
 def test_non_vague_line_needs_a_positive_quantity(quantity) -> None:
-    with pytest.raises(InvalidDraftError):
+    with pytest.raises(DraftProblems):
         check(draft(lines=(line(quantity=quantity),)), CATALOG)
 
 
 def test_non_vague_line_needs_a_unit() -> None:
-    with pytest.raises(InvalidDraftError):
+    with pytest.raises(DraftProblems):
         check(draft(lines=(line(unit=""),)), CATALOG)
 
 
-def test_non_vague_line_with_unknown_unit_is_invalid_output() -> None:
-    with pytest.raises(InvalidDraftError):
+def test_non_vague_line_with_unknown_unit_is_a_named_problem() -> None:
+    with pytest.raises(DraftProblems):
         check(draft(lines=(line(unit="quart"),)), CATALOG)
 
 
@@ -163,7 +169,7 @@ def test_empty_name_is_invalid_output() -> None:
 
 
 def test_title_must_not_be_blank() -> None:
-    with pytest.raises(InvalidDraftError):
+    with pytest.raises(DraftProblems):
         check(draft(title="   "), CATALOG)
 
 
@@ -174,9 +180,9 @@ def test_title_limit_is_200_characters() -> None:
 
 
 def test_at_least_one_step_is_required() -> None:
-    with pytest.raises(InvalidDraftError):
+    with pytest.raises(DraftProblems):
         check(draft(steps=()), CATALOG)
-    with pytest.raises(InvalidDraftError):
+    with pytest.raises(DraftProblems):
         check(draft(steps=("  ", "")), CATALOG)
 
 
@@ -273,9 +279,121 @@ def test_preparation_is_trimmed_and_blank_becomes_none() -> None:
     assert checked.ingredient_lines[1].preparation is None
 
 
+# ── display names ───────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("butter", "butter"),
+        ("  crème fraîche ", "crème fraîche"),
+        ("o'neil-style", "o'neil-style"),
+        ("Ñoquis  de   papa", "Ñoquis de papa"),
+        ("a" * 40, "a" * 40),
+    ],
+)
+def test_clean_display_name_keeps_letters_spaces_hyphens_and_apostrophes(
+    raw: str, expected: str
+) -> None:
+    assert clean_display_name(raw) == expected
+
+
+@pytest.mark.parametrize("raw", ["2 x butter!", "butter.", "salt & pepper", "a" * 41])
+def test_clean_display_name_refuses_digits_punctuation_and_long_names(raw: str) -> None:
+    assert clean_display_name(raw) is None
+
+
+@pytest.mark.parametrize("raw", ["", "   ", None])
+def test_clean_display_name_refuses_empty_input(raw: str | None) -> None:
+    assert clean_display_name(raw) is None
+
+
 @pytest.mark.parametrize("name", ["categories.yaml", "cuisine.yml"])
 def test_vocabulary_copies_in_domain_match_dev_docs(name: str) -> None:
     source = Path(__file__).resolve().parents[2] / "dev" / "docs" / name
     if not source.exists():
         pytest.skip("dev/docs is not in the container image")
     assert (VOCABULARY_DIR / name).read_bytes() == source.read_bytes()
+
+
+# ── missing parts and line problems (User Story 1, FR-003) ──────────────────
+
+
+def problems_of(recipe: DraftRecipe) -> DraftProblems:
+    with pytest.raises(DraftProblems) as raised:
+        check(recipe, CATALOG)
+    return raised.value
+
+
+def test_empty_title_is_a_missing_title() -> None:
+    assert problems_of(draft(title="  ")).missing == ("title",)
+
+
+def test_no_non_blank_step_is_a_missing_steps() -> None:
+    assert problems_of(draft(steps=("  ", ""))).missing == ("steps",)
+
+
+def test_missing_title_and_steps_are_both_named_in_order() -> None:
+    assert problems_of(draft(title="", steps=())).missing == ("title", "steps")
+
+
+def test_empty_ingredient_list_gives_no_problems() -> None:
+    checked = check(draft(lines=()), CATALOG)
+    assert checked.ingredient_lines == ()
+
+
+def test_no_quantity_is_quantity_missing() -> None:
+    problems = problems_of(draft(lines=(line(quantity=None),)))
+    assert problems.line_problems == (LineProblem("flour", LineProblemKind.QUANTITY_MISSING),)
+
+
+@pytest.mark.parametrize("quantity", [0, -1])
+def test_zero_or_negative_quantity_is_quantity_missing(quantity) -> None:
+    problems = problems_of(draft(lines=(line(quantity=quantity),)))
+    assert problems.line_problems == (LineProblem("flour", LineProblemKind.QUANTITY_MISSING),)
+
+
+def test_no_unit_is_unit_missing() -> None:
+    problems = problems_of(draft(lines=(line(unit=""),)))
+    assert problems.line_problems == (LineProblem("flour", LineProblemKind.UNIT_MISSING),)
+
+
+def test_unknown_unit_is_unit_not_recognized() -> None:
+    problems = problems_of(draft(lines=(line(unit="widgets"),)))
+    assert problems.line_problems == (
+        LineProblem("flour", LineProblemKind.UNIT_NOT_RECOGNIZED),
+    )
+
+
+def test_line_with_neither_quantity_nor_unit_gives_two_entries_with_one_name() -> None:
+    problems = problems_of(draft(lines=(line(quantity=None, unit=""),)))
+    assert problems.line_problems == (
+        LineProblem("flour", LineProblemKind.QUANTITY_MISSING),
+        LineProblem("flour", LineProblemKind.UNIT_MISSING),
+    )
+
+
+def test_line_problem_name_is_the_normalized_ingredient_name() -> None:
+    problems = problems_of(draft(lines=(line(name="Butter", quantity=0.25, unit=""),)))
+    assert problems.line_problems == (LineProblem("butter", LineProblemKind.UNIT_MISSING),)
+
+
+def test_vague_line_without_amount_is_never_a_line_problem() -> None:
+    checked = check(draft(lines=(IngredientLine("salt", True, note="a pinch of"),)), CATALOG)
+    assert checked.ingredient_lines[0].vague is True
+
+
+def test_missing_title_and_a_bad_line_are_both_returned_in_one_refusal() -> None:
+    problems = problems_of(draft(title="", lines=(line(unit=""),)))
+    assert problems.missing == ("title",)
+    assert problems.line_problems == (LineProblem("flour", LineProblemKind.UNIT_MISSING),)
+
+
+def test_missing_servings_with_no_named_problem_is_still_invalid_draft() -> None:
+    with pytest.raises(InvalidDraftError):
+        check(draft(base_servings=0), CATALOG)
+
+
+def test_servings_below_one_with_a_named_problem_is_draft_problems() -> None:
+    with pytest.raises(DraftProblems):
+        check(draft(base_servings=0, title=""), CATALOG)

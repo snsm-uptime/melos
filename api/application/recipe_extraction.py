@@ -12,14 +12,20 @@ import logging
 import threading
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import Protocol
 
 from domain.errors import DomainError
-from domain.recipe_draft import DraftRecipe, InvalidDraftError, Vocabulary, check_draft
+from domain.recipe_draft import (
+    DraftProblems,
+    DraftRecipe,
+    InvalidDraftError,
+    Vocabulary,
+    check_draft,
+)
 
 logger = logging.getLogger(__name__)
 MAX_TEXT_CHARS = 10_000
-ONE_RECIPE_REASON = "Only one recipe at a time"
 
 
 class RecipeTextRefusedError(DomainError):
@@ -37,9 +43,22 @@ class Draft:
     recipe: DraftRecipe
 
 
+class NotRecipeReason(StrEnum):
+    QUESTION_OR_REQUEST = "question_or_request"
+    NOT_FOOD = "not_food"
+    STORY_OR_ARTICLE = "story_or_article"
+    MULTIPLE_RECIPES = "multiple_recipes"
+
+
 @dataclass(frozen=True, slots=True)
 class NotARecipe:
-    reason: str
+    reason: NotRecipeReason
+    ingredient: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class DraftIncomplete:
+    problems: DraftProblems
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,7 +82,13 @@ class AIProviderError:
 
 
 ExtractionResult = (
-    Draft | NotARecipe | Unavailable | LimitReached | InvalidOutput | AIProviderError
+    Draft
+    | NotARecipe
+    | DraftIncomplete
+    | Unavailable
+    | LimitReached
+    | InvalidOutput
+    | AIProviderError
 )
 
 
@@ -143,6 +168,14 @@ class RecipeExtraction:
             return result
         try:
             recipe = check_draft(result.recipe, ingredient_names, self._vocabulary)
+        except DraftProblems as exc:
+            # Names and kinds only, never the ingredient name or title (constitution §4).
+            logger.warning(
+                "draft incomplete: missing=%s line_problems=%s",
+                ",".join(exc.missing),
+                ",".join(problem.kind.value for problem in exc.line_problems),
+            )
+            return DraftIncomplete(problems=exc)
         except InvalidDraftError as exc:
             # The rule that broke, by name only: no values and no text.
             logger.warning("draft rejected by a recipe rule: %s", exc.MESSAGE)

@@ -38,8 +38,14 @@ Outcome:
   stay inside that one recipe.
 - "multiple_recipes": the text holds two or more complete recipes, each with
   its own title and ingredient list.
-- "not_a_recipe": the text is not a recipe. Set "reason" to one short sentence
-  of 120 characters or fewer, and do not quote the text.
+- "not_a_recipe": the text is not a recipe. Set "reason" to exactly one of:
+  "question_or_request" (the text asks something, or makes a request, instead
+  of giving a recipe), "not_food" (the text is not about food), or
+  "story_or_article" (a story, an article or a list of links). Do not write
+  your own words and do not quote the text.
+  Set "ingredient" only when the text is a question about one ingredient, to
+  that ingredient's name as written in the text (for example "butter"). Leave
+  "ingredient" out otherwise.
 
 Recipe fields (only when outcome is "recipe"):
 - title: the recipe name, in the pasted text's language, 200 characters or fewer.

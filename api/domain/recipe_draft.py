@@ -12,6 +12,7 @@ import re
 import unicodedata
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from enum import StrEnum
 from functools import cache, lru_cache
 from typing import Any
 
@@ -67,6 +68,11 @@ UNIT_SPELLINGS: dict[str, tuple[str, ...]] = {
         "unidades",
         "entero",
         "enteros",
+        "clove",
+        "diente",
+        "dientes",
+        "diente de ajo",
+        "dientes de ajo",
     ),
 }
 
@@ -78,6 +84,31 @@ class InvalidDraftError(DomainError):
 
     def __init__(self, detail: str | None = None) -> None:
         super().__init__(detail or self.MESSAGE)
+
+
+class LineProblemKind(StrEnum):
+    QUANTITY_MISSING = "quantity_missing"
+    UNIT_MISSING = "unit_missing"
+    UNIT_NOT_RECOGNIZED = "unit_not_recognized"
+
+
+@dataclass(frozen=True, slots=True)
+class LineProblem:
+    name: str
+    kind: LineProblemKind
+
+
+class DraftProblems(DomainError):
+    """A draft the user can fix: missing title or steps, or unusable line quantity or unit."""
+
+    def __init__(
+        self,
+        missing: tuple[str, ...] = (),
+        line_problems: tuple[LineProblem, ...] = (),
+    ) -> None:
+        super().__init__("The recipe draft is incomplete.")
+        self.missing = missing
+        self.line_problems = line_problems
 
 
 @dataclass(frozen=True, slots=True)
@@ -403,6 +434,21 @@ def score_cuisines(
     return tuple(chosen) if chosen else (INTERNATIONAL,)
 
 
+# ── display names ───────────────────────────────────────────────────────────
+
+DISPLAY_NAME_MAX_CHARS = 40
+
+
+def clean_display_name(raw: str | None) -> str | None:
+    """Trim and collapse spaces. None when empty, over 40 characters, or with other characters."""
+    cleaned = re.sub(" +", " ", unicodedata.normalize("NFC", raw or "").strip())
+    if not cleaned or len(cleaned) > DISPLAY_NAME_MAX_CHARS:
+        return None
+    if not all(ch.isalpha() or ch in " -'" for ch in cleaned):
+        return None
+    return cleaned
+
+
 # ── draft rules ─────────────────────────────────────────────────────────────
 
 
@@ -428,11 +474,16 @@ def _check_servings(base_servings: int | None) -> tuple[int, bool]:
     return base_servings, False
 
 
-def _check_name(raw: str, catalog: dict[str, str]) -> str:
+def _normalized_name(raw: str, catalog: dict[str, str]) -> str:
     name = (raw or "").strip().lower()
+    return catalog.get(name.casefold(), name) if name else ""
+
+
+def _check_name(raw: str, catalog: dict[str, str]) -> str:
+    name = _normalized_name(raw, catalog)
     if not name:
         raise InvalidDraftError("name")
-    return catalog.get(name.casefold(), name)
+    return name
 
 
 def _check_line(line: IngredientLine, catalog: dict[str, str]) -> IngredientLine:
@@ -463,6 +514,40 @@ def _check_line(line: IngredientLine, catalog: dict[str, str]) -> IngredientLine
     )
 
 
+def _missing_parts(title: str, steps: Sequence[str]) -> tuple[str, ...]:
+    missing: list[str] = []
+    if not (title or "").strip():
+        missing.append("title")
+    if not any(s and s.strip() for s in steps):
+        missing.append("steps")
+    return tuple(missing)
+
+
+def _line_problems(
+    line: IngredientLine, catalog: dict[str, str]
+) -> tuple[LineProblem, ...]:
+    """Named problems with a non-vague line's amount and unit (FR-003).
+
+    A line with an empty name, or a unit that is ambiguous (InvalidDraftError), gives
+    no named problem here: `_check_line` refuses it as invalid output instead.
+    """
+    name = _normalized_name(line.name, catalog)
+    if line.vague or not name:
+        return ()
+    problems: list[LineProblem] = []
+    if line.quantity is None or not math.isfinite(line.quantity) or line.quantity <= 0:
+        problems.append(LineProblem(name, LineProblemKind.QUANTITY_MISSING))
+    if not (line.unit or "").strip():
+        problems.append(LineProblem(name, LineProblemKind.UNIT_MISSING))
+    else:
+        try:
+            if lookup_unit(line.unit) is None:
+                problems.append(LineProblem(name, LineProblemKind.UNIT_NOT_RECOGNIZED))
+        except InvalidDraftError:
+            pass
+    return tuple(problems)
+
+
 def _clean_size(raw: str | None) -> str | None:
     size = (raw or "").strip().lower()
     return size if size in SIZES else None
@@ -486,11 +571,23 @@ def check_draft(
     """Apply the FR-006 to FR-006c rules to a draft from the service.
 
     Returns the checked draft with its cuisines scored by the app. Raises
-    InvalidDraftError when any rule breaks. The whole draft is then invalid.
+    DraftProblems when the member can fix the draft: a missing title or steps,
+    or a line with no usable quantity or unit. Those named problems are all
+    collected in one pass. Any other broken rule raises InvalidDraftError, and
+    the whole draft is then invalid output.
     """
     catalog = {
         n.strip().casefold(): n.strip() for n in catalog_names if n and n.strip()
     }
+    missing = _missing_parts(draft.title, draft.steps)
+    line_problems = tuple(
+        problem
+        for line in draft.ingredient_lines
+        for problem in _line_problems(line, catalog)
+    )
+    if missing or line_problems:
+        raise DraftProblems(missing=missing, line_problems=line_problems)
+
     title = _check_title(draft.title)
     steps = _check_steps(draft.steps)
     servings, estimated = _check_servings(draft.base_servings)
