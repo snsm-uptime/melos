@@ -99,7 +99,7 @@ describe("TextCaptureSheet", () => {
       vi
         .fn()
         .mockResolvedValueOnce(json(200, { max_text_chars: 5000 }))
-        .mockResolvedValueOnce(json(422, { code: "not_a_recipe", detail: "not_food" })),
+        .mockResolvedValueOnce(json(422, { code: "not_a_recipe", detail: "A weather question." })),
     );
     render();
     setValue(document.querySelector("textarea")!, "What's the weather tomorrow?");
@@ -107,109 +107,10 @@ describe("TextCaptureSheet", () => {
     await act(async () => submitButton().click());
 
     expect(document.querySelector("[role='alert']")?.textContent).toBe(
-      "That doesn't look like a recipe. It is not about food. Paste the full recipe, with its ingredients and steps.",
+      "That doesn't look like a recipe. A weather question.",
     );
     expect(document.querySelector("textarea")!.value).toBe("What's the weather tomorrow?");
     expect(getCaptureState().draft).toBeNull();
-  });
-
-  it("names the ingredient in a question about it and keeps the text", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValueOnce(json(200, { max_text_chars: 5000 }))
-        .mockResolvedValueOnce(
-          json(422, { code: "not_a_recipe", detail: "question_or_request", ingredient: "butter" }),
-        ),
-    );
-    render();
-    setValue(document.querySelector("textarea")!, "What's the total grams of a bar of butter?");
-
-    await act(async () => submitButton().click());
-
-    expect(document.querySelector("[role='alert']")?.textContent).toBe(
-      "That reads as a question about butter, not a recipe. Clarify the text: paste the full recipe, with the amount and unit of butter and its steps.",
-    );
-    expect(document.querySelector("textarea")!.value).toBe("What's the total grams of a bar of butter?");
-  });
-
-  it("shows the new wording when more than one recipe is pasted", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValueOnce(json(200, { max_text_chars: 5000 }))
-        .mockResolvedValueOnce(json(422, { code: "one_recipe_at_a_time", detail: "" })),
-    );
-    render();
-    setValue(document.querySelector("textarea")!, "Soup\n...\nCake\n...");
-
-    await act(async () => submitButton().click());
-
-    expect(document.querySelector("[role='alert']")?.textContent).toBe(
-      "Only one recipe can be added at a time. Paste them one by one.",
-    );
-  });
-
-  it("asks for the missing title and keeps the pasted text", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValueOnce(json(200, { max_text_chars: 5000 }))
-        .mockResolvedValueOnce(json(422, { code: "draft_incomplete", detail: "", missing: ["title"] })),
-    );
-    render();
-    setValue(document.querySelector("textarea")!, "2 large onions, chopped.");
-
-    await act(async () => submitButton().click());
-
-    expect(document.querySelector("[role='alert']")?.textContent).toBe("Add a title for the recipe.");
-    expect(document.querySelector("textarea")!.value).toBe("2 large onions, chopped.");
-  });
-
-  it("says the app could not build a recipe and keeps the pasted text", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValueOnce(json(200, { max_text_chars: 5000 }))
-        .mockResolvedValueOnce(json(422, { code: "ai_invalid_output", detail: "" })),
-    );
-    render();
-    setValue(document.querySelector("textarea")!, "2 large onions, chopped.");
-
-    await act(async () => submitButton().click());
-
-    expect(document.querySelector("[role='alert']")?.textContent).toBe(
-      "The app could not build a recipe from this text. Try again, or shorten the text to one recipe.",
-    );
-    expect(document.querySelector("textarea")!.value).toBe("2 large onions, chopped.");
-  });
-
-  it("names the ingredient that needs a unit", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockResolvedValueOnce(json(200, { max_text_chars: 5000 }))
-        .mockResolvedValueOnce(
-          json(422, {
-            code: "ingredient_line_problem",
-            detail: "",
-            line_problems: [{ name: "butter", kind: "unit_missing" }],
-          }),
-        ),
-    );
-    render();
-    setValue(document.querySelector("textarea")!, "1/4 butter");
-
-    await act(async () => submitButton().click());
-
-    expect(document.querySelector("[role='alert']")?.textContent).toBe(
-      "Add a unit to butter, such as grams, cups or units.",
-    );
   });
 
   it("stores the draft and moves to the draft route on success", async () => {

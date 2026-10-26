@@ -6,8 +6,6 @@
  * account language) is a later story, after MVP (FR-034). Keep every string here.
  */
 
-import type { CaptureMessage } from "@/lib/capture/captureStore";
-
 export const captureMessages = {
   addRecipe: "Add a recipe",
   optionUrl: "URL",
@@ -22,11 +20,10 @@ export const captureMessages = {
   submitting: "Reading your recipe…",
   tooLong: (max: number) => `That text is too long. Paste up to ${max} characters.`,
   notARecipe: "That doesn't look like a recipe.",
-  oneRecipe: "Only one recipe can be added at a time. Paste them one by one.",
+  oneRecipe: "Upload only one recipe at a time",
   unavailable: "The assistant isn't responding. Your text is kept — try again.",
   limit: "We've hit the assistant's limit. Try again in a minute.",
-  invalidOutput:
-    "The app could not build a recipe from this text. Try again, or shorten the text to one recipe.",
+  invalidOutput: "We couldn't read that recipe. Try rephrasing or adding detail.",
   misconfigured: "Assistant misconfigured. Your text is kept",
   archived: "This kitchen is archived, so recipes can't be added.",
   notFound: "This kitchen is unavailable.",
@@ -77,66 +74,11 @@ export const captureMessages = {
   },
 } as const;
 
-const MAX_LINE_SENTENCES = 5;
-
-/** One sentence per line problem, or null for a kind the app does not show. */
-function lineSentence(problem: { name: string | null; kind: string }): string | null {
-  const name = problem.name ?? "this ingredient";
-  switch (problem.kind) {
-    case "quantity_missing":
-      return `Add a quantity to ${name}.`;
-    case "unit_missing":
-      return `Add a unit to ${name}, such as grams, cups or units.`;
-    case "unit_not_recognized":
-      return `${name} uses a unit the app does not know. Use a common unit, such as grams, cups or spoons.`;
-    default:
-      return null;
-  }
-}
-
-/** The missing-part sentences first (title, then steps), then the line sentences in order. */
-function draftSentences(message: CaptureMessage): string {
-  const missing = message.missing ?? [];
-  const sentences: string[] = [];
-  if (missing.includes("title")) sentences.push("Add a title for the recipe.");
-  if (missing.includes("steps")) sentences.push("Add the steps of the recipe.");
-
-  const lines = (message.lineProblems ?? []).flatMap((problem) => {
-    const sentence = lineSentence(problem);
-    return sentence ? [sentence] : [];
-  });
-  sentences.push(...lines.slice(0, MAX_LINE_SENTENCES));
-  if (lines.length > MAX_LINE_SENTENCES) sentences.push("and more ingredients need a change.");
-
-  return sentences.length > 0 ? sentences.join(" ") : captureMessages.unavailable;
-}
-
-/** The sentence for a not_a_recipe reason, with the ingredient when the reason is about one. */
-function notARecipeSentence(message: CaptureMessage): string {
-  const ingredient = message.ingredient;
-  switch (message.reason) {
-    case "question_or_request":
-      if (ingredient === undefined) {
-        return "That doesn't look like a recipe. It reads as a question or request. Clarify the text: paste the full recipe, with its ingredients and steps.";
-      }
-      return `That reads as a question about ${ingredient ?? "this ingredient"}, not a recipe. Clarify the text: paste the full recipe, with the amount and unit of ${ingredient ?? "this ingredient"} and its steps.`;
-    case "not_food":
-      return "That doesn't look like a recipe. It is not about food. Paste the full recipe, with its ingredients and steps.";
-    case "story_or_article":
-      return "That doesn't look like a recipe. It reads as a story or article. Paste only the recipe, with its ingredients and steps.";
-    default:
-      return captureMessages.notARecipe;
-  }
-}
-
-/** The message shown for an API refusal (contracts/capture-messages.md). */
-export function messageForCode(message: CaptureMessage, max?: number): string {
-  switch (message.code) {
-    case "draft_incomplete":
-    case "ingredient_line_problem":
-      return draftSentences(message);
+/** The message shown for an API `code` (contracts/capture-api.md). */
+export function messageForCode(code: string, reason?: string, max?: number): string {
+  switch (code) {
     case "not_a_recipe":
-      return notARecipeSentence(message);
+      return reason ? `${captureMessages.notARecipe} ${reason}` : captureMessages.notARecipe;
     case "one_recipe_at_a_time":
       return captureMessages.oneRecipe;
     case "ai_limit_reached":
