@@ -29,6 +29,7 @@ from application.recipe_extraction import (
     Unavailable,
 )
 from domain.errors import KitchenArchivedError, NotebookNotFoundError
+from domain.ingredient_catalog import LineMatch
 from domain.labels import pick_label
 from domain.preferences import effective_language
 from domain.recipe_draft import clean_display_name
@@ -57,12 +58,23 @@ def _error(
     )
 
 
+def _match_body(match: LineMatch | None) -> dict[str, Any]:
+    if match is None or match.kind == "new":
+        return {"kind": "new", "entry": None}
+    return {"kind": "matched", "entry": match.entry}
+
+
 def _draft_body(captured: CapturedDraft, vocabulary: dict[str, Any]) -> dict[str, Any]:
     language = captured.language
     main_labels = {item["id"]: item["label"] for item in vocabulary["main_ingredients"]}
     cuisines = {item["id"]: item for item in vocabulary["cuisines"]}
     recipe = captured.recipe
     notebook = captured.notebook
+    # A draft from the service always has one match per line; a draft without them shows "new".
+    matches: list[LineMatch | None] = [
+        recipe.matches[index] if index < len(recipe.matches) else None
+        for index in range(len(recipe.ingredient_lines))
+    ]
     return {
         "outcome": "draft",
         "notebook": {
@@ -72,7 +84,12 @@ def _draft_body(captured: CapturedDraft, vocabulary: dict[str, Any]) -> dict[str
             "kitchen_id": str(notebook.kitchen_id) if notebook.kitchen_id else None,
         },
         "language": language,
+        "catalog": sorted(captured.catalog),
         "draft": {
+            "changes": [
+                {"line": change.line, "from": change.from_name, "to": change.to}
+                for change in recipe.changes
+            ],
             "title": recipe.title,
             "base_servings": recipe.base_servings,
             "servings_estimated": recipe.servings_estimated,
@@ -97,15 +114,19 @@ def _draft_body(captured: CapturedDraft, vocabulary: dict[str, Any]) -> dict[str
                     "size": line.size,
                     "preparation": line.preparation,
                     "note": line.note,
+                    "text_name": line.text_name,
+                    "match": _match_body(matches[index]),
                 }
-                for line in recipe.ingredient_lines
+                for index, line in enumerate(recipe.ingredient_lines)
             ],
             "steps": list(recipe.steps),
         },
     }
 
 
-def _outcome_response(outcome: CaptureOutcome, vocabulary: dict[str, Any]) -> JSONResponse:
+def _outcome_response(
+    outcome: CaptureOutcome, vocabulary: dict[str, Any]
+) -> JSONResponse:
     if isinstance(outcome, CapturedDraft):
         return JSONResponse(
             status_code=status.HTTP_200_OK, content=_draft_body(outcome, vocabulary)
@@ -203,25 +224,32 @@ def capture_recipe_text(
         request.headers.get("accept-language"),
     )
     try:
-        outcome = capture.execute(
-            CaptureRecipeCommand(
-                actor_user_id=user_id,
-                notebook_id=notebook_id,
-                text=body.text,
-                language=language,
-            )
+        capture_command = CaptureRecipeCommand(
+            actor_user_id=user_id,
+            notebook_id=notebook_id,
+            text=body.text,
+            language=language,
         )
+        outcome = capture.execute(capture_command)
     except TextEmptyError as exc:
-        return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, TextEmptyError.CODE, str(exc))
+        return _error(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, TextEmptyError.CODE, str(exc)
+        )
     except TextTooLongError as exc:
-        return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, TextTooLongError.CODE, str(exc))
+        return _error(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, TextTooLongError.CODE, str(exc)
+        )
     except NotebookNotFoundError:
         return _error(
-            status.HTTP_404_NOT_FOUND, NotebookNotFoundError.CODE, NotebookNotFoundError.MESSAGE
+            status.HTTP_404_NOT_FOUND,
+            NotebookNotFoundError.CODE,
+            NotebookNotFoundError.MESSAGE,
         )
     except KitchenArchivedError:
         return _error(
-            status.HTTP_409_CONFLICT, KitchenArchivedError.CODE, KitchenArchivedError.MESSAGE
+            status.HTTP_409_CONFLICT,
+            KitchenArchivedError.CODE,
+            KitchenArchivedError.MESSAGE,
         )
     return _outcome_response(outcome, get_vocabulary_answer(request))
 

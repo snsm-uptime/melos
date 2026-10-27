@@ -65,6 +65,8 @@ class CapturedDraft:
     recipe: DraftRecipe
     notebook: NotebookView
     language: str
+    # The capture notebook's catalog entries, for the member's match control (spec 018 FR-005).
+    catalog: tuple[str, ...] = ()
 
 
 # A CapturedDraft, or one of the S-015 results that are not a draft (passed through unchanged).
@@ -109,5 +111,10 @@ class CaptureRecipeText:
             len(text),
         )
         if isinstance(result, Draft):
-            return CapturedDraft(recipe=result.recipe, notebook=view, language=command.language)
+            return CapturedDraft(
+                recipe=result.recipe,
+                notebook=view,
+                language=command.language,
+                catalog=tuple(names),
+            )
         return result

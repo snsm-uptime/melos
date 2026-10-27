@@ -54,6 +54,36 @@ def use_case(script) -> tuple[RecipeExtraction, FakeRecipeExtractor]:
     return RecipeExtraction(fake, VOCABULARY), fake
 
 
+def matching_draft() -> DraftRecipe:
+    return DraftRecipe(
+        title="Onion soup",
+        base_servings=2,
+        servings_estimated=False,
+        main_ingredients=(),
+        cuisines=(),
+        ingredient_lines=(
+            IngredientLine(
+                name="onion",
+                vague=False,
+                quantity=2.0,
+                unit="unit",
+                size="large",
+                text_name="onions",
+                catalog_match="onion",
+            ),
+            IngredientLine(
+                name="flour",
+                vague=False,
+                quantity=200.0,
+                unit="g",
+                text_name="flour",
+                catalog_match="flour",
+            ),
+        ),
+        steps=("Fry the onions.",),
+    )
+
+
 # ── acceptance (User Story 1) ───────────────────────────────────────────────
 
 
@@ -73,6 +103,34 @@ def test_acceptance_draft_is_checked_and_uses_catalog_name() -> None:
     assert onion.name == "onion"
     assert (onion.quantity, onion.unit, onion.size) == (2.0, "unit", "large")
     assert len(fake.calls) == 1
+
+
+def test_draft_carries_matches_and_listed_changes_from_the_catalog() -> None:
+    service, _ = use_case(Draft(recipe=matching_draft()))
+
+    result = service.extract("Onion soup\n2 large onions\n200 g flour", ["onion", "flour"], 10.0)
+
+    assert isinstance(result, Draft)
+    recipe = result.recipe
+    assert [match.kind for match in recipe.matches] == ["matched", "matched"]
+    assert recipe.matches[0].entry == "onion"
+    assert [line.name for line in recipe.ingredient_lines] == ["onion", "flour"]
+    assert len(recipe.changes) == 1
+    assert (recipe.changes[0].line, recipe.changes[0].from_name, recipe.changes[0].to) == (
+        0,
+        "onions",
+        "onion",
+    )
+
+
+def test_draft_with_no_catalog_has_no_matches_and_no_changes() -> None:
+    service, _ = use_case(Draft(recipe=matching_draft()))
+
+    result = service.extract("Onion soup\n2 large onions\n200 g flour", [], 10.0)
+
+    assert isinstance(result, Draft)
+    assert [match.kind for match in result.recipe.matches] == ["new", "new"]
+    assert result.recipe.changes == ()
 
 
 def test_rule_breaking_draft_becomes_invalid_output_and_no_draft() -> None:
