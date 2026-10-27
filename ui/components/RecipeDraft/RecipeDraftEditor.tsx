@@ -13,15 +13,18 @@ import {
   backToSheet,
   discardDraft,
   editDraft,
+  undoChange,
   useCaptureState,
   type DraftView,
   type LineView,
 } from "@/lib/capture/captureStore";
+import { nameChanges } from "@/lib/capture/nameChanges";
 import { pickLabel } from "@/lib/capture/labels";
 import { captureMessages } from "@/lib/i18n/capture";
 
 import { CategoryChips } from "./CategoryChips";
 import { IngredientLineRow } from "./IngredientLineRow";
+import { NameChangeList } from "./NameChangeList";
 
 const MAX_MAIN = 2;
 const MAX_CUISINES = 2;
@@ -192,7 +195,8 @@ export function RecipeDraftEditor() {
 
       <section className="flex flex-col gap-2">
         <h2 className="m-0 text-[1rem] font-[550] text-foreground">{captureMessages.ingredients}</h2>
-        <ul className="m-0 flex list-none flex-col p-0">
+        <NameChangeList changes={nameChanges(draft.lines)} onUndo={undoChange} />
+        <ul className="m-0 flex list-none flex-col gap-[var(--space-4)] p-0">
           {draft.lines.map((line, index) => (
             <IngredientLineRow
               key={line.key}
@@ -202,6 +206,7 @@ export function RecipeDraftEditor() {
               errors={errors.lines[index] ?? []}
               units={units}
               sizes={sizes}
+              catalog={draft.catalog}
               onChange={(next) => updateLine(index, next)}
               onRemove={() => update({ lines: draft.lines.filter((_, i) => i !== index) })}
               onMove={(direction) => update({ lines: moveItem(draft.lines, index, direction) })}
@@ -224,6 +229,8 @@ export function RecipeDraftEditor() {
                   size: null,
                   preparation: null,
                   note: null,
+                  textName: "",
+                  match: { kind: "new", entry: null },
                 },
               ],
             })

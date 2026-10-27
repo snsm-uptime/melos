@@ -36,9 +36,21 @@ const draft: DraftView = {
   mainIngredients: [{ id: "poultry", label: "Aves", tag: null }],
   cuisines: [{ id: "international", label: "Internacional", tag: null }],
   lines: [
-    { key: "l1", name: "onion", vague: false, quantity: 2, unit: "unit", size: "large", preparation: "chopped", note: null },
+    {
+      key: "l1",
+      name: "onion",
+      vague: false,
+      quantity: 2,
+      unit: "unit",
+      size: "large",
+      preparation: "chopped",
+      note: null,
+      textName: "onion",
+      match: { kind: "new", entry: null },
+    },
   ],
   steps: [{ key: "s1", text: "Simmer." }],
+  catalog: ["onion", "spring onion"],
 };
 
 let container: HTMLDivElement;
