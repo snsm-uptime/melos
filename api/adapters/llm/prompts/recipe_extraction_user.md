@@ -1,0 +1,7 @@
+{{TEXT_OPEN}}
+{{TEXT}}
+{{TEXT_CLOSE}}
+
+{{NAMES_OPEN}}
+{{NAMES_JSON}}
+{{NAMES_CLOSE}}

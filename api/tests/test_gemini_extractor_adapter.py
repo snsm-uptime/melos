@@ -215,6 +215,49 @@ def test_preparation_maps_to_its_own_field_not_the_name() -> None:
     assert line.preparation == "chopped"
 
 
+def test_text_name_and_catalog_match_map_to_the_line() -> None:
+    payload = {
+        "outcome": "recipe",
+        "recipe": {
+            "title": "Onion soup",
+            "ingredient_lines": [
+                {
+                    "name": "onion",
+                    "vague": False,
+                    "quantity": 2,
+                    "unit": "unit",
+                    "text_name": "onions",
+                    "catalog_match": "onion",
+                }
+            ],
+            "steps": ["Simmer."],
+        },
+    }
+    extractor_, _ = extractor(response(payload))
+
+    line = extractor_.extract("text", ["onion"], 10.0).recipe.ingredient_lines[0]
+
+    assert line.text_name == "onions"
+    assert line.catalog_match == "onion"
+
+
+def test_payload_without_match_fields_still_maps_with_none() -> None:
+    extractor_, _ = extractor(response(RECIPE_JSON))
+
+    line = extractor_.extract("text", [], 10.0).recipe.ingredient_lines[0]
+
+    assert line.text_name is None
+    assert line.catalog_match is None
+
+
+def test_schema_lists_match_fields_as_optional() -> None:
+    line_schema = RESPONSE_SCHEMA["properties"]["recipe"]["properties"]["ingredient_lines"]["items"]
+
+    assert {"text_name", "catalog_match"} <= set(line_schema["properties"])
+    assert "text_name" not in line_schema["required"]
+    assert "catalog_match" not in line_schema["required"]
+
+
 @pytest.mark.parametrize(
     ("reason", "expected"),
     [
