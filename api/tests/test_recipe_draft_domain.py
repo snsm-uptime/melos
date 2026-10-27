@@ -153,11 +153,28 @@ def test_size_is_kept_for_unit_with_allowed_size() -> None:
     assert checked.ingredient_lines[0].size == "medium"
 
 
-def test_name_is_lower_case_and_uses_catalog_spelling() -> None:
+def test_name_is_lower_case_without_a_proposal() -> None:
     checked = check(draft(lines=(line(name="  ONION ", unit="unit"),)), ["Onion"])
-    assert checked.ingredient_lines[0].name == "Onion"
+    assert checked.ingredient_lines[0].name == "onion"
+    assert checked.matches[0].kind == "new"
     unknown = check(draft(lines=(line(name="Basil", unit="unit"),)), CATALOG)
     assert unknown.ingredient_lines[0].name == "basil"
+
+
+def test_matched_line_shows_the_catalog_entry_and_lists_the_change() -> None:
+    raw = draft(lines=(line(name="onion", unit="unit", text_name="onions", catalog_match="onion"),))
+    checked = check(raw, ["onion"])
+    assert checked.ingredient_lines[0].name == "onion"
+    assert checked.matches[0].kind == "matched"
+    assert checked.changes[0].from_name == "onions"
+    assert checked.changes[0].to == "onion"
+    assert checked.ingredient_lines[0].text_name == "onions"
+
+
+def test_text_name_falls_back_to_the_assistant_name_when_missing() -> None:
+    checked = check(draft(lines=(line(name="Flour", unit="g", quantity=200.0),)), CATALOG)
+
+    assert checked.ingredient_lines[0].text_name == "flour"
 
 
 def test_empty_name_is_invalid_output() -> None:

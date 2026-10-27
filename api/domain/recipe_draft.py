@@ -11,12 +11,13 @@ import math
 import re
 import unicodedata
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from functools import cache, lru_cache
 from typing import Any
 
 from domain.errors import DomainError
+from domain.ingredient_catalog import LineMatch, NameChange, match_line, same_spelling
 
 ALLOWED_UNITS = ("g", "kg", "oz", "lb", "ml", "l", "cup", "tbsp", "tsp", "unit")
 SIZES = ("small", "medium", "large")
@@ -121,6 +122,9 @@ class IngredientLine:
     note: str | None = None
     # How the ingredient is cut or prepared ("chopped"). Never part of name (FR-010).
     preparation: str | None = None
+    # The name as written in the pasted text, and the catalog entry the model proposes (spec 018).
+    text_name: str | None = None
+    catalog_match: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,7 +133,9 @@ class DraftRecipe:
 
     `base_servings` is None when the text gives none; `check_draft` fills in the
     default and sets the estimate flag. `cuisines` is empty in the raw value:
-    the app scores cuisines, not the model.
+    the app scores cuisines, not the model. `matches` has one entry per ingredient line
+    and `changes` lists the name changes the member sees (spec 018); both are empty
+    in the raw value.
     """
 
     title: str
@@ -139,6 +145,8 @@ class DraftRecipe:
     cuisines: tuple[str, ...]
     ingredient_lines: tuple[IngredientLine, ...]
     steps: tuple[str, ...]
+    matches: tuple[LineMatch, ...] = ()
+    changes: tuple[NameChange, ...] = ()
 
 
 # ── units ───────────────────────────────────────────────────────────────────
@@ -474,20 +482,19 @@ def _check_servings(base_servings: int | None) -> tuple[int, bool]:
     return base_servings, False
 
 
-def _normalized_name(raw: str, catalog: dict[str, str]) -> str:
-    name = (raw or "").strip().lower()
-    return catalog.get(name.casefold(), name) if name else ""
+def _normalized_name(raw: str) -> str:
+    return (raw or "").strip().lower()
 
 
-def _check_name(raw: str, catalog: dict[str, str]) -> str:
-    name = _normalized_name(raw, catalog)
+def _check_name(raw: str) -> str:
+    name = _normalized_name(raw)
     if not name:
         raise InvalidDraftError("name")
     return name
 
 
-def _check_line(line: IngredientLine, catalog: dict[str, str]) -> IngredientLine:
-    name = _check_name(line.name, catalog)
+def _check_line(line: IngredientLine) -> IngredientLine:
+    name = _check_name(line.name)
     note = line.note.strip() or None if line.note else None
     preparation = line.preparation.strip() or None if line.preparation else None
     if line.vague:
@@ -523,15 +530,13 @@ def _missing_parts(title: str, steps: Sequence[str]) -> tuple[str, ...]:
     return tuple(missing)
 
 
-def _line_problems(
-    line: IngredientLine, catalog: dict[str, str]
-) -> tuple[LineProblem, ...]:
+def _line_problems(line: IngredientLine) -> tuple[LineProblem, ...]:
     """Named problems with a non-vague line's amount and unit (FR-003).
 
     A line with an empty name, or a unit that is ambiguous (InvalidDraftError), gives
     no named problem here: `_check_line` refuses it as invalid output instead.
     """
-    name = _normalized_name(line.name, catalog)
+    name = _normalized_name(line.name)
     if line.vague or not name:
         return ()
     problems: list[LineProblem] = []
@@ -563,6 +568,34 @@ def _main_ingredients(values: Iterable[str], vocabulary: Vocabulary) -> tuple[st
     return tuple(kept[:MAX_MAIN_INGREDIENTS])
 
 
+def _match_lines(
+    raw_lines: Sequence[IngredientLine],
+    checked_lines: Sequence[IngredientLine],
+    catalog: Sequence[str],
+) -> tuple[tuple[IngredientLine, ...], tuple[LineMatch, ...], tuple[NameChange, ...]]:
+    """Confirm each line's catalog proposal (spec 018) and list the name changes.
+
+    A matched line shows the catalog entry as its name. A change is listed only when the
+    text's name differs from that entry in more than letter case or spaces.
+    """
+    lines: list[IngredientLine] = []
+    matches: list[LineMatch] = []
+    changes: list[NameChange] = []
+    for index, (raw, line) in enumerate(zip(raw_lines, checked_lines, strict=True)):
+        # The name as the text writes it; the assistant's name when the text gives none.
+        written = raw.text_name or line.name
+        match = match_line(raw.text_name, line.name, raw.catalog_match, catalog)
+        matches.append(match)
+        if match.kind == "matched" and match.entry is not None:
+            if not same_spelling(written, match.entry):
+                changes.append(
+                    NameChange(line=index, from_name=written, to=match.entry)
+                )
+            line = replace(line, name=match.entry)
+        lines.append(replace(line, text_name=written, catalog_match=raw.catalog_match))
+    return tuple(lines), tuple(matches), tuple(changes)
+
+
 def check_draft(
     draft: DraftRecipe,
     catalog_names: Iterable[str],
@@ -570,20 +603,16 @@ def check_draft(
 ) -> DraftRecipe:
     """Apply the FR-006 to FR-006c rules to a draft from the service.
 
-    Returns the checked draft with its cuisines scored by the app. Raises
-    DraftProblems when the member can fix the draft: a missing title or steps,
-    or a line with no usable quantity or unit. Those named problems are all
-    collected in one pass. Any other broken rule raises InvalidDraftError, and
-    the whole draft is then invalid output.
+    Returns the checked draft with its cuisines scored by the app, and with each
+    ingredient matched to the catalog (spec 018). Raises DraftProblems when the member
+    can fix the draft: a missing title or steps, or a line with no usable quantity or
+    unit. Those named problems are all collected in one pass. Any other broken rule
+    raises InvalidDraftError, and the whole draft is then invalid output.
     """
-    catalog = {
-        n.strip().casefold(): n.strip() for n in catalog_names if n and n.strip()
-    }
+    catalog = tuple[str, ...](n.strip() for n in catalog_names if n and n.strip())
     missing = _missing_parts(draft.title, draft.steps)
-    line_problems = tuple(
-        problem
-        for line in draft.ingredient_lines
-        for problem in _line_problems(line, catalog)
+    line_problems = tuple[LineProblem, ...](
+        problem for line in draft.ingredient_lines for problem in _line_problems(line)
     )
     if missing or line_problems:
         raise DraftProblems(missing=missing, line_problems=line_problems)
@@ -591,7 +620,8 @@ def check_draft(
     title = _check_title(draft.title)
     steps = _check_steps(draft.steps)
     servings, estimated = _check_servings(draft.base_servings)
-    lines = tuple(_check_line(line, catalog) for line in draft.ingredient_lines)
+    checked = tuple(_check_line(line) for line in draft.ingredient_lines)
+    lines, matches, changes = _match_lines(draft.ingredient_lines, checked, catalog)
     return DraftRecipe(
         title=title,
         base_servings=servings,
@@ -600,4 +630,6 @@ def check_draft(
         cuisines=score_cuisines(title, steps, len(lines), vocabulary),
         ingredient_lines=lines,
         steps=steps,
+        matches=matches,
+        changes=changes,
     )
