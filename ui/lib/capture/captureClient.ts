@@ -6,12 +6,14 @@ export type CaptureDraftResponse = {
   outcome: "draft";
   notebook: { id: string; kind: "personal" | "kitchen"; name: string; kitchen_id: string | null };
   language: "en" | "es";
+  catalog: string[];
   draft: {
     title: string;
     base_servings: number;
     servings_estimated: boolean;
     main_ingredients: { id: string; label: string }[];
     cuisines: { id: string; label: string; tag: string | null }[];
+    changes: { line: number; from: string; to: string }[];
     ingredient_lines: {
       name: string;
       vague: boolean;
@@ -20,6 +22,8 @@ export type CaptureDraftResponse = {
       size: string | null;
       preparation: string | null;
       note: string | null;
+      text_name: string;
+      match: { kind: "matched" | "new"; entry: string | null };
     }[];
     steps: string[];
   };

@@ -30,6 +30,7 @@ const draft: DraftView = {
   cuisines: [],
   lines: [],
   steps: [{ key: "s1", text: "Simmer." }],
+  catalog: [],
 };
 
 beforeEach(() => clearCapture());

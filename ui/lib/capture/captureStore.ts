@@ -28,6 +28,9 @@ export type CaptureMessage = {
 
 export type CategoryRef = { id: string; label: string; tag: string | null };
 
+/** The label on an ingredient line (spec 018 FR-001): a catalog entry, or a new ingredient. */
+export type LineMatch = { kind: "matched" | "new"; entry: string | null };
+
 export type LineView = {
   key: string;
   name: string;
@@ -37,6 +40,9 @@ export type LineView = {
   size: string | null;
   preparation: string | null;
   note: string | null;
+  /** The name as the text writes it; undo returns the line to it (spec 018 FR-004). */
+  textName: string;
+  match: LineMatch;
 };
 
 export type StepView = { key: string; text: string };
@@ -49,7 +55,12 @@ export type DraftView = {
   cuisines: CategoryRef[];
   lines: LineView[];
   steps: StepView[];
+  /** The capture notebook's catalog entries, for the match control (spec 018 FR-005). */
+  catalog: string[];
 };
+
+/** The match-control value that means "new ingredient". Not a catalog entry name. */
+export const NEW_CHOICE = "__new__";
 
 export type CaptureState = {
   notebook: CaptureNotebook | null;
@@ -134,6 +145,31 @@ export function showDraft(draft: DraftView, language: "en" | "es"): void {
 
 export function editDraft(draft: DraftView): void {
   update({ draft });
+}
+
+/** The line back to "new ingredient", with the name the text wrote (spec 018 FR-004). */
+export function undoLineChange(line: LineView): LineView {
+  return { ...line, name: line.textName, match: { kind: "new", entry: null } };
+}
+
+/** The member's choice for one line: a catalog entry, or NEW_CHOICE for a new ingredient (FR-005). */
+export function chooseLineMatch(line: LineView, choice: string): LineView {
+  if (choice === NEW_CHOICE) return undoLineChange(line);
+  return { ...line, name: choice, match: { kind: "matched", entry: choice } };
+}
+
+function mapDraftLine(index: number, change: (line: LineView) => LineView): void {
+  if (!state.draft) return;
+  const lines = state.draft.lines.map((line, i) => (i === index ? change(line) : line));
+  update({ draft: { ...state.draft, lines } });
+}
+
+export function undoChange(index: number): void {
+  mapDraftLine(index, undoLineChange);
+}
+
+export function chooseMatch(index: number, choice: string): void {
+  mapDraftLine(index, (line) => chooseLineMatch(line, choice));
 }
 
 /** Back on the draft page: the pasted text stays, the draft is dropped (FR-031). */

@@ -10,6 +10,7 @@ const draft: DraftView = {
   cuisines: [],
   lines: [],
   steps: [{ key: "s1", text: "Simmer." }],
+  catalog: [],
 };
 
 describe("leave guard state (FR-032)", () => {
