@@ -131,7 +131,7 @@ Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
 │   ├── pyproject.toml, uv.lock, .python-version (3.12), Dockerfile, alembic.ini
 │   ├── domain/                # Pure rules: recipe, cart, catalog, toon, render
 │   ├── application/           # Use cases + ports.py
-│   ├── adapters/              # llm/, web/, pdf/, persistence/, email/
+│   ├── adapters/              # llm/ (prompts/: one template per prompt, see its README), web/, pdf/, persistence/, email/
 │   ├── api/                   # FastAPI app, routes/, schemas/, deps, settings
 │   ├── scripts/               # entrypoint, seed data (invented only)
 │   └── tests/

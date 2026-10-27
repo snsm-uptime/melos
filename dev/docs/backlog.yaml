@@ -240,7 +240,7 @@ stories:
     title: Match captured ingredient names to the notebook's catalog
     epic: Capture
     priority: must
-    status: backlog
+    status: in_design
     journey: J2
     source: prd.md J2, 1.6 (normalization), Appendix B.1 rule 3
     acceptance: [AC2.2]
