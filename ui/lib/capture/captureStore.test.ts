@@ -6,10 +6,14 @@ import {
   discardDraft,
   editDraft,
   getCaptureState,
+  failSave,
   isDraftEdited,
+  markSaved,
   openSheet,
   setText,
   showDraft,
+  startSave,
+  takeSavedNotice,
   type CaptureNotebook,
   type DraftView,
 } from "./captureStore";
@@ -82,5 +86,54 @@ describe("isDraftEdited (FR-032)", () => {
 
     editDraft({ ...draft, title: "Onion soup" });
     expect(isDraftEdited(getCaptureState())).toBe(false);
+  });
+
+  describe("Save (spec 020)", () => {
+    it("makes a new save key for each draft shown and clears it on Back and Discard", () => {
+      openSheet(notebook);
+      showDraft(draft, "en");
+      const first = getCaptureState().saveKey;
+      expect(first).toEqual(expect.any(String));
+
+      backToSheet();
+      expect(getCaptureState().saveKey).toBeNull();
+
+      showDraft(draft, "en");
+      expect(getCaptureState().saveKey).not.toBe(first);
+      discardDraft();
+      expect(getCaptureState().saveKey).toBeNull();
+    });
+
+    it("keeps the draft, the text and the key when a save fails", () => {
+      openSheet(notebook);
+      setText("2 onions");
+      showDraft(draft, "en");
+      const key = getCaptureState().saveKey;
+
+      startSave();
+      expect(getCaptureState().saving).toBe(true);
+      failSave({ code: "kitchen_archived" });
+
+      expect(getCaptureState()).toMatchObject({
+        saving: false,
+        text: "2 onions",
+        saveKey: key,
+        message: { code: "kitchen_archived" },
+      });
+      expect(getCaptureState().draft).not.toBeNull();
+    });
+
+    it("clears the draft on success and gives the notice to its page once", () => {
+      openSheet(notebook);
+      setText("2 onions");
+      showDraft(draft, "en");
+
+      markSaved("/notebooks");
+
+      expect(getCaptureState()).toMatchObject({ draft: null, text: "", saveKey: null });
+      expect(takeSavedNotice("/kitchens/k1")).toBe(false);
+      expect(takeSavedNotice("/notebooks")).toBe(true);
+      expect(takeSavedNotice("/notebooks")).toBe(false);
+    });
   });
 });

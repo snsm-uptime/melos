@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 from uuid import UUID
 
@@ -55,5 +56,14 @@ class SqlAlchemyIngredientCatalog:
         self._session.execute(
             insert(IngredientModel)
             .from_select(["notebook_id", "name"], source)
+            .on_conflict_do_nothing(index_elements=["notebook_id", "name"])
+        )
+
+    def add_names(self, notebook_id: UUID, names: Sequence[str]) -> None:
+        if not names:
+            return
+        self._session.execute(
+            insert(IngredientModel)
+            .values([{"notebook_id": notebook_id, "name": name} for name in names])
             .on_conflict_do_nothing(index_elements=["notebook_id", "name"])
         )

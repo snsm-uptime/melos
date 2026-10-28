@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { AddRecipeCallToAction } from "@/components/AddRecipeCallToAction";
 import { NotebookCard } from "@/components/NotebookCard/NotebookCard";
+import { SavedNotice } from "@/components/RecipeDraft/SavedNotice";
 import type { Locale } from "@/lib/i18n/locale";
 import { notebooksMessages } from "@/lib/i18n/notebooks";
 import {
@@ -80,6 +81,7 @@ export function NotebookTabScreen({
   return (
     <main className={styles.main}>
       <h1 className={styles.title}>{t.title}</h1>
+      <SavedNotice returnPath="/notebooks" />
       {state.status === "ready" && state.notebooks.length > 0 ? (
         <AddRecipeCallToAction
           candidates={state.notebooks.map((notebook) => ({

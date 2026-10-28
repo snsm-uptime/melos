@@ -10,14 +10,24 @@ from adapters.llm.gemini_extractor import GeminiRecipeExtractor
 # MVP-OUT: from adapters.llm.vocabulary import load_vocabulary, load_vocabulary_documents
 from adapters.persistence.db import get_session_factory
 from adapters.persistence.ingredient_catalog import SqlAlchemyIngredientCatalog
-from adapters.persistence.notebooks import SqlAlchemyNotebookRepository
+from adapters.persistence.notebooks import (
+    SqlAlchemyNotebookRepository,
+    SqlAlchemyTransactionCommitter,
+    SqlAlchemyUserDefaultNotebook,
+)
 from adapters.persistence.password_hasher import Argon2PasswordHasher
-from adapters.persistence.repositories import SqlAlchemyAuthUserRepository
+from adapters.persistence.recipes import SqlAlchemyRecipeRepository
+from adapters.persistence.repositories import (
+    SqlAlchemyAuthUserRepository,
+    SqlAlchemyKitchenRepository,
+)
 from adapters.persistence.sessions import SqlAlchemySessionStore
+from application.notebooks import ResolveCaptureNotebookService
 from application.ports import PasswordHasher, PreferencesRepository, SessionStore
 from application.rate_limit import SlidingWindowRateLimiter, resolve_trusted_client_ip
 from application.recipe_capture import CaptureRecipeText
 from application.recipe_extraction import RecipeExtraction
+from application.recipe_save import SaveRecipeDraft
 from application.recipe_vocabulary import vocabulary_answer
 from domain.errors import AliasRequiredError
 from fastapi import Depends, HTTPException, Request, status
@@ -151,4 +161,23 @@ def get_capture_recipe_text(
         extraction,
         max_chars=load_recipe_text_max_chars(),
         timeout_s=settings.text_timeout_s,
+    )
+
+
+def get_save_recipe_draft(db: Session = Depends(get_db)) -> SaveRecipeDraft:
+    notebooks = SqlAlchemyNotebookRepository(db)
+    catalog = SqlAlchemyIngredientCatalog(db)
+    return SaveRecipeDraft(
+        notebooks,
+        catalog,
+        SqlAlchemyRecipeRepository(db),
+        ResolveCaptureNotebookService(
+            SqlAlchemyKitchenRepository(db),
+            notebooks,
+            SqlAlchemyUserDefaultNotebook(db),
+            SqlAlchemyAuthUserRepository(db),
+            catalog,
+            SqlAlchemyTransactionCommitter(db),
+        ),
+        max_text_chars=load_recipe_text_max_chars(),
     )

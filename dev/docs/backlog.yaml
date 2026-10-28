@@ -242,7 +242,7 @@ stories:
     title: Match captured ingredient names to the notebook's catalog
     epic: Capture
     priority: must
-    status: in_design
+    status: done
     journey: J2
     source: prd.md J2, 1.6 (normalization), Appendix B.1 rule 3
     acceptance: [AC2.2]
@@ -257,9 +257,9 @@ stories:
     title: Save a confirmed draft into its notebook and create new catalog entries
     epic: Recipes
     priority: must
-    status: backlog
+    status: in_progress
     journey: J2
-    source: prd.md 1.5A, 1.6, J2 Save, Appendix A (Recipe)
+    source: prd.md 1.5A, 1.6, J2 Save, Appendix A (Recipe); specs/020-save-confirmed-draft
     acceptance: [AC3.5]
     notes: >
       Saves once, into the notebook the capture started from, with the member as author; a
@@ -272,6 +272,13 @@ stories:
       that notebook. The save maps KitchenArchivedError, NotebookChoiceRequiredError,
       NotebookNotFoundError and KitchenNotFoundError to HTTP (spec 056 contract, research R13).
       Main ingredients and cuisines are out of the MVP (2026-10-27, S-061), so a saved recipe has none.
+    verification: >
+      Implemented 2026-10-27 on main, not committed. api in Compose (test overlay): 609 passed,
+      2 failed; the 2 failures existed before this story (text limit 10000 in the Compose env
+      against 5000 in the tests). ruff clean. ui: 412 vitest tests, lint and typecheck clean.
+      Migration 0005_recipes: upgrade, downgrade to 0004 and upgrade again, tested. Not done: the
+      manual browser walk (quickstart sections 2 to 5); migration 0005 is not applied to the dev
+      database yet.
 
   - id: S-021
     title: Recipe lists for a personal notebook and for a kitchen (its notebooks), with a text filter

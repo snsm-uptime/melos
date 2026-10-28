@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Protocol
 from uuid import UUID
 
 from domain.notebook import Notebook, NotebookRole
+from domain.recipe import NewRecipe
 
 # Canonical session TTL (30d).
 # adapters.persistence.sessions re-exports this for SESSION_COOKIE_MAX_AGE.
@@ -126,6 +128,32 @@ class IngredientCatalog(Protocol):
 
     def seed_from_person(self, notebook_id: UUID, user_id: UUID) -> None:
         """Copy the person's personal catalog into a new notebook's catalog."""
+        ...
+
+    def add_names(self, notebook_id: UUID, names: Sequence[str]) -> None:
+        """Add names the catalog lacks; a name already there is left as it is (spec 020)."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class StoredRecipe:
+    id: UUID
+    notebook_id: UUID
+    title: str
+
+
+class DuplicateSaveKeyError(Exception):
+    """The same author already stored a recipe with this save key (spec 020 research R5)."""
+
+
+class RecipeRepository(Protocol):
+    def find_by_save_key(self, author_id: UUID, save_key: UUID) -> StoredRecipe | None: ...
+
+    def add(self, recipe: NewRecipe) -> StoredRecipe:
+        """Store the source, the recipe, its lines and its steps.
+
+        Raises DuplicateSaveKeyError when the author's save key is already stored.
+        """
         ...
 
 

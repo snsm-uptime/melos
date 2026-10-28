@@ -597,6 +597,33 @@ def _match_lines(
     return tuple(lines), tuple(matches), tuple(changes)
 
 
+def check_edited_draft(draft: DraftRecipe) -> DraftRecipe:
+    """Check a draft the member edited, for Save (spec 020 FR-005).
+
+    The same title, steps, servings and line rules as `check_draft`, and the same errors
+    (DraftProblems for what the member can fix, InvalidDraftError otherwise), but no
+    catalog matching: the names are the ones the member confirmed.
+    """
+    missing = _missing_parts(draft.title, draft.steps)
+    line_problems = tuple[LineProblem, ...](
+        problem for line in draft.ingredient_lines for problem in _line_problems(line)
+    )
+    if missing or line_problems:
+        raise DraftProblems(missing=missing, line_problems=line_problems)
+
+    servings, estimated = _check_servings(draft.base_servings)
+    lines = tuple(_check_line(line) for line in draft.ingredient_lines)
+    if any(line.vague and not line.note for line in lines):
+        raise InvalidDraftError("vague note")
+    return DraftRecipe(
+        title=_check_title(draft.title),
+        base_servings=servings,
+        servings_estimated=draft.servings_estimated or estimated,
+        ingredient_lines=lines,
+        steps=_check_steps(draft.steps),
+    )
+
+
 def check_draft(
     draft: DraftRecipe,
     catalog_names: Iterable[str],
