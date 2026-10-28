@@ -29,7 +29,15 @@ describe("NotebookCard", () => {
     });
   }
 
-  it("renders no link and no button", () => {
+  it("links to the recipe list when given an href", () => {
+    render({ name: "Family", ownerAlias: "ben", locale: "en", href: "/notebooks/nb-1" });
+
+    const link = container.querySelector("a");
+    expect(link?.getAttribute("href")).toBe("/notebooks/nb-1");
+    expect(link?.textContent).toContain("Family");
+  });
+
+  it("renders no link and no button without an href", () => {
     render({ name: "ana's Notebook", ownerAlias: "ana", locale: "en", isDefault: true, access: "owner" });
 
     expect(container.querySelector("a")).toBeNull();

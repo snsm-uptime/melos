@@ -165,9 +165,9 @@ describe("RecipeDraftEditor", () => {
         draft: null,
         text: "",
         saveKey: null,
-        savedNotice: { returnPath: "/notebooks" },
+        savedNotice: { returnPath: "/notebooks/nb-1" },
       });
-      expect(push).toHaveBeenCalledWith("/notebooks");
+      expect(push).toHaveBeenCalledWith("/notebooks/nb-1");
     });
 
     it("is disabled while the draft has a problem", async () => {

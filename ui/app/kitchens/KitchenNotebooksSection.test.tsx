@@ -11,7 +11,15 @@ const router = { replace };
 
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
+  usePathname: () => `/kitchens/5e7b0c1a-0000-4000-8000-000000000001`,
+  useSearchParams: () => new URLSearchParams(),
 }));
+
+// The combined recipe list has its own tests; here it stays loading.
+const { fetchKitchenRecipes } = vi.hoisted(() => ({
+  fetchKitchenRecipes: vi.fn(() => new Promise(() => {})),
+}));
+vi.mock("@/lib/recipesClient", () => ({ fetchKitchenRecipes }));
 
 const kitchenId = "5e7b0c1a-0000-4000-8000-000000000001";
 
@@ -144,9 +152,21 @@ describe("KitchenNotebooksSection", () => {
     expect(container.textContent).toContain("Owned by unknown");
     expect(container.textContent).not.toContain("Kitchen member");
     expect(container.textContent).not.toContain("Default");
-    // The notebook cards stay inert; the one control is the shared add-recipe action (S-016).
-    const controls = Array.from(container.querySelectorAll("a, button"));
-    expect(controls.map((el) => el.getAttribute("aria-label"))).toEqual(["Add a recipe"]);
+    // Each card links to its notebook's recipe list (S-021); the one button is add-recipe (S-016).
+    const hrefs = Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href"));
+    expect(hrefs).toEqual(["/notebooks/c3d0-1", "/notebooks/c3d0-2"]);
+    const buttons = Array.from(container.querySelectorAll("button"));
+    expect(buttons.map((el) => el.getAttribute("aria-label"))).toEqual(["Add a recipe"]);
+  });
+
+  it("lists the kitchen's recipes below the notebooks, read from the address", async () => {
+    stubBff([{ status: 200, body: { notebooks: [homeNotebook] } }]);
+
+    render();
+    await flush();
+
+    expect(fetchKitchenRecipes).toHaveBeenCalledWith(kitchenId, 1, "");
+    expect(container.querySelector("input[type=search]")).not.toBeNull();
   });
 
   it("renders no add-recipe action in an archived kitchen, and still lists its notebooks", async () => {
@@ -156,7 +176,7 @@ describe("KitchenNotebooksSection", () => {
     await flush();
 
     expect(container.querySelector("h3")?.textContent).toBe("ana's (Home) Notebook");
-    expect(container.querySelectorAll("a, button").length).toBe(0);
+    expect(container.querySelectorAll("button").length).toBe(0);
   });
 
   it("redirects to the alias step on 403 alias_required and shows no cards", async () => {

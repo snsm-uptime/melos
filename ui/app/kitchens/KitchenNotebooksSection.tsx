@@ -1,12 +1,14 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 
 import { AddRecipeCallToAction } from "@/components/AddRecipeCallToAction";
 import { NotebookCard } from "@/components/NotebookCard/NotebookCard";
+import { RecipeList } from "@/components/RecipeList/RecipeList";
 import { SavedNotice } from "@/components/RecipeDraft/SavedNotice";
 import { SectionLabel } from "@/components/soft-ledger/SectionLabel";
+import { listAddress, readListAddress } from "@/lib/listAddress";
 import type { Locale } from "@/lib/i18n/locale";
 import { notebooksMessages } from "@/lib/i18n/notebooks";
 import {
@@ -14,6 +16,7 @@ import {
   type NotebookError,
   type NotebookResponse,
 } from "@/lib/notebooksClient";
+import { fetchKitchenRecipes } from "@/lib/recipesClient";
 
 import styles from "../notebooks/notebooks.module.scss";
 
@@ -41,6 +44,8 @@ export function KitchenNotebooksSection({
 }: KitchenNotebooksSectionProps) {
   const t = notebooksMessages[locale];
   const router = useRouter();
+  const pathname = usePathname();
+  const { page, q } = readListAddress(useSearchParams());
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<SectionState>({ status: "loading" });
 
@@ -74,6 +79,15 @@ export function KitchenNotebooksSection({
       current = false;
     };
   }, [attempt, kitchenId, router]);
+
+  const onListChange = useCallback(
+    (nextPage: number, nextQ: string) => router.replace(listAddress(pathname, nextPage, nextQ)),
+    [pathname, router],
+  );
+  const loadRecipes = useCallback(
+    (nextPage: number, nextQ: string) => fetchKitchenRecipes(kitchenId, nextPage, nextQ),
+    [kitchenId],
+  );
 
   function retry() {
     // Drop the previous list before the reload, so no stale cards stay on screen.
@@ -124,10 +138,22 @@ export function KitchenNotebooksSection({
                 ownerAlias={notebook.owner_alias}
                 viewerAlias={viewerAlias}
                 locale={locale}
+                href={`/notebooks/${notebook.id}`}
               />
             </li>
           ))}
         </ul>
+      ) : null}
+      {state.status === "ready" ? (
+        <RecipeList
+          scope="kitchen"
+          locale={locale}
+          page={page}
+          q={q}
+          onChange={onListChange}
+          load={loadRecipes}
+          returnPath={`/kitchens/${kitchenId}`}
+        />
       ) : null}
     </section>
   );
