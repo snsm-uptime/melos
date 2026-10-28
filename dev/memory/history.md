@@ -32,3 +32,7 @@
 - **Catalog and naming decisions:** the personal catalog covers personal notebooks only, and a new notebook starts from its creator's catalog. Names are fixed at creation: "{alias}'s Notebook" for the default, "{alias}'s ({kitchen}) Notebook" for kitchen notebooks.
 - **Preferences and process:** the speckit flow was used for spec 055: specify, clarify, plan, tasks, checklist. The requirements-quality checklist was regenerated for the snapshot model (36 items). T039 was marked done.
 - **Project changes:** PRD, AGENTS.md and the backlog were updated. S-055 was re-scoped, S-056 (invites), S-057 (ownership passing) and S-058 (notebook management) were added, and notes were extended on S-034, S-016, S-017 and S-019. Branch renamed to `s55-notebooks`.
+
+## 271026
+
+- **Scope decision:** main ingredients and cuisines are out of the MVP and moved to *Later* (S-061). The PRD keeps their design in Appendix E; the draft response and `GET /recipe-vocabulary` lose their category keys; code is commented out under `MVP-OUT:`. Ingredient catalog matching (S-018) is untouched. Plan with validation checks: `dev/docs/mvp-descope-categories.md`. Details in `dev/memory/271026.md`.
