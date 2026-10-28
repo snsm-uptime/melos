@@ -236,6 +236,31 @@ describe("AppShell chrome header", () => {
     expect(container.querySelector('button[aria-label="Back"]')).toBeNull();
   });
 
+  it("insets a leading avatar by the page gutter, and a Back button by the tighter chrome inset", async () => {
+    function AvatarHeader() {
+      useChromeHeader({ leading: <span>avatar</span>, title: "Kitchens" });
+      return null;
+    }
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <AvatarHeader />
+        </AppShell>,
+      );
+    });
+    const header = container.querySelector("header") as HTMLElement;
+    expect(header.className).toContain("pl-[max(var(--page-gutter)");
+
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <EnableHeader href="/home" title="Kitchen" />
+        </AppShell>,
+      );
+    });
+    expect((container.querySelector("header") as HTMLElement).className).toContain("pl-[max(0.5rem");
+  });
+
   it("shows the Notebook tab and marks it current on /notebooks", async () => {
     pathname = "/notebooks";
     await act(async () => {

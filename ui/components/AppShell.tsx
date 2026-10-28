@@ -38,6 +38,9 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   // just the header — a way back to "/" — via useChromeHeader, without also
   // gaining the authenticated TabBar that showsAppChrome gates.
   const showTabBar = showsAppChrome(pathname);
+  // A tab root leads with its avatar instead of Back; the avatar sits on the page gutter so it
+  // lines up with the content below it (screens with a Back button keep the tighter inset).
+  const leadsWithAvatar = Boolean(header.leading) && !header.onBack && !header.backHref;
 
   // Recipes, cart and chat tabs join Home as those features land.
   const tabs: TabBarItem[] = [
@@ -71,7 +74,11 @@ function AppShellFrame({ children }: { children: ReactNode }) {
               header.progressBar
                 ? "pt-[max(1rem,env(safe-area-inset-top))]"
                 : "pt-[max(0.5rem,env(safe-area-inset-top))]"
-            } pr-[max(1rem,env(safe-area-inset-right))] pb-1 pl-[max(0.5rem,env(safe-area-inset-left))]`}
+            } pr-[max(1rem,env(safe-area-inset-right))] pb-1 ${
+              leadsWithAvatar
+                ? "pl-[max(var(--page-gutter),env(safe-area-inset-left))]"
+                : "pl-[max(0.5rem,env(safe-area-inset-left))]"
+            }`}
           >
             <div className="flex w-10 shrink-0 items-center justify-start self-center">
               {header.onBack || header.backHref ? (
