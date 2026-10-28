@@ -11,8 +11,8 @@ export type CaptureDraftResponse = {
     title: string;
     base_servings: number;
     servings_estimated: boolean;
-    main_ingredients: { id: string; label: string }[];
-    cuisines: { id: string; label: string; tag: string | null }[];
+    // MVP-OUT: main_ingredients: { id: string; label: string }[];
+    // MVP-OUT: cuisines: { id: string; label: string; tag: string | null }[];
     changes: { line: number; from: string; to: string }[];
     ingredient_lines: {
       name: string;
@@ -36,11 +36,11 @@ export type CaptureResult =
 export type VocabularyResponse = {
   units: string[];
   sizes: string[];
-  max_main_ingredients: number;
-  max_cuisines: number;
+  // MVP-OUT: max_main_ingredients: number;
+  // MVP-OUT: max_cuisines: number;
   max_text_chars: number;
-  main_ingredients: { id: string; label: { en: string; es: string } }[];
-  cuisines: { id: string; label: { en: string; es: string }; tag: string | null }[];
+  // MVP-OUT: main_ingredients: { id: string; label: { en: string; es: string } }[];
+  // MVP-OUT: cuisines: { id: string; label: { en: string; es: string }; tag: string | null }[];
 };
 
 function isDraftResponse(data: unknown): data is CaptureDraftResponse {

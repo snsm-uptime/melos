@@ -26,7 +26,7 @@ export type CaptureMessage = {
   ingredient?: string | null;
 };
 
-export type CategoryRef = { id: string; label: string; tag: string | null };
+// MVP-OUT: export type CategoryRef = { id: string; label: string; tag: string | null };
 
 /** The label on an ingredient line (spec 018 FR-001): a catalog entry, or a new ingredient. */
 export type LineMatch = { kind: "matched" | "new"; entry: string | null };
@@ -51,8 +51,8 @@ export type DraftView = {
   title: string;
   baseServings: number;
   servingsEstimated: boolean;
-  mainIngredients: CategoryRef[];
-  cuisines: CategoryRef[];
+  // MVP-OUT: mainIngredients: CategoryRef[];
+  // MVP-OUT: cuisines: CategoryRef[];
   lines: LineView[];
   steps: StepView[];
   /** The capture notebook's catalog entries, for the match control (spec 018 FR-005). */

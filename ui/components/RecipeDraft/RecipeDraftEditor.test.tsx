@@ -22,19 +22,19 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push, replace }) }));
 const vocabulary = {
   units: ["g", "kg", "oz", "lb", "ml", "l", "cup", "tbsp", "tsp", "unit"],
   sizes: ["small", "medium", "large"],
-  max_main_ingredients: 2,
-  max_cuisines: 2,
+  // MVP-OUT: max_main_ingredients: 2,
+  // MVP-OUT: max_cuisines: 2,
   max_text_chars: 5000,
-  main_ingredients: [{ id: "poultry", label: { en: "Poultry", es: "Aves" } }],
-  cuisines: [{ id: "international", label: { en: "International", es: "Internacional" }, tag: null }],
+  // MVP-OUT: main_ingredients: [{ id: "poultry", label: { en: "Poultry", es: "Aves" } }],
+  // MVP-OUT: cuisines: [{ id: "international", label: { en: "International", es: "Internacional" }, tag: null }],
 };
 
 const draft: DraftView = {
   title: "Onion soup",
   baseServings: 4,
   servingsEstimated: true,
-  mainIngredients: [{ id: "poultry", label: "Aves", tag: null }],
-  cuisines: [{ id: "international", label: "Internacional", tag: null }],
+  // MVP-OUT: mainIngredients: [{ id: "poultry", label: "Aves", tag: null }],
+  // MVP-OUT: cuisines: [{ id: "international", label: "Internacional", tag: null }],
   lines: [
     {
       key: "l1",
@@ -93,8 +93,10 @@ describe("RecipeDraftEditor", () => {
     expect(container.textContent).toContain("For: ana's Notebook");
     expect((container.querySelector("input") as HTMLInputElement).value).toBe("Onion soup");
     expect(container.textContent).toContain("estimated");
-    expect(container.textContent).toContain("Aves");
-    expect(container.textContent).toContain("Internacional");
+    // MVP-OUT: expect(container.textContent).toContain("Aves");
+    // MVP-OUT: expect(container.textContent).toContain("Internacional");
+    expect(container.textContent).not.toContain("Main ingredients");
+    expect(container.textContent).not.toContain("Cuisines");
     expect(container.querySelector("input[type='number']")).not.toBeNull();
   });
 

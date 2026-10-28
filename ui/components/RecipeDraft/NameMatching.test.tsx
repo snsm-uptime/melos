@@ -23,11 +23,11 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push, replace }) }));
 const vocabulary = {
   units: ["g", "kg", "oz", "lb", "ml", "l", "cup", "tbsp", "tsp", "unit"],
   sizes: ["small", "medium", "large"],
-  max_main_ingredients: 2,
-  max_cuisines: 2,
+  // MVP-OUT: max_main_ingredients: 2,
+  // MVP-OUT: max_cuisines: 2,
   max_text_chars: 5000,
-  main_ingredients: [],
-  cuisines: [],
+  // MVP-OUT: main_ingredients: [],
+  // MVP-OUT: cuisines: [],
 };
 
 const onion: LineView = {
@@ -60,8 +60,8 @@ const draft: DraftView = {
   title: "Onion soup",
   baseServings: 4,
   servingsEstimated: false,
-  mainIngredients: [],
-  cuisines: [],
+  // MVP-OUT: mainIngredients: [],
+  // MVP-OUT: cuisines: [],
   lines: [onion, flour],
   steps: [{ key: "s1", text: "Simmer." }],
   catalog: ["flour", "onion", "spring onion"],

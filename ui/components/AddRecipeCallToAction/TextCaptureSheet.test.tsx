@@ -25,8 +25,8 @@ const okResponse = {
     title: "Onion soup",
     base_servings: 4,
     servings_estimated: true,
-    main_ingredients: [],
-    cuisines: [{ id: "international", label: "International", tag: null }],
+    // MVP-OUT: main_ingredients: [],
+    // MVP-OUT: cuisines: [{ id: "international", label: "International", tag: null }],
     changes: [],
     ingredient_lines: [
       {
