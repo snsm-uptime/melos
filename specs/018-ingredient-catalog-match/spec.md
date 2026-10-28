@@ -86,8 +86,8 @@ The member can change the match of any ingredient line: pick another catalog ent
 
 - **FR-001**: The draft MUST show, on every ingredient line, exactly one of two labels: "matched: <catalog name>" when the line matches an entry in the capture notebook's catalog, or "new ingredient" when it does not.
 - **FR-002**: Two names MUST be treated as the same when they are equal after the same normalization: trimmed, lower-case, runs of spaces collapsed to one, and in singular form. A plural name in the text matches its singular catalog entry (for example "onions" matches "onion", "tomatoes" matches "tomato", "cebollas" matches "cebolla").
-- **FR-003**: When a line's name, as shown in the draft, differs from the catalog entry it matches, the draft MUST list that change as "<name in the text> → <catalog name>" before the member saves.
-- **FR-004**: The member MUST be able to undo any one listed change. Undoing it MUST return that line to "new ingredient", with the name it had before the match, and remove only that change from the list.
+- **FR-003**: When a line's name, as shown in the draft, differs from the catalog entry it matches, the draft MUST show that change as "<name in the text> → <catalog name>" in a row directly above that line's card (decided 2026-10-28; it was a separate list above the lines), before the member saves.
+- **FR-004**: The member MUST be able to undo any one shown change, from its row. Undoing it MUST return that line to "new ingredient", with the name it had before the match, and remove only that change from the list.
 - **FR-005**: The member MUST be able to change the match of any ingredient line: choose another entry of the capture notebook's catalog, or choose "new ingredient". The label and the change list MUST update to match the choice.
 - **FR-006**: Matching MUST read the catalog and MUST NOT change it. Adding new names to the catalog is part of saving (S-020).
 - **FR-007**: When the catalog has no entry that matches a line, or the notebook's catalog is empty, the line MUST be labelled "new ingredient" and no change MUST be listed for it.
