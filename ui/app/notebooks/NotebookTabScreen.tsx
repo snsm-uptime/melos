@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { AddRecipeCallToAction } from "@/components/AddRecipeCallToAction";
 import { ChromeAvatarLink } from "@/components/ChromeAvatarLink";
 import { useChromeHeader } from "@/components/ChromeBack";
 import { NotebookCard } from "@/components/NotebookCard/NotebookCard";
@@ -23,7 +24,7 @@ const ALIAS_STEP_HREF = `/alias?returnTo=${encodeURIComponent("/notebooks")}`;
 
 type TabState =
   | { status: "loading" }
-  | { status: "ready"; notebooks: NotebookResponse[] }
+  | { status: "ready"; defaultId: string; notebooks: NotebookResponse[] }
   | { status: "error" };
 
 export function NotebookTabScreen({
@@ -73,7 +74,7 @@ export function NotebookTabScreen({
         fail(list);
         return;
       }
-      setState({ status: "ready", notebooks: list.value });
+      setState({ status: "ready", defaultId: defaultResult.value.id, notebooks: list.value });
     }
 
     void load();
@@ -106,6 +107,19 @@ export function NotebookTabScreen({
       ) : null}
       {state.status === "ready" && state.notebooks.length > 0 ? (
         <ul className={styles.grid}>
+          {/* The first cell adds a recipe; the picker preselects the default notebook. */}
+          <li>
+            <AddRecipeCallToAction
+              candidates={state.notebooks.map((notebook) => ({
+                id: notebook.id,
+                name: notebook.name,
+                kind: "personal",
+                kitchenId: null,
+              }))}
+              defaultId={state.defaultId}
+              returnPath="/notebooks"
+            />
+          </li>
           {state.notebooks.map((notebook) => (
             <li key={notebook.id}>
               <NotebookCard

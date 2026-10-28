@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"label\\\\|^  [a-z_]*:$\" api/domain/categories.yaml)"
+    ]
+  }
+}

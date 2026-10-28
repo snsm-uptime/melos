@@ -81,7 +81,9 @@ export function AddRecipeCallToAction({
           aria-label={t.addRecipe}
           onClick={() => setOptionsOpen(true)}
           disabled={!preselected}
-          className="flex h-[7.5rem] w-full items-center justify-center rounded-[1.25rem] border border-dashed border-border bg-surface text-muted"
+          // Fills its grid row so it matches the card beside it; never shorter than the shortest
+          // NotebookCard (one title line, its padding and border). Same radius as the cards.
+          className="flex h-full w-full items-center justify-center rounded-[var(--radius-md)] border border-dashed border-border bg-surface text-muted"
         >
           <PlusIcon />
         </button>

@@ -175,10 +175,26 @@ describe("NotebookTabScreen", () => {
     const names = Array.from(container.querySelectorAll("h3")).map((h) => h.textContent);
     expect(names).toEqual(["ana's Notebook", "Family list"]);
     expect(container.textContent).toContain("Default");
-    // Each card links to its recipe list (S-021); the tab has no add-recipe button.
+    // Each card links to its recipe list (S-021).
     const hrefs = Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href"));
     expect(hrefs).toEqual(["/notebooks/nb-default", "/notebooks/nb-shared"]);
-    expect(container.querySelector("button")).toBeNull();
+  });
+
+  it("puts the add-recipe call to action in the first cell, before the cards", async () => {
+    stubBff({
+      "/api/notebooks/default": [{ status: 200, body: defaultNotebook }],
+      "/api/notebooks": [{ status: 200, body: { notebooks: [defaultNotebook, sharedNotebook] } }],
+    });
+
+    render();
+    await flush();
+
+    const cells = container.querySelectorAll("ul > li");
+    expect(cells).toHaveLength(3);
+    const add = cells[0].querySelector("button") as HTMLButtonElement;
+    expect(add.getAttribute("aria-label")).toBe("Add a recipe");
+    expect(add.disabled).toBe(false);
+    expect(cells[0].querySelector("h3")).toBeNull();
   });
 
   it("shows the empty state when the list is empty", async () => {

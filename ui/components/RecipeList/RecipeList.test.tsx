@@ -194,6 +194,19 @@ describe("RecipeList", () => {
     expect(container.textContent).toContain("Add a recipe");
   });
 
+  it("puts add-recipe in the first cell before the cards when candidates are given", async () => {
+    await render(async () => page(["Soup"]));
+    expect(container.textContent).not.toContain("Add a recipe");
+
+    await render(async () => page(["Soup", "Tart"]), {
+      addCandidates: [{ id: "n1", name: "Mine", kind: "personal", kitchenId: null }],
+    });
+    const cells = container.querySelectorAll("ul > li");
+    expect(cells).toHaveLength(3);
+    expect(cells[0].textContent).toBe("Add a recipe");
+    expect(cells[0].querySelector("h3")).toBeNull();
+  });
+
   it("shows not found for a 404", async () => {
     await render(async () => ({ ok: false, status: 404, code: "notebook_not_found" }));
     expect(container.textContent).toContain("This notebook is unavailable.");

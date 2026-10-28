@@ -30,7 +30,10 @@ type RecipeListProps = {
   /** Called when the member changes the page or the filter. The screen updates the address. */
   onChange: (page: number, q: string) => void;
   load: (page: number, q: string) => Promise<NotebookResult<RecipePage>>;
-  /** Capture choices for the empty state's add-recipe action; omit to show none (archived kitchen). */
+  /**
+   * Capture choices for the add-recipe action, shown as the first card (or under the empty
+   * text); omit to show none (archived kitchen).
+   */
   addCandidates?: CaptureCandidate[];
   returnPath: string;
   /** Sits beside the filter (e.g. the add-recipe button). */
@@ -168,6 +171,15 @@ export function RecipeList({
                 : styles.grid
             }
           >
+            {addCandidates && addCandidates.length > 0 ? (
+              <li>
+                <AddRecipeCallToAction
+                  candidates={addCandidates}
+                  defaultId={addCandidates[0]?.id ?? null}
+                  returnPath={returnPath}
+                />
+              </li>
+            ) : null}
             {state.page.items.map((recipe) => (
               <li key={recipe.id}>
                 <RecipeCard
