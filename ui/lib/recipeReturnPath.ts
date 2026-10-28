@@ -15,3 +15,11 @@ export function safeReturnPath(from: string | null | undefined, notebookId: stri
   if (/\s/.test(from)) return fallback;
   return from;
 }
+
+/**
+ * Where a notebook's Back goes: the kitchen or notebook list it was opened from (`?from=`, the
+ * same trust rule as above), else the Notebook tab.
+ */
+export function notebookBackPath(from: string | null | undefined): string {
+  return from && safeReturnPath(from, "x") === from ? from : "/notebooks";
+}

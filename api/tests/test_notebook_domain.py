@@ -58,12 +58,19 @@ def test_owner_on_personal_notebook_rejected() -> None:
         Notebook(id=uuid4(), name="ana's Notebook", owner_user_id=uuid4())
 
 
-def test_default_notebook_name_uses_alias() -> None:
-    assert default_notebook_name("ana") == "ana's Notebook"
+def test_default_notebook_name_uses_alias_in_the_language() -> None:
+    assert default_notebook_name("ana", "en") == "ana's Notebook"
+    assert default_notebook_name("ana", "es") == "Cuaderno de ana"
 
 
-def test_kitchen_notebook_name_uses_alias_and_kitchen() -> None:
-    assert kitchen_notebook_name("ana", "Home") == "ana's (Home) Notebook"
+def test_kitchen_notebook_name_uses_alias_and_kitchen_in_the_language() -> None:
+    assert kitchen_notebook_name("ana", "Home", "en") == "ana's (Home) Notebook"
+    assert kitchen_notebook_name("ana", "Casa", "es") == "Cuaderno de ana (Casa)"
+
+
+def test_notebook_names_are_spanish_when_no_language_is_saved() -> None:
+    assert default_notebook_name("ana", None) == "Cuaderno de ana"
+    assert kitchen_notebook_name("ana", "Casa", None) == "Cuaderno de ana (Casa)"
 
 
 def test_personal_access_is_the_callers_role() -> None:

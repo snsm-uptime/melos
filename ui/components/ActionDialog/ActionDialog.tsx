@@ -15,7 +15,7 @@ export type ActionDialogProps = {
   children: ReactNode;
   /** Label for the confirm action button. Omit both labels and onConfirm for a dialog without footer buttons. */
   confirmLabel?: string;
-  /** Label for the cancel button */
+  /** Label for the cancel button. Alone (no confirmLabel), the footer is just this close button. */
   cancelLabel?: string;
   /** Callback when dialog should close */
   onOpenChange: (open: boolean) => void;
@@ -87,9 +87,11 @@ export function ActionDialog({
             >
               {cancelLabel}
             </GhostButton>
-            <PrimaryButton onClick={onConfirm} disabled={pending} loading={pending}>
-              {confirmLabel}
-            </PrimaryButton>
+            {confirmLabel !== undefined ? (
+              <PrimaryButton onClick={onConfirm} disabled={pending} loading={pending}>
+                {confirmLabel}
+              </PrimaryButton>
+            ) : null}
           </div>
         ) : null}
       </div>

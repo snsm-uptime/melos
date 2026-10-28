@@ -43,7 +43,12 @@ function PotIcon() {
 export function RecipeCard({ recipe, locale, showNotebook = false, from }: RecipeCardProps) {
   const t = recipeListMessages[locale];
   return (
-    <article className="relative flex min-w-0 items-center gap-[var(--space-3)] rounded-[var(--radius-md)] border border-border bg-surface p-[var(--space-3)]">
+    <article
+      className={`relative flex min-w-0 items-center gap-[var(--space-3)] rounded-[var(--radius-md)] border border-border bg-surface p-[var(--space-3)]${
+        // The title link's overlay makes the whole card the target; show that it is one.
+        from ? " cursor-pointer transition-colors hover:border-accent focus-within:border-accent" : ""
+      }`}
+    >
       <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-background text-muted">
         <PotIcon />
       </span>
@@ -70,7 +75,19 @@ export function RecipeCard({ recipe, locale, showNotebook = false, from }: Recip
           </span>
         </div>
         {showNotebook ? (
-          <p className="m-0 truncate text-[0.85rem] text-muted">{recipe.notebook_name}</p>
+          <p className="m-0 truncate text-[0.85rem] text-muted">
+            {from && recipe.notebook_id ? (
+              // Above the title link's full-card overlay, so it takes its own clicks. Back returns to `from`.
+              <Link
+                href={`/notebooks/${encodeURIComponent(recipe.notebook_id)}?from=${encodeURIComponent(from)}`}
+                className="relative z-10 text-inherit underline underline-offset-2 transition-colors hover:text-accent"
+              >
+                {recipe.notebook_name}
+              </Link>
+            ) : (
+              recipe.notebook_name
+            )}
+          </p>
         ) : null}
       </div>
     </article>

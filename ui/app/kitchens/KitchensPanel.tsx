@@ -70,13 +70,13 @@ function Pulse({ className }: { className: string }) {
   return <div className={`animate-pulse rounded-md bg-muted ${className}`} />;
 }
 
-function ArchivedKitchensSkeleton() {
+function ArchivedKitchensSkeleton({ label }: { label: string }) {
   return (
     <div
       className={styles.list}
       role="status"
       aria-live="polite"
-      aria-label="Loading archived kitchens"
+      aria-label={label}
     >
       {[0, 1, 2].map((i) => (
         <div key={i} className={styles.row}>
@@ -675,7 +675,7 @@ export function KitchensPanel({ initialKitchens, currentUserId, showArchived = f
         itemClassName={styles.row}
         listClassName={styles.list}
         loading={showArchived && archivedLoading}
-        loadingContent={<ArchivedKitchensSkeleton />}
+        loadingContent={<ArchivedKitchensSkeleton label={t.loadingArchived} />}
         error={showArchived ? archivedLoadError : null}
         errorClassName={styles.error}
         emptyLabel={showArchived ? t.kitchensArchivedEmpty : t.emptyHint}

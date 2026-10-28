@@ -253,8 +253,12 @@ body {
   box-sizing: border-box;
 }
 
-a {
-  color: inherit;
+/* In the base layer, so a colour utility on a link (hover:text-accent) can override it;
+   an unlayered rule would beat every utility whatever its specificity. */
+@layer base {
+  a {
+    color: inherit;
+  }
 }
 
 .box-icon-lid {

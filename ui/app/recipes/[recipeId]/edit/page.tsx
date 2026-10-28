@@ -1,15 +1,8 @@
-import { cookies } from "next/headers";
-
 import { RecipeEditScreen } from "@/components/RecipeEdit/RecipeEditScreen";
 import { requireAlias } from "@/lib/alias";
-import type { Locale } from "@/lib/i18n/locale";
+import { getServerLocale } from "@/lib/serverLocale";
 
 export const dynamic = "force-dynamic";
-
-function resolvePageLocale(languageCookie: string | undefined): Locale {
-  if (languageCookie === "es" || languageCookie === "en") return languageCookie;
-  return "en";
-}
 
 export default async function RecipeEditPage({
   params,
@@ -19,8 +12,7 @@ export default async function RecipeEditPage({
   const { recipeId } = await params;
   await requireAlias(`/recipes/${recipeId}/edit`);
 
-  const jar = await cookies();
-  const locale = resolvePageLocale(jar.get("melos_lang_cache")?.value);
+  const locale = await getServerLocale();
 
   return <RecipeEditScreen recipeId={recipeId} locale={locale} />;
 }

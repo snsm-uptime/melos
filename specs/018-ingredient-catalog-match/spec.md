@@ -120,6 +120,6 @@ The member can change the match of any ingredient line: pick another catalog ent
 - The singular form is found by a fixed set of English and Spanish plural rules (decided 2026-10-26; Spanish plurals are in scope). Irregular plurals and words whose singular is not obvious are labelled "new ingredient" rather than guessed. The exact rule set is decided in planning.
 - The assistant returns each ingredient name as written in the text as well as its normalized name, so the change list can show the text's form (FR-010). Adding that field to the extraction result is part of this feature. Spec 016's rules for the names shown on the line still apply.
 - The AI model may propose a catalog match for each line, and the fixed rule confirms or rejects it (FR-012). This matches the PRD's wording "Gemini may match a name", which needs no change.
-- Labels and the change list are English-only for now. Spanish labels come with the account-language story, as spec 017 does for its messages.
+- Labels and the change list are English-only for now. Spanish labels come with the account-language story, as spec 017 does for its messages. *(Superseded by spec 063: Spanish and English for every screen, Spanish by default.)*
 - Matching for copies (S-048) and joins (S-057) reuse this rule. Those stories are not part of this feature.
 - Saving the draft, and adding new names to the catalog on save, is S-020.

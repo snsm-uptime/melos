@@ -14,6 +14,7 @@ export const passwordResetMessages = {
     forgotErrorSmtp:
       "We could not send email right now. Try again later, or ask the operator to check SMTP settings.",
     forgotErrorGeneric: "Something went wrong. Check your email and try again.",
+    errorRateLimited: "Too many attempts. Please try again later.",
     backToSignIn: "Back to sign in",
     resetTitle: "Choose a new password",
     resetSubtitle: "Enter a new password for your account.",
@@ -42,6 +43,7 @@ export const passwordResetMessages = {
     forgotErrorSmtp:
       "No pudimos enviar el correo ahora. Intenta más tarde o pide al operador revisar SMTP.",
     forgotErrorGeneric: "Algo salió mal. Revisa tu correo e inténtalo de nuevo.",
+    errorRateLimited: "Demasiados intentos. Inténtalo de nuevo más tarde.",
     backToSignIn: "Volver a iniciar sesión",
     resetTitle: "Elige una nueva contraseña",
     resetSubtitle: "Ingresa una nueva contraseña para tu cuenta.",

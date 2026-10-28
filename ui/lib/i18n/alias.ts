@@ -53,5 +53,4 @@ export type AliasMessageKey = keyof (typeof aliasMessages)["en"];
 /** Widened so EN and ES are interchangeable at call sites. */
 export type AliasMessages = Record<AliasMessageKey, string>;
 
-export { detectLocale } from "@/lib/i18n/locale";
 export type { Locale } from "@/lib/i18n/locale";

@@ -27,7 +27,9 @@ import {
 } from "@/lib/capture/captureStore";
 import { nameChanges } from "@/lib/capture/nameChanges";
 // MVP-OUT: import { pickLabel } from "@/lib/capture/labels";
-import { captureMessages, messageForCode } from "@/lib/i18n/capture";
+import { messageForCode } from "@/lib/i18n/capture";
+import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
+import { useLocale } from "@/lib/i18n/useLocale";
 
 // MVP-OUT: import { CategoryChips } from "./CategoryChips";
 import { IngredientLineRow } from "./IngredientLineRow";
@@ -47,6 +49,8 @@ function nextKey(): string {
  * until the member saves, discards or leaves.
  */
 export function RecipeDraftEditor() {
+  const t = useCaptureMessages();
+  const locale = useLocale();
   const router = useRouter();
   const capture = useCaptureState();
   const [vocabulary, setVocabulary] = useState<VocabularyResponse | null>(null);
@@ -139,7 +143,7 @@ export function RecipeDraftEditor() {
         <div className="flex w-10 shrink-0 items-center justify-start self-center">
           <IconButton
             variant="ghost"
-            label={captureMessages.back}
+            label={t.back}
             icon={<BackIcon className="size-6" />}
             onClick={back}
           />
@@ -147,8 +151,8 @@ export function RecipeDraftEditor() {
         <div className="flex min-w-0 flex-1 flex-col">
           <h1 className="m-0 min-w-0">
             <input
-              aria-label={captureMessages.titleLabel}
-              placeholder={captureMessages.titleLabel}
+              aria-label={t.titleLabel}
+              placeholder={t.titleLabel}
               className="w-full min-w-0 rounded-[0.4rem] border-0 bg-transparent px-1 py-[0.15rem] text-[1.5rem] font-[550] leading-normal text-foreground outline-none hover:bg-background focus:bg-background"
               value={draft.title}
               onChange={(event) => update({ title: event.target.value })}
@@ -159,7 +163,7 @@ export function RecipeDraftEditor() {
           </h4>
           {errors.title ? (
             <span role="alert" className="px-1 text-[0.8rem] text-owe">
-              {captureMessages.errors[errors.title]}
+              {t.errors[errors.title]}
             </span>
           ) : null}
         </div>
@@ -167,8 +171,8 @@ export function RecipeDraftEditor() {
 
       {/* MVP-OUT: the main ingredient and cuisine chip groups (S-061)
       <CategoryChips
-        title={captureMessages.mainIngredients}
-        addLabel={captureMessages.addMainIngredient}
+        title={t.mainIngredients}
+        addLabel={t.addMainIngredient}
         selected={draft.mainIngredients}
         max={MAX_MAIN}
         tagLabel={tagLabel}
@@ -181,8 +185,8 @@ export function RecipeDraftEditor() {
       />
 
       <CategoryChips
-        title={captureMessages.cuisines}
-        addLabel={captureMessages.addCuisine}
+        title={t.cuisines}
+        addLabel={t.addCuisine}
         selected={draft.cuisines}
         max={MAX_CUISINES}
         tagLabel={tagLabel}
@@ -199,11 +203,11 @@ export function RecipeDraftEditor() {
         <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:max-w-[450px] md:flex-1 md:overflow-hidden">
           <div className="flex shrink-0 items-center justify-between gap-2">
             <h2 className="m-0 text-[1rem] font-[550] text-foreground">
-              {captureMessages.ingredients}
+              {t.ingredients}
             </h2>
             <div className="flex flex-col items-end gap-1">
               <label className="flex items-center gap-2 text-[0.85rem] text-muted">
-                {captureMessages.servingsLabel}
+                {t.servingsLabel}
                 <input
                   type="number"
                   min="1"
@@ -220,7 +224,7 @@ export function RecipeDraftEditor() {
               </label>
               {errors.servings ? (
                 <span role="alert" className="text-[0.8rem] text-owe">
-                  {captureMessages.errors[errors.servings]}
+                  {t.errors[errors.servings]}
                 </span>
               ) : null}
             </div>
@@ -272,14 +276,14 @@ export function RecipeDraftEditor() {
                 })
               }
             >
-              {captureMessages.addIngredient}
+              {t.addIngredient}
             </button>
           </div>
         </section>
 
         <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-hidden">
           <h2 className="m-0 shrink-0 text-[1rem] font-[550] text-foreground">
-            {captureMessages.steps}
+            {t.steps}
           </h2>
           <div className="flex flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
             <ol className="m-0 flex list-none flex-col gap-2 p-0">
@@ -307,7 +311,7 @@ export function RecipeDraftEditor() {
             </ol>
             {errors.steps ? (
               <span role="alert" className="text-[0.8rem] text-owe">
-                {captureMessages.errors[errors.steps]}
+                {t.errors[errors.steps]}
               </span>
             ) : null}
             <button
@@ -319,7 +323,7 @@ export function RecipeDraftEditor() {
                 })
               }
             >
-              {captureMessages.addStep}
+              {t.addStep}
             </button>
           </div>
         </section>
@@ -327,7 +331,7 @@ export function RecipeDraftEditor() {
 
       {capture.message ? (
         <p role="alert" className="px-4 text-[0.9rem] text-owe">
-          {messageForCode(capture.message)}
+          {messageForCode(capture.message, locale)}
         </p>
       ) : null}
 
@@ -338,7 +342,7 @@ export function RecipeDraftEditor() {
           disabled={capture.saving}
           className="text-[0.95rem] text-owe disabled:opacity-50"
         >
-          {captureMessages.discard}
+          {t.discard}
         </button>
         <button
           type="button"
@@ -346,7 +350,7 @@ export function RecipeDraftEditor() {
           disabled={capture.saving || hasErrors(errors)}
           className="rounded-[0.75rem] bg-accent px-4 py-2 text-[0.95rem] font-semibold text-on-accent disabled:opacity-50"
         >
-          {capture.saving ? captureMessages.saving : captureMessages.save}
+          {capture.saving ? t.saving : t.save}
         </button>
       </div>
     </div>

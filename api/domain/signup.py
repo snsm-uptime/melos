@@ -5,11 +5,17 @@ from __future__ import annotations
 import re
 
 from domain.errors import InvalidSignupError
+from domain.preferences import name_language
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 MIN_PASSWORD_LEN = 8
 _MIN_PASSWORD_LEN = MIN_PASSWORD_LEN  # backwards-compatible alias
-PERSONAL_KITCHEN_NAME = "My kitchen"
+_PERSONAL_KITCHEN_NAMES = {"en": "My kitchen", "es": "Mi cocina"}
+
+
+def personal_kitchen_name(language: str | None) -> str:
+    """Name of the kitchen made at signup, in the person's language (Spanish when unknown)."""
+    return _PERSONAL_KITCHEN_NAMES[name_language(language)]
 
 
 def normalize_email(email: str) -> str:

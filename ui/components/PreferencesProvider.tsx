@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -11,14 +12,16 @@ import {
   type ReactNode,
 } from "react";
 
+import { clearLanguagePick, readLanguagePick, writeLanguagePick } from "@/lib/i18n/languagePick";
 import {
-  browserLocale,
+  DEFAULT_LOCALE,
+  isLocale,
+  resolveLocale,
   type Locale,
   type ThemePreference,
 } from "@/lib/i18n/locale";
 
 const THEME_CACHE_KEY = "melos_theme_cache";
-const LANG_CACHE_KEY = "melos_lang_cache";
 
 /** Bumped on sign-out / password-reset so in-flight GET refresh cannot rewrite cache. */
 let prefsSessionEpoch = 0;
@@ -28,7 +31,6 @@ export function clearPrefsCache() {
   prefsSessionEpoch += 1;
   prefsCacheWritesAllowed = false;
   try {
-    localStorage.removeItem(LANG_CACHE_KEY);
     localStorage.removeItem(THEME_CACHE_KEY);
   } catch {
     /* ignore quota / private mode */
@@ -50,6 +52,12 @@ type PreferencesContextValue = {
   theme: ThemePreference;
   me: MePreferences | null;
   setTheme: (theme: ThemePreference) => Promise<void>;
+  /**
+   * Choose the interface language (spec 063). Signed in: saved to the account with
+   * `PATCH /auth/me`, and rejects when it cannot be saved. Signed out: kept in the session pick
+   * cookie. Either way the page and the server-built screens switch at once.
+   */
+  setLanguage: (locale: Locale) => Promise<void>;
   refresh: () => Promise<void>;
 };
 
@@ -76,16 +84,10 @@ function applyDom(locale: Locale, theme: ThemePreference) {
   }
   try {
     if (!prefsCacheWritesAllowed) return;
-    localStorage.setItem(LANG_CACHE_KEY, locale);
     localStorage.setItem(THEME_CACHE_KEY, theme);
   } catch {
     /* ignore quota / private mode */
   }
-}
-
-function resolveLocale(raw: string | null | undefined): Locale {
-  if (raw === "es" || raw === "en") return raw;
-  return browserLocale();
 }
 
 function resolveTheme(raw: string | null | undefined): ThemePreference {
@@ -93,13 +95,29 @@ function resolveTheme(raw: string | null | undefined): ThemePreference {
   return "system";
 }
 
-export function PreferencesProvider({ children }: { children: ReactNode }) {
+/** The router when the app router is mounted, null otherwise (component tests). */
+function useOptionalRouter() {
+  try {
+    return useRouter();
+  } catch {
+    return null;
+  }
+}
+
+export function PreferencesProvider({
+  children,
+  initialLocale = DEFAULT_LOCALE,
+}: {
+  children: ReactNode;
+  /**
+   * The language the server built the page in (`getServerLocale`). Starting from it keeps the
+   * first browser render identical to the server HTML, so nothing flips (spec 063 FR-011).
+   */
+  initialLocale?: Locale;
+}) {
+  const router = useOptionalRouter();
   const [ready, setReady] = useState(false);
-  // Always "en" on first render (client and server alike) — matches SSR
-  // output so hydration never diverges. The real locale (cached or
-  // browser-detected) is applied in an effect below, after hydration, then
-  // superseded by the account API's answer via `refresh()`.
-  const [locale, setLocale] = useState<Locale>("en");
+  const [locale, setLocale] = useState<Locale>(initialLocale);
   const [theme, setThemeState] = useState<ThemePreference>("system");
   const [me, setMe] = useState<MePreferences | null>(null);
   const refreshGen = useRef(0);
@@ -116,7 +134,8 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       });
       if (gen !== refreshGen.current || epoch !== prefsSessionEpoch) return;
       if (!response.ok) {
-        const fallback = browserLocale();
+        // Signed out: the pick made on a signed-out screen, else the default.
+        const fallback = readLanguagePick() ?? DEFAULT_LOCALE;
         setMe(null);
         setLocale(fallback);
         setThemeState("system");
@@ -155,7 +174,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       applyDom(nextLocale, nextTheme);
     } catch {
       if (gen !== refreshGen.current || epoch !== prefsSessionEpoch) return;
-      const fallback = browserLocale();
+      const fallback = readLanguagePick() ?? DEFAULT_LOCALE;
       setLocale(fallback);
       setThemeState("system");
       applyDom(fallback, "system");
@@ -164,26 +183,6 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
         setReady(true);
       }
     }
-  }, []);
-
-  useEffect(() => {
-    // Runs once, post-hydration: safe to read window/localStorage/navigator
-    // here since this can no longer diverge from the SSR-matched first
-    // render. Narrows the "en" flash before the account API answers.
-    // Deferred to a microtask so the state update isn't synchronous within
-    // the effect body itself (avoids cascading-render lint/perf concerns).
-    queueMicrotask(() => {
-      let cached: string | null = null;
-      try {
-        cached = localStorage.getItem(LANG_CACHE_KEY);
-      } catch {
-        /* ignore quota / private mode */
-      }
-      const initial = resolveLocale(cached ?? browserLocale());
-      setLocale(initial);
-      applyDom(initial, theme);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -252,6 +251,41 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     applyDom(nextLocale, nextTheme);
   }, []);
 
+  const setLanguage = useCallback(
+    async (next: Locale) => {
+      if (me === null) {
+        // Signed out: the pick lives in a session cookie the server can read on the next request.
+        writeLanguagePick(next);
+        setLocale(next);
+        document.documentElement.lang = next;
+        router?.refresh();
+        return;
+      }
+      refreshGen.current += 1;
+      const response = await fetch("/api/auth/me", {
+        method: "PATCH",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ language: next }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to save language");
+      }
+      const data = (await response.json()) as { language?: string | null };
+      const saved = isLocale(data.language) ? data.language : next;
+      setMe((current) => (current ? { ...current, language: saved } : current));
+      setLocale(saved);
+      document.documentElement.lang = saved;
+      clearLanguagePick();
+      router?.refresh();
+    },
+    [me, router],
+  );
+
   const value = useMemo(
     () => ({
       ready,
@@ -259,9 +293,10 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       theme,
       me,
       setTheme,
+      setLanguage,
       refresh,
     }),
-    [ready, locale, theme, me, setTheme, refresh],
+    [ready, locale, theme, me, setTheme, setLanguage, refresh],
   );
 
   return (
@@ -285,5 +320,5 @@ export function usePreferences(): PreferencesContextValue {
   return ctx;
 }
 
-/** Inline FOUC script — cache only; account API remains source of truth. */
-export const themeBootScript = `(function(){try{var t=localStorage.getItem('${THEME_CACHE_KEY}')||'system';var l=localStorage.getItem('${LANG_CACHE_KEY}');var r=document.documentElement;if(l==='en'||l==='es'){r.lang=l;}r.classList.remove('light','dark');if(t==='light'){r.classList.add('light');}else if(t==='dark'){r.classList.add('dark');}else if(window.matchMedia('(prefers-color-scheme: dark)').matches){r.classList.add('dark');}}catch(e){}})();`;
+/** Inline FOUC script for the theme — cache only; the account API remains source of truth. The language comes from the server (`<html lang>`). */
+export const themeBootScript = `(function(){try{var t=localStorage.getItem('${THEME_CACHE_KEY}')||'system';var r=document.documentElement;r.classList.remove('light','dark');if(t==='light'){r.classList.add('light');}else if(t==='dark'){r.classList.add('dark');}else if(window.matchMedia('(prefers-color-scheme: dark)').matches){r.classList.add('dark');}}catch(e){}})();`;

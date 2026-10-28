@@ -1,7 +1,8 @@
 "use client";
 
 import { Card, CardBody } from "@/components/Card";
-import { captureMessages } from "@/lib/i18n/capture";
+import type { Locale } from "@/lib/i18n/locale";
+import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
 
 import { RowControls } from "./RowControls";
 
@@ -13,6 +14,7 @@ type EditableStepCardProps = {
   onRemove: () => void;
   onMove: (direction: -1 | 1) => void;
   readOnly?: false;
+  locale?: Locale;
 };
 
 type ReadOnlyStepCardProps = {
@@ -20,6 +22,7 @@ type ReadOnlyStepCardProps = {
   text: string;
   /** Display only: the step is text, with no field and no row controls (spec 027). */
   readOnly: true;
+  locale?: Locale;
 };
 
 export type StepCardProps = EditableStepCardProps | ReadOnlyStepCardProps;
@@ -30,6 +33,7 @@ const numberClassName =
 /** One step of a recipe: numbered, to edit (draft, edit) or display only (detail). */
 export function StepCard(props: StepCardProps) {
   const { index, text } = props;
+  const t = useCaptureMessages(props.locale);
   if (props.readOnly) {
     return (
       <Card as="li">
@@ -55,7 +59,7 @@ export function StepCard(props: StepCardProps) {
               {index + 1}
             </span>
             <textarea
-              aria-label={captureMessages.stepLabel(index + 1)}
+              aria-label={t.stepLabel(index + 1)}
               rows={1}
               className="min-w-0 flex-1 field-sizing-content resize-none rounded-[0.4rem] border-0 bg-transparent px-1 py-[0.15rem] text-[0.95rem] text-foreground outline-none hover:bg-background focus:bg-background"
               value={text}
@@ -69,6 +73,7 @@ export function StepCard(props: StepCardProps) {
           count={props.count}
           onRemove={props.onRemove}
           onMove={props.onMove}
+          locale={props.locale}
         />
       </div>
     </Card>

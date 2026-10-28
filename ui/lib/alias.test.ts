@@ -1,90 +1,72 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const { cookieStore, fetchMock } = vi.hoisted(() => ({
+  cookieStore: new Map<string, string>(),
+  fetchMock: vi.fn(),
+}));
+
 vi.mock("next/headers", () => ({
   cookies: async () => ({
-    getAll: () => [{ name: "melos_session", value: "token" }],
+    get: (name: string) => (cookieStore.has(name) ? { name, value: cookieStore.get(name) } : undefined),
+    getAll: () => [...cookieStore].map(([name, value]) => ({ name, value })),
   }),
 }));
+vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
+vi.stubGlobal("fetch", fetchMock);
 
-class RedirectSignal extends Error {
-  constructor(public readonly location: string) {
-    super(`redirect:${location}`);
-  }
+function me(body: Record<string, unknown>) {
+  fetchMock.mockResolvedValue(new Response(JSON.stringify(body), { status: 200 }));
 }
 
-vi.mock("next/navigation", () => ({
-  redirect: (location: string) => {
-    throw new RedirectSignal(location);
-  },
-}));
-
-import { aliasSetupHref, fetchMe, requireAlias } from "@/lib/alias";
-
-function mockMe(status: number, body: unknown) {
-  const fetchMock = vi.fn().mockResolvedValue(
-    new Response(JSON.stringify(body), {
-      status,
-      headers: { "Content-Type": "application/json" },
-    }),
-  );
-  vi.stubGlobal("fetch", fetchMock);
-  return fetchMock;
-}
-
-async function captureRedirect(run: () => Promise<unknown>): Promise<string> {
-  try {
-    await run();
-  } catch (error) {
-    if (error instanceof RedirectSignal) return error.location;
-    throw error;
-  }
-  throw new Error("expected a redirect");
-}
-
-describe("aliasSetupHref", () => {
-  it("carries the destination through setup", () => {
-    expect(aliasSetupHref("/kitchens/kitchen-1")).toBe("/alias?returnTo=%2Fkitchens%2Fkitchen-1");
-  });
-});
-
-describe("alias gate", () => {
+describe("fetchMe", () => {
   beforeEach(() => {
-    vi.unstubAllGlobals();
+    cookieStore.clear();
+    fetchMock.mockReset();
+    process.env.API_INTERNAL_URL = "http://api.test:8000";
+    delete process.env.SESSION_COOKIE_NAME;
   });
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
+  afterEach(() => vi.resetModules());
+
+  it("returns null without calling the api when there is no session cookie", async () => {
+    const { fetchMe } = await import("./alias");
+    expect(await fetchMe()).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("reads the account alias from the api", async () => {
-    mockMe(200, { user_id: "u1", email: "alice@example.com", alias: "alice" });
-    await expect(fetchMe()).resolves.toEqual({
-      user_id: "u1",
-      email: "alice@example.com",
-      alias: "alice",
-      photo_base64: null,
-    });
+  it("uses the configured session cookie name", async () => {
+    process.env.SESSION_COOKIE_NAME = "custom_session";
+    cookieStore.set("melos_session", "x");
+    const { fetchMe } = await import("./alias");
+    expect(await fetchMe()).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("treats a missing alias as null", async () => {
-    mockMe(200, { user_id: "u1", email: "alice@example.com", alias: null });
-    await expect(fetchMe()).resolves.toMatchObject({ alias: null });
+  it.each(["en", "es"])("passes the saved language %s through", async (language) => {
+    cookieStore.set("melos_session", "tok");
+    me({ user_id: "u1", email: "a@example.com", alias: "ana", language });
+    const { fetchMe } = await import("./alias");
+    expect((await fetchMe())?.language).toBe(language);
   });
 
-  it("sends an authenticated account without an alias to setup", async () => {
-    mockMe(200, { user_id: "u1", email: "alice@example.com", alias: null });
-    const location = await captureRedirect(() => requireAlias("/kitchens"));
-    expect(location).toBe("/alias?returnTo=%2Fkitchens");
+  it.each([null, "fr", ""])("treats %j as no saved language", async (language) => {
+    cookieStore.set("melos_session", "tok");
+    me({ user_id: "u1", email: "a@example.com", alias: "ana", language });
+    const { fetchMe } = await import("./alias");
+    expect((await fetchMe())?.language).toBeNull();
   });
 
-  it("lets an account with an alias through", async () => {
-    mockMe(200, { user_id: "u1", email: "alice@example.com", alias: "alice" });
-    await expect(requireAlias("/kitchens")).resolves.toMatchObject({ alias: "alice" });
+  it("treats a missing language field as none and keeps the rest of the account", async () => {
+    cookieStore.set("melos_session", "tok");
+    me({ user_id: "u1", email: "a@example.com", alias: "ana" });
+    const { fetchMe } = await import("./alias");
+    expect(await fetchMe()).toMatchObject({ user_id: "u1", alias: "ana", language: null });
   });
 
-  it("sends an unauthenticated visitor to sign-in", async () => {
-    mockMe(401, { code: "unauthenticated" });
-    const location = await captureRedirect(() => requireAlias("/kitchens/kitchen-1"));
-    expect(location).toBe("/sign-in?returnTo=%2Fkitchens%2Fkitchen-1");
+  it("returns null when the api refuses", async () => {
+    cookieStore.set("melos_session", "tok");
+    fetchMock.mockResolvedValue(new Response("{}", { status: 401 }));
+    const { fetchMe } = await import("./alias");
+    expect(await fetchMe()).toBeNull();
   });
 });

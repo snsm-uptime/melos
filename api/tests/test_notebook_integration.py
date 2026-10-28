@@ -387,7 +387,7 @@ def test_first_default_call_creates_the_personal_notebook_once(
     assert second.status_code == 200
     body = first.json()
     assert body == second.json()
-    assert body["name"] == f"{alias}'s Notebook"
+    assert body["name"] == f"Cuaderno de {alias}"
     assert body["kind"] == "personal"
     assert body["access"] == "owner"
     assert body["owner_alias"] == alias
@@ -473,7 +473,7 @@ def test_simultaneous_first_default_calls_make_one_notebook(engine: Engine) -> N
         assert len(results) == 2
         assert results[0] == results[1]
         with factory() as check:
-            assert _notebook_count(check, name=f"{alias}'s Notebook") == 1
+            assert _notebook_count(check, name=f"Cuaderno de {alias}") == 1
             assert check.get(UserModel, user_id).default_notebook_id == results[0]
     finally:
         _cleanup(factory, notebooks=results, kitchens=[], users=[user_id])
@@ -507,7 +507,7 @@ def test_first_open_creates_the_kitchen_notebook_and_second_open_lists_it(
     notebooks = first.json()["notebooks"]
     assert len(notebooks) == 1
     view = notebooks[0]
-    assert view["name"] == f"{alias}'s (Home) Notebook"
+    assert view["name"] == f"Cuaderno de {alias} (Home)"
     assert view["kind"] == "kitchen"
     assert view["access"] == "kitchen_member"
     assert view["owner_alias"] == alias
@@ -591,7 +591,7 @@ def test_signup_kitchen_has_no_notebook_until_its_first_open(
 ) -> None:
     _register(client, "nb_personal@example.com")
     personal = client.get("/kitchens").json()["kitchens"][0]
-    assert personal["name"] == "My kitchen"
+    assert personal["name"] == "Mi cocina"
     assert _notebook_count(db_session, kitchen_id=UUID(personal["id"])) == 0
 
     first = client.get(f"/notebooks/kitchens/{personal['id']}")
@@ -613,7 +613,7 @@ def test_rename_keeps_the_kitchen_notebook_name(client: TestClient, db_session: 
     after = client.get(f"/notebooks/kitchens/{kitchen_id}").json()["notebooks"][0]
 
     assert after["id"] == before["id"]
-    assert after["name"] == f"{alias}'s (Home) Notebook"
+    assert after["name"] == f"Cuaderno de {alias} (Home)"
 
 
 def test_archived_kitchen_without_notebook_lists_nothing(
@@ -696,7 +696,7 @@ def test_first_capture_in_a_kitchen_creates_its_notebook_and_second_uses_it(
     assert second.created is False
     assert second.notebook_id == first.notebook_id
     row = db_session.get(NotebookModel, first.notebook_id)
-    assert row.name == "ana_cap's (My kitchen) Notebook"
+    assert row.name == "Cuaderno de ana_cap (My kitchen)"
     assert row.owner_user_id == ana
     assert _notebook_count(db_session, kitchen_id=kitchen_id) == 1
 
@@ -764,7 +764,7 @@ def test_personal_capture_with_no_notebook_creates_the_default(db_session: Sessi
     result = _resolve_service(db_session).execute(ResolveCaptureNotebookCommand(actor_user_id=ana))
 
     assert result.created is True
-    assert db_session.get(NotebookModel, result.notebook_id).name == "ana_personal's Notebook"
+    assert db_session.get(NotebookModel, result.notebook_id).name == "Cuaderno de ana_personal"
     assert db_session.get(UserModel, ana).default_notebook_id == result.notebook_id
 
 

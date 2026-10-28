@@ -53,6 +53,15 @@ const en = {
     `${name} uses a unit the app does not know. Use a common unit, such as grams, cups or spoons.`,
   moreLines: "and more ingredients need a change.",
   checkingNames: "Checking names…",
+
+  servingsControlLabel: "Servings",
+  fewerServings: "Fewer servings",
+  moreServings: "More servings",
+  servingsHint: "Enter a whole number from 1 to 100.",
+  makes: (count: number) => `Makes ${count}`,
+  resetServings: "Reset",
+  scaledAnnouncement: (count: number) => `Amounts for ${count} servings`,
+  stepsAsSaved: "Steps show the recipe as saved.",
 };
 
 type Messages = typeof en;
@@ -107,6 +116,15 @@ const es: Messages = {
     `${name} usa una unidad que la app no conoce. Usa una unidad común, como gramos, tazas o cucharas.`,
   moreLines: "y otros ingredientes necesitan un cambio.",
   checkingNames: "Revisando nombres…",
+
+  servingsControlLabel: "Porciones",
+  fewerServings: "Menos porciones",
+  moreServings: "Más porciones",
+  servingsHint: "Escribe un número entero del 1 al 100.",
+  makes: (count: number) => `Rinde ${count}`,
+  resetServings: "Restablecer",
+  scaledAnnouncement: (count: number) => `Cantidades para ${count} porciones`,
+  stepsAsSaved: "Los pasos muestran la receta como se guardó.",
 };
 
 export const recipeDetailMessages = { en, es } as const;

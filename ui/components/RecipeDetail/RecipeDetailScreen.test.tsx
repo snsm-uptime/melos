@@ -138,4 +138,33 @@ describe("RecipeDetailScreen", () => {
       `/recipes/r1/edit?from=${encodeURIComponent("/notebooks/nb1?page=2")}`,
     );
   });
+
+  it("keeps the servings out of the Edit link and out of where Delete returns to", async () => {
+    search = "from=" + encodeURIComponent("/notebooks/nb1?page=2");
+    stub([{ status: 200, body: recipeFixture() }, { status: 204 }]);
+    await render();
+    const edit = () =>
+      Array.from(container.querySelectorAll("a")).find((a) => a.textContent === "Edit");
+    const before = edit()?.getAttribute("href");
+
+    const input = container.querySelector("input") as HTMLInputElement;
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, "6");
+    act(() => {
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(container.textContent).toContain("1.5");
+    expect(edit()?.getAttribute("href")).toBe(before);
+
+    act(() =>
+      Array.from(container.querySelectorAll("button"))
+        .find((b) => b.textContent === "Delete")
+        ?.click(),
+    );
+    const confirm = Array.from(document.querySelectorAll("button")).filter(
+      (b) => b.textContent === "Delete",
+    );
+    await act(async () => confirm[confirm.length - 1].click());
+    await flush();
+    expect(replace).toHaveBeenCalledWith("/notebooks/nb1?page=2");
+  });
 });

@@ -12,6 +12,10 @@ vi.mock("@/lib/session", () => ({
 vi.mock("@/lib/serverLanding", () => ({
   resolveServerAuthenticatedLanding: (...args: unknown[]) => resolveServerAuthenticatedLanding(...args),
 }));
+const serverLocale = vi.fn();
+vi.mock("@/lib/serverLocale", () => ({
+  getServerLocale: (...args: unknown[]) => serverLocale(...args),
+}));
 vi.mock("@/lib/alias", () => ({
   requireAlias: (...args: unknown[]) => requireAlias(...args),
 }));
@@ -28,6 +32,8 @@ describe("Home page", () => {
     resolveServerAuthenticatedLanding.mockReset();
     requireAlias.mockReset();
     redirect.mockReset();
+    serverLocale.mockReset();
+    serverLocale.mockResolvedValue("en");
   });
 
   afterEach(() => {
@@ -49,6 +55,20 @@ describe("Home page", () => {
     expect(markup).toContain('href="/sign-in"');
     expect(markup).not.toContain('href="/docs"');
     expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it("shows the landing page in Spanish for a Spanish visitor", async () => {
+    fetchSession.mockResolvedValue(null);
+    serverLocale.mockResolvedValue("es");
+    const { default: Home } = await import("./page");
+
+    const markup = renderToStaticMarkup(await Home());
+
+    expect(markup).toContain("Crear una cuenta");
+    expect(markup).toContain("Iniciar sesión");
+    expect(markup).toContain("Recetas");
+    expect(markup).not.toContain("Create an account");
+    expect(markup).not.toContain("Sign in");
   });
 
   it("redirects to the resolved landing destination when signed in", async () => {

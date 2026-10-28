@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getApiInternalUrl } from "@/lib/api";
+import { LANGUAGE_COOKIE } from "@/lib/i18n/locale";
 
 const SESSION_COOKIE =
   process.env.SESSION_COOKIE_NAME?.trim() || "melos_session";
@@ -21,6 +22,17 @@ function clearSessionCookie(response: NextResponse) {
     maxAge: 0,
     sameSite: sessionSameSite(),
     secure: process.env.SESSION_COOKIE_SECURE === "true",
+  });
+}
+
+/** The signed-out language pick ends with the session (spec 063 FR-013). */
+function clearLanguagePickCookie(response: NextResponse) {
+  response.cookies.set({
+    name: LANGUAGE_COOKIE,
+    value: "",
+    path: "/",
+    maxAge: 0,
+    sameSite: "lax",
   });
 }
 
@@ -49,5 +61,6 @@ export async function POST(request: NextRequest) {
 
   const response = new NextResponse(null, { status });
   clearSessionCookie(response);
+  clearLanguagePickCookie(response);
   return response;
 }

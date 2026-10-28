@@ -52,4 +52,22 @@ describe("POST /api/auth/sign-out BFF", () => {
     expect(setCookie).toContain("melos_session=");
     expect(setCookie.toLowerCase()).toMatch(/max-age=0/);
   });
+
+  it("also ends the signed-out language pick (spec 063 FR-013), even when upstream fails", async () => {
+    for (const upstream of [() => new Response(null, { status: 204 }), () => Promise.reject(new Error("down"))]) {
+      fetchMock.mockReset();
+      fetchMock.mockImplementation(async () => upstream());
+      const response = await POST(
+        new Request("http://localhost/api/auth/sign-out", {
+          method: "POST",
+          headers: { cookie: "melos_session=tok; melos_lang=en" },
+        }) as never,
+      );
+      const cookies = response.headers.getSetCookie();
+      const lang = cookies.find((cookie) => cookie.startsWith("melos_lang="));
+      expect(lang).toBeTruthy();
+      expect(lang!.toLowerCase()).toMatch(/max-age=0/);
+      expect(cookies.some((cookie) => cookie.startsWith("melos_session="))).toBe(true);
+    }
+  });
 });

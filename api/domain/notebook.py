@@ -17,6 +17,7 @@ from domain.errors import (
     NotebookChoiceRequiredError,
     NotebookNotFoundError,
 )
+from domain.preferences import name_language
 
 NotebookKind = Literal["personal", "kitchen"]
 NotebookRole = Literal["owner", "member"]
@@ -49,13 +50,20 @@ class Notebook:
         return "kitchen" if self.kitchen_id is not None else "personal"
 
 
-def default_notebook_name(alias: str) -> str:
-    """Name of a person's default personal notebook, fixed at creation time."""
+def default_notebook_name(alias: str, language: str | None) -> str:
+    """Name of a person's default personal notebook, fixed at creation time, in their language."""
+    if name_language(language) == "es":
+        return f"Cuaderno de {alias}"
     return f"{alias}'s Notebook"
 
 
-def kitchen_notebook_name(alias: str, kitchen_name: str) -> str:
-    """Name of a kitchen notebook, fixed at creation time; it names the member who made it."""
+def kitchen_notebook_name(alias: str, kitchen_name: str, language: str | None) -> str:
+    """Name of a kitchen notebook, fixed at creation time; it names the member who made it.
+
+    Written in that member's language.
+    """
+    if name_language(language) == "es":
+        return f"Cuaderno de {alias} ({kitchen_name})"
     return f"{alias}'s ({kitchen_name}) Notebook"
 
 

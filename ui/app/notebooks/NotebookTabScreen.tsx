@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AddRecipeCallToAction } from "@/components/AddRecipeCallToAction";
+import { ChromeAvatarLink } from "@/components/ChromeAvatarLink";
+import { useChromeHeader } from "@/components/ChromeBack";
 import { NotebookCard } from "@/components/NotebookCard/NotebookCard";
 import { SavedNotice } from "@/components/RecipeDraft/SavedNotice";
 import type { Locale } from "@/lib/i18n/locale";
@@ -28,11 +30,20 @@ type TabState =
 export function NotebookTabScreen({
   locale,
   viewerAlias,
+  userId,
+  photoBase64,
 }: {
   locale: Locale;
   viewerAlias: string | null;
+  userId: string;
+  photoBase64: string | null;
 }) {
   const t = notebooksMessages[locale];
+  // A top-level tab root, like Home: the avatar leads and the title sits in the shared header.
+  useChromeHeader({
+    leading: <ChromeAvatarLink alias={viewerAlias} userId={userId} photoBase64={photoBase64} />,
+    title: t.title,
+  });
   const router = useRouter();
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<TabState>({ status: "loading" });
@@ -79,8 +90,7 @@ export function NotebookTabScreen({
   }
 
   return (
-    <main className={styles.main}>
-      <h1 className={styles.title}>{t.title}</h1>
+    <main className={styles.tabMain}>
       <SavedNotice returnPath="/notebooks" />
       {state.status === "ready" && state.notebooks.length > 0 ? (
         <AddRecipeCallToAction

@@ -12,7 +12,8 @@ import {
   type LineView,
 } from "@/lib/capture/captureStore";
 import type { NameChange } from "@/lib/capture/nameChanges";
-import { captureMessages } from "@/lib/i18n/capture";
+import type { Locale } from "@/lib/i18n/locale";
+import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
 
 import { NameChangeNotice } from "./NameChangeNotice";
 import { RowControls } from "./RowControls";
@@ -32,6 +33,8 @@ type EditableIngredientLineProps = {
   onChange: (next: LineView) => void;
   onRemove: () => void;
   onMove: (direction: -1 | 1) => void;
+  /** The language of the screen; the provider's language when not given. */
+  locale?: Locale;
 };
 
 /** Borderless fields that read as text; a faint fill shows on hover and focus. */
@@ -63,7 +66,9 @@ function EditableIngredientLine({
   onChange,
   onRemove,
   onMove,
+  locale,
 }: EditableIngredientLineProps) {
+  const t = useCaptureMessages(locale);
   const sizeEnabled = line.unit === "unit";
   const matchedEntry = line.match.kind === "matched" ? line.match.entry : null;
   const id = useId();
@@ -83,7 +88,7 @@ function EditableIngredientLine({
   return (
     <li className="flex min-w-0 flex-col gap-[var(--space-2)]">
       {change ? (
-        <NameChangeNotice change={change} onUndo={onUndoChange} />
+        <NameChangeNotice change={change} onUndo={onUndoChange} locale={locale} />
       ) : null}
       <Card>
         <div className="flex min-w-0 items-stretch">
@@ -91,8 +96,8 @@ function EditableIngredientLine({
             <CardHeader className="flex flex-col gap-1">
               <div className="flex items-center justify-between gap-2">
                 <input
-                  aria-label={captureMessages.ingredientName}
-                  placeholder={captureMessages.ingredientName}
+                  aria-label={t.ingredientName}
+                  placeholder={t.ingredientName}
                   className={`${fieldClassName} ${headingClassName} flex-1`}
                   value={line.name}
                   onChange={(event) =>
@@ -104,7 +109,7 @@ function EditableIngredientLine({
                     type="number"
                     min="0"
                     step="any"
-                    aria-label={captureMessages.quantity}
+                    aria-label={t.quantity}
                     placeholder="0"
                     className={`${amountClassName} w-16 text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
                     value={line.quantity ?? ""}
@@ -121,7 +126,7 @@ function EditableIngredientLine({
                     }}
                   />
                   <select
-                    aria-label={captureMessages.unit}
+                    aria-label={t.unit}
                     className={amountClassName}
                     value={line.unit ?? ""}
                     disabled={line.vague}
@@ -144,7 +149,7 @@ function EditableIngredientLine({
                   </select>
                   {sizeEnabled ? (
                     <select
-                      aria-label={captureMessages.size}
+                      aria-label={t.size}
                       className={amountClassName}
                       value={line.size ?? ""}
                       onChange={(event) => {
@@ -171,7 +176,7 @@ function EditableIngredientLine({
 
               <div className="flex items-center justify-between gap-2">
                 <select
-                  aria-label={captureMessages.matchControl}
+                  aria-label={t.matchControl}
                   className={`${fieldClassName} text-[0.8rem] text-muted`}
                   value={matchedEntry ?? NEW_CHOICE}
                   onChange={(event) =>
@@ -179,7 +184,7 @@ function EditableIngredientLine({
                   }
                 >
                   <option value={NEW_CHOICE}>
-                    {captureMessages.newIngredient}
+                    {t.newIngredient}
                   </option>
                   {catalog.map((entry) => (
                     <option key={entry} value={entry}>
@@ -229,7 +234,7 @@ function EditableIngredientLine({
                       }
                     }}
                   />
-                  {captureMessages.vague}
+                  {t.vague}
                 </label>
               </div>
             </CardHeader>
@@ -238,7 +243,7 @@ function EditableIngredientLine({
               <div className="flex items-center gap-2">
                 <h3 className={labelClassName}>
                   <label htmlFor={preparationId}>
-                    {captureMessages.preparation}:
+                    {t.preparation}:
                   </label>
                 </h3>
                 <input
@@ -256,7 +261,7 @@ function EditableIngredientLine({
 
               <div className="flex items-center gap-2">
                 <h3 className={labelClassName}>
-                  <label htmlFor={noteId}>{captureMessages.note}:</label>
+                  <label htmlFor={noteId}>{t.note}:</label>
                 </h3>
                 <input
                   id={noteId}
@@ -274,7 +279,7 @@ function EditableIngredientLine({
                   role="alert"
                   className="m-0 text-[0.8rem] text-owe"
                 >
-                  {captureMessages.errors[code]}
+                  {t.errors[code]}
                 </p>
               ))}
             </CardBody>
@@ -285,6 +290,7 @@ function EditableIngredientLine({
             count={count}
             onRemove={onRemove}
             onMove={onMove}
+            locale={locale}
           />
         </div>
       </Card>
@@ -302,6 +308,7 @@ type ReadOnlyIngredientLineProps = {
   line: ReadOnlyLine;
   /** Marks the card as display only: no fields, no match control, no row controls. */
   readOnly: true;
+  locale?: Locale;
 };
 
 /** The amount as one piece of text: "1 cup", "2 large", or nothing for a vague amount. */
@@ -315,7 +322,8 @@ function amountText(line: ReadOnlyLine): string {
  * The same card as the editable row, with the fields shown as text (spec 027): the name and the
  * amount share the top line; the preparation and the note follow only when the line has them.
  */
-function ReadOnlyIngredientLine({ line }: { line: ReadOnlyLine }) {
+function ReadOnlyIngredientLine({ line, locale }: { line: ReadOnlyLine; locale?: Locale }) {
+  const t = useCaptureMessages(locale);
   const amount = amountText(line);
   return (
     <li className="flex min-w-0 flex-col gap-[var(--space-2)]">
@@ -332,7 +340,7 @@ function ReadOnlyIngredientLine({ line }: { line: ReadOnlyLine }) {
           <CardBody>
             {line.preparation ? (
               <div className="flex items-center gap-2">
-                <h3 className={labelClassName}>{captureMessages.preparation}:</h3>
+                <h3 className={labelClassName}>{t.preparation}:</h3>
                 <span className="flex-1 px-1 text-[0.9rem] text-foreground">
                   {line.preparation}
                 </span>
@@ -340,7 +348,7 @@ function ReadOnlyIngredientLine({ line }: { line: ReadOnlyLine }) {
             ) : null}
             {line.note ? (
               <div className="flex items-center gap-2">
-                <h3 className={labelClassName}>{captureMessages.note}:</h3>
+                <h3 className={labelClassName}>{t.note}:</h3>
                 <span className="flex-1 px-1 text-[0.9rem] text-foreground">{line.note}</span>
               </div>
             ) : null}
@@ -357,6 +365,6 @@ export type IngredientLineRowProps =
 
 /** One ingredient line, to edit at capture and in an edit, or display only on the detail. */
 export function IngredientLineRow(props: IngredientLineRowProps) {
-  if (props.readOnly) return <ReadOnlyIngredientLine line={props.line} />;
+  if (props.readOnly) return <ReadOnlyIngredientLine line={props.line} locale={props.locale} />;
   return <EditableIngredientLine {...props} />;
 }

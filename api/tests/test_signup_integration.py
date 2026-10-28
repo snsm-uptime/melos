@@ -24,6 +24,29 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+@pytest.mark.parametrize(
+    ("language", "kitchen_name"),
+    [("en", "My kitchen"), ("es", "Mi cocina")],
+)
+def test_register_names_the_personal_kitchen_in_the_chosen_language(
+    client: TestClient, language: str, kitchen_name: str
+) -> None:
+    response = client.post(
+        "/auth/register",
+        json={"email": f"{language}@example.com", "password": "password1", "language": language},
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["kitchen_name"] == kitchen_name
+
+
+def test_register_rejects_a_language_other_than_en_or_es(client: TestClient) -> None:
+    response = client.post(
+        "/auth/register",
+        json={"email": "fr@example.com", "password": "password1", "language": "fr"},
+    )
+    assert response.status_code == 422
+
+
 def test_register_hashes_password_sets_cookie_creates_personal_kitchen(
     client: TestClient, db_session: Session
 ) -> None:
@@ -34,7 +57,7 @@ def test_register_hashes_password_sets_cookie_creates_personal_kitchen(
     assert response.status_code == 201, response.text
     body = response.json()
     assert body["email"] == "member@example.com"
-    assert body["kitchen_name"] == "My kitchen"
+    assert body["kitchen_name"] == "Mi cocina"
     assert "password" not in body
     assert "password_hash" not in body
 

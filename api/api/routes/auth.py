@@ -377,6 +377,7 @@ def register(
                     password=body.password,
                     raw_token=invite_token,
                     email_verification_required=settings.email_verification_required,
+                    language=body.language,
                 )
             )
             result_user_id = invite_result.user_id
@@ -391,6 +392,7 @@ def register(
                     email=body.email,
                     password=body.password,
                     email_verification_required=settings.email_verification_required,
+                    language=body.language,
                 )
             )
             result_user_id = plain.user_id

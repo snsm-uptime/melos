@@ -80,8 +80,48 @@ describe("RecipeCard", () => {
     );
   });
 
+  it("links the notebook name to its notebook, apart from the card's own link", () => {
+    render({ showNotebook: true, from: "/kitchens/k1" });
+    const links = Array.from(container.querySelectorAll("a"));
+    expect(links.map((a) => a.textContent)).toEqual(["Lentil soup", "ana's (Home) Notebook"]);
+    // The list the card is on travels along, so the notebook's Back returns to it.
+    expect(links[1].getAttribute("href")).toBe(`/notebooks/n1?from=${encodeURIComponent("/kitchens/k1")}`);
+    // Always underlined, accent colour on hover.
+    expect(links[1].className).toContain("underline");
+    expect(links[1].className).not.toContain("hover:underline");
+    expect(links[1].className).toContain("hover:text-accent");
+  });
+
+  it("shows the notebook name as plain text on a card that is not a link", () => {
+    render({ showNotebook: true });
+    expect(container.querySelector("a")).toBeNull();
+    expect(container.textContent).toContain("ana's (Home) Notebook");
+  });
+
+  it("shows the whole card as the link's target, and only when it is a link", () => {
+    render({ from: "/kitchens/k1" });
+    const article = container.querySelector("article") as HTMLElement;
+    expect(article.className).toContain("cursor-pointer");
+    expect(article.className).toContain("hover:border-accent");
+    // The title link's overlay covers the card (its ::after is positioned against the article).
+    expect(article.className).toContain("relative");
+    expect(container.querySelector("h3 a")?.className).toContain("after:inset-0");
+
+    render();
+    expect((container.querySelector("article") as HTMLElement).className).not.toContain("cursor-pointer");
+  });
+
   it("is not a link without a list to return to", () => {
     render();
     expect(container.querySelector("a")).toBeNull();
+  });
+
+  it("in Spanish the interface words change and the recipe's own words do not (spec 063 FR-008)", () => {
+    render({ locale: "es", recipe: { ...recipe, author_alias: null, ingredient_count: 1 } });
+    const text = container.textContent ?? "";
+    expect(text).toContain("desconocido");
+    expect(text).toContain("1 ingrediente");
+    expect(text).toContain("Lentil soup");
+    expect(text).not.toContain("unknown");
   });
 });

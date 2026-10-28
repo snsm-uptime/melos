@@ -39,7 +39,7 @@ describe("sign-in form failure path", () => {
     expect(errorGeneric.toLowerCase()).toContain("invalid");
   });
 
-  it("returns rate_limited detail on 429", async () => {
+  it("shows the screen's own rate-limit message on 429 (never the api's English text)", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -55,6 +55,7 @@ describe("sign-in form failure path", () => {
       password: "password1",
       returnTo: "/kitchens",
       errorGeneric: signInMessages.en.errorGeneric,
+      errorRateLimited: signInMessages.en.errorRateLimited,
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
 

@@ -127,7 +127,7 @@ Not applicable. This feature changes wording and the choice of message only; it 
 ## Assumptions
 
 - The required parts of a recipe are its title and its steps, as the recipe rules enforce them today (clarified 2026-10-25). A recipe with no ingredient list still gets a draft.
-- Language is English only for this feature. Choosing the language from the member's account setting is a later story, as set in spec 016 (FR-034). The message wording is kept in one place so that story is simple.
+- Language is English only for this feature. Choosing the language from the member's account setting is a later story, as set in spec 016 (FR-034). The message wording is kept in one place so that story is simple. *(Superseded by spec 063: Spanish and English for every screen, Spanish by default.)*
 - The new wording replaces the wording of spec 016 for the not-a-recipe and unreadable-answer messages only. Spec 016's other messages stay as they are.
 - The current change in the recipe extraction code, which logs the name of the broken recipe rule on the server, stays server-side. The member never sees it.
 - Members see the pasted text only in the box, as in spec 016. No new screen or saved draft is added.

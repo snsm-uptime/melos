@@ -48,9 +48,7 @@ export function ForgotPasswordForm({ locale }: Props) {
           detail?: string;
         } | null;
         if (body?.code === "rate_limited") {
-          setError(
-            body.detail || "Too many attempts. Please try again later.",
-          );
+          setError(t.errorRateLimited);
           return;
         }
       }

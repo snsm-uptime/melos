@@ -18,7 +18,9 @@ import {
   useCaptureState,
   type DraftView,
 } from "@/lib/capture/captureStore";
-import { captureMessages, messageForCode } from "@/lib/i18n/capture";
+import { messageForCode } from "@/lib/i18n/capture";
+import { useLocale } from "@/lib/i18n/useLocale";
+import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
 
 import type { CaptureCandidate } from "./AddRecipeCallToAction";
 
@@ -72,6 +74,8 @@ const fieldClassName =
  * in the store, so a failure or Back keeps it. One submission at a time; no automatic retry.
  */
 export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCaptureSheetProps) {
+  const t = useCaptureMessages();
+  const locale = useLocale();
   const capture = useCaptureState();
   const [max, setMax] = useState(DEFAULT_MAX_CHARS);
 
@@ -120,16 +124,16 @@ export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCapture
   }
 
   const message = capture.message
-    ? messageForCode(capture.message, max)
+    ? messageForCode(capture.message, locale, max)
     : tooLong
-      ? captureMessages.tooLong(max)
+      ? t.tooLong(max)
       : null;
 
   const body = (
     <div className="flex flex-col gap-4">
       {candidates.length > 1 && notebook ? (
         <label className="flex flex-col gap-1 text-[0.85rem] text-muted">
-          {captureMessages.notebookPicker}
+          {t.notebookPicker}
           <select
             className={fieldClassName}
             value={notebook.id}
@@ -145,7 +149,7 @@ export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCapture
         </label>
       ) : null}
       <label className="flex flex-col gap-1 text-[0.85rem] text-muted">
-        {captureMessages.recipeText}
+        {t.recipeText}
         <textarea
           className={`${fieldClassName} min-h-[12rem]`}
           value={text}
@@ -154,7 +158,7 @@ export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCapture
         />
       </label>
       {text.length > max * COUNTER_FROM_RATIO ? (
-        <p className="m-0 text-[0.8rem] text-muted">{captureMessages.counterNear(text.length, max)}</p>
+        <p className="m-0 text-[0.8rem] text-muted">{t.counterNear(text.length, max)}</p>
       ) : null}
       {message ? (
         <p role="alert" className="m-0 text-[0.9rem] text-owe">
@@ -167,7 +171,7 @@ export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCapture
         disabled={disabled}
         className="self-end rounded-[0.75rem] bg-accent px-4 py-2 text-[0.95rem] text-background disabled:opacity-50"
       >
-        {submitting ? captureMessages.submitting : captureMessages.submit}
+        {submitting ? t.submitting : t.submit}
       </button>
     </div>
   );
@@ -176,8 +180,8 @@ export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCapture
     <Sheet
       open={open}
       onClose={closeSheet}
-      closeLabel={captureMessages.close}
-      title={notebook?.name ?? captureMessages.addRecipe}
+      closeLabel={t.close}
+      title={notebook?.name ?? t.addRecipe}
       body={body}
     />
   );

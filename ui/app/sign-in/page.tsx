@@ -1,15 +1,16 @@
 // Reused from finance-dashboard/ui/app/sign-in/page.tsx
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { RedirectIfAuthenticated } from "@/components/RedirectIfAuthenticated";
-import { detectLocale, signInMessages } from "@/lib/i18n/signin";
+import { SignedOutLanguageSwitch } from "@/components/SignedOutLanguageSwitch";
+import { signInMessages } from "@/lib/i18n/signin";
 import { resolveServerAuthenticatedLanding } from "@/lib/serverLanding";
 import { fetchSession } from "@/lib/session";
 import { safeReturnTo } from "./signInClient";
 import { SignInChrome } from "./SignInChrome";
 import { SignInForm } from "./SignInForm";
 import styles from "../signup/signup.module.scss";
+import { getServerLocale } from "@/lib/serverLocale";
 
 export const dynamic = "force-dynamic";
 
@@ -35,8 +36,7 @@ export default async function SignInPage({
     redirect(landing);
   }
 
-  const headerStore = await headers();
-  const locale = detectLocale(headerStore.get("accept-language"));
+  const locale = await getServerLocale();
   const t = signInMessages[locale];
 
   return (
@@ -47,6 +47,10 @@ export default async function SignInPage({
         <h1 className={styles.title}>{t.title}</h1>
         <p className={styles.subtitle}>{t.subtitle}</p>
         <SignInForm locale={locale} returnTo={rawReturnTo} />
+        {/* In the card's column, right below the sign-up link. */}
+        <div className={styles.languageRow}>
+          <SignedOutLanguageSwitch placement="inline" />
+        </div>
       </div>
     </main>
   );

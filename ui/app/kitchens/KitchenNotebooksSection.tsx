@@ -4,10 +4,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { AddRecipeCallToAction } from "@/components/AddRecipeCallToAction";
-import { NotebookCard } from "@/components/NotebookCard/NotebookCard";
 import { RecipeList } from "@/components/RecipeList/RecipeList";
 import { SavedNotice } from "@/components/RecipeDraft/SavedNotice";
-import { SectionLabel } from "@/components/soft-ledger/SectionLabel";
 import { listAddress, readListAddress } from "@/lib/listAddress";
 import type { Locale } from "@/lib/i18n/locale";
 import { notebooksMessages } from "@/lib/i18n/notebooks";
@@ -24,8 +22,6 @@ type KitchenNotebooksSectionProps = {
   kitchenId: string;
   /** An archived kitchen shows no add-recipe action (spec 016 FR-033). */
   isArchived: boolean;
-  /** The signed-in person's alias. The owner line is hidden when the owner is this person. */
-  viewerAlias: string | null;
   locale: Locale;
 };
 
@@ -35,11 +31,13 @@ type SectionState =
   | { status: "not_found" }
   | { status: "error" };
 
-/** A kitchen's notebooks for its members, inert cards only (spec 060 FR-004 to FR-007). */
+/**
+ * A kitchen's recipes from all its notebooks: the filter with the add-recipe button beside it,
+ * then the cards, each linking to its notebook. The notebooks are read for the capture picker.
+ */
 export function KitchenNotebooksSection({
   kitchenId,
   isArchived,
-  viewerAlias,
   locale,
 }: KitchenNotebooksSectionProps) {
   const t = notebooksMessages[locale];
@@ -97,7 +95,6 @@ export function KitchenNotebooksSection({
 
   return (
     <section className={styles.section}>
-      <SectionLabel>{t.sectionTitle}</SectionLabel>
       <SavedNotice returnPath={`/kitchens/${kitchenId}`} />
       {state.status === "not_found" ? (
         <p className={styles.copy} role="alert">
@@ -117,33 +114,6 @@ export function KitchenNotebooksSection({
       {state.status === "ready" && state.notebooks.length === 0 ? (
         <p className={styles.copy}>{t.kitchenEmpty}</p>
       ) : null}
-      {state.status === "ready" && state.notebooks.length > 0 && !isArchived ? (
-        <AddRecipeCallToAction
-          candidates={state.notebooks.map((notebook) => ({
-            id: notebook.id,
-            name: notebook.name,
-            kind: "kitchen",
-            kitchenId,
-          }))}
-          defaultId={state.notebooks[0]?.id ?? null}
-          returnPath={`/kitchens/${kitchenId}`}
-        />
-      ) : null}
-      {state.status === "ready" && state.notebooks.length > 0 ? (
-        <ul className={styles.grid}>
-          {state.notebooks.map((notebook) => (
-            <li key={notebook.id}>
-              <NotebookCard
-                name={notebook.name}
-                ownerAlias={notebook.owner_alias}
-                viewerAlias={viewerAlias}
-                locale={locale}
-                href={`/notebooks/${notebook.id}`}
-              />
-            </li>
-          ))}
-        </ul>
-      ) : null}
       {state.status === "ready" ? (
         <RecipeList
           scope="kitchen"
@@ -153,6 +123,22 @@ export function KitchenNotebooksSection({
           onChange={onListChange}
           load={loadRecipes}
           returnPath={`/kitchens/${kitchenId}`}
+          layout="wrap"
+          filterAction={
+            state.notebooks.length > 0 && !isArchived ? (
+              <AddRecipeCallToAction
+                variant="button"
+                candidates={state.notebooks.map((notebook) => ({
+                  id: notebook.id,
+                  name: notebook.name,
+                  kind: "kitchen",
+                  kitchenId,
+                }))}
+                defaultId={state.notebooks[0]?.id ?? null}
+                returnPath={`/kitchens/${kitchenId}`}
+              />
+            ) : undefined
+          }
         />
       ) : null}
     </section>

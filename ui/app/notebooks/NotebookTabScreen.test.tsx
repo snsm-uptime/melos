@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { clearCapture, markSaved } from "@/lib/capture/captureStore";
 
+import { AppShell } from "@/components/AppShell";
+
 import { NotebookTabScreen } from "./NotebookTabScreen";
 
 const replace = vi.fn();
@@ -13,6 +15,12 @@ const router = { replace };
 
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
+  usePathname: () => "/notebooks",
+}));
+
+vi.mock("@/components/PreferencesProvider", () => ({
+  usePreferences: () => ({ locale: "en", theme: "light" }),
+  useOptionalPreferences: () => ({ locale: "en" }),
 }));
 
 const defaultNotebook = {
@@ -84,9 +92,30 @@ describe("NotebookTabScreen", () => {
 
   function render(viewerAlias: string | null = "ben") {
     act(() => {
-      root.render(<NotebookTabScreen locale="en" viewerAlias={viewerAlias} />);
+      root.render(<NotebookTabScreen locale="en" viewerAlias={viewerAlias} userId="user-1" photoBase64={null} />);
     });
   }
+
+  it("puts the title and the viewer's avatar in the shared header, not in the page body", async () => {
+    stubBff({
+      "/api/notebooks/default": [{ status: 200, body: defaultNotebook }],
+      "/api/notebooks": [{ status: 200, body: { notebooks: [defaultNotebook] } }],
+    });
+
+    act(() => {
+      root.render(
+        <AppShell>
+          <NotebookTabScreen locale="en" viewerAlias="ana" userId="user-1" photoBase64={null} />
+        </AppShell>,
+      );
+    });
+    await flush();
+
+    const header = container.querySelector('[data-app-chrome="header"]') as HTMLElement;
+    expect(header.querySelector("h1")?.textContent).toBe("Notebook");
+    expect(header.querySelector('a[href="/account"]')).toBeTruthy();
+    expect(container.querySelectorAll("h1")).toHaveLength(1);
+  });
 
   it("hides the owner line on cards the viewer owns and shows it on the rest", async () => {
     stubBff({

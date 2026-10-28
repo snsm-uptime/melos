@@ -1,6 +1,5 @@
 /** Sign-in copy — EN/ES keys (Account prefs = Story 1.6). */
 export type { Locale } from "@/lib/i18n/locale";
-export { detectLocale } from "@/lib/i18n/locale";
 
 export const signInMessages = {
   en: {
@@ -11,6 +10,7 @@ export const signInMessages = {
     submit: "Sign in",
     submitting: "Signing in…",
     errorGeneric: "Invalid email or password. Check your details and try again.",
+    errorRateLimited: "Too many attempts. Please try again later.",
     showPassword: "Show password",
     hidePassword: "Hide password",
     noAccount: "Need an account?",
@@ -24,6 +24,7 @@ export const signInMessages = {
     password: "Contraseña",
     submit: "Iniciar sesión",
     submitting: "Iniciando sesión…",
+    errorRateLimited: "Demasiados intentos. Inténtalo de nuevo más tarde.",
     errorGeneric:
       "Correo o contraseña incorrectos. Revisa los datos e inténtalo de nuevo.",
     showPassword: "Mostrar contraseña",

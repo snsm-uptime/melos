@@ -1,6 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { attemptSignup } from "./signupClient";
+import { clearLanguagePick, readLanguagePick, writeLanguagePick } from "@/lib/i18n/languagePick";
+
+import { attemptSignup, saveLanguagePick } from "./signupClient";
 import { signupMessages } from "@/lib/i18n/signup";
 import { resolveAuthenticatedLanding } from "@/lib/landing";
 import { acceptInvite, fetchInvitePreview } from "@/app/invites/inviteClient";
@@ -61,6 +63,25 @@ describe("attemptSignup", () => {
           password: "password1",
           invite_token: "raw-token",
         }),
+      }),
+    );
+  });
+
+  it("sends the language the form is shown in, so the first kitchen is named in it", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 201 }));
+    await attemptSignup({
+      email: "member@example.com",
+      password: "password1",
+      language: "es",
+      errorDuplicate: signupMessages.es.errorDuplicate,
+      errorInvalid: signupMessages.es.errorInvalid,
+      errorGeneric: signupMessages.es.errorGeneric,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "/api/auth/register",
+      expect.objectContaining({
+        body: JSON.stringify({ email: "member@example.com", password: "password1", language: "es" }),
       }),
     );
   });
@@ -165,5 +186,94 @@ describe("invite landing", () => {
       fetchImpl as unknown as typeof fetch,
     );
     expect(result).toEqual({ ok: true, kitchenId: "kitchen-1" });
+  });
+});
+
+describe("attemptSignup messages in the screen's language (spec 063)", () => {
+  const base = {
+    email: "member@example.com",
+    password: "password1",
+    errorDuplicate: signupMessages.es.errorDuplicate,
+    errorInvalid: signupMessages.es.errorInvalid,
+    errorGeneric: signupMessages.es.errorGeneric,
+    errorRateLimited: signupMessages.es.errorRateLimited,
+  };
+
+  it("shows the screen's own rate-limit message, never the api's English text", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ code: "rate_limited", detail: "Too many attempts. Please try again later." }), { status: 429 }),
+    );
+    const result = await attemptSignup({ ...base, fetchImpl: fetchImpl as unknown as typeof fetch });
+    expect(result).toEqual({ ok: false, error: signupMessages.es.errorRateLimited });
+  });
+
+  it("shows the api's explanation in English only, and the generic message in Spanish", async () => {
+    const refuse = () =>
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ code: "invalid_signup", detail: "Password must be at least 8 characters." }), { status: 400 }),
+      ) as unknown as typeof fetch;
+    const english = await attemptSignup({ ...base, preferServerDetail: true, fetchImpl: refuse() });
+    expect(english).toEqual({ ok: false, error: "Password must be at least 8 characters." });
+    const spanish = await attemptSignup({ ...base, preferServerDetail: false, fetchImpl: refuse() });
+    expect(spanish).toEqual({ ok: false, error: signupMessages.es.errorInvalid });
+  });
+});
+
+describe("saveLanguagePick (spec 063 FR-018)", () => {
+  afterEach(() => clearLanguagePick());
+
+  it("saves the picked language to the new account once, then drops the pick", async () => {
+    // This file runs in node, so the helper gets a small cookie jar.
+    const jar = new Map<string, string>();
+    vi.stubGlobal("document", {
+      get cookie() {
+        return [...jar].map(([k, v]) => `${k}=${v}`).join("; ");
+      },
+      set cookie(value: string) {
+        const [pair, ...attrs] = value.split(";").map((part) => part.trim());
+        const [k, v] = pair.split("=");
+        if (attrs.some((attr) => attr.toLowerCase() === "max-age=0")) jar.delete(k);
+        else jar.set(k, v);
+      },
+    });
+    writeLanguagePick("en");
+    const fetchImpl = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+
+    await saveLanguagePick(fetchImpl as unknown as typeof fetch);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/auth/me");
+    expect(init.method).toBe("PATCH");
+    expect(init.body).toBe(JSON.stringify({ language: "en" }));
+    expect(readLanguagePick()).toBeNull();
+    vi.unstubAllGlobals();
+  });
+
+  it("sends nothing when no language was picked", async () => {
+    vi.stubGlobal("document", { cookie: "" });
+    const fetchImpl = vi.fn();
+    await saveLanguagePick(fetchImpl as unknown as typeof fetch);
+    expect(fetchImpl).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("does not throw when the save fails, and still drops the pick", async () => {
+    const jar = new Map<string, string>([["melos_lang", "en"]]);
+    vi.stubGlobal("document", {
+      get cookie() {
+        return [...jar].map(([k, v]) => `${k}=${v}`).join("; ");
+      },
+      set cookie(value: string) {
+        const [pair, ...attrs] = value.split(";").map((part) => part.trim());
+        const [k, v] = pair.split("=");
+        if (attrs.some((attr) => attr.toLowerCase() === "max-age=0")) jar.delete(k);
+        else jar.set(k, v);
+      },
+    });
+    const fetchImpl = vi.fn().mockRejectedValue(new Error("down"));
+    await expect(saveLanguagePick(fetchImpl as unknown as typeof fetch)).resolves.toBeUndefined();
+    expect(jar.has("melos_lang")).toBe(false);
+    vi.unstubAllGlobals();
   });
 });

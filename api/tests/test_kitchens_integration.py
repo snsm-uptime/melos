@@ -46,7 +46,7 @@ def test_create_owned_kitchen_membership_and_multi_own(
     assert first.status_code == 200
     personal = first.json()["kitchens"]
     assert len(personal) == 1
-    assert personal[0]["name"] == "My kitchen"
+    assert personal[0]["name"] == "Mi cocina"
     assert personal[0]["role"] == "owner"
 
     created = client.post("/kitchens", json={"name": "  Household  "})
@@ -58,7 +58,7 @@ def test_create_owned_kitchen_membership_and_multi_own(
     listed = client.get("/kitchens")
     assert listed.status_code == 200
     names = {item["name"] for item in listed.json()["kitchens"]}
-    assert names == {"My kitchen", "Household"}
+    assert names == {"Mi cocina", "Household"}
     for item in listed.json()["kitchens"]:
         assert len(item["members"]) == 1
         assert item["members"][0]["user_id"] == item["owner_id"]

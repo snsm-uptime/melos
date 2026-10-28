@@ -236,6 +236,31 @@ describe("AppShell chrome header", () => {
     expect(container.querySelector('button[aria-label="Back"]')).toBeNull();
   });
 
+  it("insets a leading avatar by the page gutter, and a Back button by the tighter chrome inset", async () => {
+    function AvatarHeader() {
+      useChromeHeader({ leading: <span>avatar</span>, title: "Kitchens" });
+      return null;
+    }
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <AvatarHeader />
+        </AppShell>,
+      );
+    });
+    const header = container.querySelector("header") as HTMLElement;
+    expect(header.className).toContain("pl-[max(var(--page-gutter)");
+
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <EnableHeader href="/home" title="Kitchen" />
+        </AppShell>,
+      );
+    });
+    expect((container.querySelector("header") as HTMLElement).className).toContain("pl-[max(0.5rem");
+  });
+
   it("shows the Notebook tab and marks it current on /notebooks", async () => {
     pathname = "/notebooks";
     await act(async () => {
@@ -252,5 +277,33 @@ describe("AppShell chrome header", () => {
     expect(notebook?.getAttribute("href")).toBe("/notebooks");
     expect(notebook?.getAttribute("aria-current")).toBe("page");
     expect(container.querySelector('nav a[aria-label="Home"]')?.getAttribute("aria-current")).toBeNull();
+  });
+
+  describe("signed-out language switch (spec 063)", () => {
+    const switchPresent = () => container.querySelector('[role="group"]') !== null;
+
+    function renderAt(path: string, child: ReactNode) {
+      pathname = path;
+      act(() => {
+        root.render(<AppShell>{child}</AppShell>);
+      });
+    }
+
+    it("does not float on /sign-in, which has the switch in its own card", () => {
+      renderAt("/sign-in", <EnableHeader href="/" title="Melos" />);
+      expect(container.querySelector('[data-app-chrome="header"]')).not.toBeNull();
+      expect(switchPresent()).toBe(false);
+    });
+
+    it("shows on a signed-out screen that has no header", () => {
+      renderAt("/invites/accept", <p>screen</p>);
+      expect(container.querySelector('[data-app-chrome="header"]')).toBeNull();
+      expect(switchPresent()).toBe(true);
+    });
+
+    it.each(["/home", "/account", "/alias"])("does not show on %s", (path) => {
+      renderAt(path, <p>screen</p>);
+      expect(switchPresent()).toBe(false);
+    });
   });
 });

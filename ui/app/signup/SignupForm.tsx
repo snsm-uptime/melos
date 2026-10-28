@@ -10,7 +10,8 @@ import { inviteMessages } from "@/lib/i18n/invite";
 import { signupMessages, type Locale } from "@/lib/i18n/signup";
 import { setLastOpenedKitchen } from "@/app/kitchens/kitchensClient";
 import { fetchInvitePreview } from "@/app/invites/inviteClient";
-import { attemptSignup } from "./signupClient";
+import { useOptionalPreferences } from "@/components/PreferencesProvider";
+import { attemptSignup, saveLanguagePick } from "./signupClient";
 import { PrimaryButton } from "@/components/soft-ledger/PrimaryButton";
 import styles from "./signup.module.scss";
 
@@ -21,6 +22,7 @@ type Props = {
 
 export function SignupForm({ locale, inviteToken }: Props) {
   const router = useRouter();
+  const preferences = useOptionalPreferences();
   const t = signupMessages[locale];
   const ti = inviteMessages[locale];
   const [email, setEmail] = useState("");
@@ -86,9 +88,13 @@ export function SignupForm({ locale, inviteToken }: Props) {
         email,
         password,
         inviteToken: inviteToken || null,
+        language: locale,
         errorDuplicate: t.errorDuplicate,
         errorInvalid: t.errorInvalid,
         errorGeneric: t.errorGeneric,
+        errorRateLimited: t.errorRateLimited,
+        // The api explains a refused sign-up in English only (for example the password length).
+        preferServerDetail: locale === "en",
         errorExpiredInvite: t.errorExpiredInvite,
         errorInviteMismatch: t.errorInviteMismatch,
         errorNotVerified: t.errorNotVerified,
@@ -103,6 +109,10 @@ export function SignupForm({ locale, inviteToken }: Props) {
         setError(result.error);
         return;
       }
+      // The language picked while signed out becomes the account's language, and the provider
+      // learns it is signed in now, so a later choice in the account is saved to the account.
+      await saveLanguagePick();
+      await preferences?.refresh();
       const inviteKitchenId = result.invitingKitchenId;
       if (inviteKitchenId) {
         // Last-opened is best-effort; membership already succeeded — always land.

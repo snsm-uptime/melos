@@ -13,9 +13,10 @@ import {
 import { IconButton } from "@/components/IconButton";
 import { usePreferences } from "@/components/PreferencesProvider";
 import { TabBar, type TabBarItem } from "@/components/soft-ledger/TabBar";
-import { showsAppChrome, tabKeyFromPath } from "@/lib/appChrome";
+import { showsAppChrome, showsFloatingLanguageSwitch, tabKeyFromPath } from "@/lib/appChrome";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
 import { Chip } from "./Chip";
+import { SignedOutLanguageSwitch } from "./SignedOutLanguageSwitch";
 
 /** Persistent application chrome around authenticated pages. Auth/setup routes skip it. */
 export function AppShell({ children }: { children: ReactNode }) {
@@ -37,6 +38,9 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   // just the header — a way back to "/" — via useChromeHeader, without also
   // gaining the authenticated TabBar that showsAppChrome gates.
   const showTabBar = showsAppChrome(pathname);
+  // A tab root leads with its avatar instead of Back; the avatar sits on the page gutter so it
+  // lines up with the content below it (screens with a Back button keep the tighter inset).
+  const leadsWithAvatar = Boolean(header.leading) && !header.onBack && !header.backHref;
 
   // Recipes, cart and chat tabs join Home as those features land.
   const tabs: TabBarItem[] = [
@@ -44,13 +48,24 @@ function AppShellFrame({ children }: { children: ReactNode }) {
     { key: "notebook", href: "/notebooks", label: t.tabNotebook, Icon: NotebookIcon },
   ];
 
+  // The English/Spanish switch of the signed-out screens (spec 063 FR-017), on both layouts:
+  // /sign-in opts into the header, the other signed-out screens have none. /sign-in puts its
+  // switch in its own card, below the sign-up link, so none floats there.
+  const languageSwitch = showsFloatingLanguageSwitch(pathname) ? <SignedOutLanguageSwitch /> : null;
+
   if (!showHeader && !showTabBar) {
-    return <div className="fixed inset-0 overflow-y-auto">{children}</div>;
+    return (
+      <div className="fixed inset-0 overflow-y-auto">
+        {languageSwitch}
+        {children}
+      </div>
+    );
   }
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden">
       <div className="relative flex flex-col flex-1 min-h-0">
+        {languageSwitch}
         {header.progressBar ? <div className="shrink-0">{header.progressBar}</div> : null}
         {showHeader ? (
           <header
@@ -59,7 +74,11 @@ function AppShellFrame({ children }: { children: ReactNode }) {
               header.progressBar
                 ? "pt-[max(1rem,env(safe-area-inset-top))]"
                 : "pt-[max(0.5rem,env(safe-area-inset-top))]"
-            } pr-[max(1rem,env(safe-area-inset-right))] pb-1 pl-[max(0.5rem,env(safe-area-inset-left))]`}
+            } pr-[max(1rem,env(safe-area-inset-right))] pb-1 ${
+              leadsWithAvatar
+                ? "pl-[max(var(--page-gutter),env(safe-area-inset-left))]"
+                : "pl-[max(0.5rem,env(safe-area-inset-left))]"
+            }`}
           >
             <div className="flex w-10 shrink-0 items-center justify-start self-center">
               {header.onBack || header.backHref ? (

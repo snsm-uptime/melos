@@ -105,6 +105,40 @@ describe("RecipeEditForm", () => {
     await flush();
   }
 
+  it("has no English interface text in Spanish, and keeps the recipe's own words (spec 063)", async () => {
+    act(() => {
+      root.render(
+        <RecipeEditForm
+          recipe={recipe}
+          locale="es"
+          detailHref="/recipes/r1"
+          listHref="/notebooks/nb1"
+          onReload={onReload}
+        />,
+      );
+    });
+    const text = document.body.textContent ?? "";
+    for (const expected of ["Ingredientes", "Pasos", "Agregar ingrediente", "Agregar paso", "Guardar", "Cancelar", "Porciones base"]) {
+      expect(text, expected).toContain(expected);
+    }
+    expect(document.querySelector("[aria-label=Título]")).not.toBeNull();
+    expect(document.querySelector("[aria-label=Nombre]")).not.toBeNull();
+    expect(document.querySelector("[aria-label='Paso 1']")).not.toBeNull();
+    expect(document.querySelector("a[aria-label=Volver]")).not.toBeNull();
+    expect(text).not.toMatch(/\b(Ingredients|Steps|Add ingredient|Add step|Save|Cancel)\b/);
+    expect(byLabel("Título")[0].value).toBe("Tomato rice");
+
+    act(() => setValue(byLabel("Título")[0], ""));
+    expect(document.body.textContent).toContain("Agrega un título.");
+
+    replies.put = [{ status: 409, body: { code: "recipe_changed" } }];
+    act(() => setValue(byLabel("Título")[0], "Otro"));
+    await act(async () => button("Guardar")?.click());
+    await flush();
+    expect(document.body.textContent).toContain("Esta receta cambió después de que la abriste.");
+    expect(document.body.textContent).toContain("Recargar");
+  });
+
   it("shows the stored recipe: title, servings, every line and every step", () => {
     render();
     expect(byLabel("Title")[0].value).toBe("Tomato rice");
@@ -112,6 +146,22 @@ describe("RecipeEditForm", () => {
     expect(names()).toEqual(["rice", "onion", "salt"]);
     expect(byLabel("Step 1")[0].value).toBe("Fry the garlic.");
     expect(byLabel("Step 2")[0].value).toBe("Add the rice.");
+  });
+
+  it("opens at the saved servings and amounts and saves the saved servings (spec 062)", async () => {
+    render();
+    expect(document.querySelector<HTMLInputElement>("input[type=number][min='1']")?.value).toBe("4");
+    expect(byLabel("Quantity").map((input) => (input as HTMLInputElement).value)).toEqual([
+      "1",
+      "2",
+      "",
+    ]);
+    act(() => setValue(byLabel("Title")[0], "Renamed"));
+
+    await save();
+
+    const put = calls.find((call) => call.method === "PUT");
+    expect(put?.body).toMatchObject({ base_servings: 4 });
   });
 
   it("saves a changed title, amount and step with the version it opened", async () => {
@@ -254,7 +304,8 @@ describe("RecipeEditForm", () => {
 
   it("asks before leaving with unsaved changes, and not otherwise", () => {
     render();
-    act(() => link("Back")?.click());
+    const backLink = document.querySelector("a[aria-label=Back]") as HTMLAnchorElement;
+    expect(backLink.getAttribute("href")).toBe("/recipes/r1?from=%2Fnotebooks%2Fnb1");
     expect(document.body.textContent).not.toContain("Leave without saving?");
 
     act(() => setValue(byLabel("Title")[0], "Changed"));
