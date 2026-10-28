@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { ArrowIcon } from "@/app/icons";
+import { BackIcon } from "@/app/icons";
+import { Card, CardBody } from "@/components/Card";
+import { IconButton } from "@/components/IconButton";
 import {
   fetchVocabulary,
   type VocabularyResponse,
@@ -24,19 +26,12 @@ import { captureMessages } from "@/lib/i18n/capture";
 
 // MVP-OUT: import { CategoryChips } from "./CategoryChips";
 import { IngredientLineRow } from "./IngredientLineRow";
+import { RowControls } from "./RowControls";
 
 // MVP-OUT: const MAX_MAIN = 2;
 // MVP-OUT: const MAX_CUISINES = 2;
 
 let keyCounter = 0;
-/** Rows for a step's textarea so the whole text shows (about 45 characters per line). */
-function rowsFor(text: string): number {
-  const lines = text
-    .split("\n")
-    .reduce((count, line) => count + Math.max(1, Math.ceil(line.length / 45)), 0);
-  return Math.max(2, lines);
-}
-
 function nextKey(): string {
   keyCounter += 1;
   return `draft-new-${keyCounter}`;
@@ -50,15 +45,6 @@ export function RecipeDraftEditor() {
   const router = useRouter();
   const capture = useCaptureState();
   const [vocabulary, setVocabulary] = useState<VocabularyResponse | null>(null);
-  // Step keys whose text is hidden. Steps are open by default, so the full text shows.
-  const [collapsedSteps, setCollapsedSteps] = useState<string[]>([]);
-
-  function toggleStep(key: string) {
-    setCollapsedSteps((current) =>
-      current.includes(key) ? current.filter((item) => item !== key) : [...current, key],
-    );
-  }
-
   useEffect(() => {
     let current = true;
     void fetchVocabulary().then((value) => {
@@ -73,7 +59,8 @@ export function RecipeDraftEditor() {
   const notebook = capture.notebook;
 
   useEffect(() => {
-    if (!draft || !notebook) router.replace(notebook?.returnPath ?? "/notebooks");
+    if (!draft || !notebook)
+      router.replace(notebook?.returnPath ?? "/notebooks");
   }, [draft, notebook, router]);
 
   if (!draft || !notebook) return null;
@@ -88,14 +75,18 @@ export function RecipeDraftEditor() {
     // MVP-OUT: cuisineCount: draft.cuisines.length,
   };
   const errors = checkDraft(input);
-  const changesByLine = new Map(nameChanges(draft.lines).map((change) => [change.line, change]));
+  const changesByLine = new Map(
+    nameChanges(draft.lines).map((change) => [change.line, change]),
+  );
 
   function update(patch: Partial<DraftView>) {
     editDraft({ ...draft!, ...patch });
   }
 
   function updateLine(index: number, next: LineView) {
-    update({ lines: draft!.lines.map((line, i) => (i === index ? next : line)) });
+    update({
+      lines: draft!.lines.map((line, i) => (i === index ? next : line)),
+    });
   }
 
   function moveItem<T>(items: T[], index: number, direction: -1 | 1): T[] {
@@ -124,46 +115,37 @@ export function RecipeDraftEditor() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <p className="m-0 text-[0.9rem] text-muted">{captureMessages.forNotebook(notebook.name)}</p>
-
-      <label className="flex flex-col gap-1 text-[0.85rem] text-muted">
-        {captureMessages.titleLabel}
-        <input
-          className="w-full rounded-[0.75rem] border border-border bg-background px-3 py-2 text-[1rem] text-foreground"
-          value={draft.title}
-          onChange={(event) => update({ title: event.target.value })}
-        />
-        {errors.title ? (
-          <span role="alert" className="text-[0.8rem] text-owe">
-            {captureMessages.errors[errors.title]}
-          </span>
-        ) : null}
-      </label>
-
-      <div className="flex flex-col gap-1">
-        <label className="flex flex-col gap-1 text-[0.85rem] text-muted">
-          {captureMessages.servingsLabel}
-          <input
-            type="number"
-            min="1"
-            step="1"
-            className="w-32 rounded-[0.75rem] border border-border bg-background px-3 py-2 text-[1rem] text-foreground"
-            value={draft.baseServings}
-            onChange={(event) =>
-              update({ baseServings: Number(event.target.value), servingsEstimated: false })
-            }
+    <div className="flex flex-col gap-6 md:min-h-0 md:flex-1">
+      {/* Same insets and Back slot as AppShell's chrome header. */}
+      <header className="flex items-center gap-2 pt-[max(0.5rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-1 pl-[max(0.5rem,env(safe-area-inset-left))]">
+        <div className="flex w-10 shrink-0 items-center justify-start self-center">
+          <IconButton
+            variant="ghost"
+            label={captureMessages.back}
+            icon={<BackIcon className="size-6" />}
+            onClick={back}
           />
-        </label>
-        {draft.servingsEstimated ? (
-          <span className="text-[0.75rem] text-muted">{captureMessages.estimated}</span>
-        ) : null}
-        {errors.servings ? (
-          <span role="alert" className="text-[0.8rem] text-owe">
-            {captureMessages.errors[errors.servings]}
-          </span>
-        ) : null}
-      </div>
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <h1 className="m-0 min-w-0">
+            <input
+              aria-label={captureMessages.titleLabel}
+              placeholder={captureMessages.titleLabel}
+              className="w-full min-w-0 rounded-[0.4rem] border-0 bg-transparent px-1 py-[0.15rem] text-[1.5rem] font-[550] leading-normal text-foreground outline-none hover:bg-background focus:bg-background"
+              value={draft.title}
+              onChange={(event) => update({ title: event.target.value })}
+            />
+          </h1>
+          <h4 className="m-0 px-1 text-[0.9rem] font-normal text-muted">
+            {notebook.name}
+          </h4>
+          {errors.title ? (
+            <span role="alert" className="px-1 text-[0.8rem] text-owe">
+              {captureMessages.errors[errors.title]}
+            </span>
+          ) : null}
+        </div>
+      </header>
 
       {/* MVP-OUT: the main ingredient and cuisine chip groups (S-061)
       <CategoryChips
@@ -195,132 +177,167 @@ export function RecipeDraftEditor() {
       />
       */}
 
-      <section className="flex flex-col gap-2">
-        <h2 className="m-0 text-[1rem] font-[550] text-foreground">{captureMessages.ingredients}</h2>
-        <ul className="m-0 flex list-none flex-col gap-[var(--space-4)] p-0">
-          {draft.lines.map((line, index) => (
-            <IngredientLineRow
-              key={line.key}
-              line={line}
-              index={index}
-              count={draft.lines.length}
-              errors={errors.lines[index] ?? []}
-              units={units}
-              sizes={sizes}
-              catalog={draft.catalog}
-              change={changesByLine.get(index)}
-              onUndoChange={undoChange}
-              onChange={(next) => updateLine(index, next)}
-              onRemove={() => update({ lines: draft.lines.filter((_, i) => i !== index) })}
-              onMove={(direction) => update({ lines: moveItem(draft.lines, index, direction) })}
-            />
-          ))}
-        </ul>
-        <button
-          type="button"
-          className="self-start text-[0.9rem] text-accent"
-          onClick={() =>
-            update({
-              lines: [
-                ...draft.lines,
-                {
-                  key: nextKey(),
-                  name: "",
-                  vague: false,
-                  quantity: null,
-                  unit: null,
-                  size: null,
-                  preparation: null,
-                  note: null,
-                  textName: "",
-                  match: { kind: "new", entry: null },
-                },
-              ],
-            })
-          }
-        >
-          {captureMessages.addIngredient}
-        </button>
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <h2 className="m-0 text-[1rem] font-[550] text-foreground">{captureMessages.steps}</h2>
-        <ol className="m-0 flex list-none flex-col gap-2 p-0">
-          {draft.steps.map((step, index) => (
-            <li key={step.key} className="flex flex-col gap-1">
-              <button
-                type="button"
-                aria-expanded={!collapsedSteps.includes(step.key)}
-                onClick={() => toggleStep(step.key)}
-                className="flex items-center gap-1 self-start text-[0.8rem] text-muted"
-              >
-                <ArrowIcon
-                  className={`h-3 w-3 ${collapsedSteps.includes(step.key) ? "rotate-180" : "-rotate-90"}`}
-                />
-                {captureMessages.stepLabel(index + 1)}
-              </button>
-              {collapsedSteps.includes(step.key) ? null : (
-                <textarea
-                  aria-label={captureMessages.stepLabel(index + 1)}
-                  rows={rowsFor(step.text)}
-                  className="w-full resize-y rounded-[0.75rem] border border-border bg-background px-3 py-2 text-[0.95rem] text-foreground"
-                  value={step.text}
+      <div className="flex flex-col gap-6 px-4 md:min-h-0 md:flex-1 md:flex-row">
+        <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:max-w-[450px] md:flex-1 md:overflow-hidden">
+          <div className="flex shrink-0 items-center justify-between gap-2">
+            <h2 className="m-0 text-[1rem] font-[550] text-foreground">
+              {captureMessages.ingredients}
+            </h2>
+            <div className="flex flex-col items-end gap-1">
+              <label className="flex items-center gap-2 text-[0.85rem] text-muted">
+                {captureMessages.servingsLabel}
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  className="w-20 rounded-[0.75rem] border border-border bg-background px-3 py-1 text-[1rem] text-foreground"
+                  value={draft.baseServings}
                   onChange={(event) =>
                     update({
-                      steps: draft.steps.map((item, i) =>
-                        i === index ? { ...item, text: event.target.value } : item,
-                      ),
+                      baseServings: Number(event.target.value),
+                      servingsEstimated: false,
                     })
                   }
                 />
-              )}
-              <div className="flex gap-2 text-[0.8rem]">
-                <button
-                  type="button"
-                  className="text-muted"
-                  disabled={index === 0}
-                  onClick={() => update({ steps: moveItem(draft.steps, index, -1) })}
-                >
-                  {captureMessages.moveUp}
-                </button>
-                <button
-                  type="button"
-                  className="text-muted"
-                  disabled={index === draft.steps.length - 1}
-                  onClick={() => update({ steps: moveItem(draft.steps, index, 1) })}
-                >
-                  {captureMessages.moveDown}
-                </button>
-                <button
-                  type="button"
-                  className="text-muted"
-                  onClick={() => update({ steps: draft.steps.filter((_, i) => i !== index) })}
-                >
-                  {captureMessages.remove}
-                </button>
-              </div>
-            </li>
-          ))}
-        </ol>
-        {errors.steps ? (
-          <span role="alert" className="text-[0.8rem] text-owe">
-            {captureMessages.errors[errors.steps]}
-          </span>
-        ) : null}
+              </label>
+              {errors.servings ? (
+                <span role="alert" className="text-[0.8rem] text-owe">
+                  {captureMessages.errors[errors.servings]}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
+            <ul className="m-0 flex list-none flex-col gap-2 p-0">
+              {draft.lines.map((line, index) => (
+                <IngredientLineRow
+                  key={line.key}
+                  line={line}
+                  index={index}
+                  count={draft.lines.length}
+                  errors={errors.lines[index] ?? []}
+                  units={units}
+                  sizes={sizes}
+                  catalog={draft.catalog}
+                  change={changesByLine.get(index)}
+                  onUndoChange={undoChange}
+                  onChange={(next) => updateLine(index, next)}
+                  onRemove={() =>
+                    update({ lines: draft.lines.filter((_, i) => i !== index) })
+                  }
+                  onMove={(direction) =>
+                    update({ lines: moveItem(draft.lines, index, direction) })
+                  }
+                />
+              ))}
+            </ul>
+            <button
+              type="button"
+              className="self-start text-[0.9rem] text-accent"
+              onClick={() =>
+                update({
+                  lines: [
+                    ...draft.lines,
+                    {
+                      key: nextKey(),
+                      name: "",
+                      vague: false,
+                      quantity: null,
+                      unit: null,
+                      size: null,
+                      preparation: null,
+                      note: null,
+                      textName: "",
+                      match: { kind: "new", entry: null },
+                    },
+                  ],
+                })
+              }
+            >
+              {captureMessages.addIngredient}
+            </button>
+          </div>
+        </section>
+
+        <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-hidden">
+          <h2 className="m-0 shrink-0 text-[1rem] font-[550] text-foreground">
+            {captureMessages.steps}
+          </h2>
+          <div className="flex flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
+            <ol className="m-0 flex list-none flex-col gap-2 p-0">
+              {draft.steps.map((step, index) => (
+                <Card as="li" key={step.key}>
+                  <div className="flex min-w-0 items-stretch">
+                    <CardBody className="min-w-0 flex-1 justify-center">
+                      <div className="flex items-center gap-3">
+                        <span
+                          aria-hidden="true"
+                          className="flex size-7 shrink-0 items-center justify-center rounded-full bg-accent text-[0.8rem] font-semibold text-on-accent"
+                        >
+                          {index + 1}
+                        </span>
+                        <textarea
+                          aria-label={captureMessages.stepLabel(index + 1)}
+                          rows={1}
+                          className="min-w-0 flex-1 field-sizing-content resize-none rounded-[0.4rem] border-0 bg-transparent px-1 py-[0.15rem] text-[0.95rem] text-foreground outline-none hover:bg-background focus:bg-background"
+                          value={step.text}
+                          onChange={(event) =>
+                            update({
+                              steps: draft.steps.map((item, i) =>
+                                i === index
+                                  ? { ...item, text: event.target.value }
+                                  : item,
+                              ),
+                            })
+                          }
+                        />
+                      </div>
+                    </CardBody>
+                    <RowControls
+                      className="px-2 py-3"
+                      index={index}
+                      count={draft.steps.length}
+                      onRemove={() =>
+                        update({
+                          steps: draft.steps.filter((_, i) => i !== index),
+                        })
+                      }
+                      onMove={(direction) =>
+                        update({
+                          steps: moveItem(draft.steps, index, direction),
+                        })
+                      }
+                    />
+                  </div>
+                </Card>
+              ))}
+            </ol>
+            {errors.steps ? (
+              <span role="alert" className="text-[0.8rem] text-owe">
+                {captureMessages.errors[errors.steps]}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              className="self-start text-[0.9rem] text-accent"
+              onClick={() =>
+                update({
+                  steps: [...draft.steps, { key: nextKey(), text: "" }],
+                })
+              }
+            >
+              {captureMessages.addStep}
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <div className="flex justify-end gap-3 px-4">
         <button
           type="button"
-          className="self-start text-[0.9rem] text-accent"
-          onClick={() => update({ steps: [...draft.steps, { key: nextKey(), text: "" }] })}
+          onClick={discard}
+          className="text-[0.95rem] text-owe"
         >
-          {captureMessages.addStep}
-        </button>
-      </section>
-
-      <div className="flex flex-wrap justify-between gap-3 pt-2">
-        <button type="button" onClick={back} className="text-[0.95rem] text-muted">
-          {captureMessages.back}
-        </button>
-        <button type="button" onClick={discard} className="text-[0.95rem] text-owe">
           {captureMessages.discard}
         </button>
       </div>

@@ -68,9 +68,19 @@ beforeEach(() => {
   replace.mockReset();
   vi.stubGlobal(
     "fetch",
-    vi.fn().mockResolvedValue(new Response(JSON.stringify(vocabulary), { status: 200 })),
+    vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify(vocabulary), { status: 200 }),
+      ),
   );
-  openSheet({ id: "nb-1", kind: "personal", name: "ana's Notebook", kitchenId: null, returnPath: "/notebooks" });
+  openSheet({
+    id: "nb-1",
+    kind: "personal",
+    name: "ana's Notebook",
+    kitchenId: null,
+    returnPath: "/notebooks",
+  });
   setText("2 large onions, chopped.");
   showDraft(draft, "en");
   container = document.createElement("div");
@@ -85,14 +95,16 @@ afterEach(() => {
 });
 
 describe("RecipeDraftEditor", () => {
-  it("shows the notebook line, the title, the estimated badge and the ingredient row", async () => {
+  it("shows the notebook line, the title and the ingredient row", async () => {
     await act(async () => {
       root.render(<RecipeDraftEditor />);
     });
 
-    expect(container.textContent).toContain("For: ana's Notebook");
-    expect((container.querySelector("input") as HTMLInputElement).value).toBe("Onion soup");
-    expect(container.textContent).toContain("estimated");
+    expect(container.textContent).toContain("ana's Notebook");
+    expect((container.querySelector("input") as HTMLInputElement).value).toBe(
+      "Onion soup",
+    );
+    expect(container.textContent).not.toContain("estimated");
     // MVP-OUT: expect(container.textContent).toContain("Aves");
     // MVP-OUT: expect(container.textContent).toContain("Internacional");
     expect(container.textContent).not.toContain("Main ingredients");
@@ -114,7 +126,11 @@ describe("RecipeDraftEditor", () => {
 
     act(() => buttonByText("Discard").click());
 
-    expect(getCaptureState()).toMatchObject({ draft: null, text: "", sheetOpen: true });
+    expect(getCaptureState()).toMatchObject({
+      draft: null,
+      text: "",
+      sheetOpen: true,
+    });
     expect(push).toHaveBeenCalledWith("/notebooks");
   });
 
@@ -123,9 +139,17 @@ describe("RecipeDraftEditor", () => {
       root.render(<RecipeDraftEditor />);
     });
 
-    act(() => buttonByText("Back").click());
+    act(() =>
+      (
+        document.querySelector("button[aria-label='Back']") as HTMLButtonElement
+      ).click(),
+    );
 
-    expect(getCaptureState()).toMatchObject({ draft: null, text: "2 large onions, chopped.", sheetOpen: true });
+    expect(getCaptureState()).toMatchObject({
+      draft: null,
+      text: "2 large onions, chopped.",
+      sheetOpen: true,
+    });
     expect(push).toHaveBeenCalledWith("/notebooks");
   });
 });
