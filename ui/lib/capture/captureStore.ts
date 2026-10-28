@@ -166,6 +166,15 @@ export function failSave(message: CaptureMessage): void {
   update({ saving: false, message });
 }
 
+/**
+ * The page a successful Save returns to (spec 021 FR-013). A personal notebook has its own
+ * page with the recipe list, so the member lands on the list showing the new recipe. A kitchen
+ * capture returns to the kitchen page, which lists the kitchen's recipes.
+ */
+export function savedReturnPath(notebook: CaptureNotebook): string {
+  return notebook.kind === "personal" ? `/notebooks/${notebook.id}` : notebook.returnPath;
+}
+
 /** A successful Save: the draft and text are gone, and the notebook page shows the notice. */
 export function markSaved(returnPath: string): void {
   update({

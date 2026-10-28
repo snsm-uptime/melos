@@ -9,6 +9,7 @@ import {
   failSave,
   isDraftEdited,
   markSaved,
+  savedReturnPath,
   openSheet,
   setText,
   showDraft,
@@ -135,5 +136,28 @@ describe("isDraftEdited (FR-032)", () => {
       expect(takeSavedNotice("/notebooks")).toBe(true);
       expect(takeSavedNotice("/notebooks")).toBe(false);
     });
+  });
+});
+
+describe("savedReturnPath", () => {
+  it("returns a personal capture to its notebook page and a kitchen capture to its own path", () => {
+    expect(
+      savedReturnPath({
+        id: "nb-1",
+        kind: "personal",
+        name: "ana's Notebook",
+        kitchenId: null,
+        returnPath: "/notebooks",
+      }),
+    ).toBe("/notebooks/nb-1");
+    expect(
+      savedReturnPath({
+        id: "nb-2",
+        kind: "kitchen",
+        name: "Home",
+        kitchenId: "k1",
+        returnPath: "/kitchens/k1",
+      }),
+    ).toBe("/kitchens/k1");
   });
 });

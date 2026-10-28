@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import type { Locale } from "@/lib/i18n/locale";
 import { notebooksMessages } from "@/lib/i18n/notebooks";
 
@@ -12,11 +14,13 @@ export type NotebookCardProps = {
   /** The signed-in person's alias. The owner line is hidden when the owner is this person. */
   viewerAlias?: string | null;
   locale: Locale;
+  /** When given, the card links to the notebook's recipe list (spec 021 FR-013). */
+  href?: string;
 };
 
 /**
- * Inert notebook card: no link, no button, no click handler (spec 060 FR-014).
- * Tapping a card does nothing until recipes and the notebook page land (S-016, S-021).
+ * Notebook card. With `href` it is a link to the notebook's recipe list (spec 021 FR-013);
+ * without it the card is inert: no link, no button, no click handler (spec 060 FR-014).
  */
 export function NotebookCard({
   name,
@@ -25,6 +29,7 @@ export function NotebookCard({
   isDefault = false,
   viewerAlias,
   locale,
+  href,
 }: NotebookCardProps) {
   const t = notebooksMessages[locale];
   const ownedByViewer = ownerAlias !== null && ownerAlias === viewerAlias;
@@ -37,7 +42,7 @@ export function NotebookCard({
           ? t.accessKitchenMember
           : null;
 
-  return (
+  const card = (
     <article
       className={`${styles.card} relative flex min-w-0 items-stretch gap-[var(--space-3)] rounded-[var(--radius-md)] border border-border bg-surface p-[var(--space-3)]`}
     >
@@ -57,5 +62,15 @@ export function NotebookCard({
         ) : null}
       </div>
     </article>
+  );
+
+  if (!href) return card;
+  return (
+    <Link
+      href={href}
+      className="block rounded-[var(--radius-md)] text-inherit no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+    >
+      {card}
+    </Link>
   );
 }

@@ -118,6 +118,7 @@ export function NotebookTabScreen({
                 isDefault={notebook.is_default}
                 viewerAlias={viewerAlias}
                 locale={locale}
+                href={`/notebooks/${notebook.id}`}
               />
             </li>
           ))}

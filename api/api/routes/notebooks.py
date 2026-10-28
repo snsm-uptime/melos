@@ -29,15 +29,30 @@ from application.notebooks import (
     ListMyNotebooksService,
     NotebookView,
 )
-from domain.errors import KitchenNotFoundError, NotebookNotFoundError
-from fastapi import APIRouter, Depends, status
+from application.recipe_lists import (
+    ListKitchenRecipesCommand,
+    ListKitchenRecipesService,
+    ListNotebookRecipesCommand,
+    ListNotebookRecipesService,
+    RecipeListResult,
+)
+from domain.errors import InvalidPageError, KitchenNotFoundError, NotebookNotFoundError
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from api.deps import get_db, require_authenticated_user
+from api.deps import (
+    get_db,
+    get_list_kitchen_recipes,
+    get_list_notebook_recipes,
+    require_authenticated_user,
+)
 from api.schemas.notebooks import NotebookResponse, NotebooksResponse
+from api.schemas.recipe_lists import RecipePageResponse
 
 router = APIRouter(prefix="/notebooks", tags=["notebooks"])
+
+MAX_FILTER_CHARS = 100
 
 
 def _kitchen_not_found() -> JSONResponse:
@@ -54,6 +69,24 @@ def _notebook_not_found() -> JSONResponse:
         status_code=status.HTTP_404_NOT_FOUND,
         content={"detail": NotebookNotFoundError.MESSAGE, "code": NotebookNotFoundError.CODE},
     )
+
+
+def _invalid_page() -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content={"detail": InvalidPageError.MESSAGE, "code": InvalidPageError.CODE},
+    )
+
+
+def _invalid_query() -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content={"detail": "The filter text is too long.", "code": "invalid_query"},
+    )
+
+
+def _recipe_page(result: RecipeListResult) -> RecipePageResponse:
+    return RecipePageResponse(**asdict(result))
 
 
 def _response(view: NotebookView) -> NotebookResponse:
@@ -107,6 +140,27 @@ def list_kitchen_notebooks(
     return NotebooksResponse(notebooks=[_response(view) for view in views])
 
 
+@router.get("/kitchens/{kitchen_id}/recipes", response_model=RecipePageResponse)
+def list_kitchen_recipes(
+    kitchen_id: uuid.UUID,
+    page: int = Query(default=1),
+    q: str = Query(default=""),
+    user_id: uuid.UUID = Depends(require_authenticated_user),
+    service: ListKitchenRecipesService = Depends(get_list_kitchen_recipes),
+) -> RecipePageResponse | JSONResponse:
+    if len(q) > MAX_FILTER_CHARS:
+        return _invalid_query()
+    try:
+        result = service.execute(
+            ListKitchenRecipesCommand(actor_user_id=user_id, kitchen_id=kitchen_id, page=page, q=q)
+        )
+    except KitchenNotFoundError:
+        return _kitchen_not_found()
+    except InvalidPageError:
+        return _invalid_page()
+    return _recipe_page(result)
+
+
 @router.get("/{notebook_id}", response_model=NotebookResponse)
 def get_notebook(
     notebook_id: uuid.UUID,
@@ -119,3 +173,26 @@ def get_notebook(
     except NotebookNotFoundError:
         return _notebook_not_found()
     return _response(view)
+
+
+@router.get("/{notebook_id}/recipes", response_model=RecipePageResponse)
+def list_notebook_recipes(
+    notebook_id: uuid.UUID,
+    page: int = Query(default=1),
+    q: str = Query(default=""),
+    user_id: uuid.UUID = Depends(require_authenticated_user),
+    service: ListNotebookRecipesService = Depends(get_list_notebook_recipes),
+) -> RecipePageResponse | JSONResponse:
+    if len(q) > MAX_FILTER_CHARS:
+        return _invalid_query()
+    try:
+        result = service.execute(
+            ListNotebookRecipesCommand(
+                actor_user_id=user_id, notebook_id=notebook_id, page=page, q=q
+            )
+        )
+    except NotebookNotFoundError:
+        return _notebook_not_found()
+    except InvalidPageError:
+        return _invalid_page()
+    return _recipe_page(result)

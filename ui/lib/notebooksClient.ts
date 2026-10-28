@@ -27,7 +27,7 @@ function isNotebook(data: unknown): data is NotebookResponse {
   return typeof row.id === "string" && typeof row.name === "string";
 }
 
-async function getJson<T>(
+export async function getJson<T>(
   path: string,
   parse: (data: unknown) => T | null,
 ): Promise<NotebookResult<T>> {
@@ -93,4 +93,9 @@ export function fetchKitchenNotebooks(
     `/api/notebooks/kitchens/${encodeURIComponent(kitchenId)}`,
     asNotebookList,
   );
+}
+
+/** One notebook the caller may read; 404 `notebook_not_found` otherwise. */
+export function fetchNotebook(notebookId: string): Promise<NotebookResult<NotebookResponse>> {
+  return getJson(`/api/notebooks/${encodeURIComponent(notebookId)}`, asNotebook);
 }

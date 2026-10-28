@@ -16,6 +16,7 @@ from adapters.persistence.notebooks import (
     SqlAlchemyUserDefaultNotebook,
 )
 from adapters.persistence.password_hasher import Argon2PasswordHasher
+from adapters.persistence.recipe_lists import SqlAlchemyRecipeListRepository
 from adapters.persistence.recipes import SqlAlchemyRecipeRepository
 from adapters.persistence.repositories import (
     SqlAlchemyAuthUserRepository,
@@ -27,6 +28,7 @@ from application.ports import PasswordHasher, PreferencesRepository, SessionStor
 from application.rate_limit import SlidingWindowRateLimiter, resolve_trusted_client_ip
 from application.recipe_capture import CaptureRecipeText
 from application.recipe_extraction import RecipeExtraction
+from application.recipe_lists import ListKitchenRecipesService, ListNotebookRecipesService
 from application.recipe_save import SaveRecipeDraft
 from application.recipe_vocabulary import vocabulary_answer
 from domain.errors import AliasRequiredError
@@ -180,4 +182,18 @@ def get_save_recipe_draft(db: Session = Depends(get_db)) -> SaveRecipeDraft:
             SqlAlchemyTransactionCommitter(db),
         ),
         max_text_chars=load_recipe_text_max_chars(),
+    )
+
+
+def get_list_notebook_recipes(db: Session = Depends(get_db)) -> ListNotebookRecipesService:
+    return ListNotebookRecipesService(
+        SqlAlchemyNotebookRepository(db), SqlAlchemyRecipeListRepository(db)
+    )
+
+
+def get_list_kitchen_recipes(db: Session = Depends(get_db)) -> ListKitchenRecipesService:
+    return ListKitchenRecipesService(
+        SqlAlchemyKitchenRepository(db),
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyRecipeListRepository(db),
     )

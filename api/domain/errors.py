@@ -289,3 +289,13 @@ class InviteEmailMismatchError(DomainError):
 
     def __init__(self) -> None:
         super().__init__(self.MESSAGE)
+
+
+class InvalidPageError(DomainError):
+    """Raised when a recipe list asks for a page below 1 (spec 021)."""
+
+    MESSAGE = "Page numbers start at 1."
+    CODE = "invalid_page"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)

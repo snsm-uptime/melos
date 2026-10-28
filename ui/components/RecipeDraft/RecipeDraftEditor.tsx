@@ -19,6 +19,7 @@ import {
   failSave,
   getCaptureState,
   markSaved,
+  savedReturnPath,
   startSave,
   undoChange,
   useCaptureState,
@@ -122,9 +123,9 @@ export function RecipeDraftEditor() {
       failSave(result.message);
       return;
     }
-    const returnPath = notebook!.returnPath;
-    markSaved(returnPath);
-    router.push(returnPath);
+    const savedPath = savedReturnPath(notebook!);
+    markSaved(savedPath);
+    router.push(savedPath);
   }
 
   function discard() {
