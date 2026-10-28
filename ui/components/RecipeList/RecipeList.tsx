@@ -96,7 +96,7 @@ export function RecipeList({
         aria-label={t.filterLabel}
         placeholder={t.filterPlaceholder}
         onChange={(event) => setTyped({ from: q, text: event.target.value })}
-        className="w-full min-w-0 rounded-[var(--radius-md)] border border-border bg-surface px-[var(--space-3)] py-[var(--space-2)] text-[1rem] text-foreground"
+        className="box-border w-full min-w-0 appearance-none rounded-[var(--radius-md)] border border-border bg-surface px-[var(--space-4)] py-[var(--space-3)] text-[1rem] leading-normal text-foreground placeholder:text-muted"
       />
       {state.status === "loading" ? (
         <p className={styles.copy} role="status">
