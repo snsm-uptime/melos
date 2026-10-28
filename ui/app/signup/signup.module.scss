@@ -10,6 +10,8 @@
 }
 
 .card {
+  /* The space between the form's fields, and the space above the language switch below it. */
+  --form-gap: 1rem;
   width: min(100%, 26rem);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -45,7 +47,7 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--form-gap, 1rem);
   width: 100%;
 }
 
@@ -130,7 +132,7 @@
 
 .languageRow {
   display: flex;
-  margin-top: 0.75rem;
+  margin-top: var(--form-gap, 1rem);
 }
 
 .error {
