@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
+import { BackIcon } from "@/app/icons";
 import { IngredientLineRow } from "@/components/RecipeDraft/IngredientLineRow";
 import { StepCard } from "@/components/RecipeDraft/StepCard";
 import { chooseLineMatch } from "@/lib/capture/captureStore";
@@ -148,25 +149,35 @@ export function RecipeEditForm({
 
   return (
     <div className="flex flex-col gap-6 md:min-h-0 md:flex-1">
-      <header className="flex flex-col gap-1 px-4 pt-[max(0.5rem,env(safe-area-inset-top))]">
-        <Link href={detailHref} className="self-start text-[0.9rem] text-muted no-underline">
-          ← {t.back}
-        </Link>
-        <h1 className="m-0 min-w-0">
-          <input
-            aria-label={t.titleLabel}
-            placeholder={t.titleLabel}
-            className="w-full min-w-0 rounded-[0.4rem] border-0 bg-transparent px-1 py-[0.15rem] text-[1.5rem] font-[550] leading-normal text-foreground outline-none hover:bg-background focus:bg-background"
-            value={state.title}
-            onChange={(event) => commit({ ...state, title: event.target.value })}
-          />
-        </h1>
-        <h4 className="m-0 px-1 text-[0.9rem] font-normal text-muted">{recipe.notebook.name}</h4>
-        {errors.title ? (
-          <span role="alert" className="px-1 text-[0.8rem] text-owe">
-            {captureMessages.errors[errors.title]}
-          </span>
-        ) : null}
+      {/* Same insets and Back slot as the draft page and AppShell's chrome header. */}
+      <header className="flex items-center gap-2 pt-[max(0.5rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-1 pl-[max(0.5rem,env(safe-area-inset-left))]">
+        <div className="flex w-10 shrink-0 items-center justify-start self-center">
+          <Link
+            href={detailHref}
+            aria-label={t.back}
+            title={t.back}
+            className="m-0 inline-flex flex-shrink-0 items-center justify-center rounded-[8px] border-0 bg-transparent p-1 leading-none text-muted transition-all duration-150 hover:text-foreground"
+          >
+            <BackIcon className="size-6" />
+          </Link>
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <h1 className="m-0 min-w-0">
+            <input
+              aria-label={t.titleLabel}
+              placeholder={t.titleLabel}
+              className="w-full min-w-0 rounded-[0.4rem] border-0 bg-transparent px-1 py-[0.15rem] text-[1.5rem] font-[550] leading-normal text-foreground outline-none hover:bg-background focus:bg-background"
+              value={state.title}
+              onChange={(event) => commit({ ...state, title: event.target.value })}
+            />
+          </h1>
+          <h4 className="m-0 px-1 text-[0.9rem] font-normal text-muted">{recipe.notebook.name}</h4>
+          {errors.title ? (
+            <span role="alert" className="px-1 text-[0.8rem] text-owe">
+              {captureMessages.errors[errors.title]}
+            </span>
+          ) : null}
+        </div>
       </header>
 
       <div className="flex flex-col gap-6 px-4 md:min-h-0 md:flex-1 md:flex-row">
@@ -302,45 +313,41 @@ export function RecipeEditForm({
         </section>
       </div>
 
-      <div className="flex flex-col gap-2 px-4 pb-6">
-        {checking ? (
-          <p className="m-0 text-[0.85rem] text-muted" role="status">
-            {t.checkingNames}
+      {checking ? (
+        <p className="m-0 px-4 text-[0.85rem] text-muted" role="status">
+          {t.checkingNames}
+        </p>
+      ) : null}
+      {messageText ? (
+        <div className="flex flex-col items-start gap-2 px-4">
+          <p className="m-0 text-[0.9rem] text-owe" role="alert">
+            {messageText}
           </p>
-        ) : null}
-        {messageText ? (
-          <div className="flex flex-col items-start gap-2">
-            <p className="m-0 text-owe" role="alert">
-              {messageText}
-            </p>
-            {message?.kind === "changed" ? (
-              <button
-                type="button"
-                className="rounded-[var(--radius-md)] border border-border px-3 py-1 text-foreground"
-                onClick={onReload}
-              >
-                {t.reload}
-              </button>
-            ) : null}
-            {message?.kind === "gone" ? <Link href={listHref}>{t.goToNotebooks}</Link> : null}
-          </div>
-        ) : null}
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="rounded-[var(--radius-md)] bg-accent px-4 py-2 font-[550] text-on-accent disabled:opacity-50"
-            disabled={saving || hasErrors(errors)}
-            onClick={() => void save()}
-          >
-            {saving ? t.saving : t.save}
-          </button>
-          <Link
-            href={detailHref}
-            className="rounded-[var(--radius-md)] border border-border px-4 py-2 text-foreground no-underline"
-          >
-            {t.cancel}
-          </Link>
+          {message?.kind === "changed" ? (
+            <button
+              type="button"
+              className="rounded-[0.75rem] border border-border px-3 py-1 text-foreground"
+              onClick={onReload}
+            >
+              {t.reload}
+            </button>
+          ) : null}
+          {message?.kind === "gone" ? <Link href={listHref}>{t.goToNotebooks}</Link> : null}
         </div>
+      ) : null}
+
+      <div className="flex items-center justify-end gap-4 px-4">
+        <Link href={detailHref} className="text-[0.95rem] text-muted no-underline">
+          {t.cancel}
+        </Link>
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={saving || hasErrors(errors)}
+          className="rounded-[0.75rem] bg-accent px-4 py-2 text-[0.95rem] font-semibold text-on-accent disabled:opacity-50"
+        >
+          {saving ? t.saving : t.save}
+        </button>
       </div>
       <RecipeEditLeaveGuard edited={edited} locale={locale} />
     </div>

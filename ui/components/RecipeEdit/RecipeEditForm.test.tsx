@@ -270,7 +270,8 @@ describe("RecipeEditForm", () => {
 
   it("asks before leaving with unsaved changes, and not otherwise", () => {
     render();
-    act(() => link("Back")?.click());
+    const backLink = document.querySelector("a[aria-label=Back]") as HTMLAnchorElement;
+    expect(backLink.getAttribute("href")).toBe("/recipes/r1?from=%2Fnotebooks%2Fnb1");
     expect(document.body.textContent).not.toContain("Leave without saving?");
 
     act(() => setValue(byLabel("Title")[0], "Changed"));
