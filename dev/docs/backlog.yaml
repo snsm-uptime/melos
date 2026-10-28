@@ -578,6 +578,33 @@ stories:
       answers 200 on the running dev stack and the recipe is unchanged by the control. Not done: the
       browser walk (layout at phone width, keyboard-only use, screen-reader announcement).
 
+  - id: S-063
+    title: Spanish as the default interface language, English or Spanish chosen in the account, every screen translated
+    epic: Account
+    priority: should
+    status: done
+    journey: J0
+    source: >
+      user request 2026-10-28; prd.md 1.2 (UI shell, English and Spanish chosen in the account);
+      replaces the "account language story / Story 1.6" deferrals in specs 016, 017, 018 and 060;
+      specs/063-spanish-default-i18n
+    notes: >
+      Spanish for everyone with no saved language (visitors, new and existing accounts). A language
+      choice in the account, saved to users.language (S-005 had removed the selector). Spanish text
+      for the capture flow and the shared draft cards, which are English only today. One language
+      source for server pages, the client provider and any cached copy: server-built pages cannot
+      see the saved language today and always show English. Not in scope: kitchen content_language,
+      emails, decimal comma, translating stored names.
+    verification: >
+      Implemented 2026-10-28 on branch 063-spanish-default-i18n, not committed. ui only: no api
+      change, no migration. ui: 107 files, 745 tests passed, lint and typecheck clean; a parity test
+      fails the build when a message exists in one language only. Server-built HTML checked against
+      the running dev stack: Spanish by default whatever the browser sends, the signed-out pick in a
+      session cookie, the account's saved language always winning, one /auth/me per page load. Not
+      done: the browser walk (switch on /sign-in, no flash on reload, capture flow in both
+      languages, phone width). The Spanish wording was drafted by the assistant and needs the
+      owner's review before release.
+
   - id: S-048
     title: Copy a recipe into another notebook (normalize names, confirm)
     epic: Recipes

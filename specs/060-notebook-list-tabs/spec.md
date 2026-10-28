@@ -128,7 +128,7 @@ A person who is removed from a kitchen, or whose access to a notebook ends, stop
 - Lists are short (a person has a handful of notebooks; a kitchen has a few), so no paging or search is needed here.
 - The owner alias shown is the current alias the answer gives, not a copy saved on the screen.
 - The data is the read answers already defined in spec 056 (personal list, default, kitchen list, one notebook). This feature does not change those answers.
-- No per-person interface language exists yet: the account language setting is Story 1.6. Existing pages read the language from a `melos_lang_cache` cookie that defaults to English, and these screens use the same rule, so they show English until that setting exists (FR-011).
+- No per-person interface language exists yet: the account language setting is Story 1.6. Existing pages read the language from a `melos_lang_cache` cookie that defaults to English, and these screens use the same rule, so they show English until that setting exists (FR-011). *(Superseded by spec 063: Spanish and English for every screen, Spanish by default.)*
 
 ## Out of Scope
 
