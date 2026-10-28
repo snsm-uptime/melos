@@ -95,13 +95,12 @@ class FakeNotebookRepo:
             is_default=is_default,
         )
 
-    def personal_facts_for(self, user_id: UUID) -> list[NotebookFacts]:
+    def visible_facts_for(self, user_id: UUID) -> list[NotebookFacts]:
         return [
             facts
             for notebook in self.notebooks.values()
-            if notebook.kitchen_id is None and (notebook.id, user_id) in self.roles
             for facts in [self.facts_for(user_id, notebook.id)]
-            if facts is not None
+            if facts is not None and (facts.role is not None or facts.in_kitchen)
         ]
 
     def kitchen_notebooks(self, kitchen_id: UUID) -> list[Notebook]:
@@ -627,24 +626,26 @@ def test_personal_capture_with_two_notebooks_needs_a_pick_of_its_own_notebooks()
 # --- Reads (US4, FR-014 to FR-017) ---
 
 
-def test_my_list_has_only_my_personal_notebooks_oldest_first_and_creates_nothing() -> None:
+def test_my_list_has_my_personal_and_kitchen_notebooks_oldest_first_and_creates_nothing() -> None:
     ana, ben = uuid4(), uuid4()
     world = _world({ana: "ana", ben: "ben"})
     default = _default(world).execute(GetDefaultNotebookCommand(actor_user_id=ana))
     family = _personal(world, ben, "ben's Family")
     world.notebooks.roles[(family, ana)] = "member"
     home = _kitchen(world, ana)
-    _kitchen_notebook(world, home, "ana's (Home) Notebook", ana)
+    home_notebook = _kitchen_notebook(world, home, "ana's (Home) Notebook", ana)
+    bens = _kitchen(world, ben, "Bens")
+    _kitchen_notebook(world, bens, "ben's (Bens) Notebook", ben)
     world.notebooks.calls.clear()
 
     views = ListMyNotebooksService(world.notebooks).execute(
         ListMyNotebooksCommand(actor_user_id=ana)
     )
 
-    assert [view.id for view in views] == [default.id, family]
-    assert [view.access for view in views] == ["owner", "member"]
-    assert [view.is_default for view in views] == [True, False]
-    assert all(view.kind == "personal" for view in views)
+    assert [view.id for view in views] == [default.id, family, home_notebook]
+    assert [view.access for view in views] == ["owner", "member", "kitchen_member"]
+    assert [view.kind for view in views] == ["personal", "personal", "kitchen"]
+    assert [view.is_default for view in views] == [True, False, False]
     assert "create" not in world.notebooks.calls
 
 

@@ -92,8 +92,9 @@ class NotebookRepository(Protocol):
         """The notebook and the caller's facts, or None when the notebook does not exist."""
         ...
 
-    def personal_facts_for(self, user_id: UUID) -> list[NotebookFacts]:
-        """Personal notebooks where the user has a membership, oldest first."""
+    def visible_facts_for(self, user_id: UUID) -> list[NotebookFacts]:
+        """Personal notebooks where the user has a membership, and the notebooks of the
+        kitchens they belong to, oldest first."""
         ...
 
     def kitchen_notebooks(self, kitchen_id: UUID) -> list[Notebook]:
