@@ -560,6 +560,24 @@ stories:
       notebook of the kitchen. Author alias comes from the recipe's author_id; "unknown" when the
       author's account is deleted (redesign 2026-10-23).
 
+  - id: S-062
+    title: Scale a recipe's servings on the detail page to see proportional amounts (view only, not saved)
+    epic: Recipes
+    priority: should
+    status: done
+    journey: J3
+    source: user request 2026-10-28 (not in prd.md; extends the J3 detail); specs/062-recipe-servings-scale
+    notes: >
+      A servings control on the recipe detail (spec 027). Measured and counted quantities are
+      multiplied by chosen / saved servings for display only; vague notes, units, steps and the
+      stored recipe never change; a reload shows the saved servings. Separate from the cart's
+      people x meals scale factor (S-022).
+    verification: >
+      Implemented 2026-10-28 on branch 062-recipe-servings-scale, not committed. ui only: no api
+      change, no migration. ui: 90 files, 584 tests passed, lint and typecheck clean. The detail page
+      answers 200 on the running dev stack and the recipe is unchanged by the control. Not done: the
+      browser walk (layout at phone width, keyboard-only use, screen-reader announcement).
+
   - id: S-048
     title: Copy a recipe into another notebook (normalize names, confirm)
     epic: Recipes
