@@ -88,6 +88,7 @@ export function SignupForm({ locale, inviteToken }: Props) {
         email,
         password,
         inviteToken: inviteToken || null,
+        language: locale,
         errorDuplicate: t.errorDuplicate,
         errorInvalid: t.errorInvalid,
         errorGeneric: t.errorGeneric,

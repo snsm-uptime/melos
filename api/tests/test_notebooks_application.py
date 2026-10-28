@@ -188,12 +188,13 @@ class FakeCommitter:
 @dataclass
 class FakePrefs:
     aliases: dict[UUID, str]
+    languages: dict[UUID, str] = field(default_factory=dict)
 
     def get_preferences(self, user_id: UUID) -> UserPreferencesRecord | None:
         return UserPreferencesRecord(
             id=user_id,
             email="x@example.com",
-            language=None,
+            language=self.languages.get(user_id),
             theme=None,
             alias=self.aliases.get(user_id),
         )
@@ -209,7 +210,7 @@ class World:
     committer: FakeCommitter
 
 
-def _world(aliases: dict[UUID, str]) -> World:
+def _world(aliases: dict[UUID, str], languages: dict[UUID, str] | None = None) -> World:
     kitchens = FakeKitchenRepo()
     notebooks = FakeNotebookRepo(kitchens=kitchens, aliases=aliases)
     return World(
@@ -217,7 +218,7 @@ def _world(aliases: dict[UUID, str]) -> World:
         notebooks=notebooks,
         catalog=FakeIngredientCatalog(notebooks),
         defaults=FakeUserDefaultNotebook(notebooks),
-        prefs=FakePrefs(aliases),
+        prefs=FakePrefs(aliases, languages or {}),
         committer=FakeCommitter(),
     )
 
@@ -278,7 +279,7 @@ def _resolve(world: World) -> ResolveCaptureNotebookService:
 
 def test_first_default_call_creates_seeded_personal_notebook_and_sets_default() -> None:
     ana = uuid4()
-    world = _world({ana: "ana"})
+    world = _world({ana: "ana"}, {ana: "en"})
 
     view = _default(world).execute(GetDefaultNotebookCommand(actor_user_id=ana))
 
@@ -317,7 +318,7 @@ def test_default_set_by_another_call_under_the_lock_creates_nothing() -> None:
 
 def test_deleted_default_is_recreated_on_next_call() -> None:
     ana = uuid4()
-    world = _world({ana: "ana"})
+    world = _world({ana: "ana"}, {ana: "en"})
     first = _default(world).execute(GetDefaultNotebookCommand(actor_user_id=ana))
 
     world.notebooks.delete(first.id)
@@ -353,7 +354,7 @@ def test_default_without_alias_raises_and_creates_nothing() -> None:
 
 def test_first_open_creates_kitchen_notebook_owned_by_the_opener() -> None:
     ana, ben = uuid4(), uuid4()
-    world = _world({ana: "ana", ben: "ben"})
+    world = _world({ana: "ana", ben: "ben"}, {ben: "en"})
     home = _kitchen(world, ana)
     _join(world, home, ben)
     _personal(world, ben, "ben's Notebook", {"onion"})
@@ -444,12 +445,46 @@ def test_non_member_and_missing_kitchen_get_the_same_not_found() -> None:
         )
 
 
+# --- Names follow the language of the person who causes them ---
+
+
+def test_default_notebook_is_named_in_spanish_for_a_spanish_account() -> None:
+    ana = uuid4()
+    world = _world({ana: "ana"}, {ana: "es"})
+
+    view = _default(world).execute(GetDefaultNotebookCommand(actor_user_id=ana))
+
+    assert view.name == "Cuaderno de ana"
+
+
+def test_default_notebook_is_named_in_spanish_when_the_account_saved_no_language() -> None:
+    ana = uuid4()
+    world = _world({ana: "ana"})
+
+    view = _default(world).execute(GetDefaultNotebookCommand(actor_user_id=ana))
+
+    assert view.name == "Cuaderno de ana"
+
+
+def test_kitchen_notebook_takes_the_language_of_the_member_who_opens_it() -> None:
+    ana, ben = uuid4(), uuid4()
+    world = _world({ana: "ana", ben: "ben"}, {ana: "en", ben: "es"})
+    home = _kitchen(world, ana, "Casa")
+    _join(world, home, ben)
+
+    views = _list_kitchen(world).execute(
+        ListKitchenNotebooksCommand(actor_user_id=ben, kitchen_id=home)
+    )
+
+    assert [view.name for view in views] == ["Cuaderno de ben (Casa)"]
+
+
 # --- The capture notebook step (US3, FR-009 to FR-011) ---
 
 
 def test_kitchen_capture_with_no_notebook_creates_one_and_commits_once() -> None:
     ana = uuid4()
-    world = _world({ana: "ana"})
+    world = _world({ana: "ana"}, {ana: "en"})
     my_kitchen = _kitchen(world, ana, "My kitchen")
     _personal(world, ana, "ana's Notebook", {"onion"})
     world.notebooks.calls.clear()
@@ -555,7 +590,7 @@ def test_archived_kitchen_refuses_capture_before_reading_notebooks() -> None:
 
 def test_personal_capture_with_no_notebook_creates_the_default_and_commits() -> None:
     ana = uuid4()
-    world = _world({ana: "ana"})
+    world = _world({ana: "ana"}, {ana: "en"})
 
     result = _resolve(world).execute(ResolveCaptureNotebookCommand(actor_user_id=ana))
 

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from uuid import UUID, uuid4
 
 from domain.errors import DuplicateEmailError
-from domain.signup import PERSONAL_KITCHEN_NAME, validate_signup_input
+from domain.signup import personal_kitchen_name, validate_signup_input
 
 from application.ports import (
     NewKitchenRecord,
@@ -30,6 +30,8 @@ class SignupCommand:
     email: str
     password: str
     email_verification_required: bool = False
+    # The language the visitor chose before signing up; names the first kitchen. None is Spanish.
+    language: str | None = None
 
 
 class SignUpService:
@@ -49,6 +51,7 @@ class SignUpService:
         # verification mail; gating remains orthogonal via EnsureEmailVerifiedService.
         _ = command.email_verification_required
 
+        kitchen_name = personal_kitchen_name(command.language)
         user_id = uuid4()
         kitchen_id = uuid4()
         membership_id = uuid4()
@@ -57,7 +60,7 @@ class SignUpService:
             user=NewUserRecord(id=user_id, email=email, password_hash=password_hash),
             personal_kitchen=NewKitchenRecord(
                 id=kitchen_id,
-                name=PERSONAL_KITCHEN_NAME,
+                name=kitchen_name,
                 owner_id=user_id,
             ),
             membership=NewMembershipRecord(
@@ -71,5 +74,5 @@ class SignUpService:
             user_id=user_id,
             email=email,
             kitchen_id=kitchen_id,
-            kitchen_name=PERSONAL_KITCHEN_NAME,
+            kitchen_name=kitchen_name,
         )

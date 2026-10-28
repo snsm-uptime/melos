@@ -40,6 +40,15 @@ def coerce_stored_language(stored: str | None) -> str | None:
         return None
 
 
+def name_language(stored: str | None) -> str:
+    """Language for names fixed at creation time (the first kitchen and the notebooks).
+
+    Spanish unless the account saved English: Spanish is the product default for anyone with
+    no saved language (spec 063), unlike ``DEFAULT_LANGUAGE``, which only drives Accept-Language.
+    """
+    return "en" if coerce_stored_language(stored) == "en" else "es"
+
+
 def coerce_stored_theme(stored: str | None) -> str | None:
     """Return validated stored theme, or None when unset/corrupt."""
     if not stored:

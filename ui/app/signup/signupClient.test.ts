@@ -67,6 +67,25 @@ describe("attemptSignup", () => {
     );
   });
 
+  it("sends the language the form is shown in, so the first kitchen is named in it", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 201 }));
+    await attemptSignup({
+      email: "member@example.com",
+      password: "password1",
+      language: "es",
+      errorDuplicate: signupMessages.es.errorDuplicate,
+      errorInvalid: signupMessages.es.errorInvalid,
+      errorGeneric: signupMessages.es.errorGeneric,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "/api/auth/register",
+      expect.objectContaining({
+        body: JSON.stringify({ email: "member@example.com", password: "password1", language: "es" }),
+      }),
+    );
+  });
+
   it("maps email_not_verified to needsVerify for invite retain flow", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ code: "email_not_verified" }), { status: 403 }),

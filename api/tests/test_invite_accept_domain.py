@@ -347,6 +347,34 @@ def test_accept_verification_required_blocks_before_claim() -> None:
     assert tokens.get_by_token_hash(invite.token_hash).used_at is None
 
 
+def test_signup_with_invite_names_the_personal_kitchen_in_the_chosen_language() -> None:
+    raw, invite = _invite()
+    tokens = FakeTokens(tokens={invite.token_hash: invite})
+    kitchens = FakeKitchens(
+        kitchens={invite.kitchen_id: KitchenRecord(invite.kitchen_id, "Household", uuid4())}
+    )
+    signup_repo = FakeSignupRepo()
+
+    result = SignUpWithInviteService(
+        SignUpService(signup_repo, PlainHasher()),
+        tokens,
+        FakeUsers(),
+        kitchens,
+        FakeVerification(),
+    ).execute(
+        SignUpWithInviteCommand(
+            email="invitee@example.com",
+            password="password1",
+            raw_token=raw,
+            email_verification_required=False,
+            language="en",
+        )
+    )
+
+    assert result.personal_kitchen_name == "My kitchen"
+    assert signup_repo.kitchens[0].name == "My kitchen"
+
+
 def test_signup_with_invite_creates_personal_and_inviting_membership() -> None:
     raw, invite = _invite()
     tokens = FakeTokens(tokens={invite.token_hash: invite})

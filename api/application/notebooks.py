@@ -67,11 +67,12 @@ def notebook_view(facts: NotebookFacts) -> NotebookView:
     )
 
 
-def _alias_for(prefs: PreferencesRepository, user_id: UUID) -> str:
+def _naming_profile(prefs: PreferencesRepository, user_id: UUID) -> tuple[str, str | None]:
+    """The alias and saved language a new name is written with."""
     record = prefs.get_preferences(user_id)
     if record is None or not record.alias:
         raise AliasRequiredError()
-    return record.alias
+    return record.alias, record.language
 
 
 def ensure_default_notebook(
@@ -91,8 +92,8 @@ def ensure_default_notebook(
     if current is not None and notebooks.get(current) is not None:
         return current, False
 
-    alias = _alias_for(prefs, user_id)
-    notebook = Notebook(id=uuid4(), name=default_notebook_name(alias))
+    alias, language = _naming_profile(prefs, user_id)
+    notebook = Notebook(id=uuid4(), name=default_notebook_name(alias, language))
     notebooks.create(notebook)
     catalog.seed_from_person(notebook.id, user_id)
     notebooks.add_owner(notebook.id, user_id)
@@ -104,11 +105,14 @@ def ensure_kitchen_notebook(
     kitchen: KitchenRecord,
     actor_user_id: UUID,
     alias: str,
+    language: str | None,
     *,
     notebooks: NotebookRepository,
     catalog: IngredientCatalog,
 ) -> tuple[UUID, bool]:
     """A kitchen's first notebook, owned by the caller, made under the kitchen-row lock (FR-008a).
+
+    Named with the caller's alias, in the caller's language.
 
     Returns (id, created). Not committed here: the caller decides (research R14).
     """
@@ -119,7 +123,7 @@ def ensure_kitchen_notebook(
 
     notebook = Notebook(
         id=uuid4(),
-        name=kitchen_notebook_name(alias, kitchen.name),
+        name=kitchen_notebook_name(alias, kitchen.name, language),
         kitchen_id=kitchen.id,
         owner_user_id=actor_user_id,
     )
@@ -235,10 +239,12 @@ class ListKitchenNotebooksService:
         )
         kitchen = self._kitchens.get_kitchen_with_grant(grant, command.kitchen_id)
         if not self._notebooks.kitchen_ids_for(kitchen.id) and not kitchen.is_archived:
+            alias, language = _naming_profile(self._prefs, command.actor_user_id)
             ensure_kitchen_notebook(
                 kitchen,
                 command.actor_user_id,
-                _alias_for(self._prefs, command.actor_user_id),
+                alias,
+                language,
                 notebooks=self._notebooks,
                 catalog=self._catalog,
             )
@@ -312,10 +318,12 @@ class ResolveCaptureNotebookService:
         if chosen is not None:
             return CaptureNotebook(notebook_id=chosen, created=False)
 
+        alias, language = _naming_profile(self._prefs, command.actor_user_id)
         notebook_id, created = ensure_kitchen_notebook(
             kitchen,
             command.actor_user_id,
-            _alias_for(self._prefs, command.actor_user_id),
+            alias,
+            language,
             notebooks=self._notebooks,
             catalog=self._catalog,
         )

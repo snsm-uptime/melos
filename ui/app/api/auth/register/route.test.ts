@@ -49,6 +49,30 @@ describe("register BFF route", () => {
     expect(setCookie?.toLowerCase()).toContain("httponly");
   });
 
+  it("forwards the language only when it is en or es", async () => {
+    process.env.API_INTERNAL_URL = "http://api:8000";
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { POST } = await import("@/app/api/auth/register/route");
+    const post = (language: unknown) =>
+      POST(
+        new Request("http://localhost:3000/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: "a@b.co", password: "password1", language }),
+        }) as never,
+      );
+
+    await post("es");
+    await post("fr");
+
+    const sent = fetchMock.mock.calls.map(
+      (call) => JSON.parse(((call as unknown[])[1] as { body: string }).body) as Record<string, string>,
+    );
+    expect(sent[0].language).toBe("es");
+    expect(sent[1].language).toBeUndefined();
+  });
+
   it("rejects invalid JSON", async () => {
     process.env.API_INTERNAL_URL = "http://api:8000";
     const { POST } = await import("@/app/api/auth/register/route");

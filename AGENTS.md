@@ -47,20 +47,27 @@ Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
     kitchen invite flow, reused). The owner and members add, edit and delete
     its recipes; only the owner renames or deletes it and invites or removes
     members. It is never shown in a kitchen. Every person gets a default one,
-    "{alias}'s Notebook", on first use (`users.default_notebook_id`; the auth
-    routes are not changed) and can create more.
+    "{alias}'s Notebook" ("Cuaderno de {alias}" in Spanish), on first use
+    (`users.default_notebook_id`; the auth routes are not changed) and can
+    create more.
   - A **kitchen notebook** belongs to one kitchen, which can have several. Every
     member of the kitchen reads, writes, renames and deletes it, only while
     they belong to the kitchen. It has no owner and no membership rows. It is
     deleted with the kitchen.
 - A kitchen notebook is created on the first open of the kitchen's notebook
-  list, as "{alias}'s ({kitchen name}) Notebook" named after the member who
-  opens it (spec 056 FR-008a); or by the first saved capture in a kitchen that
-  has none (FR-009). A kitchen made at signup, such as "My kitchen", starts with
+  list, as "{alias}'s ({kitchen name}) Notebook" ("Cuaderno de {alias}
+  ({kitchen name})" in Spanish) named after the member who opens it (spec 056
+  FR-008a); or by the first saved capture in a kitchen that has none (FR-009).
+  A kitchen made at signup, "My kitchen" ("Mi cocina" in Spanish), starts with
   none; or as a snapshot. A snapshot is an independent kitchen copy of a
   personal notebook, added by any kitchen member. It keeps only an origin
   label (`source_notebook_id`, cleared if the original is deleted); the two
   never sync.
+- The names above are fixed when they are made, in the language of the person
+  who causes it: the account's saved language, or Spanish when none is saved
+  (spec 063). At signup the language the visitor chose is sent with the
+  register request, because it is saved to the account only afterwards. A name
+  already made is not translated later.
 - A capture outside a kitchen goes into a personal notebook the person owns or
   is a member of; in a kitchen, into one of the kitchen's notebooks. With
   several, the person picks one. No capture happens in an archived kitchen.

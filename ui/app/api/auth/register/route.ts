@@ -7,6 +7,7 @@ type RegisterBody = {
   email?: unknown;
   password?: unknown;
   invite_token?: unknown;
+  language?: unknown;
 };
 
 /**
@@ -32,6 +33,10 @@ export async function POST(request: NextRequest) {
   const payload: Record<string, string> = { email, password };
   if (inviteToken) {
     payload.invite_token = inviteToken;
+  }
+  // Names the first kitchen in the visitor's language; anything else is left for the api's default.
+  if (body.language === "en" || body.language === "es") {
+    payload.language = body.language;
   }
 
   let upstream: Response;

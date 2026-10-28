@@ -12,6 +12,9 @@ class RegisterRequest(BaseModel):
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=8, max_length=256)
     invite_token: str | None = Field(default=None, max_length=512)
+    # The language picked while signed out; only names the first kitchen ("My kitchen" /
+    # "Mi cocina"). Unset is Spanish. The account's saved language is set by PATCH /auth/me.
+    language: Literal["en", "es"] | None = None
 
 
 class RegisterResponse(BaseModel):

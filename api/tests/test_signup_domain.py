@@ -9,7 +9,7 @@ import pytest
 from application.ports import NewKitchenRecord, NewMembershipRecord, NewUserRecord
 from application.signup import SignupCommand, SignUpService
 from domain.errors import DuplicateEmailError, InvalidSignupError
-from domain.signup import PERSONAL_KITCHEN_NAME, validate_signup_input
+from domain.signup import personal_kitchen_name, validate_signup_input
 
 
 class FakeHasher:
@@ -69,7 +69,7 @@ def test_signup_creates_user_and_exactly_one_personal_kitchen() -> None:
     result = service.execute(SignupCommand(email="member@example.com", password="password1"))
 
     assert result.email == "member@example.com"
-    assert result.kitchen_name == PERSONAL_KITCHEN_NAME
+    assert result.kitchen_name == "Mi cocina"
     assert len(repo.users) == 1
     assert len(repo.kitchens) == 1
     assert len(repo.memberships) == 1
@@ -122,3 +122,25 @@ def test_signup_fr4_off_does_not_require_verification_step() -> None:
 
     assert result.user_id is not None
     assert len(repo.kitchens) == 1
+
+
+@pytest.mark.parametrize(
+    ("language", "name"),
+    [("en", "My kitchen"), ("es", "Mi cocina"), (None, "Mi cocina"), ("fr", "Mi cocina")],
+)
+def test_personal_kitchen_name_follows_the_language_and_defaults_to_spanish(
+    language: str | None, name: str
+) -> None:
+    assert personal_kitchen_name(language) == name
+
+
+def test_signup_names_the_personal_kitchen_in_the_chosen_language() -> None:
+    repo = FakeSignupRepo()
+    service = SignUpService(repo, FakeHasher())
+
+    result = service.execute(
+        SignupCommand(email="member@example.com", password="password1", language="en")
+    )
+
+    assert result.kitchen_name == "My kitchen"
+    assert repo.kitchens[0].name == "My kitchen"

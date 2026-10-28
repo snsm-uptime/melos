@@ -1,4 +1,5 @@
 import { clearLanguagePick, readLanguagePick } from "@/lib/i18n/languagePick";
+import type { Locale } from "@/lib/i18n/locale";
 
 /** Pure helpers for signup form (unit-tested without a React render). */
 
@@ -15,6 +16,8 @@ export async function attemptSignup(args: {
   email: string;
   password: string;
   inviteToken?: string | null;
+  /** The language the form is shown in; the api names the first kitchen with it. */
+  language?: Locale;
   errorDuplicate: string;
   errorInvalid: string;
   errorGeneric: string;
@@ -34,6 +37,9 @@ export async function attemptSignup(args: {
   };
   if (args.inviteToken) {
     body.invite_token = args.inviteToken;
+  }
+  if (args.language) {
+    body.language = args.language;
   }
   try {
     const response = await fetchFn("/api/auth/register", {

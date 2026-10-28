@@ -61,6 +61,7 @@ class SignUpWithInviteCommand:
     password: str
     raw_token: str
     email_verification_required: bool
+    language: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -241,6 +242,7 @@ class SignUpWithInviteService:
                 email=command.email,
                 password=command.password,
                 email_verification_required=command.email_verification_required,
+                language=command.language,
             )
         )
 
