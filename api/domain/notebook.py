@@ -72,6 +72,17 @@ def notebook_access(
     return "kitchen_member" if in_kitchen else None
 
 
+def can_write_recipes(access: NotebookAccess, kitchen_is_archived: bool | None) -> bool:
+    """Whether the caller may edit and delete the recipes of a notebook (spec 027 FR-005).
+
+    The owner and members of a personal notebook may. A member of a kitchen may write its
+    notebooks unless the kitchen is archived, which is read-only.
+    """
+    if access == "kitchen_member":
+        return not kitchen_is_archived
+    return True
+
+
 def choose_capture_notebook(candidates: list[UUID], picked: UUID | None) -> UUID | None:
     """The notebook a capture goes into, or None when the step must create one (FR-009, FR-011).
 

@@ -10,6 +10,18 @@ from __future__ import annotations
 import uuid
 
 from application.recipe_capture import TextTooLongError
+from application.recipe_manage import (
+    DeleteRecipeCommand,
+    DeleteRecipeService,
+    GetRecipeCommand,
+    GetRecipeService,
+    MatchRecipeNamesCommand,
+    MatchRecipeNamesService,
+    RecipeView,
+    UpdatedRecipe,
+    UpdateRecipeCommand,
+    UpdateRecipeService,
+)
 from application.recipe_save import SavedRecipe, SaveRecipeCommand, SaveRecipeDraft
 from domain.errors import (
     KitchenArchivedError,
@@ -17,6 +29,9 @@ from domain.errors import (
     NotebookChoiceRequiredError,
     NotebookNotFoundError,
     NotKitchenMemberError,
+    RecipeChangedError,
+    RecipeNotFoundError,
+    RecipeReadOnlyError,
 )
 from domain.recipe_draft import (
     DraftProblems,
@@ -24,11 +39,29 @@ from domain.recipe_draft import (
     InvalidDraftError,
     clean_display_name,
 )
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import JSONResponse
 
-from api.deps import get_save_recipe_draft, require_user_alias
-from api.schemas.recipes import SaveRecipeBody
+from api.deps import (
+    get_delete_recipe,
+    get_get_recipe,
+    get_match_recipe_names,
+    get_save_recipe_draft,
+    get_update_recipe,
+    require_user_alias,
+)
+from api.schemas.recipes import (
+    NameMatch,
+    NameMatchesBody,
+    NameMatchesResponse,
+    RecipeDetailResponse,
+    RecipeLineResponse,
+    RecipeNotebookResponse,
+    RecipeSourceResponse,
+    SaveRecipeBody,
+    UpdateRecipeBody,
+    UpdateRecipeResponse,
+)
 
 router = APIRouter(tags=["recipes"])
 
@@ -135,3 +168,149 @@ def save_recipe(
         status_code=status.HTTP_201_CREATED if saved.created else status.HTTP_200_OK,
         content=_body(saved),
     )
+
+
+def _detail(view: RecipeView) -> RecipeDetailResponse:
+    detail, notebook = view.detail, view.notebook
+    return RecipeDetailResponse(
+        id=detail.id,
+        title=detail.title,
+        base_servings=detail.base_servings,
+        servings_estimated=detail.servings_estimated,
+        author_alias=detail.author_alias,
+        created_at=detail.created_at,
+        version=detail.updated_at,
+        notebook=RecipeNotebookResponse(
+            id=notebook.id,
+            name=notebook.name,
+            kind=notebook.kind,
+            kitchen_id=notebook.kitchen_id,
+        ),
+        can_write=view.can_write,
+        ingredient_lines=[
+            RecipeLineResponse(
+                name=line.name,
+                vague=line.vague,
+                quantity=line.quantity,
+                unit=line.unit,
+                size=line.size,
+                preparation=line.preparation,
+                note=line.note,
+            )
+            for line in detail.lines
+        ],
+        steps=list(detail.steps),
+        source=(
+            RecipeSourceResponse(type=detail.source_type or "url", url=detail.source_url)
+            if detail.source_url
+            else None
+        ),
+    )
+
+
+def _not_found() -> JSONResponse:
+    return _error(status.HTTP_404_NOT_FOUND, RecipeNotFoundError.CODE, RecipeNotFoundError.MESSAGE)
+
+
+def _read_only() -> JSONResponse:
+    return _error(status.HTTP_403_FORBIDDEN, RecipeReadOnlyError.CODE, RecipeReadOnlyError.MESSAGE)
+
+
+@router.get("/recipes/{recipe_id}")
+def get_recipe(
+    recipe_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    service: GetRecipeService = Depends(get_get_recipe),
+) -> JSONResponse:
+    try:
+        view = service.execute(GetRecipeCommand(actor_user_id=user_id, recipe_id=recipe_id))
+    except RecipeNotFoundError:
+        return _not_found()
+    return JSONResponse(content=_detail(view).model_dump(mode="json"))
+
+
+@router.post("/recipes/{recipe_id}/name-matches")
+def match_recipe_names(
+    recipe_id: uuid.UUID,
+    body: NameMatchesBody,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    service: MatchRecipeNamesService = Depends(get_match_recipe_names),
+) -> JSONResponse:
+    if any(not name.strip() for name in body.names):
+        return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "invalid_recipe", "name")
+    try:
+        matches = service.execute(
+            MatchRecipeNamesCommand(
+                actor_user_id=user_id, recipe_id=recipe_id, names=tuple(body.names)
+            )
+        )
+    except RecipeNotFoundError:
+        return _not_found()
+    except RecipeReadOnlyError:
+        return _read_only()
+    response = NameMatchesResponse(
+        matches=[NameMatch(name=name, entry=entry) for name, entry in matches]
+    )
+    return JSONResponse(content=response.model_dump(mode="json"))
+
+
+@router.put("/recipes/{recipe_id}")
+def update_recipe(
+    recipe_id: uuid.UUID,
+    body: UpdateRecipeBody,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    service: UpdateRecipeService = Depends(get_update_recipe),
+) -> JSONResponse:
+    command = UpdateRecipeCommand(
+        actor_user_id=user_id,
+        recipe_id=recipe_id,
+        version=body.version,
+        title=body.title,
+        base_servings=body.base_servings,
+        servings_estimated=body.servings_estimated,
+        lines=tuple(
+            IngredientLine(
+                name=line.name,
+                vague=line.vague,
+                quantity=line.quantity,
+                unit=line.unit,
+                size=line.size,
+                note=line.note,
+                preparation=line.preparation,
+            )
+            for line in body.ingredient_lines
+        ),
+        steps=tuple(body.steps),
+    )
+    try:
+        updated: UpdatedRecipe = service.execute(command)
+    except RecipeNotFoundError:
+        return _not_found()
+    except RecipeReadOnlyError:
+        return _read_only()
+    except RecipeChangedError:
+        return _error(status.HTTP_409_CONFLICT, RecipeChangedError.CODE, RecipeChangedError.MESSAGE)
+    except DraftProblems as exc:
+        return _problems(exc)
+    except InvalidDraftError as exc:
+        return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "invalid_recipe", str(exc))
+    response = UpdateRecipeResponse(
+        **_detail(updated.view).model_dump(),
+        created_catalog_names=list(updated.created_catalog_names),
+    )
+    return JSONResponse(content=response.model_dump(mode="json"))
+
+
+@router.delete("/recipes/{recipe_id}")
+def delete_recipe(
+    recipe_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    service: DeleteRecipeService = Depends(get_delete_recipe),
+) -> Response:
+    try:
+        service.execute(DeleteRecipeCommand(actor_user_id=user_id, recipe_id=recipe_id))
+    except RecipeNotFoundError:
+        return _not_found()
+    except RecipeReadOnlyError:
+        return _read_only()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
