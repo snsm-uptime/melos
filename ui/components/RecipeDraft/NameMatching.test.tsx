@@ -77,12 +77,19 @@ function buttonByText(text: string): HTMLButtonElement {
 }
 
 function matchSelects(): HTMLSelectElement[] {
-  return Array.from(document.querySelectorAll<HTMLSelectElement>("select[aria-label='Catalog match']"));
+  return Array.from(
+    document.querySelectorAll<HTMLSelectElement>(
+      "select[aria-label='Catalog match']",
+    ),
+  );
 }
 
 /** Set a controlled select's value the way a user does, so React sees the change. */
 function chooseInSelect(select: HTMLSelectElement, value: string): void {
-  const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!;
+  const setter = Object.getOwnPropertyDescriptor(
+    HTMLSelectElement.prototype,
+    "value",
+  )!.set!;
   setter.call(select, value);
   select.dispatchEvent(new Event("change", { bubbles: true }));
 }
@@ -93,9 +100,19 @@ beforeEach(() => {
   replace.mockReset();
   vi.stubGlobal(
     "fetch",
-    vi.fn().mockResolvedValue(new Response(JSON.stringify(vocabulary), { status: 200 })),
+    vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify(vocabulary), { status: 200 }),
+      ),
   );
-  openSheet({ id: "nb-1", kind: "personal", name: "ana's Notebook", kitchenId: null, returnPath: "/notebooks" });
+  openSheet({
+    id: "nb-1",
+    kind: "personal",
+    name: "ana's Notebook",
+    kitchenId: null,
+    returnPath: "/notebooks",
+  });
   setText("2 large onions\n200 g flour");
   showDraft(draft, "en");
   container = document.createElement("div");
@@ -151,7 +168,10 @@ describe("name changes (spec 018 US2)", () => {
 
     expect(container.textContent).not.toContain("onions → onion");
     const [first, second] = getCaptureState().draft!.lines;
-    expect(first).toMatchObject({ name: "onions", match: { kind: "new", entry: null } });
+    expect(first).toMatchObject({
+      name: "onions",
+      match: { kind: "new", entry: null },
+    });
     expect(second.name).toBe("flour");
   });
 });
