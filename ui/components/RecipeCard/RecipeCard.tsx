@@ -72,9 +72,9 @@ export function RecipeCard({ recipe, locale, showNotebook = false, from }: Recip
         {showNotebook ? (
           <p className="m-0 truncate text-[0.85rem] text-muted">
             {from && recipe.notebook_id ? (
-              // Above the title link's full-card overlay, so it takes its own clicks.
+              // Above the title link's full-card overlay, so it takes its own clicks. Back returns to `from`.
               <Link
-                href={`/notebooks/${encodeURIComponent(recipe.notebook_id)}`}
+                href={`/notebooks/${encodeURIComponent(recipe.notebook_id)}?from=${encodeURIComponent(from)}`}
                 className="relative z-10 text-inherit underline-offset-2 hover:underline"
               >
                 {recipe.notebook_name}

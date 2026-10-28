@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { safeReturnPath } from "./recipeReturnPath";
+import { notebookBackPath, safeReturnPath } from "./recipeReturnPath";
 
 describe("safeReturnPath", () => {
   it("keeps notebook and kitchen paths, with their queries", () => {
@@ -26,4 +26,18 @@ describe("safeReturnPath", () => {
     expect(safeReturnPath(null, "nb")).toBe("/notebooks/nb");
     expect(safeReturnPath(undefined, "nb")).toBe("/notebooks/nb");
   });
+});
+
+describe("notebookBackPath", () => {
+  it("goes back to the kitchen or notebook list it was opened from", () => {
+    expect(notebookBackPath("/kitchens/k1?page=2")).toBe("/kitchens/k1?page=2");
+    expect(notebookBackPath("/notebooks/n2")).toBe("/notebooks/n2");
+  });
+
+  it.each([null, undefined, "", "/account", "https://evil.example/kitchens/k1", "//evil.example"])(
+    "falls back to the Notebook tab for %s",
+    (from) => {
+      expect(notebookBackPath(from)).toBe("/notebooks");
+    },
+  );
 });

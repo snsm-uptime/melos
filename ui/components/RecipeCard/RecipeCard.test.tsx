@@ -84,7 +84,8 @@ describe("RecipeCard", () => {
     render({ showNotebook: true, from: "/kitchens/k1" });
     const links = Array.from(container.querySelectorAll("a"));
     expect(links.map((a) => a.textContent)).toEqual(["Lentil soup", "ana's (Home) Notebook"]);
-    expect(links[1].getAttribute("href")).toBe("/notebooks/n1");
+    // The list the card is on travels along, so the notebook's Back returns to it.
+    expect(links[1].getAttribute("href")).toBe(`/notebooks/n1?from=${encodeURIComponent("/kitchens/k1")}`);
   });
 
   it("shows the notebook name as plain text on a card that is not a link", () => {

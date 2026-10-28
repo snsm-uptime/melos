@@ -8,10 +8,17 @@ export function readListAddress(params: { get(name: string): string | null }): {
   return { page: Number.isFinite(parsed) && parsed >= 1 ? parsed : 1, q: params.get("q") ?? "" };
 }
 
+/**
+ * The address of a list page. `pathname` may already carry a query (a notebook opened with
+ * `?from=`); that query is kept and only `page` and `q` are set or dropped.
+ */
 export function listAddress(pathname: string, page: number, q: string): string {
-  const params = new URLSearchParams();
+  const [path, existing = ""] = pathname.split("?");
+  const params = new URLSearchParams(existing);
+  params.delete("page");
+  params.delete("q");
   if (page > 1) params.set("page", String(page));
   if (q.trim()) params.set("q", q);
   const query = params.toString();
-  return query ? `${pathname}?${query}` : pathname;
+  return query ? `${path}?${query}` : path;
 }

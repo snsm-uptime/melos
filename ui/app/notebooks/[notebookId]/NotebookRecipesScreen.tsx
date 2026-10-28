@@ -3,12 +3,14 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { useChromeHeader } from "@/components/ChromeBack";
 import { RecipeList } from "@/components/RecipeList/RecipeList";
 import { SavedNotice } from "@/components/RecipeDraft/SavedNotice";
 import { listAddress, readListAddress } from "@/lib/listAddress";
 import type { Locale } from "@/lib/i18n/locale";
 import { recipeListMessages } from "@/lib/i18n/recipeLists";
 import { fetchNotebook, type NotebookResponse } from "@/lib/notebooksClient";
+import { notebookBackPath } from "@/lib/recipeReturnPath";
 import { fetchNotebookRecipes } from "@/lib/recipesClient";
 
 import styles from "../notebooks.module.scss";
@@ -30,7 +32,9 @@ export function NotebookRecipesScreen({
   const t = recipeListMessages[locale];
   const router = useRouter();
   const pathname = usePathname();
-  const { page, q } = readListAddress(useSearchParams());
+  const searchParams = useSearchParams();
+  const { page, q } = readListAddress(searchParams);
+  const backHref = notebookBackPath(searchParams.get("from"));
   const [state, setState] = useState<NotebookState>({ status: "loading" });
 
   useEffect(() => {
@@ -48,9 +52,14 @@ export function NotebookRecipesScreen({
     };
   }, [notebookId, router]);
 
+  // This list's own address keeps `?from=`, so a recipe opened from here returns to a list
+  // whose Back still leads to the kitchen or tab the person came from.
+  const listPath = searchParams.get("from")
+    ? `${pathname}?from=${encodeURIComponent(searchParams.get("from") as string)}`
+    : pathname;
   const onChange = useCallback(
-    (nextPage: number, nextQ: string) => router.replace(listAddress(pathname, nextPage, nextQ)),
-    [pathname, router],
+    (nextPage: number, nextQ: string) => router.replace(listAddress(listPath, nextPage, nextQ)),
+    [listPath, router],
   );
   const load = useCallback(
     (nextPage: number, nextQ: string) => fetchNotebookRecipes(notebookId, nextPage, nextQ),
@@ -58,11 +67,14 @@ export function NotebookRecipesScreen({
   );
 
   const returnPath = `/notebooks/${notebookId}`;
+  useChromeHeader({
+    backHref,
+    title: state.status === "ready" ? state.notebook.name : undefined,
+  });
   const archived = state.status === "ready" && state.notebook.kitchen_is_archived === true;
 
   return (
     <main className={styles.main}>
-      <h1 className={styles.title}>{state.status === "ready" ? state.notebook.name : ""}</h1>
       <SavedNotice returnPath={returnPath} />
       {state.status === "not_found" ? (
         <p className={styles.copy} role="alert">
@@ -82,7 +94,7 @@ export function NotebookRecipesScreen({
           q={q}
           onChange={onChange}
           load={load}
-          returnPath={returnPath}
+          returnPath={listPath}
           addCandidates={
             archived
               ? undefined

@@ -4,16 +4,24 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AppShell } from "@/components/AppShell";
+
 import { NotebookRecipesScreen } from "./NotebookRecipesScreen";
 
 const replace = vi.fn();
-const router = { replace };
+const push = vi.fn();
+const router = { replace, push };
 let search = "";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
   usePathname: () => "/notebooks/nb-1",
   useSearchParams: () => new URLSearchParams(search),
+}));
+
+vi.mock("@/components/PreferencesProvider", () => ({
+  usePreferences: () => ({ locale: "en" }),
+  useOptionalPreferences: () => ({ locale: "en" }),
 }));
 
 vi.mock("@/components/AddRecipeCallToAction", () => ({
@@ -62,6 +70,7 @@ describe("NotebookRecipesScreen", () => {
 
   beforeEach(() => {
     replace.mockReset();
+    push.mockReset();
     search = "";
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -76,7 +85,11 @@ describe("NotebookRecipesScreen", () => {
 
   async function render() {
     await act(async () => {
-      root.render(<NotebookRecipesScreen notebookId="nb-1" locale="en" />);
+      root.render(
+        <AppShell>
+          <NotebookRecipesScreen notebookId="nb-1" locale="en" />
+        </AppShell>,
+      );
     });
     await flush();
   }
@@ -106,7 +119,7 @@ describe("NotebookRecipesScreen", () => {
 
     await render();
 
-    expect(container.querySelector("h1")?.textContent).toBe("ana's Notebook");
+    expect(container.querySelector("header h1")?.textContent).toBe("ana's Notebook");
     expect(container.querySelector("h3")?.textContent).toBe("Lentil soup");
     expect(calls).toContain("/api/notebooks/nb-1/recipes?page=2&q=soup");
   });
@@ -152,5 +165,74 @@ describe("NotebookRecipesScreen", () => {
     await render();
 
     expect(replace).toHaveBeenCalledWith("/alias?returnTo=%2Fnotebooks%2Fnb-1");
+  });
+
+  const oneRecipe = {
+    items: [
+      {
+        id: "r1",
+        title: "Lentil soup",
+        author_alias: "ana",
+        ingredient_count: 3,
+        notebook_id: "nb-1",
+        notebook_name: "ana's Notebook",
+        created_at: "2026-10-27T12:00:00Z",
+      },
+    ],
+    page: 1,
+    page_size: 12,
+    total: 13,
+    total_pages: 2,
+  };
+
+  async function clickBack() {
+    await act(async () => {
+      (container.querySelector('header button[aria-label="Back"]') as HTMLButtonElement).click();
+    });
+  }
+
+  it("has a Back control that returns to the Notebook tab by default", async () => {
+    stub({ notebook: { status: 200, body: notebook }, recipes: oneRecipe });
+    await render();
+
+    await clickBack();
+
+    expect(push).toHaveBeenCalledWith("/notebooks");
+  });
+
+  it("returns to the kitchen list it was opened from", async () => {
+    search = `from=${encodeURIComponent("/kitchens/k1?page=2&q=soup")}`;
+    stub({ notebook: { status: 200, body: notebook }, recipes: oneRecipe });
+    await render();
+
+    await clickBack();
+
+    expect(push).toHaveBeenCalledWith("/kitchens/k1?page=2&q=soup");
+  });
+
+  it("ignores a from that points off the app's lists", async () => {
+    search = `from=${encodeURIComponent("https://evil.example/kitchens/k1")}`;
+    stub({ notebook: { status: 200, body: notebook }, recipes: oneRecipe });
+    await render();
+
+    await clickBack();
+
+    expect(push).toHaveBeenCalledWith("/notebooks");
+  });
+
+  it("keeps from when the page changes, and passes the list address on to a recipe", async () => {
+    search = `from=${encodeURIComponent("/kitchens/k1")}`;
+    stub({ notebook: { status: 200, body: notebook }, recipes: oneRecipe });
+    await render();
+
+    const link = container.querySelector("h3 a") as HTMLAnchorElement;
+    expect(link.getAttribute("href")).toBe(
+      `/recipes/r1?from=${encodeURIComponent("/notebooks/nb-1?from=%2Fkitchens%2Fk1")}`,
+    );
+
+    await act(async () => {
+      (container.querySelector('button[aria-label="Page 2"]') as HTMLButtonElement).click();
+    });
+    expect(replace).toHaveBeenCalledWith("/notebooks/nb-1?from=%2Fkitchens%2Fk1&page=2");
   });
 });
