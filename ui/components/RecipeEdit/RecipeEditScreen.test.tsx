@@ -59,9 +59,7 @@ describe("RecipeEditScreen", () => {
     expect(container.querySelector<HTMLInputElement>("[aria-label=Title]")?.value).toBe(
       "Tomato rice",
     );
-    const back = Array.from(container.querySelectorAll("a")).find((a) =>
-      a.textContent?.includes("Back"),
-    );
+    const back = container.querySelector("a[aria-label=Back]");
     expect(back?.getAttribute("href")).toBe(
       `/recipes/r1?from=${encodeURIComponent("/notebooks/nb1?page=2")}`,
     );

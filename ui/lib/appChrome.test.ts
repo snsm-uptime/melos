@@ -9,6 +9,8 @@ describe("showsAppChrome", () => {
     expect(showsAppChrome("/account")).toBe(true);
     expect(showsAppChrome("/notebooks")).toBe(true);
     expect(showsAppChrome("/notebooks/nb-1")).toBe(true);
+    expect(showsAppChrome("/recipes/r1")).toBe(true);
+    expect(showsAppChrome("/recipes/r1/edit")).toBe(true);
   });
 
   it("hides the tab bar on auth, setup and removed finance routes", () => {
@@ -37,5 +39,10 @@ describe("tabKeyFromPath", () => {
   it("marks Notebook on the tab and its sub-paths", () => {
     expect(tabKeyFromPath("/notebooks")).toBe("notebook");
     expect(tabKeyFromPath("/notebooks/nb-1")).toBe("notebook");
+  });
+
+  it("marks Notebook on a recipe's detail and edit pages", () => {
+    expect(tabKeyFromPath("/recipes/r1")).toBe("notebook");
+    expect(tabKeyFromPath("/recipes/r1/edit")).toBe("notebook");
   });
 });

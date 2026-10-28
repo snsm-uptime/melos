@@ -114,6 +114,22 @@ describe("RecipeEditForm", () => {
     expect(byLabel("Step 2")[0].value).toBe("Add the rice.");
   });
 
+  it("opens at the saved servings and amounts and saves the saved servings (spec 062)", async () => {
+    render();
+    expect(document.querySelector<HTMLInputElement>("input[type=number][min='1']")?.value).toBe("4");
+    expect(byLabel("Quantity").map((input) => (input as HTMLInputElement).value)).toEqual([
+      "1",
+      "2",
+      "",
+    ]);
+    act(() => setValue(byLabel("Title")[0], "Renamed"));
+
+    await save();
+
+    const put = calls.find((call) => call.method === "PUT");
+    expect(put?.body).toMatchObject({ base_servings: 4 });
+  });
+
   it("saves a changed title, amount and step with the version it opened", async () => {
     render();
     act(() => setValue(byLabel("Title")[0], "Better rice"));
@@ -254,7 +270,8 @@ describe("RecipeEditForm", () => {
 
   it("asks before leaving with unsaved changes, and not otherwise", () => {
     render();
-    act(() => link("Back")?.click());
+    const backLink = document.querySelector("a[aria-label=Back]") as HTMLAnchorElement;
+    expect(backLink.getAttribute("href")).toBe("/recipes/r1?from=%2Fnotebooks%2Fnb1");
     expect(document.body.textContent).not.toContain("Leave without saving?");
 
     act(() => setValue(byLabel("Title")[0], "Changed"));
