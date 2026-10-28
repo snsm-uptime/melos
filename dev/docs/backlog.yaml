@@ -292,7 +292,7 @@ stories:
     title: Recipe detail, edit and delete with confirmation; deletion removes it from cart and search
     epic: Recipes
     priority: must
-    status: backlog
+    status: done
     journey: J3
     source: prd.md J3
     acceptance: [AC3.2]
@@ -300,6 +300,14 @@ stories:
       Edit and delete: those who can write to the recipe's notebook (PRD Appendix D, 2026-10-23).
       Deleting a kitchen notebook's recipe removes it from the kitchen's list, cart and search;
       copies and snapshots in other notebooks do not change (AC3.2). A past citation keeps its text and shows "recipe removed".
+    verification: >
+      Implemented 2026-10-28 on branch 027-recipe-detail-edit-delete, not committed. No migration.
+      api in Compose (test overlay): 721 passed, 2 failed; the 2 failures existed before this story
+      (text limit 10000 in the Compose env against 5000 in the tests; vocabulary is MVP-OUT). ruff
+      clean. ui: 529 vitest tests, lint and typecheck clean. Walked over HTTP against the running dev
+      stack through the BFF (read, name matches, edit, stale edit, rule refusal, non-reader 404,
+      delete, second delete, list). A 100-line, 100-step recipe read in about 0.04 s through the BFF.
+      Not done: the walk in a browser (detail, edit and delete screens at phone and desktop width).
 
   - id: S-022
     title: Shared cart with people and per-recipe meals; scale factor
@@ -308,7 +316,10 @@ stories:
     status: backlog
     journey: J4
     source: prd.md J4, 1.6 (cart)
-    notes: Cart items come from the kitchen's notebooks (redesign 2026-10-23).
+    notes: >
+      Cart items come from the kitchen's notebooks (redesign 2026-10-23). Must clean up on recipe
+      delete: a cart entry goes with its recipe (spec 027 FR-016; add it to DeleteRecipeService, the
+      schema guard test in tests/test_recipe_manage_integration.py fails until you do).
 
   - id: S-023
     title: Consolidated shopping list (domain/cart.py) with units, sizes, vague section and chips
@@ -408,6 +419,8 @@ stories:
     notes: >
       Embedding model and dimension check still open (Appendix D). Moved after the shopping
       list on 2026-10-22: adds embed-on-save and embeds the recipes saved before it.
+      Spec 027: re-embed in UpdateRecipeService (edit), and remove the embedding on delete in
+      DeleteRecipeService (FR-016); the schema guard test fails until the new table is handled.
 
   - id: S-026
     title: Capture a recipe from a URL (SSRF-safe fetch, JSON-LD first)
@@ -444,7 +457,9 @@ stories:
     journey: J6
     source: prd.md 1.5B, 1.7, Appendix B.2
     acceptance: [AC6.1, AC6.2, AC6.4]
-    notes: Searches the kitchen's notebooks (redesign 2026-10-23).
+    notes: >
+      Searches the kitchen's notebooks (redesign 2026-10-23). A citation to a recipe deleted by
+      spec 027 keeps its text and shows "recipe removed" in place of the link (spec 027 FR-016).
 
   - id: S-031
     title: Shopping list history answered in chat as cards

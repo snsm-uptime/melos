@@ -106,7 +106,7 @@ On either list the member types a word and the list narrows to recipes whose tit
 - **FR-011**: An archived kitchen the person belongs to MUST show its recipes read-only, with no capture action.
 - **FR-012**: Opening a list MUST NOT create, change or delete anything (no notebook, recipe or catalog entry).
 - **FR-013**: The cards of the Notebook tab and of the kitchen notebooks section (spec 060) MUST open the notebook's recipe list, replacing the "does nothing until S-021" behavior of spec 060. After a Save (spec 020), the member MUST land on this list.
-- **FR-014**: Recipe cards MUST NOT carry a link to a detail page, an "Add to cart" checkbox, category chips, or ingredient, author, notebook and frequency controls; those belong to S-027, S-022, S-061 and S-047.
+- **FR-014** *(superseded for the detail link by spec 027 FR-004: the cards now link to the recipe detail)*: Recipe cards MUST NOT carry a link to a detail page, an "Add to cart" checkbox, category chips, or ingredient, author, notebook and frequency controls; those belong to S-027, S-022, S-061 and S-047.
 - **FR-015**: All messages shown by the lists MUST be in plain English, with no codes or technical terms.
 
 ### Key Entities *(include if feature involves data)*
