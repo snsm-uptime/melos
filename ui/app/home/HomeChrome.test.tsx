@@ -12,6 +12,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/components/PreferencesProvider", () => ({
   usePreferences: () => ({ locale: "en" }),
+  useOptionalPreferences: () => ({ locale: "en" }),
 }));
 
 import { AppShell } from "@/components/AppShell";

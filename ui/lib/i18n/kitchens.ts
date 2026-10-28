@@ -20,6 +20,8 @@ export const kitchensMessages = {
     openLink: "Open kitchen",
     backToKitchens: "Home",
     detailNotFound: "This kitchen is unavailable.",
+    loadingKitchen: "Loading kitchen",
+    loadingArchived: "Loading archived kitchens",
     detailMembersTitle: "Members",
     inviteTitle: "Invite someone",
     inviteLabel: "Email address",
@@ -68,6 +70,8 @@ export const kitchensMessages = {
     openLink: "Abrir cocina",
     backToKitchens: "Inicio",
     detailNotFound: "Esta cocina no está disponible.",
+    loadingKitchen: "Cargando cocina",
+    loadingArchived: "Cargando cocinas archivadas",
     detailMembersTitle: "Miembros",
     inviteTitle: "Invitar a alguien",
     inviteLabel: "Correo electrónico",
@@ -101,5 +105,4 @@ export const kitchensMessages = {
 
 export type KitchensMessageKey = keyof (typeof kitchensMessages)["en"];
 
-export { detectLocale } from "@/lib/i18n/locale";
 export type { Locale } from "@/lib/i18n/locale";

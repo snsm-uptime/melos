@@ -9,7 +9,7 @@ import { IngredientLineRow } from "@/components/RecipeDraft/IngredientLineRow";
 import { StepCard } from "@/components/RecipeDraft/StepCard";
 import { chooseLineMatch } from "@/lib/capture/captureStore";
 import { ALLOWED_UNITS, checkDraft, hasErrors, SIZES } from "@/lib/capture/draftRules";
-import { captureMessages } from "@/lib/i18n/capture";
+import { captureMessagesFor } from "@/lib/i18n/capture";
 import type { Locale } from "@/lib/i18n/locale";
 import { recipeDetailMessages, saveProblemText } from "@/lib/i18n/recipeDetail";
 import { nameChanges } from "@/lib/capture/nameChanges";
@@ -62,6 +62,7 @@ export function RecipeEditForm({
   onReload,
 }: RecipeEditFormProps) {
   const t = recipeDetailMessages[locale];
+  const c = captureMessagesFor(locale);
   const router = useRouter();
   const [state, setState] = useState<EditState>(() => toEditState(recipe));
   const stateRef = useRef(state);
@@ -174,7 +175,7 @@ export function RecipeEditForm({
           <h4 className="m-0 px-1 text-[0.9rem] font-normal text-muted">{recipe.notebook.name}</h4>
           {errors.title ? (
             <span role="alert" className="px-1 text-[0.8rem] text-owe">
-              {captureMessages.errors[errors.title]}
+              {c.errors[errors.title]}
             </span>
           ) : null}
         </div>
@@ -204,7 +205,7 @@ export function RecipeEditForm({
               </label>
               {errors.servings ? (
                 <span role="alert" className="text-[0.8rem] text-owe">
-                  {captureMessages.errors[errors.servings]}
+                  {c.errors[errors.servings]}
                 </span>
               ) : null}
             </div>
@@ -214,7 +215,7 @@ export function RecipeEditForm({
             <ul
               className="m-0 flex list-none flex-col gap-2 p-0"
               onBlur={(event) => {
-                if ((event.target as HTMLElement).getAttribute("aria-label") === captureMessages.ingredientName) {
+                if ((event.target as HTMLElement).getAttribute("aria-label") === c.ingredientName) {
                   void runNameCheck();
                 }
               }}
@@ -222,6 +223,7 @@ export function RecipeEditForm({
               {state.lines.map((line, index) => (
                 <IngredientLineRow
                   key={line.key}
+                  locale={locale}
                   line={line}
                   index={index}
                   count={state.lines.length}
@@ -260,7 +262,7 @@ export function RecipeEditForm({
               className="self-start text-[0.9rem] text-accent"
               onClick={() => commit({ ...state, lines: [...state.lines, newLine()] })}
             >
-              {captureMessages.addIngredient}
+              {c.addIngredient}
             </button>
           </div>
         </section>
@@ -272,6 +274,7 @@ export function RecipeEditForm({
               {state.steps.map((step, index) => (
                 <StepCard
                   key={step.key}
+                  locale={locale}
                   index={index}
                   count={state.steps.length}
                   text={step.text}
@@ -294,7 +297,7 @@ export function RecipeEditForm({
             </ol>
             {errors.steps ? (
               <span role="alert" className="text-[0.8rem] text-owe">
-                {captureMessages.errors[errors.steps]}
+                {c.errors[errors.steps]}
               </span>
             ) : null}
             <button
@@ -307,7 +310,7 @@ export function RecipeEditForm({
                 })
               }
             >
-              {captureMessages.addStep}
+              {c.addStep}
             </button>
           </div>
         </section>

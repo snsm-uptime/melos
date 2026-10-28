@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { showsAppChrome, tabKeyFromPath } from "./appChrome";
+import { showsAppChrome, showsLanguageSwitch, tabKeyFromPath } from "./appChrome";
 
 describe("showsAppChrome", () => {
   it("keeps the tab bar on authenticated product surfaces", () => {
@@ -44,5 +44,28 @@ describe("tabKeyFromPath", () => {
   it("marks Notebook on a recipe's detail and edit pages", () => {
     expect(tabKeyFromPath("/recipes/r1")).toBe("notebook");
     expect(tabKeyFromPath("/recipes/r1/edit")).toBe("notebook");
+  });
+});
+
+describe("showsLanguageSwitch (spec 063)", () => {
+  it("is on for the signed-out screens", () => {
+    for (const path of [
+      "/",
+      "/sign-in",
+      "/signup",
+      "/sign-up",
+      "/forgot-password",
+      "/reset-password",
+      "/verify",
+      "/invites/accept",
+    ]) {
+      expect(showsLanguageSwitch(path)).toBe(true);
+    }
+  });
+
+  it("is off everywhere else", () => {
+    for (const path of ["/home", "/account", "/alias", "/notebooks/n1", "/recipes/r1", "/invites", "/signing"]) {
+      expect(showsLanguageSwitch(path)).toBe(false);
+    }
   });
 });

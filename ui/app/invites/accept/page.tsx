@@ -1,10 +1,9 @@
-import { headers } from "next/headers";
 
-import { detectLocale } from "@/lib/i18n/locale";
 import { inviteMessages } from "@/lib/i18n/invite";
 import { fetchSession } from "@/lib/session";
 import { AcceptInvitePanel } from "./AcceptInvitePanel";
 import styles from "../../signup/signup.module.scss";
+import { getServerLocale } from "@/lib/serverLocale";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +20,7 @@ export default async function AcceptInvitePage({
     typeof raw === "string" ? raw : Array.isArray(raw) ? (raw[0] ?? "") : "";
 
   const session = await fetchSession();
-  const headerStore = await headers();
-  const locale = detectLocale(headerStore.get("accept-language"));
+  const locale = await getServerLocale();
   const t = inviteMessages[locale];
 
   return (

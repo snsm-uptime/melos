@@ -4,12 +4,12 @@ import { redirect } from "next/navigation";
 import { requireAlias } from "@/lib/alias";
 import { getApiInternalUrl } from "@/lib/api";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
-import type { Locale } from "@/lib/i18n/locale";
 import { fetchSession } from "@/lib/session";
 import type { KitchenItem } from "@/app/kitchens/kitchensClient";
 import kitchensStyles from "@/app/kitchens/kitchens.module.scss";
 import { HomeChrome } from "./HomeChrome";
 import { HomeKitchensSection } from "./HomeKitchensSection";
+import { getServerLocale } from "@/lib/serverLocale";
 
 export const dynamic = "force-dynamic";
 
@@ -42,11 +42,6 @@ async function fetchMembershipKitchens(): Promise<MembershipLoad> {
   }
 }
 
-function resolvePageLocale(languageCookie: string | undefined): Locale {
-  if (languageCookie === "es" || languageCookie === "en") return languageCookie;
-  return "en";
-}
-
 /** Home: Kitchens only — Cards moved to its own /cards route. */
 export default async function Home() {
   const session = await fetchSession();
@@ -56,8 +51,7 @@ export default async function Home() {
   // No kitchen chrome without an alias — redirects to setup on first signed-in visit.
   const me = await requireAlias("/home");
 
-  const jar = await cookies();
-  const locale = resolvePageLocale(jar.get("melos_lang_cache")?.value);
+  const locale = await getServerLocale();
   const t = kitchensMessages[locale];
   const loaded = await fetchMembershipKitchens();
 

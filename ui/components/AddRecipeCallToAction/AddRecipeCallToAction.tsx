@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { PlusIcon } from "@/app/icons";
 import { openSheet, useCaptureState, type CaptureNotebook } from "@/lib/capture/captureStore";
-import { captureMessages } from "@/lib/i18n/capture";
+import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
 
 import { AddRecipeOptionsDialog } from "./AddRecipeOptionsDialog";
 import { TextCaptureSheet } from "./TextCaptureSheet";
@@ -31,6 +31,7 @@ type AddRecipeCallToActionProps = {
  * Tapping it opens the options dialog; Text opens the text sheet for the chosen notebook.
  */
 export function AddRecipeCallToAction({ candidates, defaultId, returnPath }: AddRecipeCallToActionProps) {
+  const t = useCaptureMessages();
   const router = useRouter();
   const capture = useCaptureState();
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -55,7 +56,7 @@ export function AddRecipeCallToAction({ candidates, defaultId, returnPath }: Add
     <>
       <button
         type="button"
-        aria-label={captureMessages.addRecipe}
+        aria-label={t.addRecipe}
         onClick={() => setOptionsOpen(true)}
         disabled={!preselected}
         className="flex h-[7.5rem] w-full items-center justify-center rounded-[1.25rem] border border-dashed border-border bg-surface text-muted"

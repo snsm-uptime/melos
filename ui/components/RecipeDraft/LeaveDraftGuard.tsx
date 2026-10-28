@@ -9,13 +9,14 @@ import {
   isDraftEdited,
   useCaptureState,
 } from "@/lib/capture/captureStore";
-import { captureMessages } from "@/lib/i18n/capture";
+import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
 
 /**
  * Asks before a leave that would lose an edited draft (spec 016 FR-032). Back and Discard do
  * not come through here. Only an edited draft is guarded, and a reload gets the browser's warning.
  */
 export function LeaveDraftGuard() {
+  const t = useCaptureMessages();
   const router = useRouter();
   const capture = useCaptureState();
   const edited = isDraftEdited(capture);
@@ -52,9 +53,9 @@ export function LeaveDraftGuard() {
   return (
     <ActionDialog
       open={pendingHref !== null}
-      title={captureMessages.leaveTitle}
-      confirmLabel={captureMessages.leave}
-      cancelLabel={captureMessages.stay}
+      title={t.leaveTitle}
+      confirmLabel={t.leave}
+      cancelLabel={t.stay}
       onOpenChange={(open) => {
         if (!open) setPendingHref(null);
       }}
@@ -66,7 +67,7 @@ export function LeaveDraftGuard() {
       }}
     >
       <p className="m-0 text-[0.95rem] text-muted">
-        {captureMessages.leaveBody}
+        {t.leaveBody}
       </p>
     </ActionDialog>
   );

@@ -220,6 +220,21 @@ describe("RecipeDetailView", () => {
       }
     });
 
+    it("has no English interface text in Spanish, and shows stored text as stored", () => {
+      render(recipeFixture(), "es");
+      const text = container.textContent ?? "";
+      for (const expected of ["Ingredientes", "Pasos", "Preparación:", "Nota:", "Editar", "Eliminar", "Porciones"]) {
+        expect(text, expected).toContain(expected);
+      }
+      expect(text).not.toMatch(/\b(Ingredients|Steps|Preparation|Note|Edit|Delete|Servings)\b/);
+      expect(container.querySelector("[aria-label=Volver]")).not.toBeNull();
+      // The recipe's own words are not translated (FR-008).
+      expect(text).toContain("Tomato rice");
+      expect(text).toContain("chopped");
+      expect(text).toContain("to taste");
+      expect(text).toContain("Fry the garlic.");
+    });
+
     it("speaks Spanish", () => {
       render(recipeFixture(), "es");
       expect(container.querySelector("label")?.textContent).toBe("Porciones");

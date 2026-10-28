@@ -1,11 +1,11 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { fetchMe } from "@/lib/alias";
-import { aliasMessages, detectLocale } from "@/lib/i18n/alias";
+import { aliasMessages } from "@/lib/i18n/alias";
 import { AliasSetupForm } from "./AliasSetupForm";
 import { safeReturnTo } from "../sign-in/signInClient";
 import styles from "../signup/signup.module.scss";
+import { getServerLocale } from "@/lib/serverLocale";
 
 export const dynamic = "force-dynamic";
 
@@ -37,8 +37,7 @@ export default async function AliasPage({
     redirect(continueHref);
   }
 
-  const headerStore = await headers();
-  const locale = detectLocale(headerStore.get("accept-language"));
+  const locale = await getServerLocale();
   const t = aliasMessages[locale];
 
   return (

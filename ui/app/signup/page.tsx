@@ -1,12 +1,12 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { RedirectIfAuthenticated } from "@/components/RedirectIfAuthenticated";
-import { detectLocale, signupMessages } from "@/lib/i18n/signup";
+import { signupMessages } from "@/lib/i18n/signup";
 import { resolveServerAuthenticatedLanding } from "@/lib/serverLanding";
 import { fetchSession } from "@/lib/session";
 import { SignupForm } from "./SignupForm";
 import styles from "./signup.module.scss";
+import { getServerLocale } from "@/lib/serverLocale";
 
 export const dynamic = "force-dynamic";
 
@@ -34,8 +34,7 @@ export default async function SignupPage({
     redirect(await resolveServerAuthenticatedLanding());
   }
 
-  const headerStore = await headers();
-  const locale = detectLocale(headerStore.get("accept-language"));
+  const locale = await getServerLocale();
   const t = signupMessages[locale];
 
   return (

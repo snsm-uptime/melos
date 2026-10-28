@@ -29,3 +29,22 @@ export function tabKeyFromPath(pathname: string): TabKey | undefined {
   if (pathname === "/account" || pathname.startsWith("/account/")) return "account";
   return undefined;
 }
+
+const LANGUAGE_SWITCH_PREFIXES = [
+  "/sign-in",
+  "/signup",
+  "/sign-up",
+  "/forgot-password",
+  "/reset-password",
+  "/verify",
+  "/invites/accept",
+] as const;
+
+/** Signed-out screens that carry the small English/Spanish switch (spec 063 FR-017). */
+export function showsLanguageSwitch(pathname: string): boolean {
+  // The landing page is the first signed-out screen a visitor sees.
+  if (pathname === "/") return true;
+  return LANGUAGE_SWITCH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}

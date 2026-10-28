@@ -28,6 +28,8 @@ export async function attemptSignIn(options: {
   password: string;
   returnTo: string | undefined;
   errorGeneric: string;
+  /** Shown for a 429; the api's own text is English and is never shown. */
+  errorRateLimited?: string;
   fetchImpl?: typeof fetch;
 }): Promise<SignInAttemptResult> {
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -50,7 +52,7 @@ export async function attemptSignIn(options: {
         if (data.code === "rate_limited") {
           return {
             ok: false,
-            error: data.detail || "Too many attempts. Please try again later.",
+            error: options.errorRateLimited || options.errorGeneric,
           };
         }
       }

@@ -101,7 +101,7 @@ export function RecipeDetailView({
             <div className="flex flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
               <ul className="m-0 flex list-none flex-col gap-2 p-0">
                 {lines.map((line, index) => (
-                  <IngredientLineRow key={`${index}-${line.name}`} line={line} readOnly />
+                  <IngredientLineRow key={`${index}-${line.name}`} line={line} readOnly locale={locale} />
                 ))}
               </ul>
             </div>
@@ -113,7 +113,13 @@ export function RecipeDetailView({
             <div className="flex flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
               <ol className="m-0 flex list-none flex-col gap-2 p-0">
                 {recipe.steps.map((step, index) => (
-                  <StepCard key={`${index}-${step.slice(0, 12)}`} index={index} text={step} readOnly />
+                  <StepCard
+                    key={`${index}-${step.slice(0, 12)}`}
+                    index={index}
+                    text={step}
+                    readOnly
+                    locale={locale}
+                  />
                 ))}
               </ol>
             </div>

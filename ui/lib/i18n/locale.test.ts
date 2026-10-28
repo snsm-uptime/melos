@@ -1,55 +1,23 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { browserLocale, detectLocale } from "./locale";
+import { DEFAULT_LOCALE, isLocale, resolveLocale } from "./locale";
 
-describe("detectLocale", () => {
-  it("defaults to en", () => {
-    expect(detectLocale(null)).toBe("en");
-    expect(detectLocale("")).toBe("en");
-    expect(detectLocale("fr-FR")).toBe("en");
+describe("resolveLocale and isLocale (spec 063)", () => {
+  it("keeps English and Spanish", () => {
+    expect(resolveLocale("en")).toBe("en");
+    expect(resolveLocale("es")).toBe("es");
   });
 
-  it("prefers Spanish when highest q among supported", () => {
-    expect(detectLocale("es-CR,es;q=0.9,en;q=0.8")).toBe("es");
-    expect(detectLocale("en-US,en;q=0.9,es;q=0.8")).toBe("en");
+  it.each([null, undefined, "", "fr", "EN", "es-CR", "en "])("falls back to Spanish for %j", (raw) => {
+    expect(resolveLocale(raw)).toBe("es");
+    expect(DEFAULT_LOCALE).toBe("es");
   });
 
-  it("prefers es on equal q", () => {
-    expect(detectLocale("en;q=0.9,es;q=0.9")).toBe("es");
-  });
-
-  it("uses primary subtag (not prefix) and skips q=0", () => {
-    expect(detectLocale("est")).toBe("en");
-    expect(detectLocale("es;q=0,en;q=0.9")).toBe("en");
-    expect(detectLocale("es;Q=0.8,en;q=0.5")).toBe("es");
-  });
-
-  it("skips empty parts and non-numeric q values", () => {
-    expect(detectLocale("es, ,en;q=0.1")).toBe("es");
-    expect(detectLocale("es;q=nope,en;q=0.9")).toBe("en");
-  });
-});
-
-describe("browserLocale", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("defaults to en when navigator is missing", () => {
-    vi.stubGlobal("navigator", undefined);
-    expect(browserLocale()).toBe("en");
-  });
-
-  it("reads navigator.language and languages", () => {
-    vi.stubGlobal("navigator", {
-      language: "es-CR",
-      languages: ["es-CR", "en"],
-    });
-    expect(browserLocale()).toBe("es");
-  });
-
-  it("falls back when languages is absent", () => {
-    vi.stubGlobal("navigator", { language: "en-US" });
-    expect(browserLocale()).toBe("en");
+  it("isLocale accepts only en and es", () => {
+    expect(isLocale("en")).toBe(true);
+    expect(isLocale("es")).toBe(true);
+    expect(isLocale("fr")).toBe(false);
+    expect(isLocale(null)).toBe(false);
+    expect(isLocale(1)).toBe(false);
   });
 });

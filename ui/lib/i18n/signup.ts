@@ -9,6 +9,7 @@ export const signupMessages = {
     submit: "Sign up",
     submitting: "Creating account…",
     errorGeneric: "Something went wrong. Try again.",
+    errorRateLimited: "Too many attempts. Please try again later.",
     errorDuplicate: "An account with this email already exists.",
     errorInvalid: "Check your email and password and try again.",
     errorExpiredInvite:
@@ -28,6 +29,7 @@ export const signupMessages = {
     submit: "Registrarse",
     submitting: "Creando cuenta…",
     errorGeneric: "Algo salió mal. Inténtalo de nuevo.",
+    errorRateLimited: "Demasiados intentos. Inténtalo de nuevo más tarde.",
     errorDuplicate: "Ya existe una cuenta con este correo.",
     errorInvalid: "Revisa tu correo y contraseña e inténtalo de nuevo.",
     errorExpiredInvite:
@@ -43,5 +45,4 @@ export const signupMessages = {
 
 export type SignupMessageKey = keyof (typeof signupMessages)["en"];
 
-export { detectLocale } from "@/lib/i18n/locale";
 export type { Locale } from "@/lib/i18n/locale";

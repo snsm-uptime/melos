@@ -3,6 +3,8 @@
 import Link from "next/link";
 
 import { Avatar } from "@/components/Avatar";
+import { accountCopy } from "@/lib/i18n/account";
+import { useLocale } from "@/lib/i18n/useLocale";
 
 /**
  * Chrome leading-slot avatar for top-level tab roots (chrome-header spec):
@@ -18,10 +20,11 @@ export function ChromeAvatarLink({
   userId: string;
   photoBase64: string | null;
 }) {
+  const t = accountCopy(useLocale());
   return (
     <Link
       href="/account"
-      aria-label="Go to Account"
+      aria-label={t.goToAccount}
       className="inline-flex rounded-[8px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent hover:outline hover:outline-2 hover:outline-offset-2 hover:outline-accent"
     >
       <Avatar alias={alias} seed={userId} photoBase64={photoBase64} size="md" />

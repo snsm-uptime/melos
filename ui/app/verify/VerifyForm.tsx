@@ -109,9 +109,7 @@ export function VerifyForm({ locale, token, returnTo }: Props) {
         return;
       }
       if (response.status === 429 || body?.code === "rate_limited") {
-        setError(
-          body?.detail || "Too many attempts. Please try again later.",
-        );
+        setError(t.errorRateLimited);
         return;
       }
       if (!response.ok) {

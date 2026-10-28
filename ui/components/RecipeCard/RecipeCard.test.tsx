@@ -84,4 +84,13 @@ describe("RecipeCard", () => {
     render();
     expect(container.querySelector("a")).toBeNull();
   });
+
+  it("in Spanish the interface words change and the recipe's own words do not (spec 063 FR-008)", () => {
+    render({ locale: "es", recipe: { ...recipe, author_alias: null, ingredient_count: 1 } });
+    const text = container.textContent ?? "";
+    expect(text).toContain("desconocido");
+    expect(text).toContain("1 ingrediente");
+    expect(text).toContain("Lentil soup");
+    expect(text).not.toContain("unknown");
+  });
 });

@@ -253,4 +253,32 @@ describe("AppShell chrome header", () => {
     expect(notebook?.getAttribute("aria-current")).toBe("page");
     expect(container.querySelector('nav a[aria-label="Home"]')?.getAttribute("aria-current")).toBeNull();
   });
+
+  describe("signed-out language switch (spec 063)", () => {
+    const switchPresent = () => container.querySelector('[role="group"]') !== null;
+
+    function renderAt(path: string, child: ReactNode) {
+      pathname = path;
+      act(() => {
+        root.render(<AppShell>{child}</AppShell>);
+      });
+    }
+
+    it("shows on /sign-in, which opts into the chrome header", () => {
+      renderAt("/sign-in", <EnableHeader href="/" title="Melos" />);
+      expect(container.querySelector('[data-app-chrome="header"]')).not.toBeNull();
+      expect(switchPresent()).toBe(true);
+    });
+
+    it("shows on a signed-out screen that has no header", () => {
+      renderAt("/invites/accept", <p>screen</p>);
+      expect(container.querySelector('[data-app-chrome="header"]')).toBeNull();
+      expect(switchPresent()).toBe(true);
+    });
+
+    it.each(["/home", "/account", "/alias"])("does not show on %s", (path) => {
+      renderAt(path, <p>screen</p>);
+      expect(switchPresent()).toBe(false);
+    });
+  });
 });

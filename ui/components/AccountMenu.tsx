@@ -13,6 +13,7 @@ import {
 } from "@/components/PreferencesProvider";
 import { TriSwitch } from "@/components/TriSwitch";
 import { AvatarCropSheet } from "@/components/AvatarCropSheet";
+import { LanguageChoice } from "@/components/LanguageChoice";
 import { accountCopy } from "@/lib/i18n/account";
 import type { ThemePreference } from "@/lib/i18n/locale";
 import kitchensStyles from "@/app/kitchens/kitchens.module.scss";
@@ -23,8 +24,8 @@ import { Tooltip } from "./Tooltip";
 export function AccountMenu() {
   // NOTE: SSR hydration mismatch — server renders with default theme; client may hydrate with different theme.
   // This can cause brief light→dark flicker on page load. Mitigation: ensure initial HTML theme matches system preference.
-  const { theme, setTheme, ready, me, refresh } = usePreferences();
-  const t = accountCopy("en");
+  const { theme, setTheme, ready, me, refresh, locale } = usePreferences();
+  const t = accountCopy(locale);
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -189,6 +190,15 @@ export function AccountMenu() {
               { value: "dark", label: t.dark, icon: <MoonIcon /> },
             ]}
           />
+        </section>
+      </div>
+
+      <div className="mb-6">
+        <section aria-labelledby="account-language" className="flex flex-col gap-2">
+          <h2 id="account-language" className="m-0 text-[0.7rem] font-semibold text-muted uppercase tracking-[0.04rem]">
+            {t.language}
+          </h2>
+          <LanguageChoice />
         </section>
       </div>
 

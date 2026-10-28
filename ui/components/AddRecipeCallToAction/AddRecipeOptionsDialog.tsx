@@ -1,7 +1,7 @@
 "use client";
 
 import { ActionDialog } from "@/components/ActionDialog/ActionDialog";
-import { captureMessages } from "@/lib/i18n/capture";
+import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
 
 type AddRecipeOptionsDialogProps = {
   open: boolean;
@@ -17,10 +17,11 @@ const optionClassName =
  * separated by dividers, in this order: URL, Picture, Text. Only Text works in this feature.
  */
 export function AddRecipeOptionsDialog({ open, onClose, onChooseText }: AddRecipeOptionsDialogProps) {
+  const t = useCaptureMessages();
   return (
     <ActionDialog
       open={open}
-      title={captureMessages.addRecipe}
+      title={t.addRecipe}
       onOpenChange={(next) => {
         if (!next) onClose();
       }}
@@ -28,19 +29,19 @@ export function AddRecipeOptionsDialog({ open, onClose, onChooseText }: AddRecip
       <ul role="list" className="m-0 flex list-none flex-col divide-y divide-border p-0">
         <li>
           <button type="button" aria-disabled="true" className={`${optionClassName} opacity-50`}>
-            <span>{captureMessages.optionUrl}</span>
-            <span className="text-[0.8rem] text-muted">{captureMessages.optionUrlNote}</span>
+            <span>{t.optionUrl}</span>
+            <span className="text-[0.8rem] text-muted">{t.optionUrlNote}</span>
           </button>
         </li>
         <li>
           <button type="button" aria-disabled="true" className={`${optionClassName} opacity-50`}>
-            <span>{captureMessages.optionPicture}</span>
-            <span className="text-[0.8rem] text-muted">{captureMessages.optionPictureNote}</span>
+            <span>{t.optionPicture}</span>
+            <span className="text-[0.8rem] text-muted">{t.optionPictureNote}</span>
           </button>
         </li>
         <li>
           <button type="button" onClick={onChooseText} className={optionClassName}>
-            <span>{captureMessages.optionText}</span>
+            <span>{t.optionText}</span>
           </button>
         </li>
       </ul>

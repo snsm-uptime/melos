@@ -1,3 +1,5 @@
+import { clearLanguagePick, readLanguagePick } from "@/lib/i18n/languagePick";
+
 /** Pure helpers for signup form (unit-tested without a React render). */
 
 export type SignupAttemptResult =
@@ -16,6 +18,10 @@ export async function attemptSignup(args: {
   errorDuplicate: string;
   errorInvalid: string;
   errorGeneric: string;
+  /** Shown for a 429; the api's own text is English and is never shown. */
+  errorRateLimited?: string;
+  /** Show the api's message for a refused sign-up (English only); otherwise the generic one. */
+  preferServerDetail?: boolean;
   errorExpiredInvite?: string;
   errorInviteMismatch?: string;
   errorNotVerified?: string;
@@ -69,14 +75,17 @@ export async function attemptSignup(args: {
       if (data.code === "rate_limited" || response.status === 429) {
         return {
           ok: false,
-          error: data.detail || "Too many attempts. Please try again later.",
+          error: args.errorRateLimited || args.errorGeneric,
         };
       }
       if (data.code === "duplicate_email") {
         return { ok: false, error: args.errorDuplicate };
       }
       if (data.code === "invalid_signup" || response.status === 400) {
-        return { ok: false, error: data.detail || args.errorInvalid };
+        return {
+          ok: false,
+          error: (args.preferServerDetail !== false && data.detail) || args.errorInvalid,
+        };
       }
       return { ok: false, error: args.errorGeneric };
     }
@@ -87,5 +96,27 @@ export async function attemptSignup(args: {
     };
   } catch {
     return { ok: false, error: args.errorGeneric };
+  }
+}
+
+/**
+ * Save the language the visitor picked on the signed-out screens to the new account (spec 063
+ * FR-018), then drop the pick. With no pick the account keeps no saved language, which is
+ * Spanish. A failed save is ignored: the account then has no saved language.
+ */
+export async function saveLanguagePick(fetchImpl: typeof fetch = fetch): Promise<void> {
+  const pick = readLanguagePick();
+  if (!pick) return;
+  try {
+    await fetchImpl("/api/auth/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ language: pick }),
+      credentials: "same-origin",
+    });
+  } catch {
+    /* the account keeps no saved language */
+  } finally {
+    clearLanguagePick();
   }
 }

@@ -43,7 +43,8 @@ function mePayload(overrides: Record<string, unknown> = {}) {
     authenticated: true,
     user_id: "u1",
     email: "user@example.com",
-    language: null,
+    // English so the existing assertions below read the English labels.
+    language: "en",
     theme: null,
     ...overrides,
   };
@@ -160,6 +161,37 @@ describe("AccountMenu", () => {
     unmount();
   });
 
+  it("offers the language choice, with the saved language checked (spec 063)", async () => {
+    const { host, unmount } = renderAccount();
+    await waitForDom(() => Boolean(host.querySelector('[role="radiogroup"][aria-label="Language"]')));
+    const radios = Array.from(
+      host.querySelectorAll<HTMLButtonElement>('[aria-label="Language"] [role="radio"]'),
+    );
+    expect(radios.map((radio) => radio.textContent)).toEqual(["English", "Español"]);
+    expect(radios.map((radio) => radio.getAttribute("aria-checked"))).toEqual(["true", "false"]);
+    unmount();
+  });
+
+  it("shows Spanish checked, and Spanish labels, for an account with no saved language", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(mePayload({ language: null })), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+    const { host, unmount } = renderAccount();
+    await waitForDom(() => Boolean(host.querySelector('[role="radiogroup"][aria-label="Idioma"]')));
+    const radios = Array.from(
+      host.querySelectorAll<HTMLButtonElement>('[aria-label="Idioma"] [role="radio"]'),
+    );
+    expect(radios.map((radio) => radio.getAttribute("aria-checked"))).toEqual(["false", "true"]);
+    expect(findButton(host, "Restablecer contraseña")).toBeTruthy();
+    unmount();
+  });
+
   it("PATCHes theme and swaps html dark class", async () => {
     const fetchMock = vi.fn();
     fetchMock
@@ -271,7 +303,6 @@ describe("AccountMenu", () => {
       const btn = findButton(host, "Password reset");
       return Boolean(btn && !btn.disabled);
     });
-    localStorage.setItem("melos_lang_cache", "es");
     localStorage.setItem("melos_theme_cache", "dark");
 
     const resetBtn = findButton(host, "Password reset");
@@ -285,20 +316,30 @@ describe("AccountMenu", () => {
       expect.objectContaining({ method: "POST" }),
     );
     expect(assign).toHaveBeenCalledWith("/forgot-password");
-    expect(localStorage.getItem("melos_lang_cache")).toBeNull();
     expect(localStorage.getItem("melos_theme_cache")).toBeNull();
     unmount();
   });
 
   it("shows a Back button (not the avatar) in the chrome leading slot, and it navigates back", async () => {
     routerBack.mockClear();
+    // The account's saved language is English, so the chrome labels are English.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify(mePayload({ language: "en" })), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ),
+    );
     const host = document.createElement("div");
     document.body.appendChild(host);
     let root!: Root;
     act(() => {
       root = createRoot(host);
       root.render(
-        <PreferencesProvider>
+        <PreferencesProvider initialLocale="en">
           <AppShell>
             <AccountMenu />
           </AppShell>

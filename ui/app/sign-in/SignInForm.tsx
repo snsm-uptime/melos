@@ -6,6 +6,7 @@ import Link from "next/link";
 import { EyeIcon } from "@/app/icons";
 import { IconButton } from "@/components/IconButton";
 import { resetMembershipKitchensStore } from "@/app/kitchens/membershipKitchensStore";
+import { clearLanguagePick } from "@/lib/i18n/languagePick";
 import { signInMessages, type Locale } from "@/lib/i18n/signin";
 import { attemptSignIn } from "./signInClient";
 import { PrimaryButton } from "@/components/soft-ledger/PrimaryButton";
@@ -46,11 +47,15 @@ export function SignInForm({ locale, returnTo }: Props) {
         password,
         returnTo,
         errorGeneric: t.errorGeneric,
+        errorRateLimited: t.errorRateLimited,
       });
       if (!result.ok) {
         setError(result.error);
         return;
       }
+      // The account's saved language (or Spanish) decides from here on; the pick made while
+      // signed out is dropped (spec 063 FR-013, FR-018).
+      clearLanguagePick();
       window.location.assign(result.returnTo);
     } finally {
       setPending(false);

@@ -1,15 +1,15 @@
 // Reused from finance-dashboard/ui/app/sign-in/page.tsx
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { RedirectIfAuthenticated } from "@/components/RedirectIfAuthenticated";
-import { detectLocale, signInMessages } from "@/lib/i18n/signin";
+import { signInMessages } from "@/lib/i18n/signin";
 import { resolveServerAuthenticatedLanding } from "@/lib/serverLanding";
 import { fetchSession } from "@/lib/session";
 import { safeReturnTo } from "./signInClient";
 import { SignInChrome } from "./SignInChrome";
 import { SignInForm } from "./SignInForm";
 import styles from "../signup/signup.module.scss";
+import { getServerLocale } from "@/lib/serverLocale";
 
 export const dynamic = "force-dynamic";
 
@@ -35,8 +35,7 @@ export default async function SignInPage({
     redirect(landing);
   }
 
-  const headerStore = await headers();
-  const locale = detectLocale(headerStore.get("accept-language"));
+  const locale = await getServerLocale();
   const t = signInMessages[locale];
 
   return (

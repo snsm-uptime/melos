@@ -7,7 +7,6 @@ import { SectionLabel } from "@/components/soft-ledger/SectionLabel";
 import { requireAlias } from "@/lib/alias";
 import { getApiInternalUrl } from "@/lib/api";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
-import type { Locale } from "@/lib/i18n/locale";
 import { fetchSession } from "@/lib/session";
 import { KitchenDetailChrome } from "../KitchenDetailChrome";
 import { KitchenDetailMobileActions } from "../KitchenDetailMobileActions";
@@ -15,6 +14,7 @@ import { KitchenNotebooksSection } from "../KitchenNotebooksSection";
 import { TemporalNavigation } from "../TemporalNavigation";
 import { memberLabel, type KitchenMember } from "../kitchensClient";
 import styles from "../kitchens.module.scss";
+import { getServerLocale } from "@/lib/serverLocale";
 
 export const dynamic = "force-dynamic";
 
@@ -24,11 +24,6 @@ type DetailPayload = {
   owner_id?: string;
   is_archived?: boolean;
 };
-
-function resolvePageLocale(languageCookie: string | undefined): Locale {
-  if (languageCookie === "es" || languageCookie === "en") return languageCookie;
-  return "en";
-}
 
 async function cookieHeader(): Promise<string> {
   const jar = await cookies();
@@ -69,8 +64,7 @@ export default async function KitchenDetailPage({
   }
   const me = await requireAlias(`/kitchens/${kitchenId}`);
 
-  const jar = await cookies();
-  const locale = resolvePageLocale(jar.get("melos_lang_cache")?.value);
+  const locale = await getServerLocale();
   const t = kitchensMessages[locale];
   const header = await cookieHeader();
   const requestInit: RequestInit = {

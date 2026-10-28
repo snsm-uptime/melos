@@ -4,7 +4,9 @@ import type { ReactNode } from "react";
 import { RedirectIfAuthenticated } from "@/components/RedirectIfAuthenticated";
 import { GhostButton } from "@/components/soft-ledger/GhostButton";
 import { requireAlias } from "@/lib/alias";
+import { landingMessages } from "@/lib/i18n/landing";
 import { resolveServerAuthenticatedLanding } from "@/lib/serverLanding";
+import { getServerLocale } from "@/lib/serverLocale";
 import { fetchSession } from "@/lib/session";
 import { PrimaryButton } from "@/components/soft-ledger/PrimaryButton";
 
@@ -18,6 +20,8 @@ export default async function Home() {
     await requireAlias(destination);
     redirect(destination);
   }
+
+  const t = landingMessages[await getServerLocale()];
 
   return (
     <main>
@@ -44,13 +48,11 @@ export default async function Home() {
             Melos
           </h1>
           <p className="m-0 max-w-lg text-muted leading-[1.5]">
-            Menus everyone loves to share: a home cookbook for the people you cook
-            with. Keep your recipes together, plan the week, and shop for it in one
-            kitchen.
+            {t.intro}
           </p>
           <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
-            <PrimaryButton href="/signup">Create an account</PrimaryButton>
-            <GhostButton href="/sign-in">Sign in</GhostButton>
+            <PrimaryButton href="/signup">{t.createAccount}</PrimaryButton>
+            <GhostButton href="/sign-in">{t.signIn}</GhostButton>
           </div>
         </div>
       </section>
@@ -60,8 +62,8 @@ export default async function Home() {
           icon={
             <path d="M4 6h16M4 6l2-2m-2 2 2 2M4 12h16M4 12l2-2m-2 2 2 2M4 18h16M4 18l2-2m-2 2 2 2" />
           }
-          title="Kitchens, shared or solo"
-          description="Cook on your own or invite the people you share meals with — everyone sees the same recipes."
+          title={t.kitchensTitle}
+          description={t.kitchensBody}
         />
         <FeatureCard
           icon={
@@ -70,8 +72,8 @@ export default async function Home() {
               <path d="M5 17a3 3 0 0 1 3-3h11" />
             </>
           }
-          title="Recipes"
-          description="Turn recipes from text, web pages or cookbook photos into one tidy format you can scale."
+          title={t.recipesTitle}
+          description={t.recipesBody}
         />
         <FeatureCard
           icon={
@@ -80,8 +82,8 @@ export default async function Home() {
               <path d="M4 6h.01M4 12h.01M4 18h.01" />
             </>
           }
-          title="Shopping kitchen"
-          description="Pick the week's meals and get one shopping kitchen, scaled to the number of people."
+          title={t.shoppingTitle}
+          description={t.shoppingBody}
         />
       </section>
 

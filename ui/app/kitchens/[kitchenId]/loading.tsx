@@ -1,16 +1,20 @@
+import { kitchensMessages } from "@/lib/i18n/kitchens";
+import { getServerLocale } from "@/lib/serverLocale";
+
 import styles from "../kitchens.module.scss";
 
 function Pulse({ className }: { className: string }) {
   return <div className={`animate-pulse rounded-md bg-muted ${className}`} />;
 }
 
-export default function KitchenDetailLoading() {
+export default async function KitchenDetailLoading() {
+  const t = kitchensMessages[await getServerLocale()];
   return (
     <main
       className={styles.softMain}
       role="status"
       aria-live="polite"
-      aria-label="Loading kitchen"
+      aria-label={t.loadingKitchen}
     >
       <div className={styles.softBody}>
         <div className={styles.detailLayout}>

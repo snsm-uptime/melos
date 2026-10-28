@@ -27,7 +27,7 @@ export type DraftInput = {
   // MVP-OUT: cuisineCount: number;
 };
 
-/** Error codes, mapped to text in lib/i18n/capture.ts (`captureMessages.errors`). */
+/** Error codes, mapped to text in lib/i18n/capture.ts (`captureMessagesFor(locale).errors`). */
 export type DraftErrors = {
   title?: "titleRequired" | "titleTooLong";
   servings?: "servingsInvalid";

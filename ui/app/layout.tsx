@@ -7,6 +7,8 @@ import {
   themeBootScript,
 } from "@/components/PreferencesProvider";
 
+import { getServerLocale } from "@/lib/serverLocale";
+
 import "./globals.css";
 
 const manrope = Manrope({
@@ -26,14 +28,17 @@ export const metadata: Metadata = {
   description: "Menus Everyone Loves to Share — a shared home cookbook",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // One language source for the page: the account's saved language, the signed-out pick, or
+  // Spanish (spec 063). The provider starts from the same value, so nothing flips.
+  const locale = await getServerLocale();
   return (
     <html
-      lang="en"
+      lang={locale}
       className={`${manrope.variable} ${petrona.variable}`}
       suppressHydrationWarning
     >
@@ -41,7 +46,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>
       <body>
-        <PreferencesProvider>
+        <PreferencesProvider initialLocale={locale}>
           <AppShell>{children}</AppShell>
         </PreferencesProvider>
       </body>
