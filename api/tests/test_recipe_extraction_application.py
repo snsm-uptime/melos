@@ -14,7 +14,6 @@ from dataclasses import replace
 
 import pytest
 from adapters.llm.fake_extractor import FakeRecipeExtractor
-from adapters.llm.vocabulary import load_vocabulary
 from application.recipe_extraction import (
     MAX_TEXT_CHARS,
     AIProviderError,
@@ -30,7 +29,7 @@ from application.recipe_extraction import (
 )
 from domain.recipe_draft import DraftRecipe, IngredientLine, LineProblem, LineProblemKind
 
-VOCABULARY = load_vocabulary()
+# MVP-OUT: VOCABULARY = load_vocabulary() (main ingredient and cuisine lists, S-061)
 ACCEPTANCE_TEXT = "Onion soup\n\n- a pinch of salt\n- 2 large onions\n\n1. Simmer with the salt."
 
 
@@ -39,8 +38,8 @@ def acceptance_draft() -> DraftRecipe:
         title="Onion soup",
         base_servings=None,
         servings_estimated=False,
-        main_ingredients=(),
-        cuisines=(),
+        # MVP-OUT: main_ingredients=(),
+        # MVP-OUT: cuisines=(),
         ingredient_lines=(
             IngredientLine(name="salt", vague=True, note="a pinch of"),
             IngredientLine(name="onion", vague=False, quantity=2.0, unit="Unit", size="Large"),
@@ -51,7 +50,7 @@ def acceptance_draft() -> DraftRecipe:
 
 def use_case(script) -> tuple[RecipeExtraction, FakeRecipeExtractor]:
     fake = FakeRecipeExtractor(script)
-    return RecipeExtraction(fake, VOCABULARY), fake
+    return RecipeExtraction(fake), fake
 
 
 def matching_draft() -> DraftRecipe:
@@ -59,8 +58,8 @@ def matching_draft() -> DraftRecipe:
         title="Onion soup",
         base_servings=2,
         servings_estimated=False,
-        main_ingredients=(),
-        cuisines=(),
+        # MVP-OUT: main_ingredients=(),
+        # MVP-OUT: cuisines=(),
         ingredient_lines=(
             IngredientLine(
                 name="onion",
@@ -94,8 +93,8 @@ def test_acceptance_draft_is_checked_and_uses_catalog_name() -> None:
 
     assert isinstance(result, Draft)
     recipe = result.recipe
-    assert recipe.main_ingredients == ()
-    assert recipe.cuisines == ("international",)
+    # MVP-OUT: assert recipe.main_ingredients == ()
+    # MVP-OUT: assert recipe.cuisines == ("international",)
     assert recipe.base_servings == 4
     assert recipe.servings_estimated is True
     salt, onion = recipe.ingredient_lines
@@ -138,8 +137,8 @@ def test_rule_breaking_draft_becomes_invalid_output_and_no_draft() -> None:
         title="Soup",
         base_servings=0,
         servings_estimated=False,
-        main_ingredients=(),
-        cuisines=(),
+        # MVP-OUT: main_ingredients=(),
+        # MVP-OUT: cuisines=(),
         ingredient_lines=(IngredientLine(name="onion", vague=False, quantity=2.0, unit="unit"),),
         steps=("Stir.",),
     )
@@ -167,8 +166,8 @@ def test_unit_missing_line_returns_draft_incomplete_with_the_line_problem() -> N
         title="Butter sauce",
         base_servings=None,
         servings_estimated=False,
-        main_ingredients=(),
-        cuisines=(),
+        # MVP-OUT: main_ingredients=(),
+        # MVP-OUT: cuisines=(),
         ingredient_lines=(IngredientLine(name="butter", vague=False, quantity=0.25),),
         steps=("Melt the butter.",),
     )
@@ -190,8 +189,8 @@ def test_incomplete_draft_log_names_kinds_only(caplog, monkeypatch: pytest.Monke
         title="Secret Title Soup",
         base_servings=None,
         servings_estimated=False,
-        main_ingredients=(),
-        cuisines=(),
+        # MVP-OUT: main_ingredients=(),
+        # MVP-OUT: cuisines=(),
         ingredient_lines=(IngredientLine(name="secretingredient", vague=False, quantity=2.0),),
         steps=("   ",),
     )
@@ -334,7 +333,7 @@ class _GatedExtractor:
 
 def test_concurrent_identical_texts_make_one_port_call_and_share_the_result() -> None:
     gate = _GatedExtractor()
-    service = RecipeExtraction(gate, VOCABULARY)
+    service = RecipeExtraction(gate)
     results: list[object] = []
 
     def call() -> None:

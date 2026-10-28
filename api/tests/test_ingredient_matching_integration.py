@@ -10,7 +10,6 @@ from uuid import UUID
 
 import pytest
 from adapters.llm.fake_extractor import FakeRecipeExtractor
-from adapters.llm.vocabulary import load_vocabulary
 from adapters.persistence.models import IngredientModel
 from api.deps import get_recipe_extraction
 from application.recipe_extraction import Draft, RecipeExtraction
@@ -32,8 +31,8 @@ def _matching_draft() -> DraftRecipe:
         title="Onion soup",
         base_servings=2,
         servings_estimated=False,
-        main_ingredients=(),
-        cuisines=(),
+        # MVP-OUT: main_ingredients=(),
+        # MVP-OUT: cuisines=(),
         ingredient_lines=(
             IngredientLine(
                 "onion",
@@ -66,7 +65,7 @@ def _matching_draft() -> DraftRecipe:
 def script(client: TestClient) -> FakeRecipeExtractor:
     """The fake assistant returns the matching draft unless a test sets another script."""
     fake = FakeRecipeExtractor(script=Draft(recipe=_matching_draft()))
-    use_case = RecipeExtraction(fake, load_vocabulary())
+    use_case = RecipeExtraction(fake)
     client.app.dependency_overrides[get_recipe_extraction] = lambda: use_case
     yield fake
     client.app.dependency_overrides.pop(get_recipe_extraction, None)

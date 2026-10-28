@@ -24,8 +24,6 @@ Recipe fields (only when outcome is "recipe"):
 
 - title: the recipe name, in the pasted text's language, 200 characters or fewer.
 - base_servings: a whole number when the text gives servings. Leave it out when it gives none.
-- main_ingredients: at most two keys, chosen only from this list: {{MAIN_KEYS}}.
-  Choose the ingredient that defines the dish. Use none when no key fits. Aromatics, fats, sauces and spices are never a main ingredient.
 - ingredient_lines: one entry per ingredient, with:
   - name: lower-case, singular, in the pasted text's language.
   - text_name: the ingredient's name exactly as the text writes it, with its own

@@ -8,7 +8,6 @@ from uuid import UUID, uuid4
 
 import pytest
 from adapters.llm.fake_extractor import FakeRecipeExtractor
-from adapters.llm.vocabulary import load_vocabulary
 from application.notebooks import NotebookView
 from application.ports import NotebookFacts
 from application.recipe_capture import (
@@ -31,7 +30,7 @@ from domain.errors import KitchenArchivedError, NotebookNotFoundError
 from domain.notebook import Notebook
 from domain.recipe_draft import DraftRecipe, IngredientLine
 
-VOCABULARY = load_vocabulary()
+# MVP-OUT: VOCABULARY = load_vocabulary() (main ingredient and cuisine lists, S-061)
 MAX_CHARS = 50
 TEXT = "2 large onions, chopped. Simmer them."
 
@@ -41,8 +40,8 @@ def good_draft() -> DraftRecipe:
         title="Onion soup",
         base_servings=4,
         servings_estimated=False,
-        main_ingredients=(),
-        cuisines=(),
+        # MVP-OUT: main_ingredients=(),
+        # MVP-OUT: cuisines=(),
         ingredient_lines=(IngredientLine("onion", False, 2.0, "unit", "large", None, "chopped"),),
         steps=("Simmer the onion.",),
     )
@@ -106,7 +105,7 @@ class Harness:
         self.extractor = FakeRecipeExtractor(script=script)
         self.notebooks = FakeNotebooks()
         self.catalog = FakeCatalog()
-        self.extraction = RecipeExtraction(self.extractor, VOCABULARY)
+        self.extraction = RecipeExtraction(self.extractor)
         self.capture = CaptureRecipeText(
             self.notebooks,
             self.catalog,

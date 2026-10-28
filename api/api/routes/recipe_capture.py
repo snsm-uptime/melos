@@ -1,4 +1,4 @@
-"""Recipe capture from pasted text, and the controlled vocabulary (spec 016).
+"""Recipe capture from pasted text, and the units and sizes lists (spec 016).
 
 The use case does the checks and the assistant call. This module only maps each
 outcome to its HTTP status and `code` (contracts/capture-api.md). Messages carry no
@@ -30,7 +30,6 @@ from application.recipe_extraction import (
 )
 from domain.errors import KitchenArchivedError, NotebookNotFoundError
 from domain.ingredient_catalog import LineMatch
-from domain.labels import pick_label
 from domain.preferences import effective_language
 from domain.recipe_draft import clean_display_name
 from fastapi import APIRouter, Depends, Request, status
@@ -45,6 +44,7 @@ from api.deps import (
 from api.schemas.recipe_capture import CaptureTextBody
 from api.settings import load_recipe_text_max_chars
 
+# MVP-OUT: the draft no longer uses `domain.labels.pick_label` (category chip labels)
 router = APIRouter(tags=["recipe-capture"])
 
 
@@ -64,10 +64,10 @@ def _match_body(match: LineMatch | None) -> dict[str, Any]:
     return {"kind": "matched", "entry": match.entry}
 
 
-def _draft_body(captured: CapturedDraft, vocabulary: dict[str, Any]) -> dict[str, Any]:
+def _draft_body(captured: CapturedDraft) -> dict[str, Any]:
     language = captured.language
-    main_labels = {item["id"]: item["label"] for item in vocabulary["main_ingredients"]}
-    cuisines = {item["id"]: item for item in vocabulary["cuisines"]}
+    # MVP-OUT: main_labels = {item["id"]: item["label"] for item in vocabulary["main_ingredients"]}
+    # MVP-OUT: cuisines = {item["id"]: item for item in vocabulary["cuisines"]}
     recipe = captured.recipe
     notebook = captured.notebook
     # A draft from the service always has one match per line; a draft without them shows "new".
@@ -93,18 +93,18 @@ def _draft_body(captured: CapturedDraft, vocabulary: dict[str, Any]) -> dict[str
             "title": recipe.title,
             "base_servings": recipe.base_servings,
             "servings_estimated": recipe.servings_estimated,
-            "main_ingredients": [
-                {"id": key, "label": pick_label(main_labels[key], language)}
-                for key in recipe.main_ingredients
-            ],
-            "cuisines": [
-                {
-                    "id": key,
-                    "label": pick_label(cuisines[key]["label"], language),
-                    "tag": cuisines[key]["tag"],
-                }
-                for key in recipe.cuisines
-            ],
+            # MVP-OUT: "main_ingredients": [
+            # MVP-OUT:     {"id": key, "label": pick_label(main_labels[key], language)}
+            # MVP-OUT:     for key in recipe.main_ingredients
+            # MVP-OUT: ],
+            # MVP-OUT: "cuisines": [
+            # MVP-OUT:     {
+            # MVP-OUT:         "id": key,
+            # MVP-OUT:         "label": pick_label(cuisines[key]["label"], language),
+            # MVP-OUT:         "tag": cuisines[key]["tag"],
+            # MVP-OUT:     }
+            # MVP-OUT:     for key in recipe.cuisines
+            # MVP-OUT: ],
             "ingredient_lines": [
                 {
                     "name": line.name,
@@ -124,12 +124,10 @@ def _draft_body(captured: CapturedDraft, vocabulary: dict[str, Any]) -> dict[str
     }
 
 
-def _outcome_response(
-    outcome: CaptureOutcome, vocabulary: dict[str, Any]
-) -> JSONResponse:
+def _outcome_response(outcome: CaptureOutcome) -> JSONResponse:
     if isinstance(outcome, CapturedDraft):
         return JSONResponse(
-            status_code=status.HTTP_200_OK, content=_draft_body(outcome, vocabulary)
+            status_code=status.HTTP_200_OK, content=_draft_body(outcome)
         )
     if isinstance(outcome, NotARecipe):
         if outcome.reason == NotRecipeReason.MULTIPLE_RECIPES:
@@ -251,7 +249,7 @@ def capture_recipe_text(
             KitchenArchivedError.CODE,
             KitchenArchivedError.MESSAGE,
         )
-    return _outcome_response(outcome, get_vocabulary_answer(request))
+    return _outcome_response(outcome)
 
 
 @router.get("/recipe-vocabulary")

@@ -9,8 +9,6 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 
-from domain.recipe_draft import Vocabulary
-
 from adapters.llm.prompt_templates import render
 
 TEXT_OPEN = "<<<RECIPE_TEXT"
@@ -26,14 +24,14 @@ VAGUE_PHRASES = (
 )
 
 
-def system_instruction(vocabulary: Vocabulary) -> str:
+def system_instruction() -> str:
     return render(
         "recipe_extraction_system",
         TEXT_OPEN=TEXT_OPEN,
         TEXT_CLOSE=TEXT_CLOSE,
         NAMES_OPEN=NAMES_OPEN,
         NAMES_CLOSE=NAMES_CLOSE,
-        MAIN_KEYS=", ".join(vocabulary.main_ingredient_keys),
+        # MVP-OUT: MAIN_KEYS=", ".join(vocabulary.main_ingredient_keys),
         VAGUE_PHRASES=VAGUE_PHRASES,
     )
 
