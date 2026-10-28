@@ -874,12 +874,12 @@ def test_read_routes_show_each_person_only_what_they_may_see(
     home = client.get(f"/notebooks/kitchens/{kitchen_id}").json()["notebooks"][0]
 
     listed = client.get("/notebooks").json()["notebooks"]
-    assert {view["id"] for view in listed} == {default["id"], str(family)}
+    assert {view["id"] for view in listed} == {default["id"], str(family), home["id"]}
     assert {view["id"]: view["access"] for view in listed} == {
         default["id"]: "owner",
         str(family): "member",
+        home["id"]: "kitchen_member",
     }
-    assert home["id"] not in {view["id"] for view in listed}
     assert client.get(f"/notebooks/{family}").json()["owner_alias"] == alias_from_email(
         "nb_read_ben@example.com"
     )

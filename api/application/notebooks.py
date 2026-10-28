@@ -138,7 +138,8 @@ class ListMyNotebooksCommand:
 
 
 class ListMyNotebooksService:
-    """The personal notebooks the caller owns or is a member of. Creates nothing (FR-014)."""
+    """The personal notebooks the caller owns or is a member of, and the notebooks of the
+    kitchens they belong to. Creates nothing (FR-014)."""
 
     def __init__(self, notebooks: NotebookRepository) -> None:
         self._notebooks = notebooks
@@ -146,7 +147,7 @@ class ListMyNotebooksService:
     def execute(self, command: ListMyNotebooksCommand) -> list[NotebookView]:
         return [
             notebook_view(facts)
-            for facts in self._notebooks.personal_facts_for(command.actor_user_id)
+            for facts in self._notebooks.visible_facts_for(command.actor_user_id)
         ]
 
 

@@ -8,7 +8,7 @@ from uuid import UUID
 from application.ports import NotebookFacts
 from domain.errors import PrincipalNotFoundError
 from domain.notebook import Notebook
-from sqlalchemy import Row, Select, and_, func, select
+from sqlalchemy import Row, Select, and_, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
 from adapters.persistence.models import (
@@ -114,12 +114,14 @@ class SqlAlchemyNotebookRepository:
         ).first()
         return _facts(row) if row is not None else None
 
-    def personal_facts_for(self, user_id: UUID) -> list[NotebookFacts]:
+    def visible_facts_for(self, user_id: UUID) -> list[NotebookFacts]:
         rows = self._session.execute(
             _facts_query(user_id)
             .where(
-                NotebookModel.kitchen_id.is_(None),
-                _CallerMembership.user_id.is_not(None),
+                or_(
+                    _CallerMembership.user_id.is_not(None),
+                    _KitchenMember.user_id.is_not(None),
+                )
             )
             .order_by(NotebookModel.created_at, NotebookModel.id)
         ).all()
