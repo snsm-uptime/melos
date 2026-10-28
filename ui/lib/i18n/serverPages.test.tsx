@@ -14,7 +14,10 @@ vi.mock("@/lib/alias", () => ({ requireAlias: vi.fn(), fetchMe: async () => null
 vi.mock("next/navigation", () => ({ redirect: vi.fn(), useRouter: () => ({}) }));
 vi.mock("@/components/RedirectIfAuthenticated", () => ({ RedirectIfAuthenticated: () => null }));
 vi.mock("@/app/sign-in/SignInChrome", () => ({ SignInChrome: () => null }));
-vi.mock("@/app/sign-in/SignInForm", () => ({ SignInForm: () => null }));
+vi.mock("@/app/sign-in/SignInForm", () => ({ SignInForm: () => <form data-form="sign-in" /> }));
+vi.mock("@/components/SignedOutLanguageSwitch", () => ({
+  SignedOutLanguageSwitch: ({ placement }: { placement?: string }) => <div data-switch={placement} />,
+}));
 vi.mock("@/app/signup/SignupForm", () => ({ SignupForm: () => null }));
 vi.mock("@/app/forgot-password/ForgotPasswordForm", () => ({ ForgotPasswordForm: () => null }));
 vi.mock("@/app/verify/VerifyForm", () => ({ VerifyForm: () => null }));
@@ -43,5 +46,18 @@ describe("server-built pages follow getServerLocale()", () => {
     const en = await render(load, props);
     expect(en).toContain(english);
     expect(en).not.toContain(spanish);
+  });
+
+  it("sign-in carries the language switch inside its card, after the form (which ends with the sign-up link)", async () => {
+    localeMock.mockResolvedValue("es");
+    const html = await render(() => import("@/app/sign-in/page") as never, {
+      searchParams: Promise.resolve({}),
+    });
+    const form = html.indexOf('data-form="sign-in"');
+    const languageSwitch = html.indexOf('data-switch="inline"');
+    expect(form).toBeGreaterThan(-1);
+    expect(languageSwitch).toBeGreaterThan(form);
+    // Inside the card, not floating: one switch, and before the card closes.
+    expect(html.match(/data-switch=/g)).toHaveLength(1);
   });
 });

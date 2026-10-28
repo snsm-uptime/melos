@@ -13,7 +13,7 @@ import {
 import { IconButton } from "@/components/IconButton";
 import { usePreferences } from "@/components/PreferencesProvider";
 import { TabBar, type TabBarItem } from "@/components/soft-ledger/TabBar";
-import { showsAppChrome, showsLanguageSwitch, tabKeyFromPath } from "@/lib/appChrome";
+import { showsAppChrome, showsFloatingLanguageSwitch, tabKeyFromPath } from "@/lib/appChrome";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
 import { Chip } from "./Chip";
 import { SignedOutLanguageSwitch } from "./SignedOutLanguageSwitch";
@@ -46,8 +46,9 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   ];
 
   // The English/Spanish switch of the signed-out screens (spec 063 FR-017), on both layouts:
-  // /sign-in opts into the header, the other signed-out screens have none.
-  const languageSwitch = showsLanguageSwitch(pathname) ? <SignedOutLanguageSwitch /> : null;
+  // /sign-in opts into the header, the other signed-out screens have none. /sign-in puts its
+  // switch in its own card, below the sign-up link, so none floats there.
+  const languageSwitch = showsFloatingLanguageSwitch(pathname) ? <SignedOutLanguageSwitch /> : null;
 
   if (!showHeader && !showTabBar) {
     return (

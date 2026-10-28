@@ -8,8 +8,16 @@ import type { Locale } from "@/lib/i18n/locale";
  * The small English/Spanish switch on the signed-out screens (spec 063 FR-017). The default stays
  * Spanish; a pick lasts for the browser session and is dropped at sign-in. Each language is
  * named in its own language, so the switch reads the same in both.
+ *
+ * "corner" floats at the top right of the screen, inset by the standard page gutter (the same
+ * right edge as the page content); "inline" sits where it is rendered, as part of a column (the
+ * sign-in card).
  */
-export function SignedOutLanguageSwitch() {
+export function SignedOutLanguageSwitch({
+  placement = "corner",
+}: {
+  placement?: "corner" | "inline";
+}) {
   const { locale, setLanguage } = usePreferences();
   const t = accountCopy(locale);
   const options: { value: Locale; label: string }[] = [
@@ -20,7 +28,11 @@ export function SignedOutLanguageSwitch() {
     <div
       role="group"
       aria-label={t.language}
-      className="absolute right-4 top-3 z-10 inline-flex overflow-hidden rounded-[var(--radius-md)] border border-border bg-surface text-[0.8rem]"
+      className={`inline-flex overflow-hidden rounded-[var(--radius-md)] border border-border bg-surface text-[0.8rem] ${
+        placement === "corner"
+          ? "absolute right-[max(var(--page-gutter),env(safe-area-inset-right))] top-3 z-10"
+          : "self-start"
+      }`}
     >
       {options.map((option) => {
         const current = option.value === locale;

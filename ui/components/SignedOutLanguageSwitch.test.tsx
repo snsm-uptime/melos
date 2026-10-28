@@ -30,6 +30,19 @@ describe("SignedOutLanguageSwitch", () => {
   const button = (label: string) =>
     Array.from(container.querySelectorAll("button")).find((b) => b.textContent === label) as HTMLButtonElement;
 
+  it("floats in the corner by default and sits in its column when inline", () => {
+    render();
+    const corner = container.querySelector("[role=group]") as HTMLElement;
+    expect(corner.className).toContain("absolute");
+    // Inset from the right edge by the standard page gutter, not a one-off value.
+    expect(corner.className).toContain("right-[max(var(--page-gutter),env(safe-area-inset-right))]");
+
+    act(() => root.render(<SignedOutLanguageSwitch placement="inline" />));
+    const group = container.querySelector("[role=group]") as HTMLElement;
+    expect(group.className).not.toContain("absolute");
+    expect(button("English")).toBeTruthy();
+  });
+
   it("marks the current language as pressed", () => {
     render();
     expect(button("Español").getAttribute("aria-pressed")).toBe("true");

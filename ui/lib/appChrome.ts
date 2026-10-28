@@ -40,11 +40,22 @@ const LANGUAGE_SWITCH_PREFIXES = [
   "/invites/accept",
 ] as const;
 
+/** Signed-out screens that place the switch themselves, inside their own column. */
+const INLINE_LANGUAGE_SWITCH_PREFIXES = ["/sign-in"] as const;
+
 /** Signed-out screens that carry the small English/Spanish switch (spec 063 FR-017). */
 export function showsLanguageSwitch(pathname: string): boolean {
   // The landing page is the first signed-out screen a visitor sees.
   if (pathname === "/") return true;
   return LANGUAGE_SWITCH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+/** The screens whose switch floats at the top right; the others render it in their own column. */
+export function showsFloatingLanguageSwitch(pathname: string): boolean {
+  if (!showsLanguageSwitch(pathname)) return false;
+  return !INLINE_LANGUAGE_SWITCH_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }

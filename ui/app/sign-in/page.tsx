@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 
 import { RedirectIfAuthenticated } from "@/components/RedirectIfAuthenticated";
+import { SignedOutLanguageSwitch } from "@/components/SignedOutLanguageSwitch";
 import { signInMessages } from "@/lib/i18n/signin";
 import { resolveServerAuthenticatedLanding } from "@/lib/serverLanding";
 import { fetchSession } from "@/lib/session";
@@ -46,6 +47,10 @@ export default async function SignInPage({
         <h1 className={styles.title}>{t.title}</h1>
         <p className={styles.subtitle}>{t.subtitle}</p>
         <SignInForm locale={locale} returnTo={rawReturnTo} />
+        {/* In the card's column, right below the sign-up link. */}
+        <div className={styles.languageRow}>
+          <SignedOutLanguageSwitch placement="inline" />
+        </div>
       </div>
     </main>
   );

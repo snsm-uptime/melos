@@ -264,10 +264,10 @@ describe("AppShell chrome header", () => {
       });
     }
 
-    it("shows on /sign-in, which opts into the chrome header", () => {
+    it("does not float on /sign-in, which has the switch in its own card", () => {
       renderAt("/sign-in", <EnableHeader href="/" title="Melos" />);
       expect(container.querySelector('[data-app-chrome="header"]')).not.toBeNull();
-      expect(switchPresent()).toBe(true);
+      expect(switchPresent()).toBe(false);
     });
 
     it("shows on a signed-out screen that has no header", () => {

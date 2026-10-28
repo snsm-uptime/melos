@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { showsAppChrome, showsLanguageSwitch, tabKeyFromPath } from "./appChrome";
+import {
+  showsAppChrome,
+  showsFloatingLanguageSwitch,
+  showsLanguageSwitch,
+  tabKeyFromPath,
+} from "./appChrome";
 
 describe("showsAppChrome", () => {
   it("keeps the tab bar on authenticated product surfaces", () => {
@@ -67,5 +72,15 @@ describe("showsLanguageSwitch (spec 063)", () => {
     for (const path of ["/home", "/account", "/alias", "/notebooks/n1", "/recipes/r1", "/invites", "/signing"]) {
       expect(showsLanguageSwitch(path)).toBe(false);
     }
+  });
+});
+
+describe("showsFloatingLanguageSwitch", () => {
+  it("floats on the signed-out screens except /sign-in, which has the switch in its card", () => {
+    for (const path of ["/", "/signup", "/sign-up", "/forgot-password", "/reset-password", "/verify", "/invites/accept"]) {
+      expect(showsFloatingLanguageSwitch(path)).toBe(true);
+    }
+    expect(showsFloatingLanguageSwitch("/sign-in")).toBe(false);
+    expect(showsFloatingLanguageSwitch("/home")).toBe(false);
   });
 });
