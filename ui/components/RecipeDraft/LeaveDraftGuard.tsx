@@ -4,7 +4,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { ActionDialog } from "@/components/ActionDialog/ActionDialog";
-import { clearCapture, isDraftEdited, useCaptureState } from "@/lib/capture/captureStore";
+import {
+  clearCapture,
+  isDraftEdited,
+  useCaptureState,
+} from "@/lib/capture/captureStore";
 import { captureMessages } from "@/lib/i18n/capture";
 
 /**
@@ -31,7 +35,8 @@ export function LeaveDraftGuard() {
     if (!edited) return;
     function onClick(event: MouseEvent) {
       const target = event.target as Element | null;
-      const anchor = target?.closest?.("a[href]") as HTMLAnchorElement | null | undefined;
+      const anchor = target?.closest?.("a[href]") as
+        HTMLAnchorElement | null | undefined;
       if (!anchor) return;
       const url = new URL(anchor.href, window.location.href);
       if (url.origin !== window.location.origin) return;
@@ -60,7 +65,9 @@ export function LeaveDraftGuard() {
         if (target) router.push(target);
       }}
     >
-      <p className="m-0 text-[0.95rem] text-muted">{captureMessages.leaveBody}</p>
+      <p className="m-0 text-[0.95rem] text-muted">
+        {captureMessages.leaveBody}
+      </p>
     </ActionDialog>
   );
 }
