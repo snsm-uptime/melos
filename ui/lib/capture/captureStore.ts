@@ -71,6 +71,11 @@ export type CaptureState = {
   draft: DraftView | null;
   originalHash: string | null;
   language: "en" | "es";
+  /** The draft's key for Save, made when the draft is shown (spec 020 research R5). */
+  saveKey: string | null;
+  saving: boolean;
+  /** Set by a successful Save: the page it returned to shows "Recipe saved" once (spec 020). */
+  savedNotice: { returnPath: string } | null;
 };
 
 const EMPTY: CaptureState = {
@@ -82,6 +87,9 @@ const EMPTY: CaptureState = {
   draft: null,
   originalHash: null,
   language: "en",
+  saveKey: null,
+  saving: false,
+  savedNotice: null,
 };
 
 let state: CaptureState = EMPTY;
@@ -140,7 +148,44 @@ export function showDraft(draft: DraftView, language: "en" | "es"): void {
     language,
     message: null,
     sheetOpen: false,
+    saveKey: newSaveKey(),
+    saving: false,
   });
+}
+
+function newSaveKey(): string {
+  return globalThis.crypto.randomUUID();
+}
+
+export function startSave(): void {
+  update({ saving: true, message: null });
+}
+
+/** A refused or failed Save: the draft and every edit stay; the same key is reused on retry. */
+export function failSave(message: CaptureMessage): void {
+  update({ saving: false, message });
+}
+
+/** A successful Save: the draft and text are gone, and the notebook page shows the notice. */
+export function markSaved(returnPath: string): void {
+  update({
+    phase: "idle",
+    draft: null,
+    originalHash: null,
+    text: "",
+    sheetOpen: false,
+    message: null,
+    saveKey: null,
+    saving: false,
+    savedNotice: { returnPath },
+  });
+}
+
+/** The notice for this page, if the last Save returned to it. Reading it clears it. */
+export function takeSavedNotice(returnPath: string): boolean {
+  if (state.savedNotice?.returnPath !== returnPath) return false;
+  update({ savedNotice: null });
+  return true;
 }
 
 export function editDraft(draft: DraftView): void {
@@ -174,7 +219,15 @@ export function chooseMatch(index: number, choice: string): void {
 
 /** Back on the draft page: the pasted text stays, the draft is dropped (FR-031). */
 export function backToSheet(): void {
-  update({ phase: "idle", draft: null, originalHash: null, sheetOpen: true, message: null });
+  update({
+    phase: "idle",
+    draft: null,
+    originalHash: null,
+    sheetOpen: true,
+    message: null,
+    saveKey: null,
+    saving: false,
+  });
 }
 
 /** Discard: the draft and the text are cleared; no leave prompt (FR-020). */
@@ -186,6 +239,8 @@ export function discardDraft(): void {
     text: "",
     sheetOpen: true,
     message: null,
+    saveKey: null,
+    saving: false,
   });
 }
 

@@ -4,6 +4,8 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { clearCapture, markSaved } from "@/lib/capture/captureStore";
+
 import { NotebookTabScreen } from "./NotebookTabScreen";
 
 const replace = vi.fn();
@@ -97,6 +99,38 @@ describe("NotebookTabScreen", () => {
 
     expect(container.textContent).not.toContain("Owned by ana");
     expect(container.textContent).toContain("Owned by ben");
+  });
+
+  it("shows \"Recipe saved\" once after a save returned here", async () => {
+    stubBff({
+      "/api/notebooks/default": [{ status: 200, body: defaultNotebook }],
+      "/api/notebooks": [{ status: 200, body: { notebooks: [defaultNotebook] } }],
+    });
+    clearCapture();
+    markSaved("/notebooks");
+
+    render();
+    await flush();
+    expect(container.textContent).toContain("Recipe saved");
+
+    act(() => root.unmount());
+    root = createRoot(container);
+    render();
+    await flush();
+    expect(container.textContent).not.toContain("Recipe saved");
+  });
+
+  it("shows no notice when the save returned to another page", async () => {
+    stubBff({
+      "/api/notebooks/default": [{ status: 200, body: defaultNotebook }],
+      "/api/notebooks": [{ status: 200, body: { notebooks: [defaultNotebook] } }],
+    });
+    clearCapture();
+    markSaved("/kitchens/k1");
+
+    render();
+    await flush();
+    expect(container.textContent).not.toContain("Recipe saved");
   });
 
   it("calls the default before the list and shows the cards in the order given", async () => {

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { AddRecipeCallToAction } from "@/components/AddRecipeCallToAction";
 import { NotebookCard } from "@/components/NotebookCard/NotebookCard";
+import { SavedNotice } from "@/components/RecipeDraft/SavedNotice";
 import { SectionLabel } from "@/components/soft-ledger/SectionLabel";
 import type { Locale } from "@/lib/i18n/locale";
 import { notebooksMessages } from "@/lib/i18n/notebooks";
@@ -83,6 +84,7 @@ export function KitchenNotebooksSection({
   return (
     <section className={styles.section}>
       <SectionLabel>{t.sectionTitle}</SectionLabel>
+      <SavedNotice returnPath={`/kitchens/${kitchenId}`} />
       {state.status === "not_found" ? (
         <p className={styles.copy} role="alert">
           {t.detailNotFound}

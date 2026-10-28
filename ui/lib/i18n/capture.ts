@@ -30,6 +30,9 @@ export const captureMessages = {
   misconfigured: "Assistant misconfigured. Your text is kept",
   archived: "This kitchen is archived, so recipes can't be added.",
   notFound: "This kitchen is unavailable.",
+  notebookGone: "This notebook no longer exists, or you no longer have access to it.",
+  invalidRecipe: "The recipe breaks a rule. Check the ingredient lines and try again.",
+  saveUnavailable: "We couldn't save the recipe. Your changes are kept. Try again.",
   newNotebook: "a new notebook, created when the recipe is saved",
   reviewTitle: "Review recipe",
   forNotebook: (name: string) => `For: ${name}`,
@@ -61,6 +64,9 @@ export const captureMessages = {
   addStep: "Add step",
   stepLabel: (number: number) => `Step ${number}`,
   close: "Close",
+  save: "Save recipe",
+  saving: "Saving…",
+  saved: "Recipe saved",
   discard: "Discard",
   back: "Back",
   leaveTitle: "Leave without saving?",
@@ -73,6 +79,7 @@ export const captureMessages = {
     servingsInvalid: "Servings must be a whole number of at least 1.",
     amountAndUnit: "Add an amount and a unit, or mark it as vague.",
     vagueHasAmount: "A vague amount has no number or unit.",
+    vagueNeedsNote: "Write the amount in words, for example \"to taste\".",
     sizeOnlyForUnit: "Size is only for counted items.",
     sizeInvalid: "Choose small, medium or large.",
     stepsRequired: "Add at least one step.",
@@ -153,6 +160,12 @@ export function messageForCode(message: CaptureMessage, max?: number): string {
       return captureMessages.tooLong(max ?? 5000);
     case "kitchen_archived":
       return captureMessages.archived;
+    case "notebook_gone":
+      return captureMessages.notebookGone;
+    case "invalid_recipe":
+      return captureMessages.invalidRecipe;
+    case "save_unavailable":
+      return captureMessages.saveUnavailable;
     case "notebook_not_found":
     case "kitchen_not_found":
       return captureMessages.notFound;

@@ -10,11 +10,16 @@ import {
   fetchVocabulary,
   type VocabularyResponse,
 } from "@/lib/capture/captureClient";
-import { checkDraft, type DraftInput } from "@/lib/capture/draftRules";
+import { checkDraft, hasErrors, type DraftInput } from "@/lib/capture/draftRules";
+import { submitSave } from "@/lib/capture/saveClient";
 import {
   backToSheet,
   discardDraft,
   editDraft,
+  failSave,
+  getCaptureState,
+  markSaved,
+  startSave,
   undoChange,
   useCaptureState,
   type DraftView,
@@ -22,7 +27,7 @@ import {
 } from "@/lib/capture/captureStore";
 import { nameChanges } from "@/lib/capture/nameChanges";
 // MVP-OUT: import { pickLabel } from "@/lib/capture/labels";
-import { captureMessages } from "@/lib/i18n/capture";
+import { captureMessages, messageForCode } from "@/lib/i18n/capture";
 
 // MVP-OUT: import { CategoryChips } from "./CategoryChips";
 import { IngredientLineRow } from "./IngredientLineRow";
@@ -38,8 +43,8 @@ function nextKey(): string {
 }
 
 /**
- * The draft review page body (spec 016 US1, US4). Edits stay in the store until the member
- * leaves. There is no Save: the draft is not stored in this feature (FR-019).
+ * The draft review page body (spec 016 US1, US4; Save is spec 020). Edits stay in the store
+ * until the member saves, discards or leaves.
  */
 export function RecipeDraftEditor() {
   const router = useRouter();
@@ -107,6 +112,19 @@ export function RecipeDraftEditor() {
   function back() {
     backToSheet();
     router.push(notebook!.returnPath);
+  }
+
+  async function save() {
+    if (capture.saving) return;
+    startSave();
+    const result = await submitSave(getCaptureState());
+    if (!result.ok) {
+      failSave(result.message);
+      return;
+    }
+    const returnPath = notebook!.returnPath;
+    markSaved(returnPath);
+    router.push(returnPath);
   }
 
   function discard() {
@@ -332,13 +350,28 @@ export function RecipeDraftEditor() {
         </section>
       </div>
 
-      <div className="flex justify-end gap-3 px-4">
+      {capture.message ? (
+        <p role="alert" className="px-4 text-[0.9rem] text-owe">
+          {messageForCode(capture.message)}
+        </p>
+      ) : null}
+
+      <div className="flex items-center justify-end gap-4 px-4">
         <button
           type="button"
           onClick={discard}
-          className="text-[0.95rem] text-owe"
+          disabled={capture.saving}
+          className="text-[0.95rem] text-owe disabled:opacity-50"
         >
           {captureMessages.discard}
+        </button>
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={capture.saving || hasErrors(errors)}
+          className="rounded-[0.75rem] bg-accent px-4 py-2 text-[0.95rem] font-semibold text-on-accent disabled:opacity-50"
+        >
+          {capture.saving ? captureMessages.saving : captureMessages.save}
         </button>
       </div>
     </div>

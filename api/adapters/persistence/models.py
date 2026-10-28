@@ -11,6 +11,8 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -287,3 +289,133 @@ class IngredientModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+UNITS_SQL = "('g', 'kg', 'oz', 'lb', 'ml', 'l', 'cup', 'tbsp', 'tsp', 'unit')"
+
+
+class SourceModel(Base):
+    """Where a recipe came from (spec 020). Deleting a source keeps the recipe."""
+
+    __tablename__ = "source"
+    __table_args__ = (
+        CheckConstraint("type IN ('text', 'url', 'photo')", name="ck_source_type"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    type: Mapped[str] = mapped_column(Text, nullable=False)
+    url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class RecipeModel(Base):
+    """A saved recipe, in exactly one notebook (spec 020)."""
+
+    __tablename__ = "recipe"
+    __table_args__ = (
+        CheckConstraint("btrim(title) <> ''", name="ck_recipe_title_not_blank"),
+        CheckConstraint("base_servings >= 1", name="ck_recipe_base_servings"),
+        Index(
+            "uq_recipe_author_save_key",
+            "author_id",
+            "save_key",
+            unique=True,
+            postgresql_where=text("save_key IS NOT NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    notebook_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("notebook.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # Null reads "unknown" once the author's account is gone.
+    author_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    source_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("source.id", ondelete="SET NULL"), nullable=True
+    )
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    base_servings: Mapped[int] = mapped_column(Integer, nullable=False)
+    servings_estimated: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    # The draft key the ui makes, so a repeated Save returns this recipe (research R5).
+    save_key: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class RecipeIngredientModel(Base):
+    __tablename__ = "recipe_ingredient"
+    __table_args__ = (
+        UniqueConstraint("recipe_id", "position", name="uq_recipe_ingredient_position"),
+        CheckConstraint("quantity IS NULL OR quantity > 0", name="ck_recipe_ingredient_quantity"),
+        CheckConstraint(
+            f"unit IS NULL OR unit IN {UNITS_SQL}", name="ck_recipe_ingredient_unit"
+        ),
+        CheckConstraint(
+            "size IS NULL OR (size IN ('small', 'medium', 'large') AND unit = 'unit')",
+            name="ck_recipe_ingredient_size",
+        ),
+        CheckConstraint(
+            "(vague_note IS NOT NULL AND quantity IS NULL AND unit IS NULL)"
+            " OR (vague_note IS NULL AND quantity IS NOT NULL AND unit IS NOT NULL)",
+            name="ck_recipe_ingredient_vague_or_measured",
+        ),
+        CheckConstraint("btrim(name) <> ''", name="ck_recipe_ingredient_name_not_blank"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("recipe.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    quantity: Mapped[float | None] = mapped_column(Numeric, nullable=True)
+    unit: Mapped[str | None] = mapped_column(Text, nullable=True)
+    size: Mapped[str | None] = mapped_column(Text, nullable=True)
+    preparation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    vague_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class StepModel(Base):
+    __tablename__ = "step"
+    __table_args__ = (
+        UniqueConstraint("recipe_id", "position", name="uq_step_position"),
+        CheckConstraint("btrim(text) <> ''", name="ck_step_text_not_blank"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("recipe.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)

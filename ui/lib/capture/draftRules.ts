@@ -14,6 +14,8 @@ export type LineInput = {
   quantity: number | null;
   unit: string | null;
   size: string | null;
+  /** The words of a vague amount; checked only when the line carries the field. */
+  note?: string | null;
 };
 
 export type DraftInput = {
@@ -30,13 +32,16 @@ export type DraftErrors = {
   title?: "titleRequired" | "titleTooLong";
   servings?: "servingsInvalid";
   steps?: "stepsRequired";
-  lines: Record<number, ("amountAndUnit" | "vagueHasAmount" | "sizeOnlyForUnit" | "sizeInvalid")[]>;
+  lines: Record<number, ("amountAndUnit" | "vagueHasAmount" | "vagueNeedsNote" | "sizeOnlyForUnit" | "sizeInvalid")[]>;
 };
 
 export function lineErrors(line: LineInput): DraftErrors["lines"][number] {
   const errors: NonNullable<DraftErrors["lines"][number]> = [];
   if (line.vague) {
     if (line.quantity !== null || line.unit !== null) errors.push("vagueHasAmount");
+    if (line.note !== undefined && (line.note ?? "").trim().length === 0) {
+      errors.push("vagueNeedsNote");
+    }
   } else {
     const measured =
       line.quantity !== null &&
