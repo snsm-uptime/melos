@@ -257,7 +257,7 @@ stories:
     title: Save a confirmed draft into its notebook and create new catalog entries
     epic: Recipes
     priority: must
-    status: in_progress
+    status: done
     journey: J2
     source: prd.md 1.5A, 1.6, J2 Save, Appendix A (Recipe); specs/020-save-confirmed-draft
     acceptance: [AC3.5]
@@ -284,9 +284,22 @@ stories:
     title: Recipe lists for a personal notebook and for a kitchen (its notebooks), with a text filter
     epic: Recipes
     priority: must
+    status: done
+    journey: J3
+    source: prd.md J3
+
+  - id: S-027
+    title: Recipe detail, edit and delete with confirmation; deletion removes it from cart and search
+    epic: Recipes
+    priority: must
     status: backlog
     journey: J3
     source: prd.md J3
+    acceptance: [AC3.2]
+    notes: >
+      Edit and delete: those who can write to the recipe's notebook (PRD Appendix D, 2026-10-23).
+      Deleting a kitchen notebook's recipe removes it from the kitchen's list, cart and search;
+      copies and snapshots in other notebooks do not change (AC3.2). A past citation keeps its text and shows "recipe removed".
 
   - id: S-022
     title: Shared cart with people and per-recipe meals; scale factor
@@ -404,19 +417,6 @@ stories:
     journey: J2
     source: prd.md J2, 1.5A, 1.7 (URL fetching)
     acceptance: [AC2.3]
-
-  - id: S-027
-    title: Recipe detail, edit and delete with confirmation; deletion removes it from cart and search
-    epic: Recipes
-    priority: must
-    status: backlog
-    journey: J3
-    source: prd.md J3
-    acceptance: [AC3.2]
-    notes: >
-      Edit and delete: those who can write to the recipe's notebook (PRD Appendix D, 2026-10-23).
-      Deleting a kitchen notebook's recipe removes it from the kitchen's list, cart and search;
-      copies and snapshots in other notebooks do not change (AC3.2). A past citation keeps its text and shows "recipe removed".
 
   - id: S-028
     title: Recipe PDF with correct accents and fractions
