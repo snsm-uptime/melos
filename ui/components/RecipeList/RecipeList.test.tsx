@@ -95,6 +95,12 @@ describe("RecipeList", () => {
     ]);
   });
 
+  it("links each card to its detail and remembers the page and filter", async () => {
+    await render(async () => page(["Soup"], 2, 3), { page: 2, q: "soup" });
+    const href = container.querySelector("h3 a")?.getAttribute("href");
+    expect(href).toBe(`/recipes/Soup?from=${encodeURIComponent("/notebooks/n1?page=2&q=soup")}`);
+  });
+
   it("shows the notebook name on kitchen lists only", async () => {
     await render(async () => page(["Soup"]), { scope: "kitchen" });
     expect(container.textContent).toContain("Home notebook");
