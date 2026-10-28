@@ -850,6 +850,9 @@ def test_notebook_routes_are_gets_on_the_four_contract_paths(client: TestClient)
         "/notebooks/default",
         "/notebooks/kitchens/{kitchen_id}",
         "/notebooks/{notebook_id}",
+        # The recipe lists (spec 021) are reads under the same router.
+        "/notebooks/kitchens/{kitchen_id}/recipes",
+        "/notebooks/{notebook_id}/recipes",
     }
     assert {method for operations in notebook_paths.values() for method in operations} == {"get"}
     capture_paths = {path: set(ops) for path, ops in paths.items() if "/captures/" in path}

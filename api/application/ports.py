@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Protocol
 from uuid import UUID
 
@@ -153,6 +153,39 @@ class RecipeRepository(Protocol):
         """Store the source, the recipe, its lines and its steps.
 
         Raises DuplicateSaveKeyError when the author's save key is already stored.
+        """
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class RecipeCardRow:
+    """One recipe as a list card (spec 021)."""
+
+    id: UUID
+    title: str
+    # None when the author's account is gone.
+    author_alias: str | None
+    ingredient_count: int
+    notebook_id: UUID
+    notebook_name: str
+    created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class RecipePage:
+    items: list[RecipeCardRow]
+    # Recipes matching the key across all pages.
+    total: int
+
+
+class RecipeListRepository(Protocol):
+    def list_page(
+        self, notebook_ids: Sequence[UUID], key: str, offset: int, limit: int
+    ) -> RecipePage:
+        """Recipes of the notebooks, newest first (created_at desc, id desc).
+
+        `key` is a search key (see domain.recipe_search); empty means no filter. Empty
+        `notebook_ids` gives an empty page. Reads only.
         """
         ...
 
