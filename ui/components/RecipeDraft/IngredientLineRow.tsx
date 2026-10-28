@@ -2,6 +2,8 @@
 
 import { useId, useState } from "react";
 
+import { formatQuantity } from "@/lib/recipeLines";
+
 import { Card, CardBody, CardHeader } from "@/components/Card";
 import type { DraftErrors } from "@/lib/capture/draftRules";
 import {
@@ -15,7 +17,7 @@ import { captureMessages } from "@/lib/i18n/capture";
 import { NameChangeNotice } from "./NameChangeNotice";
 import { RowControls } from "./RowControls";
 
-type IngredientLineRowProps = {
+type EditableIngredientLineProps = {
   line: LineView;
   index: number;
   count: number;
@@ -48,7 +50,7 @@ const labelClassName = "m-0 w-24 shrink-0 text-[0.8rem] font-medium text-muted";
  * labelled preparation and note. The bottom bar holds remove and the move buttons. A vague amount
  * clears the quantity and the unit. Errors show under the row.
  */
-export function IngredientLineRow({
+function EditableIngredientLine({
   line,
   index,
   count,
@@ -61,7 +63,7 @@ export function IngredientLineRow({
   onChange,
   onRemove,
   onMove,
-}: IngredientLineRowProps) {
+}: EditableIngredientLineProps) {
   const sizeEnabled = line.unit === "unit";
   const matchedEntry = line.match.kind === "matched" ? line.match.entry : null;
   const id = useId();
@@ -288,4 +290,73 @@ export function IngredientLineRow({
       </Card>
     </li>
   );
+}
+
+/** What the read-only card needs of a line; a stored recipe's line has all of it. */
+export type ReadOnlyLine = Pick<
+  LineView,
+  "name" | "vague" | "quantity" | "unit" | "size" | "preparation" | "note"
+>;
+
+type ReadOnlyIngredientLineProps = {
+  line: ReadOnlyLine;
+  /** Marks the card as display only: no fields, no match control, no row controls. */
+  readOnly: true;
+};
+
+/** The amount as one piece of text: "1 cup", "2 large", or nothing for a vague amount. */
+function amountText(line: ReadOnlyLine): string {
+  if (line.vague || line.quantity === null) return "";
+  const unit = line.unit === "unit" ? line.size : line.unit;
+  return [formatQuantity(line.quantity), unit].filter(Boolean).join(" ");
+}
+
+/**
+ * The same card as the editable row, with the fields shown as text (spec 027): the name and the
+ * amount share the top line; the preparation and the note follow only when the line has them.
+ */
+function ReadOnlyIngredientLine({ line }: { line: ReadOnlyLine }) {
+  const amount = amountText(line);
+  return (
+    <li className="flex min-w-0 flex-col gap-[var(--space-2)]">
+      <Card>
+        <CardHeader className="flex items-center justify-between gap-2">
+          <span className={`${headingClassName} min-w-0 flex-1 px-1 text-foreground`}>
+            {line.name}
+          </span>
+          {amount ? (
+            <span className={`${headingClassName} shrink-0 px-1 text-accent`}>{amount}</span>
+          ) : null}
+        </CardHeader>
+        {line.preparation || line.note ? (
+          <CardBody>
+            {line.preparation ? (
+              <div className="flex items-center gap-2">
+                <h3 className={labelClassName}>{captureMessages.preparation}:</h3>
+                <span className="flex-1 px-1 text-[0.9rem] text-foreground">
+                  {line.preparation}
+                </span>
+              </div>
+            ) : null}
+            {line.note ? (
+              <div className="flex items-center gap-2">
+                <h3 className={labelClassName}>{captureMessages.note}:</h3>
+                <span className="flex-1 px-1 text-[0.9rem] text-foreground">{line.note}</span>
+              </div>
+            ) : null}
+          </CardBody>
+        ) : null}
+      </Card>
+    </li>
+  );
+}
+
+export type IngredientLineRowProps =
+  | (EditableIngredientLineProps & { readOnly?: false })
+  | ReadOnlyIngredientLineProps;
+
+/** One ingredient line, to edit at capture and in an edit, or display only on the detail. */
+export function IngredientLineRow(props: IngredientLineRowProps) {
+  if (props.readOnly) return <ReadOnlyIngredientLine line={props.line} />;
+  return <EditableIngredientLine {...props} />;
 }

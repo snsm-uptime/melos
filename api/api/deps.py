@@ -29,6 +29,12 @@ from application.rate_limit import SlidingWindowRateLimiter, resolve_trusted_cli
 from application.recipe_capture import CaptureRecipeText
 from application.recipe_extraction import RecipeExtraction
 from application.recipe_lists import ListKitchenRecipesService, ListNotebookRecipesService
+from application.recipe_manage import (
+    DeleteRecipeService,
+    GetRecipeService,
+    MatchRecipeNamesService,
+    UpdateRecipeService,
+)
 from application.recipe_save import SaveRecipeDraft
 from application.recipe_vocabulary import vocabulary_answer
 from domain.errors import AliasRequiredError
@@ -183,6 +189,30 @@ def get_save_recipe_draft(db: Session = Depends(get_db)) -> SaveRecipeDraft:
         ),
         max_text_chars=load_recipe_text_max_chars(),
     )
+
+
+def get_get_recipe(db: Session = Depends(get_db)) -> GetRecipeService:
+    return GetRecipeService(SqlAlchemyRecipeRepository(db), SqlAlchemyNotebookRepository(db))
+
+
+def get_match_recipe_names(db: Session = Depends(get_db)) -> MatchRecipeNamesService:
+    return MatchRecipeNamesService(
+        SqlAlchemyRecipeRepository(db),
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyIngredientCatalog(db),
+    )
+
+
+def get_update_recipe(db: Session = Depends(get_db)) -> UpdateRecipeService:
+    return UpdateRecipeService(
+        SqlAlchemyRecipeRepository(db),
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyIngredientCatalog(db),
+    )
+
+
+def get_delete_recipe(db: Session = Depends(get_db)) -> DeleteRecipeService:
+    return DeleteRecipeService(SqlAlchemyRecipeRepository(db), SqlAlchemyNotebookRepository(db))
 
 
 def get_list_notebook_recipes(db: Session = Depends(get_db)) -> ListNotebookRecipesService:

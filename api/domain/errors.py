@@ -253,6 +253,36 @@ class NotebookChoiceRequiredError(DomainError):
         self.candidate_ids = candidate_ids
 
 
+class RecipeNotFoundError(DomainError):
+    """Raised for a missing recipe and for one in a notebook the caller may not see — same body."""
+
+    MESSAGE = "That recipe isn't available."
+    CODE = "recipe_not_found"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class RecipeReadOnlyError(DomainError):
+    """Raised when the caller may read a recipe but not change or delete it (spec 027 FR-006)."""
+
+    MESSAGE = "You can only read this recipe."
+    CODE = "recipe_read_only"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class RecipeChangedError(DomainError):
+    """Raised when a recipe changed after the caller opened it (spec 027 FR-011)."""
+
+    MESSAGE = "This recipe was changed after you opened it."
+    CODE = "recipe_changed"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
 class InvalidInviteEmailError(DomainError):
     """Raised when an invite email fails shape validation."""
 

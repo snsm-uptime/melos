@@ -31,6 +31,17 @@ class NewRecipe:
     save_key: UUID | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class EditedRecipe:
+    """The content of a recipe after an edit (spec 027). Author, notebook and source stay."""
+
+    title: str
+    base_servings: int
+    servings_estimated: bool
+    lines: tuple[IngredientLine, ...]
+    steps: tuple[str, ...]
+
+
 def resolve_line_names(
     lines: Sequence[IngredientLine], catalog_names: Iterable[str]
 ) -> tuple[tuple[IngredientLine, ...], tuple[str, ...]]:

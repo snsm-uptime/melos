@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { BackIcon } from "@/app/icons";
-import { Card, CardBody } from "@/components/Card";
 import { IconButton } from "@/components/IconButton";
 import {
   fetchVocabulary,
@@ -32,7 +31,7 @@ import { captureMessages, messageForCode } from "@/lib/i18n/capture";
 
 // MVP-OUT: import { CategoryChips } from "./CategoryChips";
 import { IngredientLineRow } from "./IngredientLineRow";
-import { RowControls } from "./RowControls";
+import { StepCard } from "./StepCard";
 
 // MVP-OUT: const MAX_MAIN = 2;
 // MVP-OUT: const MAX_CUISINES = 2;
@@ -285,50 +284,25 @@ export function RecipeDraftEditor() {
           <div className="flex flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
             <ol className="m-0 flex list-none flex-col gap-2 p-0">
               {draft.steps.map((step, index) => (
-                <Card as="li" key={step.key}>
-                  <div className="flex min-w-0 items-stretch">
-                    <CardBody className="min-w-0 flex-1 justify-center">
-                      <div className="flex items-center gap-3">
-                        <span
-                          aria-hidden="true"
-                          className="flex size-7 shrink-0 items-center justify-center rounded-full bg-accent text-[0.8rem] font-semibold text-on-accent"
-                        >
-                          {index + 1}
-                        </span>
-                        <textarea
-                          aria-label={captureMessages.stepLabel(index + 1)}
-                          rows={1}
-                          className="min-w-0 flex-1 field-sizing-content resize-none rounded-[0.4rem] border-0 bg-transparent px-1 py-[0.15rem] text-[0.95rem] text-foreground outline-none hover:bg-background focus:bg-background"
-                          value={step.text}
-                          onChange={(event) =>
-                            update({
-                              steps: draft.steps.map((item, i) =>
-                                i === index
-                                  ? { ...item, text: event.target.value }
-                                  : item,
-                              ),
-                            })
-                          }
-                        />
-                      </div>
-                    </CardBody>
-                    <RowControls
-                      className="px-2 py-3"
-                      index={index}
-                      count={draft.steps.length}
-                      onRemove={() =>
-                        update({
-                          steps: draft.steps.filter((_, i) => i !== index),
-                        })
-                      }
-                      onMove={(direction) =>
-                        update({
-                          steps: moveItem(draft.steps, index, direction),
-                        })
-                      }
-                    />
-                  </div>
-                </Card>
+                <StepCard
+                  key={step.key}
+                  index={index}
+                  count={draft.steps.length}
+                  text={step.text}
+                  onChange={(text) =>
+                    update({
+                      steps: draft.steps.map((item, i) =>
+                        i === index ? { ...item, text } : item,
+                      ),
+                    })
+                  }
+                  onRemove={() =>
+                    update({ steps: draft.steps.filter((_, i) => i !== index) })
+                  }
+                  onMove={(direction) =>
+                    update({ steps: moveItem(draft.steps, index, direction) })
+                  }
+                />
               ))}
             </ol>
             {errors.steps ? (

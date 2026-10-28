@@ -96,3 +96,17 @@ def match_line(
     if entry_key in singular_forms(line_key) or line_key in singular_forms(entry_key):
         return LineMatch(kind="matched", entry=proposal)
     return NEW
+
+
+def propose_entry(name: str, catalog: Sequence[str]) -> str | None:
+    """The first catalog entry the name matches under `match_line`, or None (spec 027 FR-009).
+
+    Used when a member types a name in an edit: no model is involved, so the proposal is the
+    same fixed rule that confirms the model's proposals at capture.
+    """
+    if not name.strip():
+        return None
+    for entry in catalog:
+        if match_line(None, name, entry, catalog).kind == "matched":
+            return entry
+    return None

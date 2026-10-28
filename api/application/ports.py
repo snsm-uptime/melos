@@ -9,7 +9,7 @@ from typing import Protocol
 from uuid import UUID
 
 from domain.notebook import Notebook, NotebookRole
-from domain.recipe import NewRecipe
+from domain.recipe import EditedRecipe, NewRecipe
 
 # Canonical session TTL (30d).
 # adapters.persistence.sessions re-exports this for SESSION_COOKIE_MAX_AGE.
@@ -142,6 +142,37 @@ class StoredRecipe:
     title: str
 
 
+@dataclass(frozen=True, slots=True)
+class RecipeLineDetail:
+    """One ingredient line of a stored recipe (spec 027)."""
+
+    name: str
+    vague: bool
+    quantity: float | None
+    unit: str | None
+    size: str | None
+    preparation: str | None
+    note: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class RecipeDetail:
+    """A stored recipe as the detail screen reads it (spec 027)."""
+
+    id: UUID
+    notebook_id: UUID
+    title: str
+    base_servings: int
+    servings_estimated: bool
+    author_alias: str | None
+    lines: tuple[RecipeLineDetail, ...]
+    steps: tuple[str, ...]
+    source_type: str | None
+    source_url: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
 class DuplicateSaveKeyError(Exception):
     """The same author already stored a recipe with this save key (spec 020 research R5)."""
 
@@ -153,6 +184,29 @@ class RecipeRepository(Protocol):
         """Store the source, the recipe, its lines and its steps.
 
         Raises DuplicateSaveKeyError when the author's save key is already stored.
+        """
+        ...
+
+    def get_detail(self, recipe_id: UUID) -> RecipeDetail | None:
+        """One recipe with its lines and steps in position order, or None. Reads only.
+
+        Never returns the source's pasted text.
+        """
+        ...
+
+    def replace(self, recipe_id: UUID, version: datetime, recipe: EditedRecipe) -> RecipeDetail:
+        """Replace title, servings, lines and steps of a recipe (spec 027).
+
+        Locks the recipe row. Raises RecipeNotFoundError when it is gone and
+        RecipeChangedError when its `updated_at` differs from `version`. Author, notebook,
+        source, save key and creation time are never changed.
+        """
+        ...
+
+    def delete(self, recipe_id: UUID) -> None:
+        """Remove the recipe, its lines, its steps and its source row.
+
+        Raises RecipeNotFoundError when it is gone.
         """
         ...
 

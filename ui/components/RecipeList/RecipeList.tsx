@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { AddRecipeCallToAction, type CaptureCandidate } from "@/components/AddRecipeCallToAction";
 import { RecipeCard } from "@/components/RecipeCard/RecipeCard";
+import { listAddress } from "@/lib/listAddress";
 import type { Locale } from "@/lib/i18n/locale";
 import { recipeListMessages } from "@/lib/i18n/recipeLists";
 import type { NotebookResult } from "@/lib/notebooksClient";
@@ -143,7 +144,12 @@ export function RecipeList({
           <ul className={styles.grid}>
             {state.page.items.map((recipe) => (
               <li key={recipe.id}>
-                <RecipeCard recipe={recipe} locale={locale} showNotebook={scope === "kitchen"} />
+                <RecipeCard
+                  recipe={recipe}
+                  locale={locale}
+                  showNotebook={scope === "kitchen"}
+                  from={listAddress(returnPath, page, q)}
+                />
               </li>
             ))}
           </ul>

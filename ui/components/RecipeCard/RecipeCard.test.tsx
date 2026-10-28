@@ -70,4 +70,18 @@ describe("RecipeCard", () => {
     render({ recipe: { ...recipe, title: "A very long title ".repeat(10) } });
     expect(container.querySelector("h3")?.getAttribute("title")).toContain("A very long title");
   });
+
+  it("links to the recipe detail with the list it is on", () => {
+    render({ from: "/notebooks/n1?page=2&q=soup" });
+    const link = container.querySelector("a");
+    expect(link?.textContent).toBe("Lentil soup");
+    expect(link?.getAttribute("href")).toBe(
+      `/recipes/r1?from=${encodeURIComponent("/notebooks/n1?page=2&q=soup")}`,
+    );
+  });
+
+  it("is not a link without a list to return to", () => {
+    render();
+    expect(container.querySelector("a")).toBeNull();
+  });
 });

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { Chip } from "@/components/Chip";
 import type { Locale } from "@/lib/i18n/locale";
 import { recipeListMessages } from "@/lib/i18n/recipeLists";
@@ -8,6 +10,11 @@ type RecipeCardProps = {
   locale: Locale;
   /** Shown on kitchen lists, where recipes come from several notebooks (spec 021 FR-004). */
   showNotebook?: boolean;
+  /**
+   * The list this card is on, with its page and filter. The card links to the recipe detail and
+   * Back returns here (spec 027 FR-004). Without it the card is not a link.
+   */
+  from?: string;
 };
 
 /** The default image until a recipe has its own: a cooking pot. */
@@ -32,11 +39,11 @@ function PotIcon() {
   );
 }
 
-/** Display-only recipe card: no link, no checkbox, no categories (spec 021 FR-014). */
-export function RecipeCard({ recipe, locale, showNotebook = false }: RecipeCardProps) {
+/** Recipe card: links to the detail; no checkbox, no categories (spec 021 FR-014, spec 027). */
+export function RecipeCard({ recipe, locale, showNotebook = false, from }: RecipeCardProps) {
   const t = recipeListMessages[locale];
   return (
-    <article className="flex min-w-0 items-center gap-[var(--space-3)] rounded-[var(--radius-md)] border border-border bg-surface p-[var(--space-3)]">
+    <article className="relative flex min-w-0 items-center gap-[var(--space-3)] rounded-[var(--radius-md)] border border-border bg-surface p-[var(--space-3)]">
       <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-background text-muted">
         <PotIcon />
       </span>
@@ -45,7 +52,16 @@ export function RecipeCard({ recipe, locale, showNotebook = false }: RecipeCardP
           className="m-0 truncate text-[1rem] font-[550] leading-normal text-foreground"
           title={recipe.title}
         >
-          {recipe.title}
+          {from ? (
+            <Link
+              href={`/recipes/${encodeURIComponent(recipe.id)}?from=${encodeURIComponent(from)}`}
+              className="text-inherit no-underline after:absolute after:inset-0 after:content-['']"
+            >
+              {recipe.title}
+            </Link>
+          ) : (
+            recipe.title
+          )}
         </h3>
         <div className="flex flex-wrap items-center gap-[var(--space-1)]">
           <Chip tone="accent">{recipe.author_alias ?? t.authorUnknown}</Chip>
