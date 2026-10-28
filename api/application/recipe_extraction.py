@@ -20,7 +20,6 @@ from domain.recipe_draft import (
     DraftProblems,
     DraftRecipe,
     InvalidDraftError,
-    Vocabulary,
     check_draft,
 )
 
@@ -113,9 +112,9 @@ class _InFlight:
 class RecipeExtraction:
     """Use case: text in, one checked ExtractionResult out."""
 
-    def __init__(self, extractor: RecipeExtractor, vocabulary: Vocabulary) -> None:
+    def __init__(self, extractor: RecipeExtractor) -> None:  # MVP-OUT: vocabulary: Vocabulary
         self._extractor = extractor
-        self._vocabulary = vocabulary
+        # MVP-OUT: self._vocabulary = vocabulary
         self._lock = threading.Lock()
         self._in_flight: dict[str, _InFlight] = {}
 
@@ -167,7 +166,7 @@ class RecipeExtraction:
         if not isinstance(result, Draft):
             return result
         try:
-            recipe = check_draft(result.recipe, ingredient_names, self._vocabulary)
+            recipe = check_draft(result.recipe, ingredient_names)
         except DraftProblems as exc:
             # Names and kinds only, never the ingredient name or title (constitution §4).
             logger.warning(

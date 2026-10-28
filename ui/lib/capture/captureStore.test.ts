@@ -26,10 +26,11 @@ const draft: DraftView = {
   title: "Onion soup",
   baseServings: 4,
   servingsEstimated: false,
-  mainIngredients: [],
-  cuisines: [],
+  // MVP-OUT: mainIngredients: [],
+  // MVP-OUT: cuisines: [],
   lines: [],
   steps: [{ key: "s1", text: "Simmer." }],
+  catalog: [],
 };
 
 beforeEach(() => clearCapture());

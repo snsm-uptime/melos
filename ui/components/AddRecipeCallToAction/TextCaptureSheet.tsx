@@ -39,10 +39,22 @@ export function toDraftView(response: CaptureDraftResponse): DraftView {
     title: draft.title,
     baseServings: draft.base_servings,
     servingsEstimated: draft.servings_estimated,
-    mainIngredients: draft.main_ingredients.map((item) => ({ ...item, tag: null })),
-    cuisines: draft.cuisines.map((item) => ({ ...item })),
-    lines: draft.ingredient_lines.map((line) => ({ key: nextKey(), ...line })),
+    // MVP-OUT: mainIngredients: draft.main_ingredients.map((item) => ({ ...item, tag: null })),
+    // MVP-OUT: cuisines: draft.cuisines.map((item) => ({ ...item })),
+    lines: draft.ingredient_lines.map((line) => ({
+      key: nextKey(),
+      name: line.name,
+      vague: line.vague,
+      quantity: line.quantity,
+      unit: line.unit,
+      size: line.size,
+      preparation: line.preparation,
+      note: line.note,
+      textName: line.text_name,
+      match: line.match,
+    })),
     steps: draft.steps.map((text) => ({ key: nextKey(), text })),
+    catalog: response.catalog,
   };
 }
 

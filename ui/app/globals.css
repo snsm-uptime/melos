@@ -23,6 +23,10 @@
   --radius-md: var(--rounded-md);
   --radius-lg: var(--rounded-lg);
 
+  /* M3 elevation-1 (resting cards), cast by the same key + ambient lights as the
+     elevation-3 lift on activated controls; see --lift-* below. */
+  --shadow-elevation-1: 0 1px 2px 0 var(--lift-key), 0 1px 3px 1px var(--lift-ambient);
+
   --spacing-strip-inset: var(--strip-inset);
   --spacing-page-gutter: var(--page-gutter);
   --spacing-nav-x: var(--nav-x);

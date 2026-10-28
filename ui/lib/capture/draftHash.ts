@@ -10,8 +10,8 @@ export function draftHash(draft: DraftView): string {
   return JSON.stringify({
     title: draft.title,
     baseServings: draft.baseServings,
-    mainIngredients: draft.mainIngredients.map((item) => item.id),
-    cuisines: draft.cuisines.map((item) => item.id),
+    // MVP-OUT: mainIngredients: draft.mainIngredients.map((item) => item.id),
+    // MVP-OUT: cuisines: draft.cuisines.map((item) => item.id),
     lines: draft.lines.map((line) => [
       line.name,
       line.vague,

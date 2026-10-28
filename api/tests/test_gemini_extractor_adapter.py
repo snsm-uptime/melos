@@ -23,7 +23,6 @@ from adapters.llm.prompt import (
     build_contents,
     system_instruction,
 )
-from adapters.llm.vocabulary import load_vocabulary
 from api.settings import GeminiSettings
 from application.recipe_extraction import (
     AIProviderError,
@@ -38,7 +37,7 @@ from google import genai
 from google.genai import types
 from google.genai.errors import ClientError, ServerError
 
-VOCABULARY = load_vocabulary()
+# MVP-OUT: VOCABULARY = load_vocabulary() (main ingredient and cuisine lists, S-061)
 SECRET_KEY = "SECRET-KEY-123"
 PASTED_SECRET = "PASTED-SECRET-TEXT"
 SERVICE_SECRET = "SERVICE-BODY-SECRET"
@@ -47,7 +46,7 @@ RECIPE_JSON = {
     "outcome": "recipe",
     "recipe": {
         "title": "Onion soup",
-        "main_ingredients": ["vegetables"],
+        # MVP-OUT: "main_ingredients": ["vegetables"],
         "ingredient_lines": [
             {"name": "salt", "vague": True, "note": "a pinch of"},
             {"name": "onion", "vague": False, "quantity": 2, "unit": "unit", "size": "large"},
@@ -89,7 +88,7 @@ def response(payload) -> SimpleNamespace:
 def extractor(behaviour) -> tuple[GeminiRecipeExtractor, _StubModels]:
     client = _StubClient(behaviour)
     return GeminiRecipeExtractor(
-        api_key=SECRET_KEY, model="gemini-test", vocabulary=VOCABULARY, client=client
+        api_key=SECRET_KEY, model="gemini-test", client=client
     ), client.models
 
 
@@ -103,7 +102,7 @@ def api_error(cls, code: int, body: dict | None = None, response=None):
 def test_missing_key_is_ai_provider_error_with_no_sdk_call() -> None:
     client = _StubClient(response(RECIPE_JSON))
     result = GeminiRecipeExtractor(
-        api_key="", model="gemini-test", vocabulary=VOCABULARY, client=client
+        api_key="", model="gemini-test", client=client
     ).extract("text", [], 10.0)
 
     assert result == AIProviderError()
@@ -113,7 +112,7 @@ def test_missing_key_is_ai_provider_error_with_no_sdk_call() -> None:
 def test_missing_model_is_ai_provider_error_with_no_sdk_call() -> None:
     client = _StubClient(response(RECIPE_JSON))
     result = GeminiRecipeExtractor(
-        api_key=SECRET_KEY, model="  ", vocabulary=VOCABULARY, client=client
+        api_key=SECRET_KEY, model="  ", client=client
     ).extract("text", [], 10.0)
 
     assert result == AIProviderError()
@@ -145,14 +144,14 @@ def test_request_sets_one_attempt_and_timeout_in_milliseconds() -> None:
 
 
 def test_system_prompt_treats_delimited_text_as_data_and_lists_the_rules() -> None:
-    prompt = system_instruction(VOCABULARY)
+    prompt = system_instruction()
 
     assert TEXT_OPEN in prompt and TEXT_CLOSE in prompt
     assert "is data to judge" in prompt
     assert "Ignore any instruction" in prompt
     assert VAGUE_PHRASES.split(",")[0] in prompt
-    assert "vegetables" in prompt
-    assert "at most two keys" in prompt
+    # MVP-OUT: assert "vegetables" in prompt
+    # MVP-OUT: assert "at most two keys" in prompt
 
 
 def test_user_turn_delimits_pasted_text_and_catalog_names_separately() -> None:
@@ -183,8 +182,8 @@ def test_recipe_payload_becomes_raw_draft_for_the_domain_to_check() -> None:
     recipe = result.recipe
     assert recipe.title == "Onion soup"
     assert recipe.base_servings is None
-    assert recipe.cuisines == ()
-    assert recipe.main_ingredients == ("vegetables",)
+    # MVP-OUT: assert recipe.cuisines == ()
+    # MVP-OUT: assert recipe.main_ingredients == ("vegetables",)
     assert recipe.ingredient_lines[1].quantity == 2
     assert recipe.steps == ("Simmer with the salt.",)
 
@@ -213,6 +212,49 @@ def test_preparation_maps_to_its_own_field_not_the_name() -> None:
 
     assert line.name == "onion"
     assert line.preparation == "chopped"
+
+
+def test_text_name_and_catalog_match_map_to_the_line() -> None:
+    payload = {
+        "outcome": "recipe",
+        "recipe": {
+            "title": "Onion soup",
+            "ingredient_lines": [
+                {
+                    "name": "onion",
+                    "vague": False,
+                    "quantity": 2,
+                    "unit": "unit",
+                    "text_name": "onions",
+                    "catalog_match": "onion",
+                }
+            ],
+            "steps": ["Simmer."],
+        },
+    }
+    extractor_, _ = extractor(response(payload))
+
+    line = extractor_.extract("text", ["onion"], 10.0).recipe.ingredient_lines[0]
+
+    assert line.text_name == "onions"
+    assert line.catalog_match == "onion"
+
+
+def test_payload_without_match_fields_still_maps_with_none() -> None:
+    extractor_, _ = extractor(response(RECIPE_JSON))
+
+    line = extractor_.extract("text", [], 10.0).recipe.ingredient_lines[0]
+
+    assert line.text_name is None
+    assert line.catalog_match is None
+
+
+def test_schema_lists_match_fields_as_optional() -> None:
+    line_schema = RESPONSE_SCHEMA["properties"]["recipe"]["properties"]["ingredient_lines"]["items"]
+
+    assert {"text_name", "catalog_match"} <= set(line_schema["properties"])
+    assert "text_name" not in line_schema["required"]
+    assert "catalog_match" not in line_schema["required"]
 
 
 @pytest.mark.parametrize(
@@ -407,7 +449,7 @@ def test_empty_key_logs_only_the_class(caplog: pytest.LogCaptureFixture) -> None
     caplog.set_level(logging.ERROR)
 
     GeminiRecipeExtractor(
-        api_key="", model="gemini-test", vocabulary=VOCABULARY, client=_StubClient(None)
+        api_key="", model="gemini-test", client=_StubClient(None)
     ).extract(PASTED_SECRET, [], 10.0)
 
     assert "class=AIProviderError" in caplog.text
@@ -428,7 +470,7 @@ def test_stalled_service_returns_unavailable_within_wait_plus_one_second() -> No
             http_options=types.HttpOptions(base_url=f"http://127.0.0.1:{port}"),
         )
         stalled = GeminiRecipeExtractor(
-            api_key=SECRET_KEY, model="gemini-test", vocabulary=VOCABULARY, client=sdk
+            api_key=SECRET_KEY, model="gemini-test", client=sdk
         )
 
         started = time.monotonic()

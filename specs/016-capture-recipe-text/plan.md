@@ -1,5 +1,7 @@
 # Implementation Plan: Capture a Recipe from Pasted Text
 
+> **Scope change 2026-10-27:** main ingredients and cuisines are out of the MVP (backlog S-061, PRD Appendix E). Anything below about them (main ingredient keys, cuisine scoring, category chips, the `main_ingredients` and `cuisines` fields, the category lists of `GET /recipe-vocabulary`) is not in force; the code is commented out under `MVP-OUT:`. Ingredient catalog matching (S-018) is unchanged. Plan: `dev/docs/mvp-descope-categories.md`.
+
 > **Re-synced 2026-10-25 to spec 056 (snapshot model).** FR-001a of spec.md is superseded: a capture outside a kitchen targets a picked personal notebook, and a capture in a kitchen one of its notebooks. The draft reads `names_for_notebook`, or `names_for_person` in a kitchen with none. Built in S-016 after spec 056 merges (plan follow-up, `dev/docs/backlog.yaml` S-016).
 
 **Branch**: `S-016` (spec folder `016-capture-recipe-text`) | **Date**: 2026-10-25 | **Spec**: [spec.md](./spec.md)

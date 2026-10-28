@@ -1,5 +1,7 @@
 # Quickstart: Validate Capture from Pasted Text
 
+> **Scope change 2026-10-27:** main ingredients and cuisines are out of the MVP (backlog S-061, PRD Appendix E). Anything below about them (main ingredient keys, cuisine scoring, category chips, the `main_ingredients` and `cuisines` fields, the category lists of `GET /recipe-vocabulary`) is not in force; the code is commented out under `MVP-OUT:`. Ingredient catalog matching (S-018) is unchanged. Plan: `dev/docs/mvp-descope-categories.md`.
+
 How to check that S-016 works end to end. Shapes and codes are in
 [contracts/capture-api.md](./contracts/capture-api.md) and
 [contracts/capture-ui.md](./contracts/capture-ui.md). State is in

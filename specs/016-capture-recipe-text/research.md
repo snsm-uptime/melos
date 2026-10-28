@@ -1,5 +1,7 @@
 # Research: Capture a Recipe from Pasted Text
 
+> **Scope change 2026-10-27:** main ingredients and cuisines are out of the MVP (backlog S-061, PRD Appendix E). Anything below about them (main ingredient keys, cuisine scoring, category chips, the `main_ingredients` and `cuisines` fields, the category lists of `GET /recipe-vocabulary`) is not in force; the code is commented out under `MVP-OUT:`. Ingredient catalog matching (S-018) is unchanged. Plan: `dev/docs/mvp-descope-categories.md`.
+
 No NEEDS CLARIFICATION markers remained in the Technical Context. The spec's two
 clarify sessions settled scope, entry points, notebooks, messages and the
 archive rule. The items below resolve the remaining technical choices, found by

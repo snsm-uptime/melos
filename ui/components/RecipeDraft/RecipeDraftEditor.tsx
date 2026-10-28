@@ -13,18 +13,20 @@ import {
   backToSheet,
   discardDraft,
   editDraft,
+  undoChange,
   useCaptureState,
   type DraftView,
   type LineView,
 } from "@/lib/capture/captureStore";
-import { pickLabel } from "@/lib/capture/labels";
+import { nameChanges } from "@/lib/capture/nameChanges";
+// MVP-OUT: import { pickLabel } from "@/lib/capture/labels";
 import { captureMessages } from "@/lib/i18n/capture";
 
-import { CategoryChips } from "./CategoryChips";
+// MVP-OUT: import { CategoryChips } from "./CategoryChips";
 import { IngredientLineRow } from "./IngredientLineRow";
 
-const MAX_MAIN = 2;
-const MAX_CUISINES = 2;
+// MVP-OUT: const MAX_MAIN = 2;
+// MVP-OUT: const MAX_CUISINES = 2;
 
 let keyCounter = 0;
 /** Rows for a step's textarea so the whole text shows (about 45 characters per line). */
@@ -76,16 +78,17 @@ export function RecipeDraftEditor() {
 
   if (!draft || !notebook) return null;
 
-  const language = capture.language;
+  // MVP-OUT: const language = capture.language; (only the category labels used it)
   const input: DraftInput = {
     title: draft.title,
     baseServings: draft.baseServings,
     lines: draft.lines,
     steps: draft.steps,
-    mainIngredientCount: draft.mainIngredients.length,
-    cuisineCount: draft.cuisines.length,
+    // MVP-OUT: mainIngredientCount: draft.mainIngredients.length,
+    // MVP-OUT: cuisineCount: draft.cuisines.length,
   };
   const errors = checkDraft(input);
+  const changesByLine = new Map(nameChanges(draft.lines).map((change) => [change.line, change]));
 
   function update(patch: Partial<DraftView>) {
     editDraft({ ...draft!, ...patch });
@@ -105,10 +108,10 @@ export function RecipeDraftEditor() {
 
   const units = vocabulary?.units ?? [];
   const sizes = vocabulary?.sizes ?? [];
-  const tagLabel = (tag: string) => {
-    const match = vocabulary?.cuisines.find((item) => item.id === tag);
-    return match ? pickLabel(match.label, language) : tag;
-  };
+  // MVP-OUT: const tagLabel = (tag: string) => {
+  // MVP-OUT:   const match = vocabulary?.cuisines.find((item) => item.id === tag);
+  // MVP-OUT:   return match ? pickLabel(match.label, language) : tag;
+  // MVP-OUT: };
 
   function back() {
     backToSheet();
@@ -162,6 +165,7 @@ export function RecipeDraftEditor() {
         ) : null}
       </div>
 
+      {/* MVP-OUT: the main ingredient and cuisine chip groups (S-061)
       <CategoryChips
         title={captureMessages.mainIngredients}
         addLabel={captureMessages.addMainIngredient}
@@ -189,10 +193,11 @@ export function RecipeDraftEditor() {
         }))}
         onChange={(next) => update({ cuisines: next })}
       />
+      */}
 
       <section className="flex flex-col gap-2">
         <h2 className="m-0 text-[1rem] font-[550] text-foreground">{captureMessages.ingredients}</h2>
-        <ul className="m-0 flex list-none flex-col p-0">
+        <ul className="m-0 flex list-none flex-col gap-[var(--space-4)] p-0">
           {draft.lines.map((line, index) => (
             <IngredientLineRow
               key={line.key}
@@ -202,6 +207,9 @@ export function RecipeDraftEditor() {
               errors={errors.lines[index] ?? []}
               units={units}
               sizes={sizes}
+              catalog={draft.catalog}
+              change={changesByLine.get(index)}
+              onUndoChange={undoChange}
               onChange={(next) => updateLine(index, next)}
               onRemove={() => update({ lines: draft.lines.filter((_, i) => i !== index) })}
               onMove={(direction) => update({ lines: moveItem(draft.lines, index, direction) })}
@@ -224,6 +232,8 @@ export function RecipeDraftEditor() {
                   size: null,
                   preparation: null,
                   note: null,
+                  textName: "",
+                  match: { kind: "new", entry: null },
                 },
               ],
             })

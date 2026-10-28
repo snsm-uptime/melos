@@ -11,7 +11,6 @@ from uuid import UUID
 
 import pytest
 from adapters.llm.fake_extractor import FakeRecipeExtractor
-from adapters.llm.vocabulary import load_vocabulary
 from adapters.persistence.models import IngredientModel, NotebookModel
 from api.deps import get_recipe_extraction
 from application.recipe_extraction import (
@@ -52,13 +51,13 @@ def _switch_to(client: TestClient, email: str) -> None:
     assert response.status_code == 200, response.text
 
 
-def _good_draft(main: tuple[str, ...] = ()) -> DraftRecipe:
+def _good_draft() -> DraftRecipe:  # MVP-OUT: main: tuple[str, ...] = ()
     return DraftRecipe(
         title="Onion soup",
         base_servings=4,
         servings_estimated=False,
-        main_ingredients=main,
-        cuisines=(),
+        # MVP-OUT: main_ingredients=main,
+        # MVP-OUT: cuisines=(),
         ingredient_lines=(
             IngredientLine("salt", True, note="a pinch"),
             IngredientLine("onion", False, 2.0, "unit", "large", None, "chopped"),
@@ -71,7 +70,7 @@ def _good_draft(main: tuple[str, ...] = ()) -> DraftRecipe:
 def script(client: TestClient) -> FakeRecipeExtractor:
     """Every capture in the test gets this result from the fake assistant."""
     fake = FakeRecipeExtractor(script=Draft(recipe=_good_draft()))
-    use_case = RecipeExtraction(fake, load_vocabulary())
+    use_case = RecipeExtraction(fake)
     client.app.dependency_overrides[get_recipe_extraction] = lambda: use_case
     yield fake
     client.app.dependency_overrides.pop(get_recipe_extraction, None)
@@ -297,13 +296,15 @@ def test_chip_labels_follow_the_account_language(
     _register(client, "lang_capture@example.com")
     assert client.patch("/auth/me", json={"language": "es"}).status_code == 200
     notebook_id = _personal_notebook(client)
-    _set_result(script, Draft(recipe=_good_draft(main=("poultry",))))
+    _set_result(script, Draft(recipe=_good_draft()))  # MVP-OUT: _good_draft(main=("poultry",))
 
     response = _capture(client, notebook_id)
 
     assert response.status_code == 200, response.text
     assert response.json()["language"] == "es"
-    assert response.json()["draft"]["main_ingredients"] == [{"id": "poultry", "label": "Aves"}]
+    # MVP-OUT: draft["main_ingredients"] == [{"id": "poultry", "label": "Aves"}]
+    assert "main_ingredients" not in response.json()["draft"]
+    assert "cuisines" not in response.json()["draft"]
 
 
 def test_vocabulary_lists_the_controlled_values(client: TestClient) -> None:
@@ -314,9 +315,12 @@ def test_vocabulary_lists_the_controlled_values(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["max_text_chars"] == 5000
-    assert body["max_main_ingredients"] == 2 and body["max_cuisines"] == 2
-    assert "international" in [c["id"] for c in body["cuisines"]]
-    assert {"id": "poultry", "label": {"en": "Poultry", "es": "Aves"}} in body["main_ingredients"]
+    assert body["units"] == ["g", "kg", "oz", "lb", "ml", "l", "cup", "tbsp", "tsp", "unit"]
+    assert body["sizes"] == ["small", "medium", "large"]
+    # MVP-OUT: assert body["max_main_ingredients"] == 2 and body["max_cuisines"] == 2
+    # MVP-OUT: assert "international" in [c["id"] for c in body["cuisines"]]
+    # MVP-OUT: {"id": "poultry", "label": {"en": ..., "es": "Aves"}} in main_ingredients
+    assert set(body) == {"units", "sizes", "max_text_chars"}
 
 
 def _draft_with(

@@ -86,9 +86,9 @@ Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
   author's alias; if the author's account is deleted, it reads "unknown". A
   snapshot keeps each recipe's author. Author history is out of scope. Never store past
   owners or the recipe a copy came from.
-- A recipe stores its categories as ids (no category table), editable on the
-  recipe. Categories come only from the controlled lists in `dev/docs/categories.yaml`
-  and `dev/docs/cuisine.yml`. They are never renamed or matched.
+- Main ingredients and cuisines are out of the MVP (2026-10-27, backlog S-061,
+  PRD Appendix E). A recipe has none; their code is commented out under the
+  marker `MVP-OUT:`. Do not rebuild them unless S-061 is picked up.
 - When Gemini matches a name to an existing catalog entry (e.g. "onions" to
   "onion"), the app tells the member which changes were made, before save.
 - Recipe preview images are stored as base64 text on the recipe. Captured
@@ -131,7 +131,7 @@ Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
 │   ├── pyproject.toml, uv.lock, .python-version (3.12), Dockerfile, alembic.ini
 │   ├── domain/                # Pure rules: recipe, cart, catalog, toon, render
 │   ├── application/           # Use cases + ports.py
-│   ├── adapters/              # llm/, web/, pdf/, persistence/, email/
+│   ├── adapters/              # llm/ (prompts/: one template per prompt, see its README), web/, pdf/, persistence/, email/
 │   ├── api/                   # FastAPI app, routes/, schemas/, deps, settings
 │   ├── scripts/               # entrypoint, seed data (invented only)
 │   └── tests/

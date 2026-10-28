@@ -1,0 +1,9 @@
+<<<RECIPE_TEXT
+Quick soup
+2 large onions
+Fry the onions.
+RECIPE_TEXT>>>
+
+<<<CATALOG_NAMES
+["flour", "onion", "salt"]
+CATALOG_NAMES>>>

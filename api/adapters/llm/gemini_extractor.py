@@ -25,7 +25,11 @@ from application.recipe_extraction import (
     NotRecipeReason,
     Unavailable,
 )
-from domain.recipe_draft import DraftRecipe, IngredientLine, Vocabulary, clean_display_name
+from domain.recipe_draft import (
+    DraftRecipe,
+    IngredientLine,
+    clean_display_name,
+)
 from google import genai
 from google.genai import types
 from google.genai.errors import APIError, ClientError, ServerError
@@ -40,7 +44,10 @@ RETRY_DELAY_PATTERN = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*s?\s*$")
 RESPONSE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
-        "outcome": {"type": "string", "enum": ["recipe", "not_a_recipe", "multiple_recipes"]},
+        "outcome": {
+            "type": "string",
+            "enum": ["recipe", "not_a_recipe", "multiple_recipes"],
+        },
         "reason": {
             "type": "string",
             "enum": ["question_or_request", "not_food", "story_or_article"],
@@ -51,7 +58,7 @@ RESPONSE_SCHEMA: dict[str, Any] = {
             "properties": {
                 "title": {"type": "string"},
                 "base_servings": {"type": "integer"},
-                "main_ingredients": {"type": "array", "items": {"type": "string"}},
+                # MVP-OUT: "main_ingredients": {"type": "array", "items": {"type": "string"}},
                 "ingredient_lines": {
                     "type": "array",
                     "items": {
@@ -64,6 +71,8 @@ RESPONSE_SCHEMA: dict[str, Any] = {
                             "size": {"type": "string"},
                             "note": {"type": "string"},
                             "preparation": {"type": "string"},
+                            "text_name": {"type": "string"},
+                            "catalog_match": {"type": "string"},
                         },
                         "required": ["name", "vague"],
                     },
@@ -85,12 +94,14 @@ class _LinePayload(BaseModel):
     size: str | None = None
     note: str | None = None
     preparation: str | None = None
+    text_name: str | None = None
+    catalog_match: str | None = None
 
 
 class _RecipePayload(BaseModel):
     title: str
     base_servings: int | None = None
-    main_ingredients: list[str] = []
+    # MVP-OUT: main_ingredients: list[str] = []
     ingredient_lines: list[_LinePayload]
     steps: list[str]
 
@@ -132,8 +143,8 @@ def _payload_to_result(payload: _ExtractionPayload) -> ExtractionResult:
             title=recipe.title,
             base_servings=recipe.base_servings,
             servings_estimated=False,
-            main_ingredients=tuple(recipe.main_ingredients),
-            cuisines=(),
+            # MVP-OUT: main_ingredients=tuple(recipe.main_ingredients),
+            # MVP-OUT: cuisines=(),
             ingredient_lines=tuple(
                 IngredientLine(
                     name=line.name,
@@ -143,6 +154,8 @@ def _payload_to_result(payload: _ExtractionPayload) -> ExtractionResult:
                     size=line.size,
                     note=line.note,
                     preparation=line.preparation,
+                    text_name=line.text_name,
+                    catalog_match=line.catalog_match,
                 )
                 for line in recipe.ingredient_lines
             ),
@@ -196,12 +209,12 @@ class GeminiRecipeExtractor:
         *,
         api_key: str,
         model: str,
-        vocabulary: Vocabulary,
+        # MVP-OUT: vocabulary: Vocabulary,
         client: Any | None = None,
     ) -> None:
         self._api_key = api_key
         self._model = model
-        self._system_instruction = system_instruction(vocabulary)
+        self._system_instruction = system_instruction()
         self._client = client
 
     def extract(
@@ -224,18 +237,22 @@ class GeminiRecipeExtractor:
         except Exception as exc:
             result = self._classify(exc)
             logger.warning(
-                "recipe extraction failed: class=%s request=%s", type(result).__name__, request_ref
+                "recipe extraction failed: class=%s request=%s",
+                type(result).__name__,
+                request_ref,
             )
             return result
 
         result = self._read(response)
         if isinstance(result, (InvalidOutput, AIProviderError)):
             logger.warning(
-                "recipe extraction failed: class=%s request=%s", type(result).__name__, request_ref
+                "recipe extraction failed: class=%s request=%s",
+                type(result).__name__,
+                request_ref,
             )
         return result
 
-    def _client_or_default(self) -> Any:
+    def _client_or_default(self) -> genai.Client:
         if self._client is None:
             self._client = genai.Client(api_key=self._api_key)
         return self._client

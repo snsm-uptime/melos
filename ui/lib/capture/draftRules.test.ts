@@ -10,8 +10,8 @@ function draft(overrides: Partial<DraftInput> = {}): DraftInput {
     baseServings: 4,
     lines: [measured],
     steps: [{ text: "Simmer." }],
-    mainIngredientCount: 0,
-    cuisineCount: 1,
+    // MVP-OUT: mainIngredientCount: 0,
+    // MVP-OUT: cuisineCount: 1,
     ...overrides,
   };
 }

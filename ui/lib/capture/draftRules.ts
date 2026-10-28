@@ -6,8 +6,8 @@
 export const ALLOWED_UNITS = ["g", "kg", "oz", "lb", "ml", "l", "cup", "tbsp", "tsp", "unit"] as const;
 export const SIZES = ["small", "medium", "large"] as const;
 export const MAX_TITLE_CHARS = 200;
-export const MAX_MAIN_INGREDIENTS = 2;
-export const MAX_CUISINES = 2;
+// MVP-OUT: export const MAX_MAIN_INGREDIENTS = 2;
+// MVP-OUT: export const MAX_CUISINES = 2;
 
 export type LineInput = {
   vague: boolean;
@@ -21,8 +21,8 @@ export type DraftInput = {
   baseServings: number;
   lines: LineInput[];
   steps: { text: string }[];
-  mainIngredientCount: number;
-  cuisineCount: number;
+  // MVP-OUT: mainIngredientCount: number;
+  // MVP-OUT: cuisineCount: number;
 };
 
 /** Error codes, mapped to text in lib/i18n/capture.ts (`captureMessages.errors`). */

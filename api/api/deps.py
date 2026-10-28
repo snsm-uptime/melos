@@ -6,7 +6,8 @@ import uuid
 from collections.abc import Iterator
 
 from adapters.llm.gemini_extractor import GeminiRecipeExtractor
-from adapters.llm.vocabulary import load_vocabulary, load_vocabulary_documents
+
+# MVP-OUT: from adapters.llm.vocabulary import load_vocabulary, load_vocabulary_documents
 from adapters.persistence.db import get_session_factory
 from adapters.persistence.ingredient_catalog import SqlAlchemyIngredientCatalog
 from adapters.persistence.notebooks import SqlAlchemyNotebookRepository
@@ -114,11 +115,11 @@ def require_user_alias(
 
 
 def get_vocabulary_answer(request: Request) -> dict:
-    """The controlled lists for GET /recipe-vocabulary, read once per process (spec 016 FR-011)."""
+    """The lists for GET /recipe-vocabulary, built once per process (spec 016 FR-011)."""
     cached = getattr(request.app.state, "recipe_vocabulary_answer", None)
     if cached is None:
-        categories, cuisine = load_vocabulary_documents()
-        cached = vocabulary_answer(categories, cuisine, max_text_chars=load_recipe_text_max_chars())
+        # MVP-OUT: categories, cuisine = load_vocabulary_documents()
+        cached = vocabulary_answer(max_text_chars=load_recipe_text_max_chars())
         request.app.state.recipe_vocabulary_answer = cached
     return cached
 
@@ -128,13 +129,13 @@ def get_recipe_extraction(request: Request) -> RecipeExtraction:
     cached = getattr(request.app.state, "recipe_extraction", None)
     if cached is None:
         settings = load_gemini_settings()
-        vocabulary = load_vocabulary()
+        # MVP-OUT: vocabulary = load_vocabulary()
         extractor = GeminiRecipeExtractor(
             api_key=settings.api_key,
             model=settings.chat_model,
-            vocabulary=vocabulary,
+            # MVP-OUT: vocabulary=vocabulary,
         )
-        cached = RecipeExtraction(extractor, vocabulary)
+        cached = RecipeExtraction(extractor)
         request.app.state.recipe_extraction = cached
     return cached
 

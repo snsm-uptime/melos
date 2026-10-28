@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
-from adapters.llm.vocabulary import VOCABULARY_DIR, load_vocabulary
 from domain.recipe_draft import (
     DraftProblems,
     DraftRecipe,
@@ -16,18 +13,14 @@ from domain.recipe_draft import (
     check_draft,
     clean_display_name,
     lookup_unit,
-    score_cuisines,
 )
 
-VOCABULARY = load_vocabulary()
+# MVP-OUT: VOCABULARY = load_vocabulary(), `cuisines()` over score_cuisines, and the imports Path,
+# MVP-OUT: VOCABULARY_DIR, load_vocabulary and score_cuisines (S-061)
 
 
 def check(recipe: DraftRecipe, catalog: list[str]) -> DraftRecipe:
-    return check_draft(recipe, catalog, VOCABULARY)
-
-
-def cuisines(title: str, steps: list[str], line_count: int) -> tuple[str, ...]:
-    return score_cuisines(title, steps, line_count, VOCABULARY)
+    return check_draft(recipe, catalog)
 
 
 CATALOG = ["onion", "flour"]
@@ -37,7 +30,7 @@ def draft(
     *,
     title: str = "Onion soup",
     base_servings: int | None = 4,
-    main_ingredients: tuple[str, ...] = (),
+    # MVP-OUT: main_ingredients: tuple[str, ...] = (),
     lines: tuple[IngredientLine, ...] | None = None,
     steps: tuple[str, ...] = ("Simmer the onion.",),
 ) -> DraftRecipe:
@@ -50,8 +43,8 @@ def draft(
         title=title,
         base_servings=base_servings,
         servings_estimated=False,
-        main_ingredients=main_ingredients,
-        cuisines=(),
+        # MVP-OUT: main_ingredients=main_ingredients,
+        # MVP-OUT: cuisines=(),
         ingredient_lines=lines,
         steps=steps,
     )
@@ -153,11 +146,28 @@ def test_size_is_kept_for_unit_with_allowed_size() -> None:
     assert checked.ingredient_lines[0].size == "medium"
 
 
-def test_name_is_lower_case_and_uses_catalog_spelling() -> None:
+def test_name_is_lower_case_without_a_proposal() -> None:
     checked = check(draft(lines=(line(name="  ONION ", unit="unit"),)), ["Onion"])
-    assert checked.ingredient_lines[0].name == "Onion"
+    assert checked.ingredient_lines[0].name == "onion"
+    assert checked.matches[0].kind == "new"
     unknown = check(draft(lines=(line(name="Basil", unit="unit"),)), CATALOG)
     assert unknown.ingredient_lines[0].name == "basil"
+
+
+def test_matched_line_shows_the_catalog_entry_and_lists_the_change() -> None:
+    raw = draft(lines=(line(name="onion", unit="unit", text_name="onions", catalog_match="onion"),))
+    checked = check(raw, ["onion"])
+    assert checked.ingredient_lines[0].name == "onion"
+    assert checked.matches[0].kind == "matched"
+    assert checked.changes[0].from_name == "onions"
+    assert checked.changes[0].to == "onion"
+    assert checked.ingredient_lines[0].text_name == "onions"
+
+
+def test_text_name_falls_back_to_the_assistant_name_when_missing() -> None:
+    checked = check(draft(lines=(line(name="Flour", unit="g", quantity=200.0),)), CATALOG)
+
+    assert checked.ingredient_lines[0].text_name == "flour"
 
 
 def test_empty_name_is_invalid_output() -> None:
@@ -203,70 +213,71 @@ def test_servings_below_one_are_invalid_output() -> None:
         check(draft(base_servings=0), CATALOG)
 
 
-# ── categories (FR-006) ─────────────────────────────────────────────────────
-
-
-def test_main_ingredients_keep_only_listed_keys_and_at_most_two() -> None:
-    checked = check(
-        draft(main_ingredients=("chicken", "poultry", "beef", "fish", "garlic")), CATALOG
-    )
-    assert checked.main_ingredients == ("poultry", "beef")
-
-
-def test_zero_main_ingredients_is_allowed() -> None:
-    checked = check(draft(main_ingredients=("garlic",)), CATALOG)
-    assert checked.main_ingredients == ()
-
-
-def test_no_cuisine_match_gives_international() -> None:
-    checked = check(draft(title="Onion soup", steps=("Stir.",)), CATALOG)
-    assert checked.cuisines == ("international",)
-
-
-def test_cuisine_matches_by_title_coverage() -> None:
-    assert cuisines("Moroccan tagine", ["Cook."], 2) == ("moroccan",)
-
-
-def test_cuisine_steps_rule_is_off_below_five_lines() -> None:
-    steps = ["Add the garlic, cumin, turmeric, garam masala, ginger and chili."]
-    assert cuisines("Lentil stew", steps, 4) == ("international",)
-    assert cuisines("Lentil stew", steps, 6) == ("indian",)
-
-
-def test_cuisines_are_at_most_two_and_one_per_tag() -> None:
-    result = cuisines("Ethiopian Moroccan fusion", ["Cook."], 2)
-    assert len(result) <= 2
-    assert len(set(result)) == len(result)
-
-
-# ── steps rule boundary and vocabulary copies (FR-006, Assumptions) ─────────
-
-
-def _node_aliases(cuisine_id: str, count: int) -> list[str]:
-    """Distinct ingredient aliases, each naming one ingredient of the cuisine node."""
-    node = next(n for n in VOCABULARY.cuisine_nodes if n.id == cuisine_id)
-    picked: list[str] = []
-    used_ids: set[str] = set()
-    for alias, ids in VOCABULARY.matching.ingredient_items:
-        if len(alias) < 4 or len(ids) != 1 or ids[0] not in node.ingredient_ids:
-            continue
-        if ids[0] in used_ids or any(alias in other or other in alias for other in picked):
-            continue
-        picked.append(alias)
-        used_ids.add(ids[0])
-        if len(picked) == count:
-            return picked
-    raise AssertionError(f"{cuisine_id} has fewer than {count} distinct ingredient aliases")
-
-
-def test_cuisine_steps_rule_does_not_match_at_three_ingredients() -> None:
-    three = _node_aliases("mexican", 3)
-    assert cuisines("Zzqx plate", [", ".join(three) + "."], 5) == ("international",)
-
-
-def test_cuisine_steps_rule_matches_at_four_ingredients() -> None:
-    four = _node_aliases("mexican", 4)
-    assert "mexican" in cuisines("Zzqx plate", [", ".join(four) + "."], 5)
+# MVP-OUT: category and cuisine tests, out of the MVP (S-061)
+# # ── categories (FR-006) ─────────────────────────────────────────────────────
+#
+#
+# def test_main_ingredients_keep_only_listed_keys_and_at_most_two() -> None:
+#     checked = check(
+#         draft(main_ingredients=("chicken", "poultry", "beef", "fish", "garlic")), CATALOG
+#     )
+#     assert checked.main_ingredients == ("poultry", "beef")
+#
+#
+# def test_zero_main_ingredients_is_allowed() -> None:
+#     checked = check(draft(main_ingredients=("garlic",)), CATALOG)
+#     assert checked.main_ingredients == ()
+#
+#
+# def test_no_cuisine_match_gives_international() -> None:
+#     checked = check(draft(title="Onion soup", steps=("Stir.",)), CATALOG)
+#     assert checked.cuisines == ("international",)
+#
+#
+# def test_cuisine_matches_by_title_coverage() -> None:
+#     assert cuisines("Moroccan tagine", ["Cook."], 2) == ("moroccan",)
+#
+#
+# def test_cuisine_steps_rule_is_off_below_five_lines() -> None:
+#     steps = ["Add the garlic, cumin, turmeric, garam masala, ginger and chili."]
+#     assert cuisines("Lentil stew", steps, 4) == ("international",)
+#     assert cuisines("Lentil stew", steps, 6) == ("indian",)
+#
+#
+# def test_cuisines_are_at_most_two_and_one_per_tag() -> None:
+#     result = cuisines("Ethiopian Moroccan fusion", ["Cook."], 2)
+#     assert len(result) <= 2
+#     assert len(set(result)) == len(result)
+#
+#
+# # ── steps rule boundary and vocabulary copies (FR-006, Assumptions) ─────────
+#
+#
+# def _node_aliases(cuisine_id: str, count: int) -> list[str]:
+#     """Distinct ingredient aliases, each naming one ingredient of the cuisine node."""
+#     node = next(n for n in VOCABULARY.cuisine_nodes if n.id == cuisine_id)
+#     picked: list[str] = []
+#     used_ids: set[str] = set()
+#     for alias, ids in VOCABULARY.matching.ingredient_items:
+#         if len(alias) < 4 or len(ids) != 1 or ids[0] not in node.ingredient_ids:
+#             continue
+#         if ids[0] in used_ids or any(alias in other or other in alias for other in picked):
+#             continue
+#         picked.append(alias)
+#         used_ids.add(ids[0])
+#         if len(picked) == count:
+#             return picked
+#     raise AssertionError(f"{cuisine_id} has fewer than {count} distinct ingredient aliases")
+#
+#
+# def test_cuisine_steps_rule_does_not_match_at_three_ingredients() -> None:
+#     three = _node_aliases("mexican", 3)
+#     assert cuisines("Zzqx plate", [", ".join(three) + "."], 5) == ("international",)
+#
+#
+# def test_cuisine_steps_rule_matches_at_four_ingredients() -> None:
+#     four = _node_aliases("mexican", 4)
+#     assert "mexican" in cuisines("Zzqx plate", [", ".join(four) + "."], 5)
 
 
 def test_preparation_is_trimmed_and_blank_becomes_none() -> None:
@@ -308,12 +319,13 @@ def test_clean_display_name_refuses_empty_input(raw: str | None) -> None:
     assert clean_display_name(raw) is None
 
 
-@pytest.mark.parametrize("name", ["categories.yaml", "cuisine.yml"])
-def test_vocabulary_copies_in_domain_match_dev_docs(name: str) -> None:
-    source = Path(__file__).resolve().parents[2] / "dev" / "docs" / name
-    if not source.exists():
-        pytest.skip("dev/docs is not in the container image")
-    assert (VOCABULARY_DIR / name).read_bytes() == source.read_bytes()
+# MVP-OUT: category and cuisine tests, out of the MVP (S-061)
+# @pytest.mark.parametrize("name", ["categories.yaml", "cuisine.yml"])
+# def test_vocabulary_copies_in_domain_match_dev_docs(name: str) -> None:
+#     source = Path(__file__).resolve().parents[2] / "dev" / "docs" / name
+#     if not source.exists():
+#         pytest.skip("dev/docs is not in the container image")
+#     assert (VOCABULARY_DIR / name).read_bytes() == source.read_bytes()
 
 
 # ── missing parts and line problems (User Story 1, FR-003) ──────────────────
