@@ -49,7 +49,7 @@ export function RecipeCard({ recipe, locale, showNotebook = false, from }: Recip
         from ? " cursor-pointer transition-colors hover:border-accent focus-within:border-accent" : ""
       }`}
     >
-      <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-background text-muted">
+      <span className="flex flex-shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-background p-[var(--space-4)] text-muted">
         <PotIcon />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-[var(--space-1)]">
