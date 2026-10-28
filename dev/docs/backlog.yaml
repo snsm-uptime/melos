@@ -222,6 +222,8 @@ stories:
       targets a personal notebook the member owns or is a member of; a capture from a kitchen's
       tab targets one of the kitchen's notebooks (S-056's capture step picks, or creates one).
       No capture in an archived kitchen. Spec 016 FR-001a and the capture routes need re-sync.
+      Descope 2026-10-27: the draft carries no main ingredients or cuisines (S-061); the code for
+      them is commented out under the marker "MVP-OUT:". See dev/docs/mvp-descope-categories.md.
 
   - id: S-017
     title: Clear capture error messages (name the missing recipe parts, or say how to fix the text)
@@ -269,10 +271,10 @@ stories:
       anything, and the step may have committed a notebook it created, so a failed save keeps
       that notebook. The save maps KitchenArchivedError, NotebookChoiceRequiredError,
       NotebookNotFoundError and KitchenNotFoundError to HTTP (spec 056 contract, research R13).
-      Categories are ids stored on the recipe, with no category table (PRD Appendix D, 2026-10-22).
+      Main ingredients and cuisines are out of the MVP (2026-10-27, S-061), so a saved recipe has none.
 
   - id: S-021
-    title: Recipe lists for a personal notebook and for a kitchen (its notebooks), with text and category filters
+    title: Recipe lists for a personal notebook and for a kitchen (its notebooks), with a text filter
     epic: Recipes
     priority: must
     status: backlog
@@ -376,6 +378,7 @@ stories:
       notebook deletes its recipes and catalog; a deleted default is recreated on next use
       (S-056); snapshots made from it keep their recipes and lose the origin label. Must per PRD
       Appendix C (notebooks), but not needed for the first full flow, so it comes after S-058.
+
   - id: S-019
     title: Embeddings and pgvector search pre-filtered by kitchen
     epic: Ask
@@ -584,6 +587,22 @@ stories:
     notes: >
       No DELETE /auth/me route exists in the code (checked 2026-10-23), although the PRD says the
       endpoint exists. Depends on S-058 (ownership passing), which must land first.
+
+  - id: S-061
+    title: Main ingredients and cuisines on recipes (controlled lists, scored cuisine, draft chips, edit, filter)
+    epic: Recipes
+    priority: later
+    status: backlog
+    source: prd.md Appendix E (moved out of the MVP 2026-10-27); specs 015 and 016 (FR-006 scoring, FR-011, FR-012)
+    notes: >
+      Moved out of the MVP on 2026-10-27. S-018 (ingredient catalog matching) is not part of it and stays.
+      To restore: the PRD text is in Appendix E; the code is commented out under "MVP-OUT:" (grep for it); the
+      data files dev/docs/categories.yaml, dev/docs/cuisine.yml and category-prompt.md were left in place.
+      Covers: the extractor's main_ingredients field and prompt rule, cuisine scoring in the domain, the
+      category keys of GET /recipe-vocabulary and of the draft response, the two chip groups in the draft
+      editor, recipe columns main_ingredients and cuisines (not built yet), category chips and filter on
+      recipe cards (S-021, S-047), category edit on the recipe (S-027), the vector-search pre-filters
+      (S-019) and the categories sent to the chat. Plan and check list: dev/docs/mvp-descope-categories.md.
 
   - id: S-055
     title: Trial units for unknown ingredient units, promoted to allowed units by repeated use
