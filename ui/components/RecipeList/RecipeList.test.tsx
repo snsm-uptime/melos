@@ -84,6 +84,19 @@ describe("RecipeList", () => {
     await flush();
   }
 
+  it("puts the filter action beside the filter, and wraps the cards in the wrap layout", async () => {
+    await render(async () => page(["Lentil soup"]), {
+      filterAction: <button type="button">Add recipe</button>,
+      layout: "wrap",
+    });
+    const filter = container.querySelector("input[type=search]") as HTMLInputElement;
+    const action = Array.from(container.querySelectorAll("button")).find(
+      (el) => el.textContent === "Add recipe",
+    );
+    expect(action?.parentElement).toBe(filter.parentElement?.parentElement);
+    expect(container.querySelector("ul")?.className).toContain("auto-fill");
+  });
+
   it("shows loading, then the cards", async () => {
     let finish: (value: NotebookResult<RecipePage>) => void = () => {};
     await render(() => new Promise((resolve) => (finish = resolve)));

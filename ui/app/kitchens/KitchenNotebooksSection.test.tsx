@@ -85,28 +85,17 @@ describe("KitchenNotebooksSection", () => {
     vi.unstubAllGlobals();
   });
 
-  function render(isArchived = false, viewerAlias: string | null = "ben") {
+  function render(isArchived = false) {
     act(() => {
       root.render(
         <KitchenNotebooksSection
           kitchenId={kitchenId}
           isArchived={isArchived}
-          viewerAlias={viewerAlias}
           locale="en"
         />,
       );
     });
   }
-
-  it("hides the owner line on a notebook the viewer owns", async () => {
-    stubBff([{ status: 200, body: { notebooks: [homeNotebook, secondNotebook] } }]);
-
-    render(false, "ana");
-    await flush();
-
-    expect(container.textContent).not.toContain("Owned by ana");
-    expect(container.textContent).toContain("Owned by unknown");
-  });
 
   it("calls the kitchen notebooks path for the kitchen", async () => {
     const fetchMock = stubBff([{ status: 200, body: { notebooks: [homeNotebook] } }]);
@@ -140,26 +129,22 @@ describe("KitchenNotebooksSection", () => {
     expect(container.querySelector("h3")).toBeNull();
   });
 
-  it("shows name and owner only, keeps the order given, and adds only the add-recipe action", async () => {
+  it("shows no notebook cards, and one Add recipe button beside the filter", async () => {
     stubBff([{ status: 200, body: { notebooks: [homeNotebook, secondNotebook] } }]);
 
     render();
     await flush();
 
-    const names = Array.from(container.querySelectorAll("h3")).map((h) => h.textContent);
-    expect(names).toEqual(["ana's (Home) Notebook", "Weekend list"]);
-    expect(container.textContent).toContain("Owned by ana");
-    expect(container.textContent).toContain("Owned by unknown");
-    expect(container.textContent).not.toContain("Kitchen member");
-    expect(container.textContent).not.toContain("Default");
-    // Each card links to its notebook's recipe list (S-021); the one button is add-recipe (S-016).
-    const hrefs = Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual(["/notebooks/c3d0-1", "/notebooks/c3d0-2"]);
+    expect(container.querySelector("h3")).toBeNull();
+    expect(container.textContent).not.toContain("Owned by");
+    expect(container.querySelector("a")).toBeNull();
     const buttons = Array.from(container.querySelectorAll("button"));
-    expect(buttons.map((el) => el.getAttribute("aria-label"))).toEqual(["Add a recipe"]);
+    expect(buttons.map((el) => el.textContent)).toEqual(["Add recipe"]);
+    const filter = container.querySelector("input[type=search]") as HTMLInputElement;
+    expect(filter.parentElement?.parentElement).toBe(buttons[0].parentElement);
   });
 
-  it("lists the kitchen's recipes below the notebooks, read from the address", async () => {
+  it("lists the kitchen's recipes, read from the address", async () => {
     stubBff([{ status: 200, body: { notebooks: [homeNotebook] } }]);
 
     render();
@@ -169,13 +154,13 @@ describe("KitchenNotebooksSection", () => {
     expect(container.querySelector("input[type=search]")).not.toBeNull();
   });
 
-  it("renders no add-recipe action in an archived kitchen, and still lists its notebooks", async () => {
+  it("renders no add-recipe action in an archived kitchen, and still lists its recipes", async () => {
     stubBff([{ status: 200, body: { notebooks: [{ ...homeNotebook, kitchen_is_archived: true }] } }]);
 
     render(true);
     await flush();
 
-    expect(container.querySelector("h3")?.textContent).toBe("ana's (Home) Notebook");
+    expect(container.querySelector("input[type=search]")).not.toBeNull();
     expect(container.querySelectorAll("button").length).toBe(0);
   });
 
@@ -209,7 +194,7 @@ describe("KitchenNotebooksSection", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(container.querySelector('[role="alert"]')).toBeNull();
-    expect(container.querySelector("h3")?.textContent).toBe("ana's (Home) Notebook");
+    expect(container.querySelector("input[type=search]")).not.toBeNull();
   });
 
   it("drops the error while a retry is loading", async () => {

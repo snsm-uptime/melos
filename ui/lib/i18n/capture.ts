@@ -11,6 +11,7 @@ import { messagesFor } from "./messages";
 
 const en = {
   addRecipe: "Add a recipe",
+  addRecipeButton: "Add recipe",
   optionUrl: "URL",
   optionUrlNote: "Not available yet",
   optionPicture: "Picture",
@@ -109,6 +110,7 @@ type CaptureMessages = typeof en;
 
 const es: CaptureMessages = {
   addRecipe: "Agregar una receta",
+  addRecipeButton: "Agregar receta",
   optionUrl: "URL",
   optionUrlNote: "Aún no disponible",
   optionPicture: "Imagen",

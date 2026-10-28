@@ -80,6 +80,19 @@ describe("RecipeCard", () => {
     );
   });
 
+  it("links the notebook name to its notebook, apart from the card's own link", () => {
+    render({ showNotebook: true, from: "/kitchens/k1" });
+    const links = Array.from(container.querySelectorAll("a"));
+    expect(links.map((a) => a.textContent)).toEqual(["Lentil soup", "ana's (Home) Notebook"]);
+    expect(links[1].getAttribute("href")).toBe("/notebooks/n1");
+  });
+
+  it("shows the notebook name as plain text on a card that is not a link", () => {
+    render({ showNotebook: true });
+    expect(container.querySelector("a")).toBeNull();
+    expect(container.textContent).toContain("ana's (Home) Notebook");
+  });
+
   it("is not a link without a list to return to", () => {
     render();
     expect(container.querySelector("a")).toBeNull();

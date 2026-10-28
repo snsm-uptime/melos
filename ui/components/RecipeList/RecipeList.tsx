@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { AddRecipeCallToAction, type CaptureCandidate } from "@/components/AddRecipeCallToAction";
 import { RecipeCard } from "@/components/RecipeCard/RecipeCard";
@@ -33,6 +33,13 @@ type RecipeListProps = {
   /** Capture choices for the empty state's add-recipe action; omit to show none (archived kitchen). */
   addCandidates?: CaptureCandidate[];
   returnPath: string;
+  /** Sits beside the filter (e.g. the add-recipe button). */
+  filterAction?: ReactNode;
+  /**
+   * "columns" is the notebook layout (one column, two from 640px); "wrap" lays the cards in a
+   * row that wraps with the window width.
+   */
+  layout?: "columns" | "wrap";
 };
 
 /** Cards in numbered pages with a text filter (spec 021 FR-003 to FR-009). */
@@ -45,6 +52,8 @@ export function RecipeList({
   load,
   addCandidates,
   returnPath,
+  filterAction,
+  layout = "columns",
 }: RecipeListProps) {
   const t = recipeListMessages[locale];
   const [attempt, setAttempt] = useState(0);
@@ -87,17 +96,28 @@ export function RecipeList({
     onChange(1, "");
   }
 
+  const filter = (
+    <input
+      type="search"
+      value={text}
+      maxLength={FILTER_MAX_CHARS}
+      aria-label={t.filterLabel}
+      placeholder={t.filterPlaceholder}
+      onChange={(event) => setTyped({ from: q, text: event.target.value })}
+      className="box-border w-full min-w-0 appearance-none rounded-[var(--radius-md)] border border-border bg-surface px-[var(--space-4)] py-[var(--space-3)] text-[1rem] leading-normal text-foreground placeholder:text-muted"
+    />
+  );
+
   return (
     <div className={styles.section}>
-      <input
-        type="search"
-        value={text}
-        maxLength={FILTER_MAX_CHARS}
-        aria-label={t.filterLabel}
-        placeholder={t.filterPlaceholder}
-        onChange={(event) => setTyped({ from: q, text: event.target.value })}
-        className="box-border w-full min-w-0 appearance-none rounded-[var(--radius-md)] border border-border bg-surface px-[var(--space-4)] py-[var(--space-3)] text-[1rem] leading-normal text-foreground placeholder:text-muted"
-      />
+      {filterAction ? (
+        <div className="flex min-w-0 items-stretch gap-[var(--space-2)]">
+          <div className="min-w-0 flex-1">{filter}</div>
+          {filterAction}
+        </div>
+      ) : (
+        filter
+      )}
       {state.status === "loading" ? (
         <p className={styles.copy} role="status">
           {t.loading}
@@ -141,7 +161,13 @@ export function RecipeList({
       ) : null}
       {state.status === "ready" && state.page.items.length > 0 ? (
         <>
-          <ul className={styles.grid}>
+          <ul
+            className={
+              layout === "wrap"
+                ? "m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-[var(--space-2)] p-0"
+                : styles.grid
+            }
+          >
             {state.page.items.map((recipe) => (
               <li key={recipe.id}>
                 <RecipeCard

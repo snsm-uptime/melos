@@ -2,17 +2,13 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Avatar } from "@/components/Avatar";
-import { SectionLabel } from "@/components/soft-ledger/SectionLabel";
 import { requireAlias } from "@/lib/alias";
 import { getApiInternalUrl } from "@/lib/api";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
 import { fetchSession } from "@/lib/session";
-import { KitchenDetailChrome } from "../KitchenDetailChrome";
-import { KitchenDetailMobileActions } from "../KitchenDetailMobileActions";
+import { KitchenDetailChrome, type KitchenShare } from "../KitchenDetailChrome";
 import { KitchenNotebooksSection } from "../KitchenNotebooksSection";
-import { TemporalNavigation } from "../TemporalNavigation";
-import { memberLabel, type KitchenMember } from "../kitchensClient";
+import type { KitchenMember } from "../kitchensClient";
 import styles from "../kitchens.module.scss";
 import { getServerLocale } from "@/lib/serverLocale";
 
@@ -62,7 +58,7 @@ export default async function KitchenDetailPage({
   if (!session) {
     redirect(`/sign-in?returnTo=/kitchens/${encodeURIComponent(kitchenId)}`);
   }
-  const me = await requireAlias(`/kitchens/${kitchenId}`);
+  await requireAlias(`/kitchens/${kitchenId}`);
 
   const locale = await getServerLocale();
   const t = kitchensMessages[locale];
@@ -129,66 +125,44 @@ export default async function KitchenDetailPage({
     errorSmtp: t.errorSmtp,
   };
 
+  const share: KitchenShare | undefined = isOwner
+    ? {
+        kitchenId,
+        ownerId: detail?.owner_id,
+        members,
+        membersLoadError,
+        inviteMessages,
+        labels: {
+          open: t.mobileInviteAria,
+          close: t.mobileSheetClose,
+          membersTitle: t.detailMembersTitle,
+          ownerBadge: t.ownerBadge,
+          loadError: t.loadError,
+        },
+      }
+    : undefined;
+
   return (
-    <main className={styles.softMain}>
-      <div className={styles.softBody}>
-        {notFound || !showKitchenDetail ? (
-          <>
-            <KitchenDetailChrome title={notFound ? t.detailNotFound : t.loadError} />
-            <p className={`${styles.copy} ${styles.softBack}`}>
-              <Link className={styles.link} href="/home">
-                {t.backToKitchens}
-              </Link>
-            </p>
-          </>
-        ) : (
-          <div className={styles.detailLayout}>
-            <KitchenDetailChrome title={kitchenTitle as string} />
-            <div className={styles.detailPrimary}>
-              <div className="flex items-center justify-between gap-[var(--space-2)]">
-                <SectionLabel>{t.detailMembersTitle}</SectionLabel>
-                <KitchenDetailMobileActions
-                  kitchenId={kitchenId}
-                  canInvite={isOwner}
-                  inviteMessages={inviteMessages}
-                  inviteAria={t.mobileInviteAria}
-                  closeLabel={t.mobileSheetClose}
-                />
-              </div>
-              {membersLoadError ? (
-                <p className={styles.copy} role="alert">
-                  {t.loadError}
-                </p>
-              ) : (
-                <ul className="m-0 flex list-none flex-col gap-[var(--space-2)] p-0">
-                  {members.map((member) => (
-                    <li key={member.user_id} className="flex items-center gap-[var(--space-2)]">
-                      <Avatar
-                        alias={member.alias}
-                        seed={member.user_id}
-                        photoBase64={member.photo_base64 ?? null}
-                      />
-                      <span>{memberLabel(member)}</span>
-                      {member.user_id === detail?.owner_id ? (
-                        <span className="text-muted text-[0.85rem]">{t.ownerBadge}</span>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <KitchenNotebooksSection
-                kitchenId={kitchenId}
-                isArchived={Boolean(detail?.is_archived)}
-                viewerAlias={me.alias}
-                locale={locale}
-              />
-            </div>
-            <aside className={styles.detailSidebar}>
-              <TemporalNavigation kitchenId={kitchenId} isOwner={isOwner} inviteMessages={inviteMessages} />
-            </aside>
-          </div>
-        )}
-      </div>
+    <main className={styles.detailMain}>
+      {notFound || !showKitchenDetail ? (
+        <>
+          <KitchenDetailChrome title={notFound ? t.detailNotFound : t.loadError} />
+          <p className={styles.copy}>
+            <Link className={styles.link} href="/home">
+              {t.backToKitchens}
+            </Link>
+          </p>
+        </>
+      ) : (
+        <>
+          <KitchenDetailChrome title={kitchenTitle as string} share={share} />
+          <KitchenNotebooksSection
+            kitchenId={kitchenId}
+            isArchived={Boolean(detail?.is_archived)}
+            locale={locale}
+          />
+        </>
+      )}
     </main>
   );
 }

@@ -19,10 +19,15 @@ const candidates: CaptureCandidate[] = [
 let container: HTMLDivElement;
 let root: Root;
 
-function render(list = candidates) {
+function render(list = candidates, variant?: "placeholder" | "button") {
   act(() => {
     root.render(
-      <AddRecipeCallToAction candidates={list} defaultId="nb-default" returnPath="/notebooks" />,
+      <AddRecipeCallToAction
+        candidates={list}
+        defaultId="nb-default"
+        returnPath="/notebooks"
+        variant={variant}
+      />,
     );
   });
 }
@@ -56,6 +61,15 @@ describe("AddRecipeCallToAction", () => {
   it("shows the placeholder with the accessible name 'Add a recipe'", () => {
     render();
     expect(button("Add a recipe")).not.toBeNull();
+  });
+
+  it("as a button it reads 'Add recipe' and opens the same options dialog", () => {
+    render(candidates, "button");
+    expect(button("Add a recipe")).toBeNull();
+
+    act(() => button("Add recipe")!.click());
+
+    expect(button("Text")).not.toBeNull();
   });
 
   it("opens the options dialog with URL, Picture and Text in order, and no confirm or cancel", () => {
