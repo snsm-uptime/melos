@@ -1,5 +1,7 @@
 # Contract: Capture API (HTTP)
 
+> **Scope change 2026-10-27:** main ingredients and cuisines are out of the MVP (backlog S-061, PRD Appendix E). Anything below about them (main ingredient keys, cuisine scoring, category chips, the `main_ingredients` and `cuisines` fields, the category lists of `GET /recipe-vocabulary`) is not in force; the code is commented out under `MVP-OUT:`. Ingredient catalog matching (S-018) is unchanged. Plan: `dev/docs/mvp-descope-categories.md`.
+
 Normative status: this contract is normative for paths, status codes, `code`
 values and field names. `spec.md` is normative for behaviour and member-facing
 wording. The ui shows its own text for each `code`. It never shows `detail` or
@@ -57,10 +59,6 @@ checked in `application/` before any assistant call.
     "title": "Onion soup",
     "base_servings": 4,
     "servings_estimated": true,
-    "main_ingredients": [ { "id": "poultry", "label": "Poultry" } ],
-    "cuisines": [
-      { "id": "international", "label": "International", "tag": null }
-    ],
     "ingredient_lines": [
       { "name": "salt", "vague": true, "quantity": null, "unit": null,
         "size": null, "preparation": null, "note": "a pinch" },
@@ -74,7 +72,6 @@ checked in `application/` before any assistant call.
 
 - `notebook` is the notebook the capture was made for: `kind` `"personal"` or `"kitchen"`,
   with `name` (the stored name, spec 056) and, for a kitchen, `kitchen_id`.
-- A cuisine `tag` is `{ "id", "label" }` when the cuisine is a variant, otherwise null.
 - `language` is the member's account language (`users.language`, through
   `effective_language`). Chip labels use it, and the other language for a label missing in
   it (research R4).
@@ -114,25 +111,16 @@ so it can be cached.
 {
   "units": ["g", "kg", "oz", "lb", "ml", "l", "cup", "tbsp", "tsp", "unit"],
   "sizes": ["small", "medium", "large"],
-  "max_main_ingredients": 2,
-  "max_cuisines": 2,
-  "max_text_chars": 5000,
-  "main_ingredients": [
-    { "id": "poultry", "label": { "en": "Poultry", "es": "Aves" } }
-  ],
-  "cuisines": [
-    { "id": "mexican", "label": { "en": "Mexican", "es": "Mexicana" }, "tag": null },
-    { "id": "oaxacan", "label": { "en": "Oaxacan", "es": "Oaxaqueña" }, "tag": "mexican" },
-    { "id": "international", "label": { "en": "International", "es": "Internacional" }, "tag": null }
-  ]
+  "max_text_chars": 5000
 }
 ```
 
 `max_text_chars` is the configured paste limit (`RECIPE_TEXT_MAX_CHARS`), so the ui
 shows the same limit as the api.
 
-Cuisines include every tag and variant node that `score_cuisines` can assign, plus the
-fallback. `tag` is the parent tag id for a variant.
+Out of the MVP (2026-10-27, S-061): `max_main_ingredients`, `max_cuisines`, `main_ingredients`
+and `cuisines` were removed from this answer, and `main_ingredients` and `cuisines` from the
+draft above.
 
 ## BFF (ui → api)
 
