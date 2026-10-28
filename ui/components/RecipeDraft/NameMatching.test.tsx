@@ -122,7 +122,25 @@ describe("ingredient match labels (spec 018 US1)", () => {
 });
 
 describe("name changes (spec 018 US2)", () => {
-  it("lists the change and undo returns only that line to its text name", async () => {
+  it("shows the change as a row above the affected line's card and nowhere else", async () => {
+    await act(async () => {
+      root.render(<RecipeDraftEditor />);
+    });
+
+    const items = Array.from(container.querySelectorAll("li")).filter((li) =>
+      li.querySelector("[aria-label='Catalog match'], select"),
+    );
+    const [first, second] = items;
+    const notice = first.querySelector("[data-name-change]");
+    expect(notice?.textContent).toContain("onions → onion");
+    // The row comes before the card inside the same list item.
+    expect(first.firstElementChild).toBe(notice);
+    expect(second.querySelector("[data-name-change]")).toBeNull();
+    expect(container.querySelectorAll("[data-name-change]")).toHaveLength(1);
+    expect(container.textContent).not.toContain("Names changed");
+  });
+
+  it("shows the change and undo returns only that line to its text name", async () => {
     await act(async () => {
       root.render(<RecipeDraftEditor />);
     });

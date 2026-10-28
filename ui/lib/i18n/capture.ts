@@ -53,7 +53,6 @@ export const captureMessages = {
   addIngredient: "Add ingredient",
   newIngredient: "new ingredient",
   matchControl: "Catalog match",
-  namesChanged: "Names changed",
   changeItem: (from: string, to: string) => `${from} → ${to}`,
   undoChange: "Undo",
   moveUp: "Move up",

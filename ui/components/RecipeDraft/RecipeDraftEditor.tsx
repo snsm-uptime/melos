@@ -24,7 +24,6 @@ import { captureMessages } from "@/lib/i18n/capture";
 
 // MVP-OUT: import { CategoryChips } from "./CategoryChips";
 import { IngredientLineRow } from "./IngredientLineRow";
-import { NameChangeList } from "./NameChangeList";
 
 // MVP-OUT: const MAX_MAIN = 2;
 // MVP-OUT: const MAX_CUISINES = 2;
@@ -89,6 +88,7 @@ export function RecipeDraftEditor() {
     // MVP-OUT: cuisineCount: draft.cuisines.length,
   };
   const errors = checkDraft(input);
+  const changesByLine = new Map(nameChanges(draft.lines).map((change) => [change.line, change]));
 
   function update(patch: Partial<DraftView>) {
     editDraft({ ...draft!, ...patch });
@@ -197,7 +197,6 @@ export function RecipeDraftEditor() {
 
       <section className="flex flex-col gap-2">
         <h2 className="m-0 text-[1rem] font-[550] text-foreground">{captureMessages.ingredients}</h2>
-        <NameChangeList changes={nameChanges(draft.lines)} onUndo={undoChange} />
         <ul className="m-0 flex list-none flex-col gap-[var(--space-4)] p-0">
           {draft.lines.map((line, index) => (
             <IngredientLineRow
@@ -209,6 +208,8 @@ export function RecipeDraftEditor() {
               units={units}
               sizes={sizes}
               catalog={draft.catalog}
+              change={changesByLine.get(index)}
+              onUndoChange={undoChange}
               onChange={(next) => updateLine(index, next)}
               onRemove={() => update({ lines: draft.lines.filter((_, i) => i !== index) })}
               onMove={(direction) => update({ lines: moveItem(draft.lines, index, direction) })}
