@@ -335,7 +335,7 @@ export function RecipeEditForm({
             {t.stepsTitle}
           </h2>
           <div className="flex flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
-            <ol className="m-0 flex list-none flex-col gap-2 p-0">
+            <ol className="m-0 flex list-none flex-col p-0">
               {state.steps.map((step, index) => (
                 <StepCard
                   key={step.key}

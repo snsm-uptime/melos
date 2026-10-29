@@ -11,6 +11,8 @@ type RowControlsProps = {
   onRemove: () => void;
   onMove: (direction: -1 | 1) => void;
   className?: string;
+  /** The hairline that sets the column apart inside a card; off for divided rows. */
+  divider?: boolean;
   locale?: Locale;
 };
 
@@ -21,12 +23,13 @@ export function RowControls({
   onRemove,
   onMove,
   className,
+  divider = true,
   locale,
 }: RowControlsProps) {
   const t = useCaptureMessages(locale);
   return (
     <div
-      className={`flex shrink-0 flex-col border-l border-border items-center justify-between gap-2 self-stretch ${className ?? ""}`}
+      className={`flex shrink-0 flex-col items-center justify-between gap-2 self-stretch ${divider ? "border-l border-border" : ""} ${className ?? ""}`}
     >
       <button
         type="button"

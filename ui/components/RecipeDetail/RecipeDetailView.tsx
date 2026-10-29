@@ -152,7 +152,7 @@ export function RecipeDetailView({
               <p className="m-0 text-[0.85rem] text-muted">{t.stepsAsSaved}</p>
             ) : null}
             <div className="flex flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
-              <ol className="m-0 flex list-none flex-col gap-2 p-0">
+              <ol className="m-0 flex list-none flex-col p-0">
                 {recipe.steps.map((step, index) => (
                   <StepCard
                     key={`${index}-${step.slice(0, 12)}`}
