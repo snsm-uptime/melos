@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { PlusIcon } from "@/app/icons";
+import { AddItemCard } from "@/components/Card";
 import { AccentButton } from "@/components/soft-ledger/AccentButton";
 import { openSheet, useCaptureState, type CaptureNotebook } from "@/lib/capture/captureStore";
 import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
@@ -76,17 +77,14 @@ export function AddRecipeCallToAction({
           {t.addRecipeButton}
         </AccentButton>
       ) : (
-        <button
-          type="button"
-          aria-label={t.addRecipe}
+        // Fills its grid row so it matches the card beside it; never shorter than the shortest
+        // NotebookCard (one title line, its padding and border).
+        <AddItemCard
+          label={t.addRecipe}
           onClick={() => setOptionsOpen(true)}
           disabled={!preselected}
-          // Fills its grid row so it matches the card beside it; never shorter than the shortest
-          // NotebookCard (one title line, its padding and border). Same radius as the cards.
-          className="flex h-full w-full items-center justify-center rounded-[var(--radius-md)] border border-dashed border-border bg-surface text-muted"
-        >
-          <PlusIcon />
-        </button>
+          className="h-full"
+        />
       )}
       <AddRecipeOptionsDialog
         open={optionsOpen}

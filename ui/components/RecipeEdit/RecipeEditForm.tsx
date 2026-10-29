@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 
 import { BackIcon } from "@/app/icons";
 import { IngredientLineRow } from "@/components/RecipeDraft/IngredientLineRow";
+import { AddItemCard } from "@/components/Card";
 import { StepCard } from "@/components/RecipeDraft/StepCard";
 import { chooseLineMatch } from "@/lib/capture/captureStore";
 import { ALLOWED_UNITS, checkDraft, hasErrors, SIZES } from "@/lib/capture/draftRules";
@@ -257,13 +258,11 @@ export function RecipeEditForm({
                 />
               ))}
             </ul>
-            <button
-              type="button"
-              className="self-start text-[0.9rem] text-accent"
+            <AddItemCard
+              label={c.addIngredient}
+              className="min-h-14"
               onClick={() => commit({ ...state, lines: [...state.lines, newLine()] })}
-            >
-              {c.addIngredient}
-            </button>
+            />
           </div>
         </section>
 
@@ -300,18 +299,16 @@ export function RecipeEditForm({
                 {c.errors[errors.steps]}
               </span>
             ) : null}
-            <button
-              type="button"
-              className="self-start text-[0.9rem] text-accent"
+            <AddItemCard
+              label={c.addStep}
+              className="min-h-14"
               onClick={() =>
                 commit({
                   ...state,
                   steps: [...state.steps, { key: nextKey("edit-step"), text: "" }],
                 })
               }
-            >
-              {c.addStep}
-            </button>
+            />
           </div>
         </section>
       </div>
@@ -339,7 +336,7 @@ export function RecipeEditForm({
         </div>
       ) : null}
 
-      <div className="flex items-center justify-end gap-4 px-4">
+      <div className="flex items-center justify-end gap-4 px-4 pb-8">
         <Link href={detailHref} className="text-[0.95rem] text-muted no-underline">
           {t.cancel}
         </Link>

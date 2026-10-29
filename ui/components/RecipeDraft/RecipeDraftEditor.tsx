@@ -33,6 +33,7 @@ import { useLocale } from "@/lib/i18n/useLocale";
 
 // MVP-OUT: import { CategoryChips } from "./CategoryChips";
 import { IngredientLineRow } from "./IngredientLineRow";
+import { AddItemCard } from "@/components/Card";
 import { StepCard } from "./StepCard";
 
 // MVP-OUT: const MAX_MAIN = 2;
@@ -253,9 +254,9 @@ export function RecipeDraftEditor() {
                 />
               ))}
             </ul>
-            <button
-              type="button"
-              className="self-start text-[0.9rem] text-accent"
+            <AddItemCard
+              label={t.addIngredient}
+              className="min-h-14"
               onClick={() =>
                 update({
                   lines: [
@@ -275,9 +276,7 @@ export function RecipeDraftEditor() {
                   ],
                 })
               }
-            >
-              {t.addIngredient}
-            </button>
+            />
           </div>
         </section>
 
@@ -314,17 +313,15 @@ export function RecipeDraftEditor() {
                 {t.errors[errors.steps]}
               </span>
             ) : null}
-            <button
-              type="button"
-              className="self-start text-[0.9rem] text-accent"
+            <AddItemCard
+              label={t.addStep}
+              className="min-h-14"
               onClick={() =>
                 update({
                   steps: [...draft.steps, { key: nextKey(), text: "" }],
                 })
               }
-            >
-              {t.addStep}
-            </button>
+            />
           </div>
         </section>
       </div>
@@ -335,7 +332,7 @@ export function RecipeDraftEditor() {
         </p>
       ) : null}
 
-      <div className="flex items-center justify-end gap-4 px-4">
+      <div className="flex items-center justify-end gap-4 px-4 pb-8">
         <button
           type="button"
           onClick={discard}
