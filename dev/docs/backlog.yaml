@@ -344,9 +344,9 @@ stories:
     title: Consolidated shopping list (domain/cart.py) with units, sizes, vague section and chips
     epic: Cart
     priority: must
-    status: backlog
+    status: in_design
     journey: J5
-    source: prd.md J5 steps 1–7
+    source: prd.md J5 steps 1–7; specs/023-shopping-list
     acceptance: [AC5.1, AC5.2, AC5.3, AC5.4]
     notes: >
       Lines merge by ingredient name (plain normalized strings), so the same name from different
