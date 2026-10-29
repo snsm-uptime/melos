@@ -313,12 +313,16 @@ class ResolveCaptureNotebookService:
         if kitchen.is_archived:
             raise KitchenArchivedError()
 
-        chosen = choose_capture_notebook(
-            self._notebooks.kitchen_ids_for(kitchen.id), command.picked_notebook_id
-        )
-        if chosen is not None:
-            return CaptureNotebook(notebook_id=chosen, created=False)
+        # If the user explicitly picked a notebook, use it
+        if command.picked_notebook_id is not None:
+            return CaptureNotebook(notebook_id=command.picked_notebook_id, created=False)
 
+        # Look for the user's kitchen notebook in this kitchen
+        user_notebook = self._notebooks.user_kitchen_notebook(command.actor_user_id, kitchen.id)
+        if user_notebook is not None:
+            return CaptureNotebook(notebook_id=user_notebook, created=False)
+
+        # User doesn't have their own notebook yet, create one
         alias, language = _naming_profile(self._prefs, command.actor_user_id)
         notebook_id, created = ensure_kitchen_notebook(
             kitchen,

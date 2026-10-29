@@ -160,6 +160,19 @@ class SqlAlchemyNotebookRepository:
             ).all()
         )
 
+    def user_kitchen_notebook(self, user_id: UUID, kitchen_id: UUID) -> UUID | None:
+        """The kitchen notebook created by this user in this kitchen, or None."""
+        return self._session.scalar(
+            select(NotebookModel.id)
+            .where(
+                and_(
+                    NotebookModel.kitchen_id == kitchen_id,
+                    NotebookModel.owner_user_id == user_id,
+                )
+            )
+            .order_by(NotebookModel.created_at, NotebookModel.id)
+        )
+
     def create(self, notebook: Notebook) -> None:
         self._session.add(
             NotebookModel(

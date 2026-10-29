@@ -171,12 +171,13 @@ kitchen notebook → belongs to one kitchen; a kitchen can have several; every m
   → or added as a snapshot of a personal notebook by any kitchen member: an independent copy of its
     recipes and catalog that records which notebook it came from (an origin label, cleared if the
     original is deleted); from then on the two never sync
-  → or created by the first capture in a kitchen that has none (for example "My kitchen", which
-    signup makes): "{alias}'s ({kitchen name}) Notebook", named after the capturing member
+  → or created by the first capture in a kitchen: each member on their first capture gets their own
+    kitchen notebook, "{alias}'s ({kitchen name}) Notebook", named after them; subsequent captures
+    default to that member's notebook
 capture outside a kitchen → into a personal notebook the person owns or is a member of; with several,
   they pick one
-capture in a kitchen → into one of the kitchen's notebooks; with several, the member picks one; with
-  none, one is created as above; no capture happens in an archived kitchen
+capture in a kitchen → uses the member's kitchen notebook if they have one; if not, creates one;
+  the member can explicitly pick a different notebook if they want; no capture happens in an archived kitchen
 a person leaves a kitchen, or is removed → they lose access to its notebooks; nothing is copied
 an owner deletes their account → each personal notebook they own passes to its longest-standing
   member; one with no members is deleted; recipes they authored elsewhere stay, author "unknown"
@@ -361,7 +362,7 @@ The user signs up, signs in, signs out, resets their password by email and edits
   - Title, base servings (with an "estimated" badge when Gemini guessed), and the ingredient table and steps, all editable.
   - Each ingredient shows either "matched: *onion*" or "new ingredient", and the user can change the match.
   - Gemini may match a name to an existing entry in the notebook's catalog (e.g. "onions" to "onion"). The draft lists every such change, so the member can see it and undo it before save.
-- **Save** creates the recipe in the notebook the capture started from, with the member as author, adds the confirmed new names to that notebook's catalog, then embeds it. Outside a kitchen it goes into one of the person's personal notebooks; in a kitchen, into one of the kitchen's notebooks (with several, the member picks one; with none, one is created; flow H). No capture happens in an archived kitchen. **Discard** saves nothing.
+- **Save** creates the recipe in the notebook the capture started from, with the member as author, adds the confirmed new names to that notebook's catalog, then embeds it. Outside a kitchen it goes into one of the person's personal notebooks (they pick one if they have several); in a kitchen, it goes to the member's own kitchen notebook (created on their first capture if needed). No capture happens in an archived kitchen. **Discard** saves nothing.
 - **Extraction rules** (prompt in Appendix B):
   - Canonical names in the language of the pasted text: singular, lower-case, preparation in its own field. Translation is a later story.
   - Vague amounts (the phrases in Appendix B.1 rule 4) → `vague_note`.

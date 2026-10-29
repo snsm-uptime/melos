@@ -101,6 +101,10 @@ class NotebookRepository(Protocol):
         """A kitchen's notebooks, oldest first."""
         ...
 
+    def user_kitchen_notebook(self, user_id: UUID, kitchen_id: UUID) -> UUID | None:
+        """The kitchen notebook created by the user in this kitchen, or None."""
+        ...
+
     def personal_ids_for(self, user_id: UUID) -> list[UUID]:
         """Capture candidates outside a kitchen: the user's personal notebooks, oldest first."""
         ...

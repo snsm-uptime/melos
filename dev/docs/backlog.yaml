@@ -179,6 +179,9 @@ stories:
       notebook from the capture step (signup and the auth routes are not changed). Invites
       (S-057), snapshots (S-035) and ownership passing (S-058) come later. Spec 056 must be
       re-specified.
+      Enhancement 2026-10-29: the capture notebook step now auto-selects each member's own kitchen
+      notebook if they have one, creating one on first capture. Members can still explicitly pick
+      different notebooks if needed (ResolveCaptureNotebookService._kitchen logic updated).
     verification: >
       Reworked to the snapshot model on s55-notebooks (2026-10-25). api: 432 passed and 2
       skipped in Compose (dev and test overlays). ui: 285 vitest tests, lint and typecheck
@@ -224,6 +227,9 @@ stories:
       No capture in an archived kitchen. Spec 016 FR-001a and the capture routes need re-sync.
       Descope 2026-10-27: the draft carries no main ingredients or cuisines (S-061); the code for
       them is commented out under the marker "MVP-OUT:". See dev/docs/mvp-descope-categories.md.
+      Enhancement 2026-10-29: each kitchen member now gets their own kitchen notebook on first
+      capture (named "{alias}'s ({kitchen name}) Notebook"), and subsequent captures default to
+      that member's notebook instead of requiring a pick or using another member's notebook.
 
   - id: S-017
     title: Clear capture error messages (name the missing recipe parts, or say how to fix the text)
@@ -313,9 +319,9 @@ stories:
     title: Shared cart with people and per-recipe meals; scale factor
     epic: Cart
     priority: must
-    status: backlog
+    status: in_design
     journey: J4
-    source: prd.md J4, 1.6 (cart)
+    source: prd.md J4, 1.6 (cart); specs/022-shared-cart
     notes: >
       Cart items come from the kitchen's notebooks (redesign 2026-10-23). Must clean up on recipe
       delete: a cart entry goes with its recipe (spec 027 FR-016; add it to DeleteRecipeService, the
