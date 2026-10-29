@@ -17,6 +17,7 @@ from application.kitchen_access import (
     AuthorizeKitchenAccessService,
 )
 from application.ports import (
+    EditLockRepository,
     KitchenAccessGrant,
     NewKitchenRecord,
     NewMembershipRecord,
@@ -225,14 +226,20 @@ class DeleteKitchenService:
 
 
 class ArchiveKitchenService:
-    """Archive a kitchen — owner-only; non-members and non-owner members rejected."""
+    """Archive a kitchen — owner-only; non-members and non-owner members rejected.
 
-    def __init__(self, repo: KitchenRepository) -> None:
+    Archiving ends every edit lock in the kitchen for good, in the same transaction, so
+    unarchiving brings no lock or draft back (spec 022 FR-020b, research R11).
+    """
+
+    def __init__(self, repo: KitchenRepository, locks: EditLockRepository) -> None:
         self._repo = repo
+        self._locks = locks
 
     def execute(self, command: ArchiveKitchenCommand) -> KitchenRecord:
         _require_owner(self._repo, command.kitchen_id, command.actor_user_id)
         self._repo.archive_kitchen(command.kitchen_id)
+        self._locks.release_all_for_kitchen(command.kitchen_id)
         return self._repo.get_kitchen(command.kitchen_id)
 
 

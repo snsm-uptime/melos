@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import uuid
 
+from application.ports import SessionRef
 from application.recipe_capture import TextTooLongError
+from application.recipe_locks import AcquireRecipeLockService, ReleaseRecipeLockService
 from application.recipe_manage import (
     DeleteRecipeCommand,
     DeleteRecipeService,
@@ -28,8 +30,10 @@ from domain.errors import (
     KitchenNotFoundError,
     NotebookChoiceRequiredError,
     NotebookNotFoundError,
+    NotEditingError,
     NotKitchenMemberError,
     RecipeChangedError,
+    RecipeLockedError,
     RecipeNotFoundError,
     RecipeReadOnlyError,
 )
@@ -43,19 +47,24 @@ from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import JSONResponse
 
 from api.deps import (
+    get_acquire_recipe_lock,
     get_delete_recipe,
     get_get_recipe,
     get_match_recipe_names,
+    get_release_recipe_lock,
     get_save_recipe_draft,
     get_update_recipe,
+    require_session_ref,
     require_user_alias,
 )
+from api.schemas.carts import editor_response
 from api.schemas.recipes import (
     NameMatch,
     NameMatchesBody,
     NameMatchesResponse,
     RecipeDetailResponse,
     RecipeLineResponse,
+    RecipeLockResponse,
     RecipeNotebookResponse,
     RecipeSourceResponse,
     SaveRecipeBody,
@@ -205,6 +214,9 @@ def _detail(view: RecipeView) -> RecipeDetailResponse:
             if detail.source_url
             else None
         ),
+        editor=editor_response(view.editor),
+        in_cart=view.cart.in_cart if view.cart is not None else None,
+        cart_editor=editor_response(view.cart.editor) if view.cart is not None else None,
     )
 
 
@@ -216,14 +228,31 @@ def _read_only() -> JSONResponse:
     return _error(status.HTTP_403_FORBIDDEN, RecipeReadOnlyError.CODE, RecipeReadOnlyError.MESSAGE)
 
 
+def _locked(exc: RecipeLockedError) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={
+            "detail": str(exc),
+            "code": RecipeLockedError.CODE,
+            "editor_alias": exc.editor_alias,
+        },
+    )
+
+
+def _not_editing() -> JSONResponse:
+    return _error(status.HTTP_409_CONFLICT, NotEditingError.CODE, NotEditingError.MESSAGE)
+
+
 @router.get("/recipes/{recipe_id}")
 def get_recipe(
     recipe_id: uuid.UUID,
-    user_id: uuid.UUID = Depends(require_user_alias),
+    ref: SessionRef = Depends(require_session_ref),
     service: GetRecipeService = Depends(get_get_recipe),
 ) -> JSONResponse:
     try:
-        view = service.execute(GetRecipeCommand(actor_user_id=user_id, recipe_id=recipe_id))
+        view = service.execute(
+            GetRecipeCommand(actor_user_id=ref.user_id, recipe_id=recipe_id, session=ref)
+        )
     except RecipeNotFoundError:
         return _not_found()
     return JSONResponse(content=_detail(view).model_dump(mode="json"))
@@ -258,11 +287,12 @@ def match_recipe_names(
 def update_recipe(
     recipe_id: uuid.UUID,
     body: UpdateRecipeBody,
-    user_id: uuid.UUID = Depends(require_user_alias),
+    ref: SessionRef = Depends(require_session_ref),
     service: UpdateRecipeService = Depends(get_update_recipe),
 ) -> JSONResponse:
     command = UpdateRecipeCommand(
-        actor_user_id=user_id,
+        actor_user_id=ref.user_id,
+        session_id=ref.session_id,
         recipe_id=recipe_id,
         version=body.version,
         title=body.title,
@@ -288,6 +318,10 @@ def update_recipe(
         return _not_found()
     except RecipeReadOnlyError:
         return _read_only()
+    except RecipeLockedError as exc:
+        return _locked(exc)
+    except NotEditingError:
+        return _not_editing()
     except RecipeChangedError:
         return _error(status.HTTP_409_CONFLICT, RecipeChangedError.CODE, RecipeChangedError.MESSAGE)
     except DraftProblems as exc:
@@ -304,13 +338,48 @@ def update_recipe(
 @router.delete("/recipes/{recipe_id}")
 def delete_recipe(
     recipe_id: uuid.UUID,
-    user_id: uuid.UUID = Depends(require_user_alias),
+    ref: SessionRef = Depends(require_session_ref),
     service: DeleteRecipeService = Depends(get_delete_recipe),
 ) -> Response:
     try:
-        service.execute(DeleteRecipeCommand(actor_user_id=user_id, recipe_id=recipe_id))
+        service.execute(
+            DeleteRecipeCommand(
+                actor_user_id=ref.user_id, recipe_id=recipe_id, session_id=ref.session_id
+            )
+        )
     except RecipeNotFoundError:
         return _not_found()
     except RecipeReadOnlyError:
         return _read_only()
+    except RecipeLockedError as exc:
+        return _locked(exc)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/recipes/{recipe_id}/edit-lock")
+def acquire_recipe_lock(
+    recipe_id: uuid.UUID,
+    ref: SessionRef = Depends(require_session_ref),
+    service: AcquireRecipeLockService = Depends(get_acquire_recipe_lock),
+) -> JSONResponse:
+    """Take the recipe lock, or keep it alive for its holder (spec 022, recipe-lock-api.md)."""
+    try:
+        editor = service.execute(ref, recipe_id)
+    except RecipeNotFoundError:
+        return _not_found()
+    except RecipeReadOnlyError:
+        return _read_only()
+    except RecipeLockedError as exc:
+        return _locked(exc)
+    body = RecipeLockResponse(editor=editor_response(editor))  # type: ignore[arg-type]
+    return JSONResponse(content=body.model_dump(mode="json"))
+
+
+@router.delete("/recipes/{recipe_id}/edit-lock")
+def release_recipe_lock(
+    recipe_id: uuid.UUID,
+    ref: SessionRef = Depends(require_session_ref),
+    service: ReleaseRecipeLockService = Depends(get_release_recipe_lock),
+) -> Response:
+    service.execute(ref, recipe_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

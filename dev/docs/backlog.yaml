@@ -179,6 +179,9 @@ stories:
       notebook from the capture step (signup and the auth routes are not changed). Invites
       (S-057), snapshots (S-035) and ownership passing (S-058) come later. Spec 056 must be
       re-specified.
+      Enhancement 2026-10-29: the capture notebook step now auto-selects each member's own kitchen
+      notebook if they have one, creating one on first capture. Members can still explicitly pick
+      different notebooks if needed (ResolveCaptureNotebookService._kitchen logic updated).
     verification: >
       Reworked to the snapshot model on s55-notebooks (2026-10-25). api: 432 passed and 2
       skipped in Compose (dev and test overlays). ui: 285 vitest tests, lint and typecheck
@@ -224,6 +227,9 @@ stories:
       No capture in an archived kitchen. Spec 016 FR-001a and the capture routes need re-sync.
       Descope 2026-10-27: the draft carries no main ingredients or cuisines (S-061); the code for
       them is commented out under the marker "MVP-OUT:". See dev/docs/mvp-descope-categories.md.
+      Enhancement 2026-10-29: each kitchen member now gets their own kitchen notebook on first
+      capture (named "{alias}'s ({kitchen name}) Notebook"), and subsequent captures default to
+      that member's notebook instead of requiring a pick or using another member's notebook.
 
   - id: S-017
     title: Clear capture error messages (name the missing recipe parts, or say how to fix the text)
@@ -313,13 +319,26 @@ stories:
     title: Shared cart with people and per-recipe meals; scale factor
     epic: Cart
     priority: must
-    status: backlog
+    status: done
     journey: J4
-    source: prd.md J4, 1.6 (cart)
+    source: prd.md J4, 1.6 (cart); specs/022-shared-cart
     notes: >
-      Cart items come from the kitchen's notebooks (redesign 2026-10-23). Must clean up on recipe
-      delete: a cart entry goes with its recipe (spec 027 FR-016; add it to DeleteRecipeService, the
-      schema guard test in tests/test_recipe_manage_integration.py fails until you do).
+      Cart items come from the kitchen's notebooks (redesign 2026-10-23). A cart entry goes with its
+      recipe by FK cascade (cart_item, recipe_edit_lock in the schema guard test). Also adds the
+      single-editor lock for the cart and for recipe Edit (amends spec 027 FR-011).
+    verification: >
+      Implemented 2026-10-29 on branch 022-shared-cart, not committed. Migration 0007_cart_and_edit_locks:
+      upgrade, downgrade to 0006 and upgrade again on a scratch database. api in Compose (test overlay): 803 passed,
+      5 failed; all 5 failed before this story (text limit and vocabulary as in S-027; three
+      kitchen-capture notebook tests failing on HEAD 88986a0). ruff: the 4 errors already on HEAD, none
+      new. ui: 877 vitest tests, lint and typecheck clean. Covered by tests: two-session lock over HTTP,
+      sign-out and expiry free it, 5-minute idle, archive and membership removal delete it, concurrent
+      starts (one winner), cascades on recipe/notebook/kitchen delete, add count, a 100-entry cart read
+      in at most 5 SQL statements. UI clarification (2026-10-29, Phase 9): cart-icon button, toasts
+      above the tab bar, Cart-page-only editing bar; ui 887 vitest tests, lint and typecheck clean,
+      api unchanged (803 passed, same 5 baseline failures). Not done: the browser walk of quickstart.md with two accounts at
+      phone and desktop width, and the timed 100-entry read on the dev stack
+      (see specs/022-shared-cart/notes.md).
 
   - id: S-023
     title: Consolidated shopping list (domain/cart.py) with units, sizes, vague section and chips
@@ -376,6 +395,8 @@ stories:
       Reuses the kitchen invite flow (S-011): token stored hashed, single use, same email rules.
       On joining, the new member's names are normalized against the notebook's catalog with the
       S-018 matcher; the notebook's names win and the rest are added. The owner cannot leave.
+      Delete the membership row on leave/remove (no soft delete); spec 022 FR-020b relies on the
+      cascade to end edit locks.
 
   - id: S-058
     title: Personal notebook ownership passes to the longest-standing member when the owner's account is deleted

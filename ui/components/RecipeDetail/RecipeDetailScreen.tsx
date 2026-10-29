@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { useCartIdleToasts } from "@/components/Cart/useCartIdleToasts";
+import { useToast } from "@/components/Toast";
+import { addDraftItem, cartRecipeIds, removeDraftItem } from "@/lib/cartClient";
+import { cartMessages } from "@/lib/i18n/cart";
 import type { Locale } from "@/lib/i18n/locale";
 import { recipeDetailMessages } from "@/lib/i18n/recipeDetail";
 import { safeReturnPath } from "@/lib/recipeReturnPath";
@@ -28,6 +32,12 @@ export function RecipeDetailScreen({ recipeId, locale }: { recipeId: string; loc
   const [state, setState] = useState<State>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
   const [confirming, setConfirming] = useState(false);
+  const c = cartMessages[locale];
+  const toast = useToast();
+  const ready = state.status === "ready" ? state.recipe : null;
+  useCartIdleToasts(ready?.notebook.kitchen_id ?? null, ready?.cart_editor, locale, () =>
+    setAttempt((n) => n + 1),
+  );
 
   useEffect(() => {
     let current = true;
@@ -88,6 +98,30 @@ export function RecipeDetailScreen({ recipeId, locale }: { recipeId: string; loc
   }
 
   const { recipe } = state;
+  const kitchenId = recipe.notebook.kitchen_id;
+
+  // Add to / Remove from cart goes through my draft, as the card checkbox does (spec 022 R7).
+  function toggleCart() {
+    if (!kitchenId) return;
+    const call = recipe.in_cart ? removeDraftItem : addDraftItem;
+    void call(kitchenId, recipe.id).then((result) => {
+      if (!result.ok) {
+        if (result.code === "cart_locked") {
+          toast.show({ id: "cart-locked", text: c.editingCart(result.editorAlias ?? c.unknown) });
+        }
+        setAttempt((n) => n + 1);
+        return;
+      }
+      setState({
+        status: "ready",
+        recipe: {
+          ...recipe,
+          in_cart: cartRecipeIds(result.value).has(recipe.id),
+          cart_editor: result.value.editor,
+        },
+      });
+    });
+  }
   const backHref = safeReturnPath(from, recipe.notebook.id);
   const editHref = `/recipes/${encodeURIComponent(recipe.id)}/edit${
     from ? `?from=${encodeURIComponent(backHref)}` : ""
@@ -100,6 +134,12 @@ export function RecipeDetailScreen({ recipeId, locale }: { recipeId: string; loc
         backHref={backHref}
         editHref={editHref}
         onDelete={() => setConfirming(true)}
+        cartAction={
+          // Only kitchen recipes carry the cart fields; no message on success (FR-017a).
+          kitchenId && typeof recipe.in_cart === "boolean"
+            ? { inCart: recipe.in_cart, onToggle: toggleCart }
+            : undefined
+        }
       />
       <DeleteRecipeDialog
         open={confirming}

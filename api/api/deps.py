@@ -6,9 +6,11 @@ import uuid
 from collections.abc import Iterator
 
 from adapters.llm.gemini_extractor import GeminiRecipeExtractor
+from adapters.persistence.carts import SqlAlchemyCartRepository
 
 # MVP-OUT: from adapters.llm.vocabulary import load_vocabulary, load_vocabulary_documents
 from adapters.persistence.db import get_session_factory
+from adapters.persistence.edit_locks import SqlAlchemyEditLockRepository, resolve_session_ref
 from adapters.persistence.ingredient_catalog import SqlAlchemyIngredientCatalog
 from adapters.persistence.notebooks import (
     SqlAlchemyNotebookRepository,
@@ -23,12 +25,22 @@ from adapters.persistence.repositories import (
     SqlAlchemyKitchenRepository,
 )
 from adapters.persistence.sessions import SqlAlchemySessionStore
+from application.carts import (
+    AddToDraftService,
+    DiscardCartService,
+    GetCartService,
+    RemoveFromDraftService,
+    ReplaceDraftService,
+    SaveCartService,
+    StartCartEditService,
+)
 from application.notebooks import ResolveCaptureNotebookService
-from application.ports import PasswordHasher, PreferencesRepository, SessionStore
+from application.ports import PasswordHasher, PreferencesRepository, SessionRef, SessionStore
 from application.rate_limit import SlidingWindowRateLimiter, resolve_trusted_client_ip
 from application.recipe_capture import CaptureRecipeText
 from application.recipe_extraction import RecipeExtraction
 from application.recipe_lists import ListKitchenRecipesService, ListNotebookRecipesService
+from application.recipe_locks import AcquireRecipeLockService, ReleaseRecipeLockService
 from application.recipe_manage import (
     DeleteRecipeService,
     GetRecipeService,
@@ -132,6 +144,22 @@ def require_user_alias(
     return user_id
 
 
+def require_session_ref(
+    request: Request,
+    db: Session = Depends(get_db),
+    settings: AuthSettings = Depends(get_auth_settings),
+    user_id: uuid.UUID = Depends(require_user_alias),
+) -> SessionRef:
+    """The caller and their session, for edit locks (spec 022 research R3)."""
+    ref = resolve_session_ref(db, request.cookies.get(settings.session_cookie_name))
+    if ref is None or ref.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated.",
+        )
+    return ref
+
+
 def get_vocabulary_answer(request: Request) -> dict:
     """The lists for GET /recipe-vocabulary, built once per process (spec 016 FR-011)."""
     cached = getattr(request.app.state, "recipe_vocabulary_answer", None)
@@ -192,7 +220,12 @@ def get_save_recipe_draft(db: Session = Depends(get_db)) -> SaveRecipeDraft:
 
 
 def get_get_recipe(db: Session = Depends(get_db)) -> GetRecipeService:
-    return GetRecipeService(SqlAlchemyRecipeRepository(db), SqlAlchemyNotebookRepository(db))
+    return GetRecipeService(
+        SqlAlchemyRecipeRepository(db),
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyEditLockRepository(db),
+        SqlAlchemyCartRepository(db),
+    )
 
 
 def get_match_recipe_names(db: Session = Depends(get_db)) -> MatchRecipeNamesService:
@@ -208,11 +241,28 @@ def get_update_recipe(db: Session = Depends(get_db)) -> UpdateRecipeService:
         SqlAlchemyRecipeRepository(db),
         SqlAlchemyNotebookRepository(db),
         SqlAlchemyIngredientCatalog(db),
+        SqlAlchemyEditLockRepository(db),
     )
 
 
 def get_delete_recipe(db: Session = Depends(get_db)) -> DeleteRecipeService:
-    return DeleteRecipeService(SqlAlchemyRecipeRepository(db), SqlAlchemyNotebookRepository(db))
+    return DeleteRecipeService(
+        SqlAlchemyRecipeRepository(db),
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyEditLockRepository(db),
+    )
+
+
+def get_acquire_recipe_lock(db: Session = Depends(get_db)) -> AcquireRecipeLockService:
+    return AcquireRecipeLockService(
+        SqlAlchemyRecipeRepository(db),
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyEditLockRepository(db),
+    )
+
+
+def get_release_recipe_lock(db: Session = Depends(get_db)) -> ReleaseRecipeLockService:
+    return ReleaseRecipeLockService(SqlAlchemyEditLockRepository(db))
 
 
 def get_list_notebook_recipes(db: Session = Depends(get_db)) -> ListNotebookRecipesService:
@@ -227,3 +277,39 @@ def get_list_kitchen_recipes(db: Session = Depends(get_db)) -> ListKitchenRecipe
         SqlAlchemyNotebookRepository(db),
         SqlAlchemyRecipeListRepository(db),
     )
+
+
+def _cart(cls, db: Session):  # noqa: ANN001, ANN202
+    return cls(
+        SqlAlchemyKitchenRepository(db),
+        SqlAlchemyCartRepository(db),
+        SqlAlchemyEditLockRepository(db),
+    )
+
+
+def get_get_cart(db: Session = Depends(get_db)) -> GetCartService:
+    return _cart(GetCartService, db)
+
+
+def get_start_cart_edit(db: Session = Depends(get_db)) -> StartCartEditService:
+    return _cart(StartCartEditService, db)
+
+
+def get_add_to_draft(db: Session = Depends(get_db)) -> AddToDraftService:
+    return _cart(AddToDraftService, db)
+
+
+def get_remove_from_draft(db: Session = Depends(get_db)) -> RemoveFromDraftService:
+    return _cart(RemoveFromDraftService, db)
+
+
+def get_replace_draft(db: Session = Depends(get_db)) -> ReplaceDraftService:
+    return _cart(ReplaceDraftService, db)
+
+
+def get_save_cart(db: Session = Depends(get_db)) -> SaveCartService:
+    return _cart(SaveCartService, db)
+
+
+def get_discard_cart(db: Session = Depends(get_db)) -> DiscardCartService:
+    return _cart(DiscardCartService, db)

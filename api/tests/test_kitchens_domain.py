@@ -249,9 +249,11 @@ def test_owner_archive_moves_kitchen_to_the_archived_view_for_members() -> None:
     kitchen_id = _owned_kitchen(repo, owner)
     repo.memberships.append(MembershipRecord(kitchen_id=kitchen_id, user_id=member, role="member"))
 
-    ArchiveKitchenService(repo).execute(
+    locks = _Locks()
+    ArchiveKitchenService(repo, locks).execute(
         ArchiveKitchenCommand(actor_user_id=owner, kitchen_id=kitchen_id)
     )
+    assert locks.released == [kitchen_id]
 
     member_default = KitchenMembershipsService(repo).execute(
         KitchenMembershipsCommand(actor_user_id=member)
@@ -261,3 +263,26 @@ def test_owner_archive_moves_kitchen_to_the_archived_view_for_members() -> None:
     )
     assert member_default == []
     assert [s.id for s in member_archived] == [kitchen_id]
+
+
+class _Locks:
+    """Records release_all_for_kitchen; archive must end the kitchen's edit locks (spec 022)."""
+
+    def __init__(self) -> None:
+        self.released: list = []
+
+    def release_all_for_kitchen(self, kitchen_id) -> None:  # noqa: ANN001
+        self.released.append(kitchen_id)
+
+
+def test_archive_by_non_owner_ends_no_lock() -> None:
+    repo = FakeKitchenRepo()
+    owner, member = uuid4(), uuid4()
+    kitchen_id = _owned_kitchen(repo, owner)
+    repo.memberships.append(MembershipRecord(kitchen_id=kitchen_id, user_id=member, role="member"))
+    locks = _Locks()
+    with pytest.raises(NotKitchenOwnerError):
+        ArchiveKitchenService(repo, locks).execute(  # type: ignore[arg-type]
+            ArchiveKitchenCommand(actor_user_id=member, kitchen_id=kitchen_id)
+        )
+    assert locks.released == []

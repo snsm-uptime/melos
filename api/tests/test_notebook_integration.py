@@ -701,20 +701,31 @@ def test_first_capture_in_a_kitchen_creates_its_notebook_and_second_uses_it(
     assert _notebook_count(db_session, kitchen_id=kitchen_id) == 1
 
 
-def test_capture_with_several_notebooks_needs_a_valid_pick(db_session: Session) -> None:
-    ana = _user(db_session, alias="ana_pick")
+def test_capture_auto_selects_user_notebook_or_creates_one(db_session: Session) -> None:
+    ana = _user(db_session, alias="ana_auto")
+    ben = _user(db_session, alias="ben_auto")
     kitchen_id = _kitchen(db_session, ana, "Home")
-    first = _kitchen_notebook(db_session, kitchen_id, "first", ana)
-    second = _kitchen_notebook(db_session, kitchen_id, "second", ana)
+    db_session.add(
+        KitchenMembershipModel(id=uuid4(), kitchen_id=kitchen_id, user_id=ben, role="member")
+    )
+    db_session.flush()
+    ana_notebook = _kitchen_notebook(db_session, kitchen_id, "ana's Home", ana)
+    ben_notebook = _kitchen_notebook(db_session, kitchen_id, "ben's Home", ben)
     other_kitchen = _kitchen(db_session, ana, "Other")
     stranger = _kitchen_notebook(db_session, other_kitchen, "elsewhere", ana)
     service = _resolve_service(db_session)
 
-    with pytest.raises(NotebookChoiceRequiredError) as raised:
-        service.execute(ResolveCaptureNotebookCommand(actor_user_id=ana, kitchen_id=kitchen_id))
-    # Same-transaction rows share created_at, so compare as sets (order is unit-tested).
-    assert set(raised.value.candidate_ids) == {first, second}
+    # Ana uses her own notebook automatically
+    result = service.execute(ResolveCaptureNotebookCommand(actor_user_id=ana, kitchen_id=kitchen_id))
+    assert result.notebook_id == ana_notebook
+    assert result.created is False
 
+    # Ben uses his own notebook automatically
+    result = service.execute(ResolveCaptureNotebookCommand(actor_user_id=ben, kitchen_id=kitchen_id))
+    assert result.notebook_id == ben_notebook
+    assert result.created is False
+
+    # Ana can explicitly pick Ben's notebook
     with pytest.raises(NotebookNotFoundError):
         service.execute(
             ResolveCaptureNotebookCommand(
@@ -724,10 +735,10 @@ def test_capture_with_several_notebooks_needs_a_valid_pick(db_session: Session) 
 
     result = service.execute(
         ResolveCaptureNotebookCommand(
-            actor_user_id=ana, kitchen_id=kitchen_id, picked_notebook_id=second
+            actor_user_id=ana, kitchen_id=kitchen_id, picked_notebook_id=ben_notebook
         )
     )
-    assert result.notebook_id == second
+    assert result.notebook_id == ben_notebook
     assert result.created is False
 
 

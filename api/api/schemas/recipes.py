@@ -8,6 +8,8 @@ from uuid import UUID
 from domain.recipe import MAX_LINES, MAX_STEPS
 from pydantic import BaseModel, Field
 
+from api.schemas.carts import EditorResponse
+
 
 class SaveIngredientLine(BaseModel):
     name: str
@@ -95,6 +97,16 @@ class RecipeDetailResponse(BaseModel):
     ingredient_lines: list[RecipeLineResponse]
     steps: list[str]
     source: RecipeSourceResponse | None
+    # Who edits the recipe now (spec 022); null when nobody does.
+    editor: EditorResponse | None = None
+    # Kitchen recipes only (null for personal notebooks): in the cart as the caller sees it,
+    # and who edits the cart.
+    in_cart: bool | None = None
+    cart_editor: EditorResponse | None = None
+
+
+class RecipeLockResponse(BaseModel):
+    editor: EditorResponse
 
 
 class UpdateRecipeResponse(RecipeDetailResponse):

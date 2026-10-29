@@ -4,6 +4,8 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ToastProvider, ToastViewport } from "@/components/Toast";
+
 import { KitchenNotebooksSection } from "./KitchenNotebooksSection";
 
 const replace = vi.fn();
@@ -20,6 +22,34 @@ const { fetchKitchenRecipes } = vi.hoisted(() => ({
   fetchKitchenRecipes: vi.fn(() => new Promise(() => {})),
 }));
 vi.mock("@/lib/recipesClient", () => ({ fetchKitchenRecipes }));
+
+// The cart (spec 022) is read once; by default nobody edits it and it is empty.
+const { cartMocks } = vi.hoisted(() => ({
+  cartMocks: {
+    fetchCart: vi.fn(),
+    addDraftItem: vi.fn(),
+    removeDraftItem: vi.fn(),
+    startCartEdit: vi.fn(),
+    discardCart: vi.fn(),
+  },
+}));
+vi.mock("@/lib/cartClient", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/cartClient")>()),
+  ...cartMocks,
+}));
+
+function cartWith(over: Record<string, unknown> = {}) {
+  return {
+    kitchen_id: "5e7b0c1a-0000-4000-8000-000000000001",
+    people: 2,
+    people_is_default: true,
+    entries: [],
+    editor: null,
+    draft: null,
+    can_edit: true,
+    ...over,
+  };
+}
 
 const kitchenId = "5e7b0c1a-0000-4000-8000-000000000001";
 
@@ -72,6 +102,9 @@ describe("KitchenNotebooksSection", () => {
 
   beforeEach(() => {
     replace.mockReset();
+    for (const mock of Object.values(cartMocks)) mock.mockReset();
+    cartMocks.fetchCart.mockResolvedValue({ ok: true, value: cartWith() });
+    fetchKitchenRecipes.mockImplementation(() => new Promise(() => {}));
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -220,5 +253,101 @@ describe("KitchenNotebooksSection", () => {
 
     expect(container.querySelector('[role="alert"]')).toBeNull();
     expect(container.querySelector("h3")).toBeNull();
+  });
+
+  describe("cart (spec 022)", () => {
+    const card = {
+      id: "r1",
+      title: "Lentil soup",
+      author_alias: "ana",
+      ingredient_count: 3,
+      notebook_id: "c3d0-1",
+      notebook_name: "ana's (Home) Notebook",
+      created_at: "2026-10-27T12:00:00Z",
+    };
+
+    function withRecipes() {
+      fetchKitchenRecipes.mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          value: { items: [card], page: 1, page_size: 20, total: 1, total_pages: 1 },
+        }),
+      );
+      stubBff([{ status: 200, body: { notebooks: [homeNotebook] } }]);
+    }
+
+    function renderWithToasts() {
+      act(() => {
+        root.render(
+          <ToastProvider>
+            <KitchenNotebooksSection kitchenId={kitchenId} isArchived={false} locale="en" />
+            <ToastViewport />
+          </ToastProvider>,
+        );
+      });
+    }
+
+    const cartButton = () =>
+      container.querySelector<HTMLButtonElement>('button[aria-pressed]');
+
+    it("adds with the cart-icon button and shows no message or bar", async () => {
+      withRecipes();
+      const editing = cartWith({
+        editor: { alias: "ana", is_me: true, idle_expires_at: "2999-01-01T00:00:00Z" },
+        draft: {
+          people: 2,
+          people_is_default: true,
+          entries: [
+            {
+              recipe_id: "r1",
+              title: "Lentil soup",
+              notebook_id: "c3d0-1",
+              notebook_name: "x",
+              base_servings: 4,
+              meals: 1,
+              factor: "0.5",
+            },
+          ],
+          dropped_recipe_ids: [],
+        },
+      });
+      cartMocks.addDraftItem.mockResolvedValue({ ok: true, value: editing });
+      renderWithToasts();
+      await flush();
+      expect(cartButton()?.getAttribute("aria-label")).toBe("Add to cart");
+      act(() => cartButton()?.click());
+      await flush();
+      expect(cartMocks.addDraftItem).toHaveBeenCalledWith(kitchenId, "r1");
+      expect(cartButton()?.getAttribute("aria-label")).toBe("Remove from cart");
+      expect(container.querySelector("[data-toast-viewport]")).toBeNull();
+      expect(container.textContent).not.toContain("You're editing the cart.");
+    });
+
+    it("keeps the button enabled while someone else edits and toasts the refusal", async () => {
+      withRecipes();
+      cartMocks.fetchCart.mockResolvedValue({
+        ok: true,
+        value: cartWith({
+          editor: { alias: "ben", is_me: false, idle_expires_at: null },
+          can_edit: false,
+        }),
+      });
+      cartMocks.addDraftItem.mockResolvedValue({
+        ok: false,
+        status: 409,
+        code: "cart_locked",
+        editorAlias: "ben",
+      });
+      renderWithToasts();
+      await flush();
+      expect(cartButton()?.disabled).toBe(false);
+      expect(container.textContent).not.toContain("ben is editing the cart");
+      act(() => cartButton()?.click());
+      await flush();
+      expect(container.querySelector("[data-toast-viewport]")?.textContent).toBe(
+        "ben is editing the cart",
+      );
+      expect(cartButton()?.getAttribute("aria-label")).toBe("Add to cart");
+    });
   });
 });

@@ -12,7 +12,7 @@ Nothing is logged but outcomes and counts (constitution §4).
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from uuid import UUID
 
@@ -28,8 +28,18 @@ from domain.recipe_draft import (
     check_edited_draft,
 )
 
+from application.carts import EditorView, RecipeCartStatus, recipe_cart_status
 from application.notebooks import NotebookView, notebook_view
-from application.ports import IngredientCatalog, NotebookRepository, RecipeDetail, RecipeRepository
+from application.ports import (
+    CartRepository,
+    EditLockRepository,
+    IngredientCatalog,
+    NotebookRepository,
+    RecipeDetail,
+    RecipeRepository,
+    SessionRef,
+)
+from application.recipe_locks import recipe_editor, refuse_if_locked_by_other, require_recipe_lock
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +51,10 @@ class RecipeView:
     detail: RecipeDetail
     notebook: NotebookView
     can_write: bool
+    # Who edits the recipe now (spec 022 US4); None when nobody does.
+    editor: EditorView | None = None
+    # Kitchen recipes only: in the cart as the caller sees it, and who edits the cart.
+    cart: RecipeCartStatus | None = None
 
 
 def _recipe_for(
@@ -71,19 +85,37 @@ def _recipe_for(
 class GetRecipeCommand:
     actor_user_id: UUID
     recipe_id: UUID
+    session: SessionRef | None = None
 
 
 class GetRecipeService:
-    """Open one recipe. Reads only (FR-018)."""
+    """Open one recipe. Reads only (FR-018). With the caller's session it also says who edits
+    the recipe and, for a kitchen recipe, whether it is in the cart (spec 022)."""
 
-    def __init__(self, recipes: RecipeRepository, notebooks: NotebookRepository) -> None:
+    def __init__(
+        self,
+        recipes: RecipeRepository,
+        notebooks: NotebookRepository,
+        locks: EditLockRepository | None = None,
+        carts: CartRepository | None = None,
+    ) -> None:
         self._recipes = recipes
         self._notebooks = notebooks
+        self._locks = locks
+        self._carts = carts
 
     def execute(self, command: GetRecipeCommand) -> RecipeView:
-        return _recipe_for(
+        view = _recipe_for(
             self._recipes, self._notebooks, command.actor_user_id, command.recipe_id, write=False
         )
+        ref = command.session
+        if ref is None or self._locks is None:
+            return view
+        cart = None
+        kitchen_id = view.notebook.kitchen_id
+        if kitchen_id is not None and self._carts is not None:
+            cart = recipe_cart_status(self._carts, self._locks, kitchen_id, command.recipe_id, ref)
+        return replace(view, editor=recipe_editor(self._locks, command.recipe_id, ref), cart=cart)
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,6 +156,8 @@ class UpdateRecipeCommand:
     servings_estimated: bool
     lines: tuple[IngredientLine, ...]
     steps: tuple[str, ...]
+    # The editor's session must hold the recipe lock (spec 022 FR-022); None skips the check.
+    session_id: UUID | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,6 +172,10 @@ class UpdateRecipeService:
     Order of checks, so that a refused edit stores nothing: size limits, access, the recipe
     rules, the catalog spelling, then the version-checked write; catalog names are added only
     after the write succeeds.
+
+    With a lock repository (spec 022), the caller's session must hold the recipe lock: checked
+    after access and before the write, and released in the same transaction once the write
+    succeeds (research R8).
     """
 
     def __init__(
@@ -145,10 +183,12 @@ class UpdateRecipeService:
         recipes: RecipeRepository,
         notebooks: NotebookRepository,
         catalog: IngredientCatalog,
+        locks: EditLockRepository | None = None,
     ) -> None:
         self._recipes = recipes
         self._notebooks = notebooks
         self._catalog = catalog
+        self._locks = locks
 
     def execute(self, command: UpdateRecipeCommand) -> UpdatedRecipe:
         if len(command.lines) > MAX_LINES or len(command.steps) > MAX_STEPS:
@@ -156,6 +196,8 @@ class UpdateRecipeService:
         current = _recipe_for(
             self._recipes, self._notebooks, command.actor_user_id, command.recipe_id, write=True
         )
+        if self._locks is not None:
+            require_recipe_lock(self._locks, command.recipe_id, command.session_id)
         # An edit needs at least one ingredient line (spec 027 FR-008); the first save does not
         # check this, so the edit adds it to the parts the member is told about.
         no_lines = not command.lines
@@ -190,6 +232,8 @@ class UpdateRecipeService:
             ),
         )
         self._catalog.add_names(current.notebook.id, new_names)
+        if self._locks is not None and command.session_id is not None:
+            self._locks.release_recipe(command.recipe_id, command.session_id)
         logger.info(
             "recipe edit outcome=updated lines=%d steps=%d new_names=%d",
             len(lines),
@@ -206,23 +250,35 @@ class UpdateRecipeService:
 class DeleteRecipeCommand:
     actor_user_id: UUID
     recipe_id: UUID
+    session_id: UUID | None = None
 
 
 class DeleteRecipeService:
     """Remove a recipe, its lines, steps and source.
 
-    This is the one place a recipe is deleted. The cart (S-022), search data (S-019) and chat
-    citations (S-030) do not exist yet; each adds its cleanup here, and the schema guard test
-    in tests/test_recipe_manage_integration.py fails until it does (spec 027 FR-016).
+    This is the one place a recipe is deleted. Cart entries and edit locks leave by FK cascade
+    (spec 022 research R1). Search data (S-019) and chat citations (S-030) do not exist yet;
+    each adds its cleanup here, and the schema guard test in
+    tests/test_recipe_manage_integration.py fails until it does (spec 027 FR-016).
+
+    Refused while another live session edits the recipe (spec 022 FR-022).
     """
 
-    def __init__(self, recipes: RecipeRepository, notebooks: NotebookRepository) -> None:
+    def __init__(
+        self,
+        recipes: RecipeRepository,
+        notebooks: NotebookRepository,
+        locks: EditLockRepository | None = None,
+    ) -> None:
         self._recipes = recipes
         self._notebooks = notebooks
+        self._locks = locks
 
     def execute(self, command: DeleteRecipeCommand) -> None:
         _recipe_for(
             self._recipes, self._notebooks, command.actor_user_id, command.recipe_id, write=True
         )
+        if self._locks is not None:
+            refuse_if_locked_by_other(self._locks, command.recipe_id, command.session_id)
         self._recipes.delete(command.recipe_id)
         logger.info("recipe delete outcome=deleted")

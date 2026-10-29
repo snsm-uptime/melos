@@ -57,8 +57,10 @@ Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
 - A kitchen notebook is created on the first open of the kitchen's notebook
   list, as "{alias}'s ({kitchen name}) Notebook" ("Cuaderno de {alias}
   ({kitchen name})" in Spanish) named after the member who opens it (spec 056
-  FR-008a); or by the first saved capture in a kitchen that has none (FR-009).
-  A kitchen made at signup, "My kitchen" ("Mi cocina" in Spanish), starts with
+  FR-008a); or by the first saved capture in a kitchen, when the member who
+  captures gets their own kitchen notebook created. Each kitchen member has
+  their own kitchen notebook in a kitchen, created on their first capture. A
+  kitchen made at signup, "My kitchen" ("Mi cocina" in Spanish), starts with
   none; or as a snapshot. A snapshot is an independent kitchen copy of a
   personal notebook, added by any kitchen member. It keeps only an origin
   label (`source_notebook_id`, cleared if the original is deleted); the two
@@ -69,8 +71,9 @@ Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
   register request, because it is saved to the account only afterwards. A name
   already made is not translated later.
 - A capture outside a kitchen goes into a personal notebook the person owns or
-  is a member of; in a kitchen, into one of the kitchen's notebooks. With
-  several, the person picks one. No capture happens in an archived kitchen.
+  is a member of; in a kitchen, it goes to the member's own kitchen notebook,
+  created on their first capture if needed. The member can explicitly pick a
+  different notebook if they want. No capture happens in an archived kitchen.
 - Leaving a kitchen ends access to its notebooks; nothing is copied. When an
   owner deletes their account, each personal notebook they own passes to its
   longest-standing member, or is deleted when it has none.

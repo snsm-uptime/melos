@@ -124,4 +124,24 @@ describe("RecipeCard", () => {
     expect(text).toContain("Lentil soup");
     expect(text).not.toContain("unknown");
   });
+
+  it("shows the cart-icon button only when given, and tapping calls back", () => {
+    let toggled = 0;
+    render({ cart: { inCart: false, onToggle: () => (toggled += 1) } });
+    const button = container.querySelector<HTMLButtonElement>("button")!;
+    expect(button.getAttribute("aria-label")).toBe("Add to cart");
+    expect(button.getAttribute("aria-pressed")).toBe("false");
+    expect(button.disabled).toBe(false);
+    act(() => button.click());
+    expect(toggled).toBe(1);
+  });
+
+  it("reads Remove from cart, pressed, with the plus turned, when in the cart", () => {
+    render({ cart: { inCart: true, onToggle: () => {} } });
+    const button = container.querySelector<HTMLButtonElement>("button")!;
+    expect(button.getAttribute("aria-label")).toBe("Remove from cart");
+    expect(button.getAttribute("aria-pressed")).toBe("true");
+    const mark = container.querySelector<SVGGElement>("[data-testid=cart-plus-mark]")!;
+    expect(mark.style.transform).toBe("rotate(45deg)");
+  });
 });

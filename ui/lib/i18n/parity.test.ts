@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { accountMessages } from "./account";
 import { aliasMessages } from "./alias";
 import { captureText } from "./capture";
+import { cartMessages } from "./cart";
 import { inviteMessages } from "./invite";
 import { kitchensMessages } from "./kitchens";
 import { landingMessages } from "./landing";
@@ -22,6 +23,7 @@ const SETS: Record<string, { en: unknown; es: unknown }> = {
   account: accountMessages,
   alias: aliasMessages,
   capture: captureText,
+  cart: cartMessages,
   invite: inviteMessages,
   kitchens: kitchensMessages,
   landing: landingMessages,

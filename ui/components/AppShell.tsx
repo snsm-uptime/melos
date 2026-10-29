@@ -13,7 +13,9 @@ import {
 import { IconButton } from "@/components/IconButton";
 import { usePreferences } from "@/components/PreferencesProvider";
 import { TabBar, type TabBarItem } from "@/components/soft-ledger/TabBar";
+import { ToastProvider, ToastViewport } from "@/components/Toast";
 import { showsAppChrome, showsFloatingLanguageSwitch, tabKeyFromPath } from "@/lib/appChrome";
+import { cartMessages } from "@/lib/i18n/cart";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
 import { Chip } from "./Chip";
 import { SignedOutLanguageSwitch } from "./SignedOutLanguageSwitch";
@@ -22,7 +24,9 @@ import { SignedOutLanguageSwitch } from "./SignedOutLanguageSwitch";
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <ChromeBackProvider>
-      <AppShellFrame>{children}</AppShellFrame>
+      <ToastProvider>
+        <AppShellFrame>{children}</AppShellFrame>
+      </ToastProvider>
     </ChromeBackProvider>
   );
 }
@@ -52,12 +56,17 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   // /sign-in opts into the header, the other signed-out screens have none. /sign-in puts its
   // switch in its own card, below the sign-up link, so none floats there.
   const languageSwitch = showsFloatingLanguageSwitch(pathname) ? <SignedOutLanguageSwitch /> : null;
+  const dismissLabel = cartMessages[locale].dismiss;
 
   if (!showHeader && !showTabBar) {
     return (
       <div className="fixed inset-0 overflow-y-auto">
         {languageSwitch}
         {children}
+        <ToastViewport
+          dismissLabel={dismissLabel}
+          className="fixed inset-x-0 bottom-0 z-20 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        />
       </div>
     );
   }
@@ -116,6 +125,13 @@ function AppShellFrame({ children }: { children: ReactNode }) {
           </header>
         ) : null}
         <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">{children}</div>
+        {/* Toasts sit at the bottom of the screen body, directly above the tab bar (spec 022 R13). */}
+        <ToastViewport
+          dismissLabel={dismissLabel}
+          className={`absolute inset-x-0 bottom-0 z-20${
+            showTabBar ? "" : " pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+          }`}
+        />
       </div>
       {showTabBar ? (
         <TabBar items={tabs} ariaLabel={t.tabNavAria} active={tabKeyFromPath(pathname)} />

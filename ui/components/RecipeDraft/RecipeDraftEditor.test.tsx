@@ -106,7 +106,7 @@ describe("RecipeDraftEditor", () => {
     });
 
     expect(container.textContent).toContain("ana's Notebook");
-    expect((container.querySelector("input") as HTMLInputElement).value).toBe(
+    expect((container.querySelector("h1 textarea") as HTMLTextAreaElement).value).toBe(
       "Onion soup",
     );
     expect(container.textContent).not.toContain("estimated");

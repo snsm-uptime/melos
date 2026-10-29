@@ -4,11 +4,21 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
-import { BackIcon } from "@/app/icons";
+import { BackIcon, CloseIcon, SaveIcon, SpinnerIcon } from "@/app/icons";
+import {
+  HeaderAction,
+  HeaderActions,
+} from "@/components/RecipeDraft/HeaderActions";
 import { IngredientLineRow } from "@/components/RecipeDraft/IngredientLineRow";
+import { AddItemCard } from "@/components/Card";
 import { StepCard } from "@/components/RecipeDraft/StepCard";
 import { chooseLineMatch } from "@/lib/capture/captureStore";
-import { ALLOWED_UNITS, checkDraft, hasErrors, SIZES } from "@/lib/capture/draftRules";
+import {
+  ALLOWED_UNITS,
+  checkDraft,
+  hasErrors,
+  SIZES,
+} from "@/lib/capture/draftRules";
 import { captureMessagesFor } from "@/lib/i18n/capture";
 import type { Locale } from "@/lib/i18n/locale";
 import { recipeDetailMessages, saveProblemText } from "@/lib/i18n/recipeDetail";
@@ -26,7 +36,11 @@ import {
   toUpdateBody,
   type EditState,
 } from "@/lib/recipeEdit";
-import { matchRecipeNames, updateRecipe, type RecipeDetail } from "@/lib/recipesClient";
+import {
+  matchRecipeNames,
+  updateRecipe,
+  type RecipeDetail,
+} from "@/lib/recipesClient";
 
 import { RecipeEditLeaveGuard } from "./RecipeEditLeaveGuard";
 
@@ -46,6 +60,13 @@ type RecipeEditFormProps = {
   listHref: string;
   /** Loads the latest version of the recipe and restarts the form from it. */
   onReload: () => void;
+  /**
+   * The edit lock was lost or is held by someone else (spec 022: 409 recipe_locked or
+   * not_editing). The typed edits stay on screen; the page says why.
+   */
+  onLockLost?: (editorAlias: string | null) => void;
+  /** Called after a successful save; the api has already freed the lock. */
+  onSaved?: () => void;
 };
 
 /**
@@ -60,6 +81,8 @@ export function RecipeEditForm({
   detailHref,
   listHref,
   onReload,
+  onLockLost,
+  onSaved,
 }: RecipeEditFormProps) {
   const t = recipeDetailMessages[locale];
   const c = captureMessagesFor(locale);
@@ -83,7 +106,9 @@ export function RecipeEditForm({
     lines: state.lines,
     steps: state.steps,
   });
-  const changesByLine = new Map(nameChanges(state.lines).map((change) => [change.line, change]));
+  const changesByLine = new Map(
+    nameChanges(state.lines).map((change) => [change.line, change]),
+  );
   const edited = !saved && isEdited(state, recipe);
 
   /** Check the typed names that were not checked yet; returns how many lines were changed. */
@@ -92,14 +117,18 @@ export function RecipeEditForm({
     if (pending.length === 0) return 0;
     const sent = new Map(pending.map((line) => [line.key, line.name]));
     setChecking(true);
-    const result = await matchRecipeNames(recipe.id, [...new Set(sent.values())]);
+    const result = await matchRecipeNames(recipe.id, [
+      ...new Set(sent.values()),
+    ]);
     setChecking(false);
     for (const [key, name] of sent) checkedRef.current.set(key, name);
     // A failed check is only a missed help: the save still checks the recipe on the server.
     if (!result.ok) return 0;
     const current = stateRef.current.lines;
     const next = applyMatches(current, sent, result.value);
-    const changed = next.filter((line, index) => line !== current[index]).length;
+    const changed = next.filter(
+      (line, index) => line !== current[index],
+    ).length;
     if (changed > 0) commit({ ...stateRef.current, lines: next });
     return changed;
   }
@@ -113,11 +142,19 @@ export function RecipeEditForm({
       setSaving(false);
       return;
     }
-    const result = await updateRecipe(recipe.id, toUpdateBody(stateRef.current, recipe.version));
+    const result = await updateRecipe(
+      recipe.id,
+      toUpdateBody(stateRef.current, recipe.version),
+    );
     setSaving(false);
     if (result.ok) {
       setSaved(true);
+      onSaved?.();
       router.push(detailHref);
+      return;
+    }
+    if (result.code === "recipe_locked" || result.code === "not_editing") {
+      onLockLost?.(result.editorAlias ?? null);
       return;
     }
     if (result.status === 409) setMessage({ kind: "changed" });
@@ -149,9 +186,9 @@ export function RecipeEditForm({
   })();
 
   return (
-    <div className="flex flex-col gap-6 md:min-h-0 md:flex-1">
+    <div className="flex flex-col gap-6 pb-8 md:min-h-0 md:flex-1">
       {/* Same insets and Back slot as the draft page and AppShell's chrome header. */}
-      <header className="flex items-center gap-2 pt-[max(0.5rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-1 pl-[max(0.5rem,env(safe-area-inset-left))]">
+      <header className="flex items-center gap-2 bg-background pt-[max(0.5rem,env(safe-area-inset-top))] max-md:sticky max-md:top-0 max-md:z-10 pr-[max(1rem,env(safe-area-inset-right))] pb-1 pl-[max(0.5rem,env(safe-area-inset-left))]">
         <div className="flex w-10 shrink-0 items-center justify-start self-center">
           <Link
             href={detailHref}
@@ -162,29 +199,60 @@ export function RecipeEditForm({
             <BackIcon className="size-6" />
           </Link>
         </div>
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-auto flex-col">
           <h1 className="m-0 min-w-0">
-            <input
+            <textarea
               aria-label={t.titleLabel}
               placeholder={t.titleLabel}
-              className="w-full min-w-0 rounded-[0.4rem] border-0 bg-transparent px-1 py-[0.15rem] text-[1.5rem] font-[550] leading-normal text-foreground outline-none hover:bg-background focus:bg-background"
+              rows={1}
+              // A title is one line of text that wraps: Enter does not add a line break.
+              onKeyDown={(event) => {
+                if (event.key === "Enter") event.preventDefault();
+              }}
+              className="block max-w-full min-w-0 field-sizing-content resize-none rounded-[0.4rem] border-0 bg-transparent px-1 py-[0.15rem] text-[1.5rem] font-[550] leading-normal text-foreground outline-none hover:bg-background focus:bg-background"
               value={state.title}
-              onChange={(event) => commit({ ...state, title: event.target.value })}
+              onChange={(event) =>
+                commit({ ...state, title: event.target.value })
+              }
             />
           </h1>
-          <h4 className="m-0 px-1 text-[0.9rem] font-normal text-muted">{recipe.notebook.name}</h4>
+          <h4 className="m-0 px-1 text-[0.9rem] font-normal text-muted">
+            {recipe.notebook.name}
+          </h4>
           {errors.title ? (
             <span role="alert" className="px-1 text-[0.8rem] text-owe">
               {c.errors[errors.title]}
             </span>
           ) : null}
         </div>
+        <HeaderActions>
+          <HeaderAction
+            onClick={() => void save()}
+            disabled={saving || hasErrors(errors)}
+            label={saving ? t.saving : t.save}
+            tone="accent"
+            icon={
+              saving ? (
+                <SpinnerIcon className="size-5 animate-spin" />
+              ) : (
+                <SaveIcon className="size-5" />
+              )
+            }
+          />
+          <HeaderAction
+            href={detailHref}
+            label={t.cancel}
+            icon={<CloseIcon className="size-5" />}
+          />
+        </HeaderActions>
       </header>
 
       <div className="flex flex-col gap-6 px-4 md:min-h-0 md:flex-1 md:flex-row">
         <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:max-w-[450px] md:flex-1 md:overflow-hidden">
           <div className="flex shrink-0 items-center justify-between gap-2">
-            <h2 className="m-0 text-[1rem] font-[550] text-foreground">{t.ingredientsTitle}</h2>
+            <h2 className="m-0 text-[1rem] font-[550] text-foreground">
+              {t.ingredientsTitle}
+            </h2>
             <div className="flex flex-col items-end gap-1">
               <label className="flex items-center gap-2 text-[0.85rem] text-muted">
                 {t.servingsLabel}
@@ -215,7 +283,10 @@ export function RecipeEditForm({
             <ul
               className="m-0 flex list-none flex-col gap-2 p-0"
               onBlur={(event) => {
-                if ((event.target as HTMLElement).getAttribute("aria-label") === c.ingredientName) {
+                if (
+                  (event.target as HTMLElement).getAttribute("aria-label") ===
+                  c.ingredientName
+                ) {
                   void runNameCheck();
                 }
               }}
@@ -249,28 +320,36 @@ export function RecipeEditForm({
                     })
                   }
                   onRemove={() =>
-                    commit({ ...state, lines: state.lines.filter((_, i) => i !== index) })
+                    commit({
+                      ...state,
+                      lines: state.lines.filter((_, i) => i !== index),
+                    })
                   }
                   onMove={(direction) =>
-                    commit({ ...state, lines: moveItem(state.lines, index, direction) })
+                    commit({
+                      ...state,
+                      lines: moveItem(state.lines, index, direction),
+                    })
                   }
                 />
               ))}
             </ul>
-            <button
-              type="button"
-              className="self-start text-[0.9rem] text-accent"
-              onClick={() => commit({ ...state, lines: [...state.lines, newLine()] })}
-            >
-              {c.addIngredient}
-            </button>
+            <AddItemCard
+              label={c.addIngredient}
+              className="min-h-14"
+              onClick={() =>
+                commit({ ...state, lines: [...state.lines, newLine()] })
+              }
+            />
           </div>
         </section>
 
         <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-hidden">
-          <h2 className="m-0 shrink-0 text-[1rem] font-[550] text-foreground">{t.stepsTitle}</h2>
+          <h2 className="m-0 shrink-0 text-[1rem] font-[550] text-foreground">
+            {t.stepsTitle}
+          </h2>
           <div className="flex flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
-            <ol className="m-0 flex list-none flex-col gap-2 p-0">
+            <ol className="m-0 flex list-none flex-col p-0">
               {state.steps.map((step, index) => (
                 <StepCard
                   key={step.key}
@@ -287,10 +366,16 @@ export function RecipeEditForm({
                     })
                   }
                   onRemove={() =>
-                    commit({ ...state, steps: state.steps.filter((_, i) => i !== index) })
+                    commit({
+                      ...state,
+                      steps: state.steps.filter((_, i) => i !== index),
+                    })
                   }
                   onMove={(direction) =>
-                    commit({ ...state, steps: moveItem(state.steps, index, direction) })
+                    commit({
+                      ...state,
+                      steps: moveItem(state.steps, index, direction),
+                    })
                   }
                 />
               ))}
@@ -300,18 +385,19 @@ export function RecipeEditForm({
                 {c.errors[errors.steps]}
               </span>
             ) : null}
-            <button
-              type="button"
-              className="self-start text-[0.9rem] text-accent"
+            <AddItemCard
+              label={c.addStep}
+              className="min-h-14"
               onClick={() =>
                 commit({
                   ...state,
-                  steps: [...state.steps, { key: nextKey("edit-step"), text: "" }],
+                  steps: [
+                    ...state.steps,
+                    { key: nextKey("edit-step"), text: "" },
+                  ],
                 })
               }
-            >
-              {c.addStep}
-            </button>
+            />
           </div>
         </section>
       </div>
@@ -335,23 +421,12 @@ export function RecipeEditForm({
               {t.reload}
             </button>
           ) : null}
-          {message?.kind === "gone" ? <Link href={listHref}>{t.goToNotebooks}</Link> : null}
+          {message?.kind === "gone" ? (
+            <Link href={listHref}>{t.goToNotebooks}</Link>
+          ) : null}
         </div>
       ) : null}
 
-      <div className="flex items-center justify-end gap-4 px-4">
-        <Link href={detailHref} className="text-[0.95rem] text-muted no-underline">
-          {t.cancel}
-        </Link>
-        <button
-          type="button"
-          onClick={() => void save()}
-          disabled={saving || hasErrors(errors)}
-          className="rounded-[0.75rem] bg-accent px-4 py-2 text-[0.95rem] font-semibold text-on-accent disabled:opacity-50"
-        >
-          {saving ? t.saving : t.save}
-        </button>
-      </div>
       <RecipeEditLeaveGuard edited={edited} locale={locale} />
     </div>
   );

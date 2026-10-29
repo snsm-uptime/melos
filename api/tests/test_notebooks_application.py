@@ -122,6 +122,13 @@ class FakeNotebookRepo:
             return []
         return [n.id for n in self.notebooks.values() if n.kitchen_id == kitchen_id]
 
+    def user_kitchen_notebook(self, user_id: UUID, kitchen_id: UUID) -> UUID | None:
+        self.calls.append("user_kitchen_notebook")
+        for n in self.notebooks.values():
+            if n.kitchen_id == kitchen_id and n.owner_user_id == user_id:
+                return n.id
+        return None
+
     def create(self, notebook: Notebook) -> None:
         self.calls.append("create")
         self.notebooks[notebook.id] = notebook
@@ -517,47 +524,84 @@ def test_kitchen_capture_uses_a_notebook_created_under_the_lock_without_commit()
     assert world.committer.commits == 0
 
 
-def test_kitchen_capture_with_one_notebook_uses_it_without_lock_or_commit() -> None:
+def test_kitchen_capture_with_user_notebook_uses_it_without_creating() -> None:
     ana, ben = uuid4(), uuid4()
     world = _world({ana: "ana", ben: "ben"})
     home = _kitchen(world, ana)
     _join(world, home, ben)
-    only = _kitchen_notebook(world, home, "ana's (Home) Notebook", ana)
+    ana_notebook = _kitchen_notebook(world, home, "ana's (Home) Notebook", ana)
+    ben_notebook = _kitchen_notebook(world, home, "ben's (Home) Notebook", ben)
 
     result = _resolve(world).execute(
         ResolveCaptureNotebookCommand(actor_user_id=ben, kitchen_id=home)
     )
 
-    assert result == CaptureNotebook(notebook_id=only, created=False)
+    assert result == CaptureNotebook(notebook_id=ben_notebook, created=False)
     assert "lock_kitchen" not in world.notebooks.calls
     assert world.committer.commits == 0
 
 
-def test_kitchen_capture_with_two_notebooks_needs_a_valid_pick() -> None:
+def test_kitchen_capture_auto_selects_user_notebook_or_creates_one() -> None:
     ana, ben = uuid4(), uuid4()
     world = _world({ana: "ana", ben: "ben"})
     home = _kitchen(world, ana)
     _join(world, home, ben)
-    first = _kitchen_notebook(world, home, "ana's (Home) Notebook", ana)
-    second = _kitchen_notebook(world, home, "ben's (Home) Notebook", ben)
-    other = _kitchen(world, ana, "Other")
-    stranger = _kitchen_notebook(world, other, "ana's (Other) Notebook", ana)
+    ana_notebook = _kitchen_notebook(world, home, "ana's (Home) Notebook", ana)
+    ben_notebook = _kitchen_notebook(world, home, "ben's (Home) Notebook", ben)
 
-    with pytest.raises(NotebookChoiceRequiredError) as raised:
-        _resolve(world).execute(ResolveCaptureNotebookCommand(actor_user_id=ana, kitchen_id=home))
-    assert raised.value.candidate_ids == [first, second]
-
-    with pytest.raises(NotebookNotFoundError):
-        _resolve(world).execute(
-            ResolveCaptureNotebookCommand(
-                actor_user_id=ana, kitchen_id=home, picked_notebook_id=stranger
-            )
-        )
-
+    # Ana should use her own notebook automatically
     result = _resolve(world).execute(
-        ResolveCaptureNotebookCommand(actor_user_id=ana, kitchen_id=home, picked_notebook_id=second)
+        ResolveCaptureNotebookCommand(actor_user_id=ana, kitchen_id=home)
     )
-    assert result == CaptureNotebook(notebook_id=second, created=False)
+    assert result == CaptureNotebook(notebook_id=ana_notebook, created=False)
+
+    # Ben should use his own notebook automatically
+    result = _resolve(world).execute(
+        ResolveCaptureNotebookCommand(actor_user_id=ben, kitchen_id=home)
+    )
+    assert result == CaptureNotebook(notebook_id=ben_notebook, created=False)
+
+    # When Ana explicitly picks Ben's notebook, use it
+    result = _resolve(world).execute(
+        ResolveCaptureNotebookCommand(
+            actor_user_id=ana, kitchen_id=home, picked_notebook_id=ben_notebook
+        )
+    )
+    assert result == CaptureNotebook(notebook_id=ben_notebook, created=False)
+
+
+def test_kitchen_capture_creates_user_notebook_on_first_capture() -> None:
+    ana, ben, carl = uuid4(), uuid4(), uuid4()
+    world = _world({ana: "ana", ben: "ben", carl: "carl"})
+    home = _kitchen(world, ana)
+    _join(world, home, ben)
+    _join(world, home, carl)
+    ana_notebook = _kitchen_notebook(world, home, "ana's (Home) Notebook", ana)
+
+    # Ben captures without having his own notebook yet
+    result = _resolve(world).execute(
+        ResolveCaptureNotebookCommand(actor_user_id=ben, kitchen_id=home)
+    )
+    assert result.created is True
+    ben_notebook = result.notebook_id
+    assert ben_notebook != ana_notebook
+    assert world.committer.commits == 1
+
+    # Ben's second capture uses the created notebook
+    world.committer.commits = 0
+    result = _resolve(world).execute(
+        ResolveCaptureNotebookCommand(actor_user_id=ben, kitchen_id=home)
+    )
+    assert result == CaptureNotebook(notebook_id=ben_notebook, created=False)
+    assert world.committer.commits == 0
+
+    # Carl captures and gets his own notebook created
+    result = _resolve(world).execute(
+        ResolveCaptureNotebookCommand(actor_user_id=carl, kitchen_id=home)
+    )
+    assert result.created is True
+    assert result.notebook_id != ana_notebook
+    assert result.notebook_id != ben_notebook
 
 
 def test_kitchen_capture_by_non_member_or_in_missing_kitchen_creates_nothing() -> None:

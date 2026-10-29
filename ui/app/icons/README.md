@@ -10,6 +10,8 @@ Centralized location for all custom SVG icon components used throughout the UI. 
 | `SendIcon` | Submit/send actions | Arrow/send shape |
 | `CloseIcon` | Close/dismiss buttons | X shape |
 | `PlusIcon` | Add/create actions | Plus sign |
+| `CartIcon` | Open the kitchen's cart | Empty cart, same shape as `CartPlusIcon` |
+| `CartPlusIcon` | Add/remove a recipe from the cart | `inCart` turns the + into × |
 | `DotsIcon` | Menu triggers | Vertical dots, 16×16 viewBox |
 | `ShareIcon` | Invite/share actions | Connected circles |
 | `PieChartIcon` | Analytics/split settings | Pie chart |
@@ -44,6 +46,22 @@ An X shape for closing/dismissing. Used on close buttons in modals and overlays.
 - ViewBox: `0 0 24 24`
 - Style: Stroke-based
 - Accepts: className, SVG element props
+
+### CartIcon
+
+An empty shopping cart, the same shape as `CartPlusIcon`. Used for the kitchen chrome's button that opens the cart (spec 022).
+
+- ViewBox: `0 0 24 24`
+- Style: Stroke-based
+- Accepts: className, SVG element props
+
+### CartPlusIcon
+
+A shopping cart with a "+" in the basket. Used to add a recipe to the kitchen cart (spec 022). With `inCart`, only the "+" rotates 45° (CSS transition, none under reduced motion) and reads as "×": tapping then removes the recipe.
+
+- ViewBox: `0 0 24 24`
+- Style: Stroke-based
+- Accepts: className, `inCart`, SVG element props
 
 ### PlusIcon
 

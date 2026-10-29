@@ -5,6 +5,8 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { recipeFixture } from "./fixtures";
+import { ToastProvider, ToastViewport } from "@/components/Toast";
+
 import { RecipeDetailScreen } from "./RecipeDetailScreen";
 
 const replace = vi.fn();
@@ -166,5 +168,88 @@ describe("RecipeDetailScreen", () => {
     await act(async () => confirm[confirm.length - 1].click());
     await flush();
     expect(replace).toHaveBeenCalledWith("/notebooks/nb1?page=2");
+  });
+
+  it("adds a kitchen recipe to my cart draft and shows the editing bar (spec 022)", async () => {
+    const kitchenRecipe = recipeFixture({
+      notebook: { id: "nb1", name: "Home", kind: "kitchen", kitchen_id: "k1" },
+      in_cart: false,
+      cart_editor: null,
+      editor: null,
+    });
+    const editingCart = {
+      kitchen_id: "k1",
+      people: 2,
+      people_is_default: true,
+      entries: [],
+      editor: { alias: "ana", is_me: true, idle_expires_at: "2999-01-01T00:00:00Z" },
+      draft: {
+        people: 2,
+        people_is_default: true,
+        entries: [
+          {
+            recipe_id: "r1",
+            title: "Tomato rice",
+            notebook_id: "nb1",
+            notebook_name: "Home",
+            base_servings: 4,
+            meals: 1,
+            factor: "0.5",
+          },
+        ],
+        dropped_recipe_ids: [],
+      },
+      can_edit: true,
+    };
+    const mock = stub([
+      { status: 200, body: kitchenRecipe },
+      { status: 200, body: editingCart },
+    ]);
+    await render();
+    const add = container.querySelector<HTMLButtonElement>('button[aria-label="Add to cart"]');
+    await act(async () => add?.click());
+    await flush();
+    const [url, init] = mock.mock.calls[1] as unknown as [string, RequestInit];
+    expect(url).toBe("/api/kitchens/k1/cart/draft/items");
+    expect(init.method).toBe("POST");
+    expect(container.querySelector('button[aria-label="Remove from cart"]')).not.toBeNull();
+    // No message on success and no editing bar on the recipe page (FR-017a).
+    expect(container.textContent).not.toContain("You're editing the cart.");
+  });
+
+  it("toasts the refusal when someone else edits the cart", async () => {
+    const kitchenRecipe = recipeFixture({
+      notebook: { id: "nb1", name: "Home", kind: "kitchen", kitchen_id: "k1" },
+      in_cart: false,
+      cart_editor: { alias: "ben", is_me: false, idle_expires_at: null },
+      editor: null,
+    });
+    stub([
+      { status: 200, body: kitchenRecipe },
+      { status: 409, body: { code: "cart_locked", editor_alias: "ben" } },
+      { status: 200, body: kitchenRecipe },
+    ]);
+    await act(async () => {
+      root.render(
+        <ToastProvider>
+          <RecipeDetailScreen recipeId="r1" locale="en" />
+          <ToastViewport />
+        </ToastProvider>,
+      );
+    });
+    await flush();
+    const add = container.querySelector<HTMLButtonElement>('button[aria-label="Add to cart"]');
+    expect(add?.disabled).toBe(false);
+    await act(async () => add?.click());
+    await flush();
+    expect(container.querySelector("[data-toast-viewport]")?.textContent).toBe(
+      "ben is editing the cart",
+    );
+  });
+
+  it("shows no cart button for a personal recipe", async () => {
+    stub([{ status: 200, body: recipeFixture({ in_cart: null, cart_editor: null }) }]);
+    await render();
+    expect(container.querySelector('button[aria-label="Add to cart"]')).toBeNull();
   });
 });

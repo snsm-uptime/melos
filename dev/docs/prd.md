@@ -171,12 +171,13 @@ kitchen notebook → belongs to one kitchen; a kitchen can have several; every m
   → or added as a snapshot of a personal notebook by any kitchen member: an independent copy of its
     recipes and catalog that records which notebook it came from (an origin label, cleared if the
     original is deleted); from then on the two never sync
-  → or created by the first capture in a kitchen that has none (for example "My kitchen", which
-    signup makes): "{alias}'s ({kitchen name}) Notebook", named after the capturing member
+  → or created by the first capture in a kitchen: each member on their first capture gets their own
+    kitchen notebook, "{alias}'s ({kitchen name}) Notebook", named after them; subsequent captures
+    default to that member's notebook
 capture outside a kitchen → into a personal notebook the person owns or is a member of; with several,
   they pick one
-capture in a kitchen → into one of the kitchen's notebooks; with several, the member picks one; with
-  none, one is created as above; no capture happens in an archived kitchen
+capture in a kitchen → uses the member's kitchen notebook if they have one; if not, creates one;
+  the member can explicitly pick a different notebook if they want; no capture happens in an archived kitchen
 a person leaves a kitchen, or is removed → they lose access to its notebooks; nothing is copied
 an owner deletes their account → each personal notebook they own passes to its longest-standing
   member; one with no members is deleted; recipes they authored elsewhere stay, author "unknown"
@@ -361,7 +362,7 @@ The user signs up, signs in, signs out, resets their password by email and edits
   - Title, base servings (with an "estimated" badge when Gemini guessed), and the ingredient table and steps, all editable.
   - Each ingredient shows either "matched: *onion*" or "new ingredient", and the user can change the match.
   - Gemini may match a name to an existing entry in the notebook's catalog (e.g. "onions" to "onion"). The draft lists every such change, so the member can see it and undo it before save.
-- **Save** creates the recipe in the notebook the capture started from, with the member as author, adds the confirmed new names to that notebook's catalog, then embeds it. Outside a kitchen it goes into one of the person's personal notebooks; in a kitchen, into one of the kitchen's notebooks (with several, the member picks one; with none, one is created; flow H). No capture happens in an archived kitchen. **Discard** saves nothing.
+- **Save** creates the recipe in the notebook the capture started from, with the member as author, adds the confirmed new names to that notebook's catalog, then embeds it. Outside a kitchen it goes into one of the person's personal notebooks (they pick one if they have several); in a kitchen, it goes to the member's own kitchen notebook (created on their first capture if needed). No capture happens in an archived kitchen. **Discard** saves nothing.
 - **Extraction rules** (prompt in Appendix B):
   - Canonical names in the language of the pasted text: singular, lower-case, preparation in its own field. Translation is a later story.
   - Vague amounts (the phrases in Appendix B.1 rule 4) → `vague_note`.
@@ -382,8 +383,8 @@ The user signs up, signs in, signs out, resets their password by email and edits
 - **AC2.5** If Gemini fails, the typed text is still in the box.
 
 ### J3 · Browse and manage recipes
-- **Lists:** a personal notebook lists its recipes, visible to its owner and members. A kitchen's Notebook tab lists the recipes of the kitchen's notebooks as cards, each with a preview image (or a default cooking-pot icon), the title, the author alias as a chip, the ingredient count. Filter by text (title or ingredient), by ingredient, by author and by notebook. Sort by frequency: how many times the recipe has been added to this kitchen's cart, ascending or descending. Removing it from the cart does not lower the count. Each kitchen card has a checkbox, "Add to cart".
-- **Detail:** ingredients, steps, source link, **Edit**, **Delete** (with confirmation) and **Download PDF**. Also **Copy to notebook**, for any recipe the person can read. Edit and Delete show only to those who can write to the recipe's notebook: the owner and members of a personal notebook, or any member of the kitchen for a kitchen notebook.
+- **Lists:** a personal notebook lists its recipes, visible to its owner and members. A kitchen's Notebook tab lists the recipes of the kitchen's notebooks as cards, each with a preview image (or a default cooking-pot icon), the title, the author alias as a chip, the ingredient count. Filter by text (title or ingredient), by ingredient, by author and by notebook. Sort by frequency: how many times the recipe has been added to this kitchen's cart, ascending or descending. Removing it from the cart does not lower the count. Each kitchen card has a cart-icon button to add it to, or remove it from, the cart (spec 022 FR-017c).
+- **Detail:** ingredients, steps, source link, **Edit**, **Delete** (with confirmation) and **Download PDF**. Also **Copy to notebook**, for any recipe the person can read. Edit and Delete show only to those who can write to the recipe's notebook: the owner and members of a personal notebook, or any member of the kitchen for a kitchen notebook. One member edits a recipe at a time (spec 022, 2026-10-29): while someone else edits it, Edit and Delete are disabled with "{alias} is editing this recipe"; the lock ends as the cart's does.
 - Editing re-embeds the recipe. The change shows in its notebook and, for a kitchen notebook, in the kitchen's cart. Copies and snapshots of it elsewhere do not change.
 - Deleting a recipe removes it from its notebook and, for a kitchen notebook, from the kitchen's list, cart and search; a past chat citation to it keeps its text and shows "recipe removed" in place of the link (decided 2026-10-22). Copies and snapshots elsewhere do not change.
 - **Add to a kitchen** (*Must*): any member of a kitchen adds one of their personal notebooks to it as a snapshot (flow H). The kitchen notebook is an independent copy, labelled with the notebook it came from; the two never sync.
@@ -398,12 +399,13 @@ The user signs up, signs in, signs out, resets their password by email and edits
 ### J4 · Plan (cart)
 - Selected recipes, from the kitchen's notebooks, go to the kitchen's cart, which members share.
 - **Controls:**
-  - One global **People** number (default 2).
+  - One global **People** number (default: the number of kitchen members, until a member sets it).
   - Per recipe, **Meals**: how many times you'll eat it (default 1).
 - **Scale factor per recipe:** `people × meals / base_servings`.
 - **Edge cases:**
   - An empty cart disables export and shows a hint to add recipes.
   - A recipe deleted while in the cart disappears from it.
+- **One editor at a time** (spec 022, decided 2026-10-29): one member at a time changes the cart, through a draft that only Save shows to the others. The others see the saved cart and "{alias} is editing the cart". The lock belongs to the editor's session and ends on save, discard, sign-out, session end, 5 minutes without activity, or loss of access to the kitchen. While editing, the member sees an editing bar on the Cart page; elsewhere, toasts above the tab bar (a refused add while someone else edits, and the idle warning).
 
 ### J5 · Shop (shopping list)
 **Consolidation (`domain/cart.py`, pure):**
@@ -620,6 +622,7 @@ steps[3]: "Fry the garlic in oil.","Add the tomato and cook 5 minutes.","Add the
 - **✓ Snapshots** (2026-10-23): a snapshot is an independent kitchen copy of a personal notebook. Its link to the original is an origin label only, cleared if the original is deleted; nothing syncs. Deleting the kitchen deletes its notebooks. Any kitchen member may add snapshots and rename or delete kitchen notebooks.
 - **✓ Name of a kitchen notebook made with the kitchen or on a first capture** (2026-10-23): "{alias}'s ({kitchen name}) Notebook".
 - **✓ A deleted recipe in a past chat citation** (2026-10-22): the citation keeps its text and shows "recipe removed" in place of the link.
+- **✓ Cart people default and single editor** (2026-10-29, spec 022): People follows the kitchen's member count until a member sets it; the cart and each recipe are edited by one session at a time, and the lock ends on save, discard, sign-out, session end, 5 minutes idle, or lost access.
 - **✓ Categories** (2026-10-27): main ingredients and cuisines are out of the MVP and moved to *Later* (Appendix E). The 2026-10-22 decision (no category table, ids stored on the recipe) is kept there.
 
 ## Appendix E · Deferred: main ingredients and cuisines (out of the MVP, 2026-10-27)

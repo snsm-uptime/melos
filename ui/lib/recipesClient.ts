@@ -100,7 +100,16 @@ export type RecipeDetail = {
   ingredient_lines: RecipeLine[];
   steps: string[];
   source: { type: string; url: string | null } | null;
+  /** Who edits the recipe now (spec 022); null when nobody does. Absent from older answers. */
+  editor?: LockEditor | null;
+  /** Kitchen recipes only (null for personal notebooks): in the cart as I see it. */
+  in_cart?: boolean | null;
+  /** Kitchen recipes only: who edits the kitchen's cart. */
+  cart_editor?: LockEditor | null;
 };
+
+/** The holder of an edit lock (spec 022). `idle_expires_at` is set only for my own lock. */
+export type LockEditor = { alias: string | null; is_me: boolean; idle_expires_at: string | null };
 
 export type NameMatch = { name: string; entry: string | null };
 
@@ -111,6 +120,8 @@ export type RecipeFailure = {
   code: string | null;
   missing?: string[];
   lineProblems?: { name: string | null; kind: string }[];
+  /** The other editor of a 409 recipe_locked (spec 022). */
+  editorAlias?: string | null;
 };
 
 export type RecipeResult<T> = { ok: true; value: T } | RecipeFailure;
@@ -158,7 +169,8 @@ function asMatches(data: unknown): NameMatch[] | null {
 }
 
 async function failure(response: Response): Promise<RecipeFailure> {
-  let data: { code?: unknown; missing?: unknown; line_problems?: unknown } = {};
+  let data: { code?: unknown; missing?: unknown; line_problems?: unknown; editor_alias?: unknown } =
+    {};
   try {
     data = (await response.json()) as typeof data;
   } catch {
@@ -175,13 +187,17 @@ async function failure(response: Response): Promise<RecipeFailure> {
         return [{ name: typeof row.name === "string" ? row.name : null, kind: row.kind }];
       })
     : undefined;
-  return {
+  const result: RecipeFailure = {
     ok: false,
     status: response.status,
     code: typeof data.code === "string" ? data.code : null,
     missing,
     lineProblems,
   };
+  if ("editor_alias" in data) {
+    result.editorAlias = typeof data.editor_alias === "string" ? data.editor_alias : null;
+  }
+  return result;
 }
 
 async function send<T>(
@@ -234,4 +250,34 @@ export function deleteRecipe(id: string): Promise<RecipeResult<true>> {
   return send("DELETE", `/api/recipes/${encodeURIComponent(id)}`, undefined, (data) =>
     data === true ? true : null,
   );
+}
+
+// --- The recipe edit lock (spec 022, contracts/recipe-lock-api.md) ---
+
+function asLock(data: unknown): LockEditor | null {
+  if (!data || typeof data !== "object") return null;
+  const editor = (data as { editor?: unknown }).editor;
+  if (!editor || typeof editor !== "object") return null;
+  return typeof (editor as { is_me?: unknown }).is_me === "boolean" ? (editor as LockEditor) : null;
+}
+
+/** Take the recipe lock, or keep it alive for its holder. A 409 carries `editorAlias`. */
+export function acquireRecipeLock(id: string): Promise<RecipeResult<LockEditor>> {
+  return send("POST", `/api/recipes/${encodeURIComponent(id)}/edit-lock`, undefined, asLock);
+}
+
+/**
+ * Free the recipe. `leaving` sends it with `keepalive`, so it still goes out while the page
+ * closes; the session-scoped lock covers what is lost (research R8).
+ */
+export async function releaseRecipeLock(id: string, leaving = false): Promise<void> {
+  try {
+    await fetch(`/api/recipes/${encodeURIComponent(id)}/edit-lock`, {
+      method: "DELETE",
+      credentials: "same-origin",
+      keepalive: leaving,
+    });
+  } catch {
+    // Best effort; the lock ends with the session or after the idle limit anyway.
+  }
 }
