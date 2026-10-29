@@ -9,7 +9,7 @@ version moves because `replace` stamps `clock_timestamp()`. The one true-concurr
 from __future__ import annotations
 
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
@@ -18,8 +18,10 @@ from adapters.persistence.models import (
     KitchenMembershipModel,
     NotebookMembershipModel,
     NotebookModel,
+    RecipeEditLockModel,
     RecipeIngredientModel,
     RecipeModel,
+    SessionModel,
     SourceModel,
     StepModel,
 )
@@ -28,7 +30,7 @@ from domain.errors import RecipeChangedError
 from domain.recipe import EditedRecipe
 from domain.recipe_draft import IngredientLine
 from fastapi.testclient import TestClient
-from sqlalchemy import func, inspect, select
+from sqlalchemy import func, inspect, select, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from tests.integration_db import claim_alias, database_url
@@ -114,6 +116,12 @@ def _edit_body(recipe: dict, **over) -> dict:
     }
     body.update(over)
     return body
+
+
+def _put(client: TestClient, recipe_id: str, json: dict):  # noqa: ANN202
+    """Edit as the page does: take the recipe lock, then save (spec 022 FR-022)."""
+    client.post(f"/recipes/{recipe_id}/edit-lock")
+    return client.put(f"/recipes/{recipe_id}", json=json)
 
 
 def _counts(db: Session) -> tuple[int, ...]:
@@ -224,8 +232,9 @@ def test_edit_changes_content_and_keeps_the_rest(client: TestClient, db_session:
 
     lines = [dict(line) for line in original["ingredient_lines"]]
     lines[0]["quantity"] = 2
-    response = client.put(
-        f"/recipes/{recipe_id}",
+    response = _put(
+        client,
+        recipe_id,
         json=_edit_body(
             original, title="Better rice", ingredient_lines=lines, steps=["First.", "Second."]
         ),
@@ -268,8 +277,9 @@ def test_lines_can_be_added_removed_and_reordered(client: TestClient, db_session
     lines = recipe["ingredient_lines"]
     new = [lines[2], {"name": "garlic", "quantity": 2, "unit": "unit"}, lines[0]]
 
-    response = client.put(
-        f"/recipes/{recipe_id}",
+    response = _put(
+        client,
+        recipe_id,
         json=_edit_body(recipe, ingredient_lines=new, steps=["Last.", "First."]),
     )
 
@@ -296,9 +306,7 @@ def test_a_kitchen_member_and_a_notebook_member_edit_what_others_saved(
 
     for recipe_id in (mine, shared):
         recipe = client.get(f"/recipes/{recipe_id}").json()
-        response = client.put(
-            f"/recipes/{recipe_id}", json=_edit_body(recipe, title="Edited by Ben")
-        )
+        response = _put(client, recipe_id, json=_edit_body(recipe, title="Edited by Ben"))
         assert response.status_code == 200, response.text
         assert response.json()["author_alias"] == "ana_who"
     _switch_to(client, "ana_who@example.com")
@@ -338,12 +346,14 @@ def test_an_edit_that_breaks_a_rule_changes_nothing(
     recipe = client.get(f"/recipes/{recipe_id}").json()
     before = _counts(db_session)
 
-    response = client.put(f"/recipes/{recipe_id}", json=_edit_body(recipe, **override))
+    response = _put(client, recipe_id, json=_edit_body(recipe, **override))
 
     assert response.status_code == status, response.text
     assert response.json()["code"] == code
     assert _counts(db_session) == before
-    assert client.get(f"/recipes/{recipe_id}").json() == recipe
+    after = client.get(f"/recipes/{recipe_id}").json()
+    # The refused edit keeps the editor's lock (spec 022); everything else is unchanged.
+    assert {**after, "editor": None} == recipe
 
 
 def test_an_edit_names_the_missing_parts_and_lines(client: TestClient, db_session: Session):
@@ -351,13 +361,12 @@ def test_an_edit_names_the_missing_parts_and_lines(client: TestClient, db_sessio
     recipe_id = _save(client, _personal_notebook(client))
     recipe = client.get(f"/recipes/{recipe_id}").json()
 
-    missing = client.put(
-        f"/recipes/{recipe_id}", json=_edit_body(recipe, title="", ingredient_lines=[])
-    )
+    missing = _put(client, recipe_id, json=_edit_body(recipe, title="", ingredient_lines=[]))
     assert set(missing.json()["missing"]) == {"title", "ingredients"}
 
-    bad_line = client.put(
-        f"/recipes/{recipe_id}",
+    bad_line = _put(
+        client,
+        recipe_id,
         json=_edit_body(recipe, ingredient_lines=[{"name": "rice", "quantity": 1}]),
     )
     assert bad_line.json()["line_problems"] == [{"name": "rice", "kind": "unit_missing"}]
@@ -372,7 +381,7 @@ def test_a_read_only_member_cannot_change_or_delete(client: TestClient, db_sessi
     assert archived.status_code in (200, 204), archived.text
     before = _counts(db_session)
 
-    put = client.put(f"/recipes/{recipe_id}", json=_edit_body(recipe, title="Nope"))
+    put = _put(client, recipe_id, json=_edit_body(recipe, title="Nope"))
     delete = client.delete(f"/recipes/{recipe_id}")
     match = client.post(f"/recipes/{recipe_id}/name-matches", json={"names": ["onions"]})
 
@@ -390,7 +399,7 @@ def test_a_non_reader_cannot_change_delete_or_match(client: TestClient, db_sessi
     _register(client, "stranger_nr@example.com")
     before = _counts(db_session)
 
-    put = client.put(f"/recipes/{recipe_id}", json=_edit_body(recipe, title="Nope"))
+    put = _put(client, recipe_id, json=_edit_body(recipe, title="Nope"))
     delete = client.delete(f"/recipes/{recipe_id}")
     match = client.post(f"/recipes/{recipe_id}/name-matches", json={"names": ["onions"]})
 
@@ -405,13 +414,13 @@ def test_a_stale_edit_is_refused_and_the_first_save_stays(client: TestClient, db
     recipe_id = _save(client, _personal_notebook(client))
     opened = client.get(f"/recipes/{recipe_id}").json()
 
-    first = client.put(f"/recipes/{recipe_id}", json=_edit_body(opened, title="First"))
-    second = client.put(f"/recipes/{recipe_id}", json=_edit_body(opened, title="Second"))
+    first = _put(client, recipe_id, json=_edit_body(opened, title="First"))
+    second = _put(client, recipe_id, json=_edit_body(opened, title="Second"))
 
     assert first.status_code == 200, first.text
     assert second.status_code == 409 and second.json()["code"] == "recipe_changed"
     assert client.get(f"/recipes/{recipe_id}").json()["title"] == "First"
-    again = client.put(f"/recipes/{recipe_id}", json=_edit_body(first.json(), title="Second"))
+    again = _put(client, recipe_id, json=_edit_body(first.json(), title="Second"))
     assert again.status_code == 200 and again.json()["title"] == "Second"
 
 
@@ -422,8 +431,9 @@ def test_new_names_join_the_catalog_and_none_is_removed(client: TestClient, db_s
     recipe = client.get(f"/recipes/{recipe_id}").json()
     assert _catalog(db_session, notebook) == ["onion", "rice", "salt"]
 
-    response = client.put(
-        f"/recipes/{recipe_id}",
+    response = _put(
+        client,
+        recipe_id,
         json=_edit_body(
             recipe,
             ingredient_lines=[
@@ -500,7 +510,7 @@ def test_editing_the_original_leaves_its_copy_alone(client: TestClient, db_sessi
     before = _snapshot(db_session, copy_id)
     recipe = client.get(f"/recipes/{recipe_id}").json()
 
-    response = client.put(f"/recipes/{recipe_id}", json=_edit_body(recipe, title="Changed"))
+    response = _put(client, recipe_id, json=_edit_body(recipe, title="Changed"))
 
     assert response.status_code == 200, response.text
     assert _snapshot(db_session, copy_id) == before
@@ -565,7 +575,7 @@ def test_a_deleted_recipe_is_gone_for_every_route_and_a_second_delete_is_a_404(
 
     responses = [
         client.get(f"/recipes/{recipe_id}"),
-        client.put(f"/recipes/{recipe_id}", json=_edit_body(recipe)),
+        _put(client, recipe_id, json=_edit_body(recipe)),
         client.post(f"/recipes/{recipe_id}/name-matches", json={"names": ["x"]}),
         client.delete(f"/recipes/{recipe_id}"),
     ]
@@ -595,8 +605,8 @@ def test_a_kitchen_recipe_leaves_the_kitchen_list(client: TestClient, db_session
 def test_only_the_lines_and_steps_point_at_recipe_ids(engine: Engine):
     """A new table with a key to recipe.id must cascade, or be cleaned in DeleteRecipeService.
 
-    Spec 027 FR-016: when this fails, S-022 (cart), S-019 (embeddings) or S-030 (citations) added
-    a reference. Add its cleanup to DeleteRecipeService, then update this list.
+    Spec 027 FR-016: when this fails, S-019 (embeddings) or S-030 (citations) added a reference.
+    Add its cleanup to DeleteRecipeService, then update this list. The cart (S-022) cascades.
     """
     inspector = inspect(engine)
     referencing: dict[str, str | None] = {}
@@ -604,7 +614,12 @@ def test_only_the_lines_and_steps_point_at_recipe_ids(engine: Engine):
         for key in inspector.get_foreign_keys(table):
             if key["referred_table"] == "recipe":
                 referencing[table] = (key.get("options") or {}).get("ondelete")
-    assert referencing == {"recipe_ingredient": "CASCADE", "step": "CASCADE"}
+    assert referencing == {
+        "recipe_ingredient": "CASCADE",
+        "step": "CASCADE",
+        "cart_item": "CASCADE",
+        "recipe_edit_lock": "CASCADE",
+    }
 
 
 # --- SC-007: two sessions saving at once ----------------------------------------------------
@@ -672,3 +687,103 @@ def test_the_second_of_two_concurrent_saves_waits_and_is_told(engine: Engine):
             if notebook is not None:
                 cleanup.delete(notebook)
                 cleanup.commit()
+
+
+# --- Spec 022 US4: one editor per recipe ----------------------------------------------------
+
+
+def _token(client: TestClient) -> str:
+    return client.cookies["melos_session"]
+
+
+def _as(client: TestClient, token: str) -> TestClient:
+    client.cookies.clear()
+    client.cookies.set("melos_session", token)
+    return client
+
+
+def _lock_rows(db: Session, recipe_id: str) -> int:
+    return db.scalar(
+        select(func.count())
+        .select_from(RecipeEditLockModel)
+        .where(RecipeEditLockModel.recipe_id == UUID(recipe_id))
+    )
+
+
+def _two_editors(client: TestClient, db: Session) -> tuple[str, str, str, str]:
+    _register(client, "ana_lock@example.com")
+    ana = _token(client)
+    kitchen_id, notebook_id = _kitchen(client)
+    recipe_id = _save(client, notebook_id)
+    client.cookies.clear()
+    ben_id = _register(client, "ben_lock@example.com")
+    ben = _token(client)
+    _join_kitchen(db, kitchen_id, ben_id)
+    return ana, ben, recipe_id, kitchen_id
+
+
+def test_one_member_edits_a_recipe_at_a_time(client: TestClient, db_session: Session):
+    ana, ben, recipe_id, _ = _two_editors(client, db_session)
+    taken = _as(client, ana).post(f"/recipes/{recipe_id}/edit-lock")
+    assert taken.status_code == 200, taken.text
+    assert taken.json()["editor"]["is_me"] is True
+    recipe = client.get(f"/recipes/{recipe_id}").json()
+
+    _as(client, ben)
+    refused = client.post(f"/recipes/{recipe_id}/edit-lock")
+    assert refused.status_code == 409 and refused.json()["code"] == "recipe_locked"
+    assert refused.json()["editor_alias"] == "ana_lock"
+    put = client.put(f"/recipes/{recipe_id}", json=_edit_body(recipe, title="Ben"))
+    assert put.status_code == 409 and put.json()["code"] == "recipe_locked"
+    assert client.delete(f"/recipes/{recipe_id}").status_code == 409
+    seen = client.get(f"/recipes/{recipe_id}").json()
+    assert seen["editor"]["alias"] == "ana_lock" and seen["editor"]["is_me"] is False
+    assert seen["in_cart"] is False and seen["cart_editor"] is None
+
+    saved = _as(client, ana).put(f"/recipes/{recipe_id}", json=_edit_body(recipe, title="Ana"))
+    assert saved.status_code == 200, saved.text
+    assert _lock_rows(db_session, recipe_id) == 0
+    unlocked = client.put(f"/recipes/{recipe_id}", json=_edit_body(saved.json(), title="Again"))
+    assert unlocked.status_code == 409 and unlocked.json()["code"] == "not_editing"
+
+
+def test_sign_out_expiry_and_idle_free_the_recipe(client: TestClient, db_session: Session):
+    ana, ben, recipe_id, _ = _two_editors(client, db_session)
+    _as(client, ana).post(f"/recipes/{recipe_id}/edit-lock")
+    client.post("/auth/sign-out")
+    assert _lock_rows(db_session, recipe_id) == 0
+    assert _as(client, ben).post(f"/recipes/{recipe_id}/edit-lock").status_code == 200
+
+    db_session.execute(
+        update(SessionModel)
+        .where(SessionModel.token == ben)
+        .values(expires_at=func.now() - timedelta(minutes=1))
+    )
+    _switch_to(client, "ana_lock@example.com")
+    assert client.post(f"/recipes/{recipe_id}/edit-lock").status_code == 200
+
+    db_session.execute(
+        update(RecipeEditLockModel).values(last_active_at=func.now() - timedelta(minutes=5))
+    )
+    _switch_to(client, "ben_lock@example.com")
+    assert client.post(f"/recipes/{recipe_id}/edit-lock").status_code == 200
+
+
+def test_lost_access_deletes_the_recipe_lock(client: TestClient, db_session: Session):
+    ana, _, recipe_id, kitchen_id = _two_editors(client, db_session)
+    _as(client, ana).post(f"/recipes/{recipe_id}/edit-lock")
+    assert client.post(f"/kitchens/{kitchen_id}/archive").status_code == 200
+    assert _lock_rows(db_session, recipe_id) == 0
+
+    personal = _save(client, _personal_notebook(client))
+    client.post(f"/recipes/{personal}/edit-lock")
+    assert _lock_rows(db_session, personal) == 1
+    membership = db_session.scalar(
+        select(NotebookMembershipModel).where(
+            NotebookMembershipModel.notebook_id == RecipeModel.notebook_id,
+            RecipeModel.id == UUID(personal),
+        )
+    )
+    db_session.delete(membership)
+    db_session.flush()
+    assert _lock_rows(db_session, personal) == 0

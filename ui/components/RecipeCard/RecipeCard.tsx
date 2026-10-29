@@ -1,6 +1,9 @@
 import Link from "next/link";
 
+import { CartPlusIcon } from "@/app/icons";
 import { Chip } from "@/components/Chip";
+import { IconButton } from "@/components/IconButton";
+import { cartMessages } from "@/lib/i18n/cart";
 import type { Locale } from "@/lib/i18n/locale";
 import { recipeListMessages } from "@/lib/i18n/recipeLists";
 import type { RecipeCard as RecipeCardData } from "@/lib/recipesClient";
@@ -15,6 +18,17 @@ type RecipeCardProps = {
    * Back returns here (spec 027 FR-004). Without it the card is not a link.
    */
   from?: string;
+  /**
+   * The cart-icon button of kitchen cards (spec 022 FR-017c). Personal notebook lists pass
+   * nothing, so their cards have none.
+   */
+  cart?: CardCart;
+};
+
+export type CardCart = {
+  inCart: boolean;
+  /** Never disabled: a refusal while someone else edits shows a toast (spec 022 FR-017b). */
+  onToggle: () => void;
 };
 
 /** The default image until a recipe has its own: a cooking pot. */
@@ -39,9 +53,13 @@ function PotIcon() {
   );
 }
 
-/** Recipe card: links to the detail; no checkbox, no categories (spec 021 FR-014, spec 027). */
-export function RecipeCard({ recipe, locale, showNotebook = false, from }: RecipeCardProps) {
+/**
+ * Recipe card: links to the detail; no categories (spec 021 FR-014, spec 027). Kitchen cards
+ * have the cart-icon button (spec 022).
+ */
+export function RecipeCard({ recipe, locale, showNotebook = false, from, cart }: RecipeCardProps) {
   const t = recipeListMessages[locale];
+  const c = cartMessages[locale];
   return (
     <article
       className={`relative flex min-w-0 items-center gap-[var(--space-3)] rounded-[var(--radius-md)] border border-border bg-surface p-[var(--space-3)]${
@@ -90,6 +108,22 @@ export function RecipeCard({ recipe, locale, showNotebook = false, from }: Recip
           </p>
         ) : null}
       </div>
+      {cart ? (
+        // Above the title link's full-card overlay, so it takes its own clicks.
+        <div className="relative z-10 flex-shrink-0">
+          <IconButton
+            variant="ghost"
+            label={cart.inCart ? c.removeFromCart : c.addToCart}
+            aria-pressed={cart.inCart}
+            tone={cart.inCart ? "danger" : "default"}
+            icon={<CartPlusIcon inCart={cart.inCart} className="size-6" />}
+            onClick={(event) => {
+              event.stopPropagation();
+              cart.onToggle();
+            }}
+          />
+        </div>
+      ) : null}
     </article>
   );
 }

@@ -330,3 +330,127 @@ class EmailSender(Protocol):
     def send(self, message: EmailMessage) -> None:
         """Send transactional email. Raises SmtpConfigurationError / SmtpSendError on failure."""
         ...
+
+
+# --- Cart and edit locks (spec 022) ---------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class SessionRef:
+    """The caller and the session their request came with; locks belong to the session."""
+
+    user_id: UUID
+    session_id: UUID
+
+
+@dataclass(frozen=True, slots=True)
+class LockHolder:
+    session_id: UUID
+    user_id: UUID
+    # None when the holder has no alias (reads "unknown").
+    alias: str | None
+    last_active_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class LockAccess:
+    """The access a recipe lock depends on: exactly one is set (research R11)."""
+
+    kitchen_membership_id: UUID | None
+    notebook_id: UUID | None
+
+
+@dataclass(frozen=True, slots=True)
+class CartDraftItem:
+    recipe_id: UUID
+    meals: int
+
+
+@dataclass(frozen=True, slots=True)
+class CartDraft:
+    people: int | None
+    items: tuple[CartDraftItem, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class CartRecipeFacts:
+    recipe_id: UUID
+    title: str
+    notebook_id: UUID
+    notebook_name: str
+    base_servings: int
+    # None for a personal notebook.
+    kitchen_id: UUID | None
+
+
+@dataclass(frozen=True, slots=True)
+class SavedCart:
+    kitchen_id: UUID
+    people: int | None
+    # In added order.
+    items: tuple[CartDraftItem, ...]
+
+
+class CartRepository(Protocol):
+    def get_or_create_for_update(self, kitchen_id: UUID) -> SavedCart:
+        """Create the row with ON CONFLICT DO NOTHING, then SELECT … FOR UPDATE it."""
+        ...
+
+    def read(self, kitchen_id: UUID) -> SavedCart:
+        """The saved cart; no row reads as SavedCart(kitchen_id, None, ())."""
+        ...
+
+    def member_count(self, kitchen_id: UUID) -> int: ...
+
+    def recipe_facts(self, recipe_ids: Sequence[UUID]) -> dict[UUID, CartRecipeFacts]:
+        """Facts of the recipes that exist; missing ids are absent."""
+        ...
+
+    def save(self, kitchen_id: UUID, draft: CartDraft, user_id: UUID) -> tuple[UUID, ...]:
+        """Replace items and people, raise cart_add_count by 1 for each recipe not in the
+        saved items, and return the newly added ids."""
+        ...
+
+
+class EditLockRepository(Protocol):
+    """Cart and recipe edit locks. Every holder read returns live locks only (research R10)."""
+
+    def cart_holder(self, kitchen_id: UUID) -> LockHolder | None: ...
+
+    def cart_draft(self, kitchen_id: UUID, session_id: UUID) -> CartDraft | None: ...
+
+    def take_cart(
+        self, kitchen_id: UUID, ref: SessionRef, membership_id: UUID, draft: CartDraft
+    ) -> None: ...
+
+    def touch_cart(self, kitchen_id: UUID, session_id: UUID) -> None: ...
+
+    def set_cart_draft(self, kitchen_id: UUID, session_id: UUID, draft: CartDraft) -> None: ...
+
+    def kitchen_membership_id(self, kitchen_id: UUID, user_id: UUID) -> UUID | None: ...
+
+    def release_cart(self, kitchen_id: UUID, session_id: UUID) -> None: ...
+
+    def recipe_holder(self, recipe_id: UUID) -> LockHolder | None: ...
+
+    def take_recipe(self, recipe_id: UUID, ref: SessionRef, access: LockAccess) -> None: ...
+
+    def touch_recipe(self, recipe_id: UUID, session_id: UUID) -> None: ...
+
+    def release_recipe(self, recipe_id: UUID, session_id: UUID) -> None: ...
+
+    def recipe_lock_access(self, recipe_id: UUID, user_id: UUID) -> LockAccess | None:
+        """The kitchen membership or notebook membership that lets the user write the recipe."""
+        ...
+
+    def lock_recipe_row(self, recipe_id: UUID) -> bool:
+        """SELECT … FOR UPDATE on the recipe; False when it is gone (research R5)."""
+        ...
+
+    def release_all_for_kitchen(self, kitchen_id: UUID) -> None:
+        """Delete the kitchen's cart lock and the locks of every recipe in its notebooks."""
+        ...
+
+    def now(self) -> datetime:
+        """The clock liveness uses (database time in the adapter)."""
+        ...

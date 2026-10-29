@@ -89,11 +89,11 @@ describe("KitchenDetailChrome", () => {
     expect(push).toHaveBeenCalledWith("/home");
   });
 
-  async function renderWith(shareProp?: KitchenShare) {
+  async function renderWith(shareProp?: KitchenShare, cart?: { href: string; label: string }) {
     await act(async () => {
       root.render(
         <AppShell>
-          <KitchenDetailChrome title="Household" share={shareProp} />
+          <KitchenDetailChrome title="Household" share={shareProp} cart={cart} />
         </AppShell>,
       );
     });
@@ -146,5 +146,27 @@ describe("KitchenDetailChrome", () => {
       (container.querySelector(`header button[aria-label="${t.mobileInviteAria}"]`) as HTMLButtonElement).click();
     });
     expect(document.querySelector("[role=dialog] [role=alert]")?.textContent).toBe(t.loadError);
+  });
+
+  it("puts the cart button before the share button and opens the cart (spec 022)", async () => {
+    await renderWith(share, { href: "/kitchens/k1/cart", label: "Cart" });
+    const buttons = Array.from(container.querySelectorAll("header button"));
+    expect(buttons.map((b) => b.getAttribute("aria-label"))).toEqual([
+      "Back",
+      "Cart",
+      t.mobileInviteAria,
+    ]);
+    await act(async () => {
+      (buttons[1] as HTMLButtonElement).click();
+    });
+    expect(push).toHaveBeenCalledWith("/kitchens/k1/cart");
+  });
+
+  it("shows the cart button to a member who is not the owner", async () => {
+    await renderWith(undefined, { href: "/kitchens/k1/cart", label: "Cart" });
+    const labels = Array.from(container.querySelectorAll("header button")).map((b) =>
+      b.getAttribute("aria-label"),
+    );
+    expect(labels).toEqual(["Back", "Cart"]);
   });
 });

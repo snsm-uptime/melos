@@ -1,10 +1,11 @@
 /** @vitest-environment jsdom */
 
-import { act, type ReactNode } from "react";
+import { act, useEffect, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useChromeBack, useChromeHeader } from "@/components/ChromeBack";
+import { useToast } from "@/components/Toast";
 import { AppShell } from "./AppShell";
 
 const push = vi.fn();
@@ -305,5 +306,32 @@ describe("AppShell chrome header", () => {
       renderAt(path, <p>screen</p>);
       expect(switchPresent()).toBe(false);
     });
+  });
+
+  it("puts the toast viewport at the bottom of the screen body, above the tab bar (spec 022)", async () => {
+    pathname = "/home";
+    const grabbed: { show: (toast: { id: string; text: string }) => void } = { show: () => {} };
+    function Shout({ onShow }: { onShow: (show: typeof grabbed.show) => void }) {
+      const { show } = useToast();
+      useEffect(() => {
+        onShow(show);
+      }, [show, onShow]);
+      return null;
+    }
+    const onShow = (show: typeof grabbed.show) => (grabbed.show = show);
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <Shout onShow={onShow} />
+        </AppShell>,
+      );
+    });
+    await act(async () => grabbed.show({ id: "t", text: "ben is editing the cart" }));
+    const viewport = container.querySelector("[data-toast-viewport]") as HTMLElement;
+    const nav = container.querySelector("nav") as HTMLElement;
+    expect(viewport.textContent).toBe("ben is editing the cart");
+    expect(viewport.className).toContain("absolute");
+    expect(viewport.parentElement?.contains(nav)).toBe(false);
+    expect(viewport.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

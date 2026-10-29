@@ -67,6 +67,11 @@
   background: transparent !important;
 }
 
+/* tone="danger": a removing action hovers in the app's red (e.g. Remove from cart). */
+.ghost.danger:not(:disabled):hover {
+  color: var(--owe) !important;
+}
+
 /* `data-active` only, deliberately excluded from `:hover` above: a stronger,
    chrome-full affordance for a non-pointer trigger (e.g. a keyboard
    shortcut firing this button's action), so mouse users everywhere else keep

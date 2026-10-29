@@ -3,12 +3,12 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 import { AddRecipeCallToAction, type CaptureCandidate } from "@/components/AddRecipeCallToAction";
-import { RecipeCard } from "@/components/RecipeCard/RecipeCard";
+import { RecipeCard, type CardCart } from "@/components/RecipeCard/RecipeCard";
 import { listAddress } from "@/lib/listAddress";
 import type { Locale } from "@/lib/i18n/locale";
 import { recipeListMessages } from "@/lib/i18n/recipeLists";
 import type { NotebookResult } from "@/lib/notebooksClient";
-import type { RecipePage } from "@/lib/recipesClient";
+import type { RecipeCard as RecipeCardData, RecipePage } from "@/lib/recipesClient";
 
 import styles from "@/app/notebooks/notebooks.module.scss";
 
@@ -43,6 +43,8 @@ type RecipeListProps = {
    * row that wraps with the window width.
    */
   layout?: "columns" | "wrap";
+  /** The cart checkbox of a card (kitchen lists, spec 022); omit for none. */
+  cardCart?: (recipe: RecipeCardData) => CardCart | undefined;
 };
 
 /** Cards in numbered pages with a text filter (spec 021 FR-003 to FR-009). */
@@ -57,6 +59,7 @@ export function RecipeList({
   returnPath,
   filterAction,
   layout = "columns",
+  cardCart,
 }: RecipeListProps) {
   const t = recipeListMessages[locale];
   const [attempt, setAttempt] = useState(0);
@@ -187,6 +190,7 @@ export function RecipeList({
                   locale={locale}
                   showNotebook={scope === "kitchen"}
                   from={listAddress(returnPath, page, q)}
+                  cart={cardCart?.(recipe)}
                 />
               </li>
             ))}

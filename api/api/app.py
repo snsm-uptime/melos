@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 
 from api.deps import require_user_alias
 from api.routes.auth import router as auth_router
+from api.routes.carts import router as carts_router
 from api.routes.health import router as health_router
 from api.routes.invites import router as invites_router
 from api.routes.kitchens import router as kitchens_router
@@ -63,5 +64,6 @@ def create_app() -> FastAPI:
     application.include_router(notebooks_router, dependencies=[Depends(require_user_alias)])
     application.include_router(recipe_capture_router, dependencies=[Depends(require_user_alias)])
     application.include_router(recipes_router, dependencies=[Depends(require_user_alias)])
+    application.include_router(carts_router, dependencies=[Depends(require_user_alias)])
     application.include_router(invites_router)
     return application

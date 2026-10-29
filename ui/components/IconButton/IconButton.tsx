@@ -40,6 +40,8 @@ type Props = Omit<
    * own status tooltip in the same spot (see CopyButton's "Copied" bubble).
    */
   tooltipDisabled?: boolean;
+  /** "danger": hover in the app's red, for an action that removes something. */
+  tone?: "default" | "danger";
 };
 
 const baseClasses =
@@ -59,6 +61,7 @@ export const IconButton = forwardRef<HTMLButtonElement, Props>(
       fill = false,
       active = false,
       tooltipDisabled: tooltipDisabledProp = false,
+      tone = "default",
       className,
       ...rest
     },
@@ -71,7 +74,16 @@ export const IconButton = forwardRef<HTMLButtonElement, Props>(
           ? styles.ghost
           : "";
     const layoutClass = caption ? captionLayoutClasses : "";
-    const classes = [baseClasses, layoutClass, fill ? fillClasses : "", variantClass, styles.button, className]
+    const toneClass = tone === "danger" ? styles.danger : "";
+    const classes = [
+      baseClasses,
+      layoutClass,
+      fill ? fillClasses : "",
+      variantClass,
+      toneClass,
+      styles.button,
+      className,
+    ]
       .filter(Boolean)
       .join(" ");
     const tooltipDisabled =

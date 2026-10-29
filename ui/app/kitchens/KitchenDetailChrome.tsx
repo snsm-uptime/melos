@@ -1,8 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { ShareIcon } from "@/app/icons";
+import { CartIcon, ShareIcon } from "@/app/icons";
 import { ActionDialog } from "@/components/ActionDialog";
 import { Avatar } from "@/components/Avatar";
 import { useChromeHeader } from "@/components/ChromeBack";
@@ -31,26 +32,44 @@ type Props = {
   title: string;
   /** Owner only: adds the share button at the end of the chrome and its dialog. */
   share?: KitchenShare;
+  /** Every member: a cart button before the share button that opens the kitchen's cart. */
+  cart?: { href: string; label: string };
 };
 
-/** Opts kitchen detail into AppShell Back + title, and the owner's share button. */
-export function KitchenDetailChrome({ title, share }: Props) {
+/** Opts kitchen detail into AppShell Back + title, the cart button and the owner's share button. */
+export function KitchenDetailChrome({ title, share, cart }: Props) {
+  const { push } = useRouter();
   const [open, setOpen] = useState(false);
   const openLabel = share?.labels.open;
+  const cartHref = cart?.href;
+  const cartLabel = cart?.label;
 
   const trailing = useMemo(
     () =>
-      openLabel ? (
-        <IconButton
-          type="button"
-          variant="ghost"
-          label={openLabel}
-          aria-haspopup="dialog"
-          onClick={() => setOpen(true)}
-          icon={<ShareIcon className="size-6" />}
-        />
+      openLabel || cartHref ? (
+        <>
+          {cartHref && cartLabel ? (
+            <IconButton
+              type="button"
+              variant="ghost"
+              label={cartLabel}
+              onClick={() => push(cartHref)}
+              icon={<CartIcon className="size-6" />}
+            />
+          ) : null}
+          {openLabel ? (
+            <IconButton
+              type="button"
+              variant="ghost"
+              label={openLabel}
+              aria-haspopup="dialog"
+              onClick={() => setOpen(true)}
+              icon={<ShareIcon className="size-6" />}
+            />
+          ) : null}
+        </>
       ) : undefined,
-    [openLabel],
+    [openLabel, cartHref, cartLabel, push],
   );
 
   useChromeHeader({

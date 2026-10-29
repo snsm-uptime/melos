@@ -329,3 +329,46 @@ class InvalidPageError(DomainError):
 
     def __init__(self) -> None:
         super().__init__(self.MESSAGE)
+
+
+class CartLockedError(DomainError):
+    """Raised when another live session edits the kitchen's cart (spec 022 FR-017)."""
+
+    MESSAGE = "{alias} is editing the cart."
+    CODE = "cart_locked"
+
+    def __init__(self, editor_alias: str | None) -> None:
+        super().__init__(self.MESSAGE.format(alias=editor_alias or "unknown"))
+        self.editor_alias = editor_alias
+
+
+class RecipeLockedError(DomainError):
+    """Raised when another live session edits the recipe (spec 022 FR-022)."""
+
+    MESSAGE = "{alias} is editing this recipe."
+    CODE = "recipe_locked"
+
+    def __init__(self, editor_alias: str | None) -> None:
+        super().__init__(self.MESSAGE.format(alias=editor_alias or "unknown"))
+        self.editor_alias = editor_alias
+
+
+class NotEditingError(DomainError):
+    """Raised when a draft write, save or recipe edit comes without a live lock (spec 022)."""
+
+    MESSAGE = "You are not editing this."
+    CODE = "not_editing"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class CartValueError(DomainError):
+    """Raised when people or meals is not a whole number from 1 to 99, or a recipe repeats."""
+
+    MESSAGE = "Enter a whole number from 1 to 99."
+    CODE = "invalid_value"
+
+    def __init__(self, field: str) -> None:
+        super().__init__(self.MESSAGE)
+        self.field = field

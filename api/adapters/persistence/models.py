@@ -10,6 +10,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     Numeric,
@@ -19,7 +20,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from adapters.persistence.base import Base
@@ -323,6 +324,7 @@ class RecipeModel(Base):
     __table_args__ = (
         CheckConstraint("btrim(title) <> ''", name="ck_recipe_title_not_blank"),
         CheckConstraint("base_servings >= 1", name="ck_recipe_base_servings"),
+        CheckConstraint("cart_add_count >= 0", name="ck_recipe_cart_add_count"),
         Index(
             "uq_recipe_author_save_key",
             "author_id",
@@ -361,6 +363,8 @@ class RecipeModel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # Additions to a kitchen's cart, raised by each cart save; never lowered (spec 022 FR-013).
+    cart_add_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
 
 
 class RecipeIngredientModel(Base):
@@ -419,3 +423,110 @@ class StepModel(Base):
     )
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class CartModel(Base):
+    """A kitchen's one shared cart (spec 022), created on first use."""
+
+    __tablename__ = "cart"
+    __table_args__ = (
+        CheckConstraint("people IS NULL OR people BETWEEN 1 AND 99", name="ck_cart_people"),
+        UniqueConstraint("kitchen_id", name="uq_cart_kitchen_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    kitchen_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("kitchens.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    # Null: follow the kitchen's member count (FR-002).
+    people: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+
+class CartItemModel(Base):
+    __tablename__ = "cart_item"
+    __table_args__ = (CheckConstraint("meals BETWEEN 1 AND 99", name="ck_cart_item_meals"),)
+
+    cart_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("cart.id", ondelete="CASCADE"), primary_key=True
+    )
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("recipe.id", ondelete="CASCADE"), primary_key=True
+    )
+    meals: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class CartEditLockModel(Base):
+    """The one session editing a cart, and its draft (spec 022 research R3, R6, R10, R11)."""
+
+    __tablename__ = "cart_edit_lock"
+
+    cart_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("cart.id", ondelete="CASCADE"), primary_key=True
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    membership_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("kitchen_memberships.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    acquired_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_active_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    draft: Mapped[dict] = mapped_column(JSONB, nullable=False)
+
+
+class RecipeEditLockModel(Base):
+    """The one session editing a recipe (spec 022 research R8, R10, R11)."""
+
+    __tablename__ = "recipe_edit_lock"
+    __table_args__ = (
+        CheckConstraint(
+            "(kitchen_membership_id IS NULL) <> (notebook_id IS NULL)",
+            name="ck_recipe_edit_lock_one_access",
+        ),
+        ForeignKeyConstraint(
+            ["notebook_id", "user_id"],
+            ["notebook_membership.notebook_id", "notebook_membership.user_id"],
+            ondelete="CASCADE",
+            name="fk_recipe_edit_lock_notebook_membership",
+        ),
+    )
+
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("recipe.id", ondelete="CASCADE"), primary_key=True
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    kitchen_membership_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("kitchen_memberships.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    notebook_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    acquired_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    last_active_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

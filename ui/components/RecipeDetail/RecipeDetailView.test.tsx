@@ -332,6 +332,52 @@ describe("RecipeDetailView", () => {
     });
   });
 
+  describe("edit lock and cart (spec 022)", () => {
+    it("disables Edit and Delete and names the editor while someone else edits", () => {
+      render(recipeFixture({ editor: { alias: "ben", is_me: false, idle_expires_at: null } }));
+      expect(container.textContent).toContain("ben is editing this recipe");
+      expect(button("Delete")?.disabled).toBe(true);
+      expect(button("Edit")?.disabled).toBe(true);
+      expect(container.querySelector('a[href="/recipes/r1/edit?from=x"]')).toBeNull();
+    });
+
+    it("keeps Edit open for my own lock", () => {
+      render(
+        recipeFixture({ editor: { alias: "ana", is_me: true, idle_expires_at: "2999-01-01T00:00:00Z" } }),
+      );
+      expect(container.querySelector('a[href="/recipes/r1/edit?from=x"]')).not.toBeNull();
+      expect(container.textContent).not.toContain("is editing this recipe");
+    });
+
+    it("shows the cart-icon button, which toggles and is never disabled", () => {
+      const onToggle = vi.fn();
+      const show = (inCart: boolean) =>
+        act(() => {
+          root.render(
+            <RecipeDetailView
+              recipe={recipeFixture()}
+              locale="en"
+              backHref="/x"
+              editHref="/e"
+              onDelete={onDelete}
+              cartAction={{ inCart, onToggle }}
+            />,
+          );
+        });
+      show(false);
+      act(() => button("Add to cart")?.click());
+      expect(onToggle).toHaveBeenCalled();
+      show(true);
+      const remove = button("Remove from cart");
+      expect(remove?.disabled).toBe(false);
+      expect(remove?.getAttribute("aria-pressed")).toBe("true");
+    });
+
+    it("has no cart button without the cart action", () => {
+      render();
+      expect(button("Add to cart")).toBeUndefined();
+    });
+  });
 });
 
 function deepFreeze<T>(value: T): T {

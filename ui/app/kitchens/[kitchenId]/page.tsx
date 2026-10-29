@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { requireAlias } from "@/lib/alias";
 import { getApiInternalUrl } from "@/lib/api";
+import { cartMessages } from "@/lib/i18n/cart";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
 import { fetchSession } from "@/lib/session";
 import { KitchenDetailChrome, type KitchenShare } from "../KitchenDetailChrome";
@@ -155,7 +156,11 @@ export default async function KitchenDetailPage({
         </>
       ) : (
         <>
-          <KitchenDetailChrome title={kitchenTitle as string} share={share} />
+          <KitchenDetailChrome
+            title={kitchenTitle as string}
+            share={share}
+            cart={{ href: `/kitchens/${encodeURIComponent(kitchenId)}/cart`, label: cartMessages[locale].cart }}
+          />
           <KitchenNotebooksSection
             kitchenId={kitchenId}
             isArchived={Boolean(detail?.is_archived)}

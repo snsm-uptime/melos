@@ -8,6 +8,8 @@ import {
   matchRecipeNames,
   updateRecipe,
   type RecipeDetail,
+  acquireRecipeLock,
+  releaseRecipeLock,
 } from "./recipesClient";
 
 const page = {
@@ -184,5 +186,38 @@ describe("one recipe (spec 027)", () => {
   it("reports a network failure for a change as status 0", async () => {
     stub(new Error("down"));
     expect(await updateRecipe("r1", update)).toEqual({ ok: false, status: 0, code: null });
+  });
+});
+
+describe("recipe edit lock (spec 022)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("takes the lock and reads my editor", async () => {
+    const editor = { alias: "ana", is_me: true, idle_expires_at: "2026-10-29T12:05:00Z" };
+    const mock = stub(new Response(JSON.stringify({ editor }), { status: 200 }));
+    expect(await acquireRecipeLock("r1")).toEqual({ ok: true, value: editor });
+    const [url, init] = mock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/api/recipes/r1/edit-lock");
+    expect(init.method).toBe("POST");
+  });
+
+  it("keeps the other editor's alias on 409", async () => {
+    stub(new Response(JSON.stringify({ code: "recipe_locked", editor_alias: "ben" }), { status: 409 }));
+    const result = await acquireRecipeLock("r1");
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe("recipe_locked");
+      expect(result.editorAlias).toBe("ben");
+    }
+  });
+
+  it("releases with keepalive when leaving, and never throws", async () => {
+    const mock = stub(new Response(null, { status: 204 }));
+    await releaseRecipeLock("r1", true);
+    const [url, init] = mock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/api/recipes/r1/edit-lock");
+    expect(init).toMatchObject({ method: "DELETE", keepalive: true });
+    stub(new Error("offline"));
+    await expect(releaseRecipeLock("r1")).resolves.toBeUndefined();
   });
 });

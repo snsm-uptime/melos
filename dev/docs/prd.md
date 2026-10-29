@@ -383,8 +383,8 @@ The user signs up, signs in, signs out, resets their password by email and edits
 - **AC2.5** If Gemini fails, the typed text is still in the box.
 
 ### J3 · Browse and manage recipes
-- **Lists:** a personal notebook lists its recipes, visible to its owner and members. A kitchen's Notebook tab lists the recipes of the kitchen's notebooks as cards, each with a preview image (or a default cooking-pot icon), the title, the author alias as a chip, the ingredient count. Filter by text (title or ingredient), by ingredient, by author and by notebook. Sort by frequency: how many times the recipe has been added to this kitchen's cart, ascending or descending. Removing it from the cart does not lower the count. Each kitchen card has a checkbox, "Add to cart".
-- **Detail:** ingredients, steps, source link, **Edit**, **Delete** (with confirmation) and **Download PDF**. Also **Copy to notebook**, for any recipe the person can read. Edit and Delete show only to those who can write to the recipe's notebook: the owner and members of a personal notebook, or any member of the kitchen for a kitchen notebook.
+- **Lists:** a personal notebook lists its recipes, visible to its owner and members. A kitchen's Notebook tab lists the recipes of the kitchen's notebooks as cards, each with a preview image (or a default cooking-pot icon), the title, the author alias as a chip, the ingredient count. Filter by text (title or ingredient), by ingredient, by author and by notebook. Sort by frequency: how many times the recipe has been added to this kitchen's cart, ascending or descending. Removing it from the cart does not lower the count. Each kitchen card has a cart-icon button to add it to, or remove it from, the cart (spec 022 FR-017c).
+- **Detail:** ingredients, steps, source link, **Edit**, **Delete** (with confirmation) and **Download PDF**. Also **Copy to notebook**, for any recipe the person can read. Edit and Delete show only to those who can write to the recipe's notebook: the owner and members of a personal notebook, or any member of the kitchen for a kitchen notebook. One member edits a recipe at a time (spec 022, 2026-10-29): while someone else edits it, Edit and Delete are disabled with "{alias} is editing this recipe"; the lock ends as the cart's does.
 - Editing re-embeds the recipe. The change shows in its notebook and, for a kitchen notebook, in the kitchen's cart. Copies and snapshots of it elsewhere do not change.
 - Deleting a recipe removes it from its notebook and, for a kitchen notebook, from the kitchen's list, cart and search; a past chat citation to it keeps its text and shows "recipe removed" in place of the link (decided 2026-10-22). Copies and snapshots elsewhere do not change.
 - **Add to a kitchen** (*Must*): any member of a kitchen adds one of their personal notebooks to it as a snapshot (flow H). The kitchen notebook is an independent copy, labelled with the notebook it came from; the two never sync.
@@ -399,12 +399,13 @@ The user signs up, signs in, signs out, resets their password by email and edits
 ### J4 · Plan (cart)
 - Selected recipes, from the kitchen's notebooks, go to the kitchen's cart, which members share.
 - **Controls:**
-  - One global **People** number (default 2).
+  - One global **People** number (default: the number of kitchen members, until a member sets it).
   - Per recipe, **Meals**: how many times you'll eat it (default 1).
 - **Scale factor per recipe:** `people × meals / base_servings`.
 - **Edge cases:**
   - An empty cart disables export and shows a hint to add recipes.
   - A recipe deleted while in the cart disappears from it.
+- **One editor at a time** (spec 022, decided 2026-10-29): one member at a time changes the cart, through a draft that only Save shows to the others. The others see the saved cart and "{alias} is editing the cart". The lock belongs to the editor's session and ends on save, discard, sign-out, session end, 5 minutes without activity, or loss of access to the kitchen. While editing, the member sees an editing bar on the Cart page; elsewhere, toasts above the tab bar (a refused add while someone else edits, and the idle warning).
 
 ### J5 · Shop (shopping list)
 **Consolidation (`domain/cart.py`, pure):**
@@ -621,6 +622,7 @@ steps[3]: "Fry the garlic in oil.","Add the tomato and cook 5 minutes.","Add the
 - **✓ Snapshots** (2026-10-23): a snapshot is an independent kitchen copy of a personal notebook. Its link to the original is an origin label only, cleared if the original is deleted; nothing syncs. Deleting the kitchen deletes its notebooks. Any kitchen member may add snapshots and rename or delete kitchen notebooks.
 - **✓ Name of a kitchen notebook made with the kitchen or on a first capture** (2026-10-23): "{alias}'s ({kitchen name}) Notebook".
 - **✓ A deleted recipe in a past chat citation** (2026-10-22): the citation keeps its text and shows "recipe removed" in place of the link.
+- **✓ Cart people default and single editor** (2026-10-29, spec 022): People follows the kitchen's member count until a member sets it; the cart and each recipe are edited by one session at a time, and the lock ends on save, discard, sign-out, session end, 5 minutes idle, or lost access.
 - **✓ Categories** (2026-10-27): main ingredients and cuisines are out of the MVP and moved to *Later* (Appendix E). The 2026-10-22 decision (no category table, ids stored on the recipe) is kept there.
 
 ## Appendix E · Deferred: main ingredients and cuisines (out of the MVP, 2026-10-27)

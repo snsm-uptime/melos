@@ -6,6 +6,7 @@ import logging
 import uuid
 
 from adapters.email import SmtpEmailSender, load_smtp_settings
+from adapters.persistence.edit_locks import SqlAlchemyEditLockRepository
 from adapters.persistence.kitchen_invite import SqlAlchemyKitchenInviteTokenRepository
 from adapters.persistence.repositories import (
     SqlAlchemyAuthUserRepository,
@@ -295,7 +296,9 @@ def archive_kitchen(
     user_id: uuid.UUID = Depends(require_authenticated_user),
     db: Session = Depends(get_db),
 ) -> KitchenResponse | JSONResponse:
-    service = ArchiveKitchenService(SqlAlchemyKitchenRepository(db))
+    service = ArchiveKitchenService(
+        SqlAlchemyKitchenRepository(db), SqlAlchemyEditLockRepository(db)
+    )
     try:
         result = service.execute(
             ArchiveKitchenCommand(actor_user_id=user_id, kitchen_id=kitchen_id)

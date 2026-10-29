@@ -4,8 +4,18 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { AddRecipeCallToAction } from "@/components/AddRecipeCallToAction";
+import { useCartIdleToasts } from "@/components/Cart/useCartIdleToasts";
+import { useToast } from "@/components/Toast";
 import { RecipeList } from "@/components/RecipeList/RecipeList";
 import { SavedNotice } from "@/components/RecipeDraft/SavedNotice";
+import {
+  addDraftItem,
+  cartRecipeIds,
+  fetchCart,
+  removeDraftItem,
+  type Cart,
+} from "@/lib/cartClient";
+import { cartMessages } from "@/lib/i18n/cart";
 import { listAddress, readListAddress } from "@/lib/listAddress";
 import type { Locale } from "@/lib/i18n/locale";
 import { notebooksMessages } from "@/lib/i18n/notebooks";
@@ -46,6 +56,51 @@ export function KitchenNotebooksSection({
   const { page, q } = readListAddress(useSearchParams());
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<SectionState>({ status: "loading" });
+  const c = cartMessages[locale];
+  // The cart is read once for the card checkboxes and the editing bar (spec 022 R12).
+  const [cart, setCart] = useState<Cart | null>(null);
+  const [cartAttempt, setCartAttempt] = useState(0);
+  const loadCart = useCallback(() => setCartAttempt((n) => n + 1), []);
+
+  useEffect(() => {
+    let current = true;
+    void fetchCart(kitchenId).then((result) => {
+      if (current) setCart(result.ok ? result.value : null);
+    });
+    return () => {
+      current = false;
+    };
+  }, [kitchenId, cartAttempt]);
+
+  const toast = useToast();
+  useCartIdleToasts(kitchenId, cart?.editor, locale, loadCart);
+  const inCart = cart ? cartRecipeIds(cart) : null;
+  // An archived kitchen's cart cannot change, so its cards get no button.
+  const archivedCart = Boolean(cart && !cart.can_edit && !cart.editor);
+
+  const cardCart = useCallback(
+    (recipe: { id: string }) => {
+      if (!cart || !inCart || archivedCart) return undefined;
+      const added = inCart.has(recipe.id);
+      return {
+        inCart: added,
+        // No message on success; a refusal while someone else edits is a toast (FR-017b).
+        onToggle: () => {
+          void (added ? removeDraftItem : addDraftItem)(kitchenId, recipe.id).then((result) => {
+            if (result.ok) {
+              setCart(result.value);
+              return;
+            }
+            if (result.code === "cart_locked") {
+              toast.show({ id: "cart-locked", text: c.editingCart(result.editorAlias ?? c.unknown) });
+            }
+            loadCart();
+          });
+        },
+      };
+    },
+    [archivedCart, c, cart, inCart, kitchenId, loadCart, toast],
+  );
 
   useEffect(() => {
     let current = true;
@@ -124,6 +179,7 @@ export function KitchenNotebooksSection({
           load={loadRecipes}
           returnPath={`/kitchens/${kitchenId}`}
           layout="wrap"
+          cardCart={cardCart}
           filterAction={
             state.notebooks.length > 0 && !isArchived ? (
               <AddRecipeCallToAction

@@ -60,6 +60,13 @@ type RecipeEditFormProps = {
   listHref: string;
   /** Loads the latest version of the recipe and restarts the form from it. */
   onReload: () => void;
+  /**
+   * The edit lock was lost or is held by someone else (spec 022: 409 recipe_locked or
+   * not_editing). The typed edits stay on screen; the page says why.
+   */
+  onLockLost?: (editorAlias: string | null) => void;
+  /** Called after a successful save; the api has already freed the lock. */
+  onSaved?: () => void;
 };
 
 /**
@@ -74,6 +81,8 @@ export function RecipeEditForm({
   detailHref,
   listHref,
   onReload,
+  onLockLost,
+  onSaved,
 }: RecipeEditFormProps) {
   const t = recipeDetailMessages[locale];
   const c = captureMessagesFor(locale);
@@ -140,7 +149,12 @@ export function RecipeEditForm({
     setSaving(false);
     if (result.ok) {
       setSaved(true);
+      onSaved?.();
       router.push(detailHref);
+      return;
+    }
+    if (result.code === "recipe_locked" || result.code === "not_editing") {
+      onLockLost?.(result.editorAlias ?? null);
       return;
     }
     if (result.status === 409) setMessage({ kind: "changed" });

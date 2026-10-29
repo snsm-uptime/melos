@@ -3,14 +3,17 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { BackIcon, PencilIcon, TrashIcon } from "@/app/icons";
+import { BackIcon, CartPlusIcon, PencilIcon, TrashIcon } from "@/app/icons";
+import { EditorNotice } from "@/components/Cart/EditorNotice";
 import { Chip } from "@/components/Chip";
+import { IconButton } from "@/components/IconButton";
 import {
   HeaderAction,
   HeaderActions,
 } from "@/components/RecipeDraft/HeaderActions";
 import { IngredientLineRow } from "@/components/RecipeDraft/IngredientLineRow";
 import { StepCard } from "@/components/RecipeDraft/StepCard";
+import { cartMessages } from "@/lib/i18n/cart";
 import type { Locale } from "@/lib/i18n/locale";
 import { recipeDetailMessages } from "@/lib/i18n/recipeDetail";
 import { scaleLine } from "@/lib/recipeScale";
@@ -25,6 +28,14 @@ type RecipeDetailViewProps = {
   backHref: string;
   editHref: string;
   onDelete: () => void;
+  /** The cart-icon button, for kitchen recipes (spec 022 FR-017c); omit for none. */
+  cartAction?: DetailCartAction;
+};
+
+export type DetailCartAction = {
+  inCart: boolean;
+  /** Never disabled: a refusal while someone else edits shows a toast (FR-017b). */
+  onToggle: () => void;
 };
 
 /**
@@ -42,8 +53,12 @@ export function RecipeDetailView({
   backHref,
   editHref,
   onDelete,
+  cartAction,
 }: RecipeDetailViewProps) {
   const t = recipeDetailMessages[locale];
+  const c = cartMessages[locale];
+  // Another session edits the recipe: Edit and Delete wait (spec 022 FR-022).
+  const lockedBy = recipe.editor && !recipe.editor.is_me ? recipe.editor : null;
   const source = recipe.source?.url ?? null;
   const [servings, setServings] = useState(recipe.base_servings);
   const scaled = servings !== recipe.base_servings;
@@ -84,15 +99,37 @@ export function RecipeDetailView({
               </Chip>
             </div>
           </div>
+          {cartAction ? (
+            <div className="flex shrink-0 items-center self-start">
+              <IconButton
+                variant="ghost"
+                label={cartAction.inCart ? c.removeFromCart : c.addToCart}
+                aria-pressed={cartAction.inCart}
+                tone={cartAction.inCart ? "danger" : "default"}
+                icon={<CartPlusIcon inCart={cartAction.inCart} className="size-6" />}
+                onClick={cartAction.onToggle}
+              />
+            </div>
+          ) : null}
           {recipe.can_write ? (
             <HeaderActions>
-              <HeaderAction
-                href={editHref}
-                label={t.edit}
-                icon={<PencilIcon className="size-5" />}
-              />
+              {lockedBy ? (
+                <HeaderAction
+                  onClick={() => {}}
+                  disabled
+                  label={t.edit}
+                  icon={<PencilIcon className="size-5" />}
+                />
+              ) : (
+                <HeaderAction
+                  href={editHref}
+                  label={t.edit}
+                  icon={<PencilIcon className="size-5" />}
+                />
+              )}
               <HeaderAction
                 onClick={onDelete}
+                disabled={Boolean(lockedBy)}
                 label={t.delete}
                 tone="danger"
                 icon={<TrashIcon className="size-5" />}
@@ -100,6 +137,12 @@ export function RecipeDetailView({
             </HeaderActions>
           ) : null}
         </header>
+
+        {lockedBy ? (
+          <div className="px-4">
+            <EditorNotice alias={lockedBy.alias} kind="recipe" locale={locale} />
+          </div>
+        ) : null}
 
         <div className="flex flex-col gap-6 px-4 md:min-h-0 md:flex-1 md:flex-row">
           <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:max-w-[450px] md:flex-1 md:overflow-hidden">
