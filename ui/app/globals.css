@@ -270,3 +270,24 @@ body {
     transition: none;
   }
 }
+
+/* Minimal scrollbars app-wide: a thin themed thumb, no track. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted) 45%, transparent) transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--muted) 45%, transparent);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}

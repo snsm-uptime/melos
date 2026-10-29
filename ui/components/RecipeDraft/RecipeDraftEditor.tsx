@@ -3,13 +3,17 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { BackIcon } from "@/app/icons";
+import { BackIcon, SaveIcon, SpinnerIcon, TrashIcon } from "@/app/icons";
 import { IconButton } from "@/components/IconButton";
 import {
   fetchVocabulary,
   type VocabularyResponse,
 } from "@/lib/capture/captureClient";
-import { checkDraft, hasErrors, type DraftInput } from "@/lib/capture/draftRules";
+import {
+  checkDraft,
+  hasErrors,
+  type DraftInput,
+} from "@/lib/capture/draftRules";
 import { submitSave } from "@/lib/capture/saveClient";
 import {
   backToSheet,
@@ -32,6 +36,7 @@ import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
 import { useLocale } from "@/lib/i18n/useLocale";
 
 // MVP-OUT: import { CategoryChips } from "./CategoryChips";
+import { HeaderAction, HeaderActions } from "./HeaderActions";
 import { IngredientLineRow } from "./IngredientLineRow";
 import { AddItemCard } from "@/components/Card";
 import { StepCard } from "./StepCard";
@@ -138,9 +143,9 @@ export function RecipeDraftEditor() {
   }
 
   return (
-    <div className="flex flex-col gap-6 md:min-h-0 md:flex-1">
+    <div className="flex flex-col gap-6 pb-8 md:min-h-0 md:flex-1">
       {/* Same insets and Back slot as AppShell's chrome header. */}
-      <header className="flex items-center gap-2 pt-[max(0.5rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-1 pl-[max(0.5rem,env(safe-area-inset-left))]">
+      <header className="flex items-center gap-2 bg-background pt-[max(0.5rem,env(safe-area-inset-top))] max-md:sticky max-md:top-0 max-md:z-10 pr-[max(1rem,env(safe-area-inset-right))] pb-1 pl-[max(0.5rem,env(safe-area-inset-left))]">
         <div className="flex w-10 shrink-0 items-center justify-start self-center">
           <IconButton
             variant="ghost"
@@ -149,12 +154,17 @@ export function RecipeDraftEditor() {
             onClick={back}
           />
         </div>
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-auto flex-col">
           <h1 className="m-0 min-w-0">
-            <input
+            <textarea
               aria-label={t.titleLabel}
               placeholder={t.titleLabel}
-              className="w-full min-w-0 rounded-[0.4rem] border-0 bg-transparent px-1 py-[0.15rem] text-[1.5rem] font-[550] leading-normal text-foreground outline-none hover:bg-background focus:bg-background"
+              rows={1}
+              // A title is one line of text that wraps: Enter does not add a line break.
+              onKeyDown={(event) => {
+                if (event.key === "Enter") event.preventDefault();
+              }}
+              className="block max-w-full min-w-0 field-sizing-content resize-none rounded-[0.4rem] border-0 bg-transparent px-1 py-[0.15rem] text-[1.5rem] font-[550] leading-normal text-foreground outline-none hover:bg-background focus:bg-background"
               value={draft.title}
               onChange={(event) => update({ title: event.target.value })}
             />
@@ -168,6 +178,28 @@ export function RecipeDraftEditor() {
             </span>
           ) : null}
         </div>
+        <HeaderActions>
+          <HeaderAction
+            onClick={() => void save()}
+            disabled={capture.saving || hasErrors(errors)}
+            label={capture.saving ? t.saving : t.save}
+            tone="accent"
+            icon={
+              capture.saving ? (
+                <SpinnerIcon className="size-5 animate-spin" />
+              ) : (
+                <SaveIcon className="size-5" />
+              )
+            }
+          />
+          <HeaderAction
+            onClick={discard}
+            disabled={capture.saving}
+            label={t.discard}
+            tone="danger"
+            icon={<TrashIcon className="size-5" />}
+          />
+        </HeaderActions>
       </header>
 
       {/* MVP-OUT: the main ingredient and cuisine chip groups (S-061)
@@ -331,25 +363,6 @@ export function RecipeDraftEditor() {
           {messageForCode(capture.message, locale)}
         </p>
       ) : null}
-
-      <div className="flex items-center justify-end gap-4 px-4 pb-8">
-        <button
-          type="button"
-          onClick={discard}
-          disabled={capture.saving}
-          className="text-[0.95rem] text-owe disabled:opacity-50"
-        >
-          {t.discard}
-        </button>
-        <button
-          type="button"
-          onClick={() => void save()}
-          disabled={capture.saving || hasErrors(errors)}
-          className="rounded-[0.75rem] bg-accent px-4 py-2 text-[0.95rem] font-semibold text-on-accent disabled:opacity-50"
-        >
-          {capture.saving ? t.saving : t.save}
-        </button>
-      </div>
     </div>
   );
 }

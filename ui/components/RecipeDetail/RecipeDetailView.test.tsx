@@ -77,7 +77,7 @@ describe("RecipeDetailView", () => {
     const labels = Array.from(container.querySelectorAll("button")).map(
       (b) => b.getAttribute("aria-label") ?? b.textContent,
     );
-    expect(labels).toEqual(["Fewer servings", "More servings", "Delete"]);
+    expect(labels).toEqual(["Delete", "Fewer servings", "More servings"]);
     expect(container.querySelector("[aria-label=Remove]")).toBeNull();
     expect(container.querySelector("[aria-label='Move up']")).toBeNull();
     expect(container.querySelector("[aria-label='Move down']")).toBeNull();
@@ -331,6 +331,7 @@ describe("RecipeDetailView", () => {
       expect(container.textContent).not.toContain("Makes");
     });
   });
+
 });
 
 function deepFreeze<T>(value: T): T {

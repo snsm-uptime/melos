@@ -72,7 +72,7 @@ describe("the draft editor in Spanish (spec 063)", () => {
     for (const expected of ["Ingredientes", "Pasos", "Porciones base", "Agregar ingrediente", "Agregar paso", "Descartar", "Guardar receta", "ingrediente nuevo"]) {
       expect(text, expected).toContain(expected);
     }
-    expect((container.querySelector("input") as HTMLInputElement).value).toBe("Sopa de cebolla");
+    expect((container.querySelector("h1 textarea") as HTMLTextAreaElement).value).toBe("Sopa de cebolla");
     expect(container.querySelector("[aria-label='Título']")).not.toBeNull();
     expect(container.querySelector("[aria-label='Paso 1']")).not.toBeNull();
     expect(text).not.toMatch(/\b(Ingredients|Steps|Discard|Save recipe|Add ingredient)\b/);

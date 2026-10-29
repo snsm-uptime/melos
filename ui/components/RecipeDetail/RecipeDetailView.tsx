@@ -3,8 +3,12 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { BackIcon } from "@/app/icons";
+import { BackIcon, PencilIcon, TrashIcon } from "@/app/icons";
 import { Chip } from "@/components/Chip";
+import {
+  HeaderAction,
+  HeaderActions,
+} from "@/components/RecipeDraft/HeaderActions";
 import { IngredientLineRow } from "@/components/RecipeDraft/IngredientLineRow";
 import { StepCard } from "@/components/RecipeDraft/StepCard";
 import type { Locale } from "@/lib/i18n/locale";
@@ -45,14 +49,17 @@ export function RecipeDetailView({
   const scaled = servings !== recipe.base_servings;
   // Always from the saved lines, so going away and back returns to the saved amounts.
   const lines = useMemo(
-    () => recipe.ingredient_lines.map((line) => scaleLine(line, servings, recipe.base_servings)),
+    () =>
+      recipe.ingredient_lines.map((line) =>
+        scaleLine(line, servings, recipe.base_servings),
+      ),
     [recipe.ingredient_lines, recipe.base_servings, servings],
   );
   return (
     <main className="mx-auto flex w-full flex-col gap-4 md:min-h-0 md:flex-1">
-      <div className="flex flex-col gap-6 md:min-h-0 md:flex-1">
+      <div className="flex flex-col gap-6 pb-8 md:min-h-0 md:flex-1">
         {/* Same insets and Back slot as the draft page and AppShell's chrome header. */}
-        <header className="flex items-center gap-2 pt-[max(0.5rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-1 pl-[max(0.5rem,env(safe-area-inset-left))]">
+        <header className="flex items-center gap-2 bg-background pt-[max(0.5rem,env(safe-area-inset-top))] max-md:sticky max-md:top-0 max-md:z-10 pr-[max(1rem,env(safe-area-inset-right))] pb-1 pl-[max(0.5rem,env(safe-area-inset-left))]">
           <div className="flex w-10 shrink-0 items-center justify-start self-center">
             <Link
               href={backHref}
@@ -63,7 +70,7 @@ export function RecipeDetailView({
               <BackIcon className="size-6" />
             </Link>
           </div>
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex min-w-0 flex-auto flex-col">
             <h1 className="m-0 min-w-0 px-1 py-[0.15rem] text-[1.5rem] font-[550] leading-normal text-foreground">
               {recipe.title}
             </h1>
@@ -72,21 +79,46 @@ export function RecipeDetailView({
             </h4>
             <div className="flex flex-wrap items-center gap-2 px-1 pt-1 text-[0.85rem] text-muted">
               <span>{t.authorLabel}</span>
-              <Chip tone="accent">{recipe.author_alias ?? t.authorUnknown}</Chip>
+              <Chip tone="accent">
+                {recipe.author_alias ?? t.authorUnknown}
+              </Chip>
             </div>
           </div>
+          {recipe.can_write ? (
+            <HeaderActions>
+              <HeaderAction
+                href={editHref}
+                label={t.edit}
+                icon={<PencilIcon className="size-5" />}
+              />
+              <HeaderAction
+                onClick={onDelete}
+                label={t.delete}
+                tone="danger"
+                icon={<TrashIcon className="size-5" />}
+              />
+            </HeaderActions>
+          ) : null}
         </header>
 
         <div className="flex flex-col gap-6 px-4 md:min-h-0 md:flex-1 md:flex-row">
           <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:max-w-[450px] md:flex-1 md:overflow-hidden">
             <div className="flex shrink-0 items-center justify-between gap-2">
-              <h2 className="m-0 text-[1rem] font-[550] text-foreground">{t.ingredientsTitle}</h2>
-              <ServingsControl value={servings} onChange={setServings} locale={locale} />
+              <h2 className="m-0 text-[1rem] font-[550] text-foreground">
+                {t.ingredientsTitle}
+              </h2>
+              <ServingsControl
+                value={servings}
+                onChange={setServings}
+                locale={locale}
+              />
             </div>
             {scaled || recipe.servings_estimated ? (
               <div className="flex flex-wrap items-center justify-end gap-2 text-[0.85rem] text-muted">
                 {scaled ? <span>{t.makes(recipe.base_servings)}</span> : null}
-                {recipe.servings_estimated ? <Chip tone="warning">{t.estimated}</Chip> : null}
+                {recipe.servings_estimated ? (
+                  <Chip tone="warning">{t.estimated}</Chip>
+                ) : null}
                 {scaled ? (
                   <button
                     type="button"
@@ -101,15 +133,24 @@ export function RecipeDetailView({
             <div className="flex flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
               <ul className="m-0 flex list-none flex-col gap-2 p-0">
                 {lines.map((line, index) => (
-                  <IngredientLineRow key={`${index}-${line.name}`} line={line} readOnly locale={locale} />
+                  <IngredientLineRow
+                    key={`${index}-${line.name}`}
+                    line={line}
+                    readOnly
+                    locale={locale}
+                  />
                 ))}
               </ul>
             </div>
           </section>
 
           <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-hidden">
-            <h2 className="m-0 shrink-0 text-[1rem] font-[550] text-foreground">{t.stepsTitle}</h2>
-            {scaled ? <p className="m-0 text-[0.85rem] text-muted">{t.stepsAsSaved}</p> : null}
+            <h2 className="m-0 shrink-0 text-[1rem] font-[550] text-foreground">
+              {t.stepsTitle}
+            </h2>
+            {scaled ? (
+              <p className="m-0 text-[0.85rem] text-muted">{t.stepsAsSaved}</p>
+            ) : null}
             <div className="flex flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
               <ol className="m-0 flex list-none flex-col gap-2 p-0">
                 {recipe.steps.map((step, index) => (
@@ -135,20 +176,6 @@ export function RecipeDetailView({
           >
             {t.sourceLink}
           </a>
-        ) : null}
-
-        {recipe.can_write ? (
-          <div className="flex items-center justify-end gap-4 px-4">
-            <button type="button" onClick={onDelete} className="text-[0.95rem] text-owe">
-              {t.delete}
-            </button>
-            <Link
-              href={editHref}
-              className="rounded-[0.75rem] bg-accent px-4 py-2 text-[0.95rem] font-semibold text-on-accent no-underline"
-            >
-              {t.edit}
-            </Link>
-          </div>
         ) : null}
       </div>
     </main>
