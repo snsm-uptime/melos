@@ -120,7 +120,42 @@ def ensure_kitchen_notebook(
     existing = notebooks.kitchen_ids_for(kitchen.id)
     if existing:
         return existing[0], False
+    return _create_kitchen_notebook(
+        kitchen, actor_user_id, alias, language, notebooks=notebooks, catalog=catalog
+    ), True
 
+
+def ensure_member_kitchen_notebook(
+    kitchen: KitchenRecord,
+    actor_user_id: UUID,
+    alias: str,
+    language: str | None,
+    *,
+    notebooks: NotebookRepository,
+    catalog: IngredientCatalog,
+) -> tuple[UUID, bool]:
+    """The caller's own notebook in the kitchen, made under the kitchen-row lock.
+
+    Returns (id, created). Not committed here: the caller decides (research R14).
+    """
+    notebooks.lock_kitchen(kitchen.id)
+    existing = notebooks.user_kitchen_notebook(actor_user_id, kitchen.id)
+    if existing is not None:
+        return existing, False
+    return _create_kitchen_notebook(
+        kitchen, actor_user_id, alias, language, notebooks=notebooks, catalog=catalog
+    ), True
+
+
+def _create_kitchen_notebook(
+    kitchen: KitchenRecord,
+    actor_user_id: UUID,
+    alias: str,
+    language: str | None,
+    *,
+    notebooks: NotebookRepository,
+    catalog: IngredientCatalog,
+) -> UUID:
     notebook = Notebook(
         id=uuid4(),
         name=kitchen_notebook_name(alias, kitchen.name, language),
@@ -129,7 +164,7 @@ def ensure_kitchen_notebook(
     )
     notebooks.create(notebook)
     catalog.seed_from_person(notebook.id, actor_user_id)
-    return notebook.id, True
+    return notebook.id
 
 
 @dataclass(frozen=True, slots=True)
@@ -324,7 +359,7 @@ class ResolveCaptureNotebookService:
 
         # User doesn't have their own notebook yet, create one
         alias, language = _naming_profile(self._prefs, command.actor_user_id)
-        notebook_id, created = ensure_kitchen_notebook(
+        notebook_id, created = ensure_member_kitchen_notebook(
             kitchen,
             command.actor_user_id,
             alias,

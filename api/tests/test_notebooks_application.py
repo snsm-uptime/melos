@@ -124,6 +124,9 @@ class FakeNotebookRepo:
 
     def user_kitchen_notebook(self, user_id: UUID, kitchen_id: UUID) -> UUID | None:
         self.calls.append("user_kitchen_notebook")
+        if self.hide_next_kitchen_read:
+            self.hide_next_kitchen_read = False
+            return None
         for n in self.notebooks.values():
             if n.kitchen_id == kitchen_id and n.owner_user_id == user_id:
                 return n.id
@@ -505,7 +508,11 @@ def test_kitchen_capture_with_no_notebook_creates_one_and_commits_once() -> None
     assert notebook.owner_user_id == ana
     assert notebook.kitchen_id == my_kitchen
     assert world.catalog.names_for_notebook(result.notebook_id) == ["onion"]
-    assert world.notebooks.calls[:3] == ["kitchen_ids_for", "lock_kitchen", "kitchen_ids_for"]
+    assert world.notebooks.calls[:3] == [
+        "user_kitchen_notebook",
+        "lock_kitchen",
+        "user_kitchen_notebook",
+    ]
     assert world.committer.commits == 1
 
 
@@ -529,7 +536,7 @@ def test_kitchen_capture_with_user_notebook_uses_it_without_creating() -> None:
     world = _world({ana: "ana", ben: "ben"})
     home = _kitchen(world, ana)
     _join(world, home, ben)
-    ana_notebook = _kitchen_notebook(world, home, "ana's (Home) Notebook", ana)
+    _kitchen_notebook(world, home, "ana's (Home) Notebook", ana)
     ben_notebook = _kitchen_notebook(world, home, "ben's (Home) Notebook", ben)
 
     result = _resolve(world).execute(

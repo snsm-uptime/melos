@@ -45,7 +45,6 @@ from application.notebooks import (
 from domain.errors import (
     KitchenArchivedError,
     KitchenNotFoundError,
-    NotebookChoiceRequiredError,
     NotebookNotFoundError,
 )
 from fastapi.testclient import TestClient
@@ -716,12 +715,16 @@ def test_capture_auto_selects_user_notebook_or_creates_one(db_session: Session) 
     service = _resolve_service(db_session)
 
     # Ana uses her own notebook automatically
-    result = service.execute(ResolveCaptureNotebookCommand(actor_user_id=ana, kitchen_id=kitchen_id))
+    result = service.execute(
+        ResolveCaptureNotebookCommand(actor_user_id=ana, kitchen_id=kitchen_id)
+    )
     assert result.notebook_id == ana_notebook
     assert result.created is False
 
     # Ben uses his own notebook automatically
-    result = service.execute(ResolveCaptureNotebookCommand(actor_user_id=ben, kitchen_id=kitchen_id))
+    result = service.execute(
+        ResolveCaptureNotebookCommand(actor_user_id=ben, kitchen_id=kitchen_id)
+    )
     assert result.notebook_id == ben_notebook
     assert result.created is False
 
