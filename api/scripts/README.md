@@ -15,7 +15,11 @@ going through sign up:
 |---|---|
 | `SEED_DEV_USER_EMAIL`, `SEED_DEV_USER_PASSWORD` | Account credentials (required; invent them) |
 | `SEED_DEV_USER_ALIAS` | Alias claimed on the account (optional) |
-| `SEED_DEV_USER_KITCHEN` | Extra kitchen created next to "My kitchen" (optional) |
+| `SEED_DEV_USER_KITCHEN` | Shared kitchen created next to "My kitchen" (optional; `docker-compose.dev.yml` defaults it to "Dev's Kitchen") |
+| `SEED_DEV_MEMBER_EMAIL`, `SEED_DEV_MEMBER_PASSWORD`, `SEED_DEV_MEMBER_ALIAS` | The second account, added to the shared kitchen as a member (optional; the email is derived from the owner's when unset) |
+
+With a shared kitchen the seed also saves two recipes there, one authored by the owner
+and one by the member, each in its author's own notebook of that kitchen.
 
 The seed is idempotent: an existing account with the same email is left
 untouched. A seed failure is logged and never blocks boot. Never use real

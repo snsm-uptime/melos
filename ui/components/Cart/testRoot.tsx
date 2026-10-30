@@ -28,7 +28,7 @@ export function entry(id: string, over: Partial<CartEntry> = {}): CartEntry {
     notebook_id: "n1",
     notebook_name: "ana's (Home) Notebook",
     base_servings: 4,
-    meals: 1,
+    servings: 1,
     factor: "0.5",
     ...over,
   };
@@ -37,8 +37,6 @@ export function entry(id: string, over: Partial<CartEntry> = {}): CartEntry {
 export function cart(over: Partial<Cart> = {}): Cart {
   return {
     kitchen_id: "k1",
-    people: 2,
-    people_is_default: true,
     entries: [],
     editor: null,
     draft: null,

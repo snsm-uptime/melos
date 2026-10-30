@@ -8,7 +8,6 @@ from fractions import Fraction
 import pytest
 from domain.cart import (
     check_count,
-    effective_people,
     format_factor,
     idle_expires_at,
     lock_is_idle,
@@ -17,16 +16,9 @@ from domain.cart import (
 from domain.errors import CartValueError
 
 
-def test_people_follows_member_count_until_saved() -> None:
-    assert effective_people(None, 2) == 2
-    assert effective_people(None, 0) == 1
-    assert effective_people(None, 150) == 99
-    assert effective_people(4, 2) == 4
-
-
 def test_scale_factor_is_exact() -> None:
-    assert scale_factor(2, 1, 4) == Fraction(1, 2)
-    assert scale_factor(3, 2, 4) == Fraction(3, 2)
+    assert scale_factor(2, 4) == Fraction(1, 2)
+    assert scale_factor(6, 4) == Fraction(3, 2)
 
 
 @pytest.mark.parametrize(

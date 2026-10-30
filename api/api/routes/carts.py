@@ -113,8 +113,8 @@ def replace_cart_draft(
     ref: SessionRef = Depends(require_session_ref),
     service: ReplaceDraftService = Depends(get_replace_draft),
 ) -> Response:
-    items = [(item.recipe_id, item.meals) for item in body.items]
-    return _answer(_run(lambda: service.execute(ref, kitchen_id, body.people, items)))
+    items = [(item.recipe_id, item.servings) for item in body.items]
+    return _answer(_run(lambda: service.execute(ref, kitchen_id, items)))
 
 
 @router.post("/kitchens/{kitchen_id}/cart/draft/items")

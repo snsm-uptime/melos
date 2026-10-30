@@ -20,6 +20,8 @@ import { cartMessages } from "@/lib/i18n/cart";
 
 import styles from "@/app/notebooks/notebooks.module.scss";
 
+import { ShoppingListSection } from "@/components/ShoppingList";
+
 import { CartEditingBar } from "./CartEditingBar";
 import { CartView, draftFromCart, type LocalDraft } from "./CartView";
 
@@ -34,8 +36,10 @@ type State =
 
 function body(draft: LocalDraft) {
   return {
-    people: draft.peopleIsDefault ? null : draft.people,
-    items: draft.entries.map((entry) => ({ recipe_id: entry.recipe_id, meals: entry.meals })),
+    items: draft.entries.map((entry) => ({
+      recipe_id: entry.recipe_id,
+      servings: entry.servings,
+    })),
   };
 }
 
@@ -229,6 +233,7 @@ export function CartScreen({ kitchenId, locale }: { kitchenId: string; locale: L
         onEdit={() => void edit()}
         onDraftChange={change}
       />
+      <ShoppingListSection kitchenId={kitchenId} locale={locale} cart={cart} />
     </div>
   );
 }

@@ -48,16 +48,16 @@ describe("CartView", () => {
     render();
     expect(view.container.textContent).toContain("Add recipes from the kitchen's notebooks");
     expect(view.container.querySelector('a[href="/kitchens/k1"]')).not.toBeNull();
-    expect(view.container.textContent).toContain("People 2(members)");
+    expect(view.container.textContent).not.toContain("People");
   });
 
-  it("shows saved entries with notebook, servings, meals and factor, and Edit", () => {
+  it("shows saved entries with notebook, base servings, servings and factor, and Edit", () => {
     render({ cart: cart({ entries: [entry("a")] }) });
     const text = view.container.textContent ?? "";
     expect(text).toContain("Recipe a");
     expect(text).toContain("ana's (Home) Notebook");
     expect(text).toContain("Serves 4");
-    expect(text).toContain("Meals 1");
+    expect(text).toContain("Servings 1");
     expect(text).toContain("×0.5");
     expect(view.container.querySelector('a[href^="/recipes/a?from="]')).not.toBeNull();
     expect(buttons(view.container)).toEqual(["Edit"]);
@@ -82,8 +82,6 @@ describe("CartView", () => {
     const mine = cart({
       editor: { alias: "ana", is_me: true, idle_expires_at: "2999-01-01T00:00:00Z" },
       draft: {
-        people: 2,
-        people_is_default: true,
         entries: [entry("a"), entry("b", { base_servings: 3 })],
         dropped_recipe_ids: [],
       },
@@ -93,32 +91,28 @@ describe("CartView", () => {
     it("recomputes factors live and sends the whole draft", () => {
       render({ cart: mine, draft });
       const factors = Array.from(view.container.querySelectorAll("[data-testid=factor]"));
-      expect(factors.map((f) => f.textContent)).toEqual(["×0.5", "×0.67"]);
-      const [people, mealsA] = Array.from(view.container.querySelectorAll("input"));
-      type(people, "3");
-      expect(handlers.onDraftChange).toHaveBeenLastCalledWith({
-        ...draft,
-        people: 3,
-        peopleIsDefault: false,
-      });
-      type(mealsA, "2");
-      expect(handlers.onDraftChange.mock.lastCall?.[0].entries[0].meals).toBe(2);
+      expect(factors.map((f) => f.textContent)).toEqual(["×0.25", "×0.33"]);
+      const [servingsA] = Array.from(view.container.querySelectorAll("input"));
+      type(servingsA, "2");
+      expect(handlers.onDraftChange.mock.lastCall?.[0].entries[0].servings).toBe(2);
     });
 
     it("shows the factor of the new numbers", () => {
-      render({ cart: mine, draft: { ...draft, people: 3, entries: [entry("a", { meals: 2 })] } });
+      render({ cart: mine, draft: { ...draft, entries: [entry("a", { servings: 6 })] } });
       expect(view.container.querySelector("[data-testid=factor]")?.textContent).toBe("×1.5");
     });
 
     it("removes an entry; Save and Discard live on the docked bar, not in the view", () => {
       render({ cart: mine, draft });
-      click(view.container, "Remove");
+      const remove = view.container.querySelector('button[aria-label="Remove Recipe a"]');
+      expect(remove?.textContent).not.toContain("Remove");
+      act(() => (remove as HTMLButtonElement).click());
       expect(handlers.onDraftChange.mock.lastCall?.[0].entries.map((e: { recipe_id: string }) => e.recipe_id)).toEqual(["b"]);
       expect(buttons(view.container)).not.toContain("Save");
       expect(buttons(view.container)).not.toContain("Discard");
     });
 
-    it("clears after confirmation and keeps People", () => {
+    it("clears after confirmation", () => {
       render({ cart: mine, draft });
       click(view.container, "Clear");
       expect(document.body.textContent).toContain("Remove every recipe from the cart?");

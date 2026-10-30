@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { recipeDetailMessages } from "./recipeDetail";
 import { recipeListMessages } from "./recipeLists";
+import { shoppingListMessages } from "./shoppingList";
 
 /** Counts read correctly in both languages (spec 063 FR-015). */
 describe("plurals and counts", () => {
@@ -22,5 +23,14 @@ describe("plurals and counts", () => {
     ["es", 4, "4 porciones"],
   ] as const)("recipe detail servings %s %i", (locale, count, expected) => {
     expect(recipeDetailMessages[locale].servings(count)).toBe(expected);
+  });
+
+  it.each([
+    ["en", 1, "1 recipe"],
+    ["en", 3, "3 recipes"],
+    ["es", 1, "1 receta"],
+    ["es", 3, "3 recetas"],
+  ] as const)("shopping list recipe count %s %i", (locale, count, expected) => {
+    expect(shoppingListMessages[locale].recipeCount(count)).toBe(expected);
   });
 });

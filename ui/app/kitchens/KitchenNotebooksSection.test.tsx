@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ToastProvider, ToastViewport } from "@/components/Toast";
 
+import { KitchenCartCountProvider, useKitchenCartCount } from "./cartCount";
 import { KitchenNotebooksSection } from "./KitchenNotebooksSection";
 
 const replace = vi.fn();
@@ -41,8 +42,6 @@ vi.mock("@/lib/cartClient", async (importOriginal) => ({
 function cartWith(over: Record<string, unknown> = {}) {
   return {
     kitchen_id: "5e7b0c1a-0000-4000-8000-000000000001",
-    people: 2,
-    people_is_default: true,
     entries: [],
     editor: null,
     draft: null,
@@ -295,8 +294,6 @@ describe("KitchenNotebooksSection", () => {
       const editing = cartWith({
         editor: { alias: "ana", is_me: true, idle_expires_at: "2999-01-01T00:00:00Z" },
         draft: {
-          people: 2,
-          people_is_default: true,
           entries: [
             {
               recipe_id: "r1",
@@ -304,7 +301,7 @@ describe("KitchenNotebooksSection", () => {
               notebook_id: "c3d0-1",
               notebook_name: "x",
               base_servings: 4,
-              meals: 1,
+              servings: 1,
               factor: "0.5",
             },
           ],
@@ -321,6 +318,77 @@ describe("KitchenNotebooksSection", () => {
       expect(cartButton()?.getAttribute("aria-label")).toBe("Remove from cart");
       expect(container.querySelector("[data-toast-viewport]")).toBeNull();
       expect(container.textContent).not.toContain("You're editing the cart.");
+    });
+
+    describe("cart count for the header badge", () => {
+      function Probe() {
+        return <span data-testid="count">{String(useKitchenCartCount())}</span>;
+      }
+      const countText = () => container.querySelector('[data-testid="count"]')?.textContent;
+      const entry = (id: string) => ({
+        recipe_id: id,
+        title: id,
+        notebook_id: "c3d0-1",
+        notebook_name: "x",
+        base_servings: 4,
+        servings: 1,
+        factor: "0.5",
+      });
+
+      function renderWithProbe() {
+        act(() => {
+          root.render(
+            <ToastProvider>
+              <KitchenCartCountProvider>
+                <Probe />
+                <KitchenNotebooksSection kitchenId={kitchenId} isArchived={false} locale="en" />
+              </KitchenCartCountProvider>
+            </ToastProvider>,
+          );
+        });
+      }
+
+      it("publishes the saved cart's recipe count, and the draft's count after a quick add", async () => {
+        withRecipes();
+        cartMocks.fetchCart.mockResolvedValue({
+          ok: true,
+          value: cartWith({ entries: [entry("a"), entry("b")] }),
+        });
+        cartMocks.addDraftItem.mockResolvedValue({
+          ok: true,
+          value: cartWith({
+            entries: [entry("a"), entry("b")],
+            editor: { alias: "ana", is_me: true, idle_expires_at: "2999-01-01T00:00:00Z" },
+            draft: {
+              entries: [entry("a"), entry("b"), entry("r1")],
+              dropped_recipe_ids: [],
+            },
+          }),
+        });
+        renderWithProbe();
+        expect(countText()).toBe("null");
+        await flush();
+        expect(countText()).toBe("2");
+
+        act(() => cartButton()?.click());
+        await flush();
+
+        expect(countText()).toBe("3");
+      });
+
+      it("publishes 0 for an empty cart and null when the cart cannot be read", async () => {
+        withRecipes();
+        renderWithProbe();
+        await flush();
+        expect(countText()).toBe("0");
+
+        act(() => root.unmount());
+        root = createRoot(container);
+        cartMocks.fetchCart.mockResolvedValue({ ok: false, status: 500, code: null });
+        renderWithProbe();
+        await flush();
+        expect(countText()).toBe("null");
+      });
     });
 
     it("keeps the button enabled while someone else edits and toasts the refusal", async () => {

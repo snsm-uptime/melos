@@ -4,18 +4,18 @@ import { formatFactor, parseCount } from "./cartFactor";
 
 describe("formatFactor", () => {
   it.each([
-    [2, 1, 4, "0.5"],
-    [3, 2, 4, "1.5"],
-    [2, 1, 3, "0.67"],
-    [1, 1, 3, "0.33"],
-    [2, 1, 1, "2"],
-    [3, 1, 4, "0.75"],
-    [1, 1, 200, "0.01"],
-    [1, 1, 400, "0"],
-    [10, 1, 1, "10"],
-    [3, 3, 9, "1"],
-  ])("people %i meals %i base %i → %s", (people, meals, base, text) => {
-    expect(formatFactor(people, meals, base)).toBe(text);
+    [2, 4, "0.5"],
+    [6, 4, "1.5"],
+    [2, 3, "0.67"],
+    [1, 3, "0.33"],
+    [2, 1, "2"],
+    [3, 4, "0.75"],
+    [1, 200, "0.01"],
+    [1, 400, "0"],
+    [10, 1, "10"],
+    [9, 9, "1"],
+  ])("servings %i base %i → %s", (servings, base, text) => {
+    expect(formatFactor(servings, base)).toBe(text);
   });
 });
 

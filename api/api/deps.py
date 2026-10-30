@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Iterator
 
 from adapters.llm.gemini_extractor import GeminiRecipeExtractor
-from adapters.persistence.carts import SqlAlchemyCartRepository
+from adapters.persistence.carts import SqlAlchemyCartRepository, SqlAlchemyIngredientLineReader
 
 # MVP-OUT: from adapters.llm.vocabulary import load_vocabulary, load_vocabulary_documents
 from adapters.persistence.db import get_session_factory
@@ -49,6 +49,7 @@ from application.recipe_manage import (
 )
 from application.recipe_save import SaveRecipeDraft
 from application.recipe_vocabulary import vocabulary_answer
+from application.shopping_list import GetShoppingListService
 from domain.errors import AliasRequiredError
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -313,3 +314,12 @@ def get_save_cart(db: Session = Depends(get_db)) -> SaveCartService:
 
 def get_discard_cart(db: Session = Depends(get_db)) -> DiscardCartService:
     return _cart(DiscardCartService, db)
+
+
+def get_get_shopping_list(db: Session = Depends(get_db)) -> GetShoppingListService:
+    return GetShoppingListService(
+        SqlAlchemyKitchenRepository(db),
+        SqlAlchemyCartRepository(db),
+        SqlAlchemyEditLockRepository(db),
+        SqlAlchemyIngredientLineReader(db),
+    )

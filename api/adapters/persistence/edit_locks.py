@@ -45,16 +45,14 @@ def resolve_session_ref(db: Session, token: str | None) -> SessionRef | None:
 
 def draft_to_json(draft: CartDraft) -> dict:
     return {
-        "people": draft.people,
-        "items": [{"recipe_id": str(i.recipe_id), "meals": i.meals} for i in draft.items],
+        "items": [{"recipe_id": str(i.recipe_id), "servings": i.servings} for i in draft.items],
     }
 
 
 def draft_from_json(data: dict) -> CartDraft:
     return CartDraft(
-        people=data.get("people"),
         items=tuple(
-            CartDraftItem(recipe_id=uuid.UUID(i["recipe_id"]), meals=int(i["meals"]))
+            CartDraftItem(recipe_id=uuid.UUID(i["recipe_id"]), servings=int(i["servings"]))
             for i in data.get("items", [])
         ),
     )

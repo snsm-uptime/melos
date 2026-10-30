@@ -179,13 +179,9 @@ describe("RecipeDetailScreen", () => {
     });
     const editingCart = {
       kitchen_id: "k1",
-      people: 2,
-      people_is_default: true,
       entries: [],
       editor: { alias: "ana", is_me: true, idle_expires_at: "2999-01-01T00:00:00Z" },
       draft: {
-        people: 2,
-        people_is_default: true,
         entries: [
           {
             recipe_id: "r1",
@@ -193,7 +189,7 @@ describe("RecipeDetailScreen", () => {
             notebook_id: "nb1",
             notebook_name: "Home",
             base_servings: 4,
-            meals: 1,
+            servings: 1,
             factor: "0.5",
           },
         ],

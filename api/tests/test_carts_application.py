@@ -89,18 +89,15 @@ class FakeCartRepo:
         del self.recipes[recipe_id]
         for kitchen_id, cart in self.carts.items():
             self.carts[kitchen_id] = SavedCart(
-                kitchen_id, cart.people, tuple(i for i in cart.items if i.recipe_id != recipe_id)
+                kitchen_id, tuple(i for i in cart.items if i.recipe_id != recipe_id)
             )
 
     def get_or_create_for_update(self, kitchen_id: UUID) -> SavedCart:
         self.for_update.append(kitchen_id)
-        return self.carts.setdefault(kitchen_id, SavedCart(kitchen_id, None, ()))
+        return self.carts.setdefault(kitchen_id, SavedCart(kitchen_id, ()))
 
     def read(self, kitchen_id: UUID) -> SavedCart:
-        return self.carts.get(kitchen_id, SavedCart(kitchen_id, None, ()))
-
-    def member_count(self, kitchen_id: UUID) -> int:
-        return sum(1 for m in self.world.kitchens.memberships if m.kitchen_id == kitchen_id)
+        return self.carts.get(kitchen_id, SavedCart(kitchen_id, ()))
 
     def recipe_facts(self, recipe_ids: Sequence[UUID]) -> dict[UUID, CartRecipeFacts]:
         return {rid: self.recipes[rid] for rid in recipe_ids if rid in self.recipes}
@@ -110,7 +107,7 @@ class FakeCartRepo:
         added = tuple(i.recipe_id for i in draft.items if i.recipe_id not in before)
         for rid in added:
             self.counts[rid] += 1
-        self.carts[kitchen_id] = SavedCart(kitchen_id, draft.people, draft.items)
+        self.carts[kitchen_id] = SavedCart(kitchen_id, draft.items)
         self.saves.append(kitchen_id)
         return added
 
@@ -247,8 +244,8 @@ class Setup:
     def remove(self, ref: SessionRef, recipe_id: UUID):  # noqa: ANN201
         return self.svc(RemoveFromDraftService).execute(ref, self.kitchen, recipe_id)
 
-    def put(self, ref: SessionRef, people: object, items: list[tuple[UUID, object]]):  # noqa: ANN201
-        return self.svc(ReplaceDraftService).execute(ref, self.kitchen, people, items)
+    def put(self, ref: SessionRef, items: list[tuple[UUID, object]]):  # noqa: ANN201
+        return self.svc(ReplaceDraftService).execute(ref, self.kitchen, items)
 
     def start(self, ref: SessionRef):  # noqa: ANN201
         return self.svc(StartCartEditService).execute(ref, self.kitchen)
@@ -291,7 +288,7 @@ def test_empty_cart_follows_the_member_count() -> None:
     s = _setup()
     view = s.get(s.ana)
     assert view.entries == ()
-    assert view.people == 2 and view.people_is_default
+    assert view.entries == ()
     assert view.editor is None and view.draft is None and view.can_edit
 
 
@@ -303,7 +300,7 @@ def test_add_two_then_save_shows_both_and_frees_the_cart() -> None:
     assert view.entries == ()  # the saved cart is unchanged until save
     assert view.draft is not None and [e.title for e in view.draft.entries] == ["A", "B"]
     result = s.save(s.ana)
-    assert [(e.title, e.meals) for e in result.view.entries] == [("A", 1), ("B", 1)]
+    assert [(e.title, e.servings) for e in result.view.entries] == [("A", 4), ("B", 4)]
     assert result.view.editor is None
     assert s.locks.cart_locks == {}
 
@@ -359,47 +356,40 @@ def test_discard_keeps_the_saved_cart_and_frees_it() -> None:
     assert [e.recipe_id for e in view.entries] == [a] and view.editor is None
 
 
-# --- US2: people, meals, factor -------------------------------------------------------------
+# --- US2: servings and factor ---------------------------------------------------------------
 
 
-def test_factor_from_people_meals_and_base() -> None:
+def test_add_starts_at_base_servings_and_factor_follows_servings() -> None:
     s = _setup()
     a = s.carts.add_recipe(s.notebook, base=4)
     s.add(s.ana, a)
     view = s.save(s.ana).view
-    assert view.entries[0].factor == "0.5" and view.people_is_default
+    assert (view.entries[0].servings, view.entries[0].factor) == (4, "1")
     s.start(s.ana)
-    view = s.put(s.ana, 3, [(a, 2)])
+    view = s.put(s.ana, [(a, 6)])
     assert view.draft is not None and view.draft.entries[0].factor == "1.5"
-    assert not view.draft.people_is_default
     third = s.carts.add_recipe(s.notebook, base=3)
-    s.put(s.ana, None, [(third, 1)])
+    s.put(s.ana, [(third, 2)])
     assert s.save(s.ana).view.entries[0].factor == "0.67"
 
 
-@pytest.mark.parametrize(
-    ("people", "meals", "field_name"),
-    [
-        (0, 1, "people"),
-        (100, 1, "people"),
-        (1.5, 1, "people"),
-        ("3", 1, "people"),
-        (2, None, "meals"),
-        (2, 0, "meals"),
-        (2, 100, "meals"),
-    ],
-)
-def test_bad_numbers_are_refused_and_the_draft_is_unchanged(
-    people: object, meals: object, field_name: str
-) -> None:
+def test_add_caps_a_base_above_the_servings_limit() -> None:
     s = _setup()
-    a = s.carts.add_recipe(s.notebook)
+    a = s.carts.add_recipe(s.notebook, base=150)
+    s.add(s.ana, a)
+    assert s.save(s.ana).view.entries[0].servings == 99
+
+
+@pytest.mark.parametrize("servings", [None, 0, 100, 1.5, "3", True])
+def test_bad_numbers_are_refused_and_the_draft_is_unchanged(servings: object) -> None:
+    s = _setup()
+    a = s.carts.add_recipe(s.notebook, base=4)
     s.add(s.ana, a)
     with pytest.raises(CartValueError) as info:
-        s.put(s.ana, people, [(a, meals)])
-    assert info.value.field == field_name
+        s.put(s.ana, [(a, servings)])
+    assert info.value.field == "servings"
     draft = s.get(s.ana).draft
-    assert draft is not None and draft.entries[0].meals == 1 and draft.people_is_default
+    assert draft is not None and draft.entries[0].servings == 4
 
 
 def test_duplicate_recipe_in_draft_is_refused() -> None:
@@ -407,23 +397,8 @@ def test_duplicate_recipe_in_draft_is_refused() -> None:
     a = s.carts.add_recipe(s.notebook)
     s.start(s.ana)
     with pytest.raises(CartValueError) as info:
-        s.put(s.ana, None, [(a, 1), (a, 2)])
+        s.put(s.ana, [(a, 1), (a, 2)])
     assert info.value.field == "items"
-
-
-def test_saved_people_stays_when_members_join_and_default_follows() -> None:
-    s = _setup()
-    s.start(s.ana)
-    s.put(s.ana, None, [])
-    s.save(s.ana)
-    _join(s.world, s.kitchen, CAT)
-    assert s.get(s.ana).people == 3
-    s.start(s.ana)
-    s.put(s.ana, 4, [])
-    s.save(s.ana)
-    _join(s.world, s.kitchen, DAN)
-    view = s.get(s.ana)
-    assert view.people == 4 and not view.people_is_default
 
 
 def test_factor_reads_the_recipe_base_servings_and_never_writes_it() -> None:
@@ -435,7 +410,7 @@ def test_factor_reads_the_recipe_base_servings_and_never_writes_it() -> None:
     s.carts.recipes[a] = CartRecipeFacts(
         a, facts.title, facts.notebook_id, facts.notebook_name, 2, facts.kitchen_id
     )
-    assert s.get(s.ana).entries[0].factor == "1"
+    assert s.get(s.ana).entries[0].factor == "2"
     assert s.carts.recipes[a].base_servings == 2
 
 
@@ -454,7 +429,7 @@ def test_other_member_sees_the_editor_and_is_refused() -> None:
         lambda: s.start(s.ben),
         lambda: s.add(s.ben, a),
         lambda: s.remove(s.ben, a),
-        lambda: s.put(s.ben, None, []),
+        lambda: s.put(s.ben, []),
         lambda: s.save(s.ben),
     ):
         with pytest.raises(CartLockedError) as info:
@@ -465,7 +440,7 @@ def test_other_member_sees_the_editor_and_is_refused() -> None:
 def test_save_and_put_without_any_editor_are_not_editing() -> None:
     s = _setup()
     with pytest.raises(NotEditingError):
-        s.put(s.ben, None, [])
+        s.put(s.ben, [])
     with pytest.raises(NotEditingError):
         s.save(s.ben)
 
@@ -513,7 +488,7 @@ def test_idle_limit_frees_the_cart_and_activity_renews_it() -> None:
     s = _setup()
     s.start(s.ana)
     s.locks.clock.advance(timedelta(minutes=4))
-    s.put(s.ana, 3, [])  # activity
+    s.put(s.ana, [])  # activity
     s.locks.clock.advance(timedelta(minutes=4))
     s.start(s.ana)  # keep-alive
     s.locks.clock.advance(timedelta(minutes=4, seconds=59))
@@ -569,13 +544,11 @@ def test_recipe_deleted_while_drafted_is_dropped_on_save() -> None:
     assert [e.recipe_id for e in result.view.entries] == [b]
 
 
-def test_clear_then_save_keeps_people() -> None:
+def test_clear_then_save_empties_the_cart() -> None:
     s = _setup()
     a = s.carts.add_recipe(s.notebook)
     s.add(s.ana, a)
-    s.put(s.ana, 5, [(a, 1)])
     s.save(s.ana)
     s.start(s.ana)
-    s.put(s.ana, 5, [])
-    view = s.save(s.ana).view
-    assert view.entries == () and view.people == 5
+    s.put(s.ana, [])
+    assert s.save(s.ana).view.entries == ()

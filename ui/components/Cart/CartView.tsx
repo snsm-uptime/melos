@@ -10,24 +10,16 @@ import type { Locale } from "@/lib/i18n/locale";
 import { cartMessages } from "@/lib/i18n/cart";
 
 import { CartEntryRow } from "./CartEntryRow";
-import { CountField } from "./CountField";
 import { EditorNotice } from "./EditorNotice";
 
 /** My draft as the editing view holds it; sent whole to PUT …/cart/draft. */
 export type LocalDraft = {
-  people: number;
-  /** True while People follows the member count (sent as null). */
-  peopleIsDefault: boolean;
   entries: CartEntry[];
 };
 
 export function draftFromCart(cart: Cart): LocalDraft | null {
   if (!cart.editor?.is_me || !cart.draft) return null;
-  return {
-    people: cart.draft.people,
-    peopleIsDefault: cart.draft.people_is_default,
-    entries: cart.draft.entries,
-  };
+  return { entries: cart.draft.entries };
 }
 
 type CartViewProps = {
@@ -45,7 +37,7 @@ type CartViewProps = {
 
 /**
  * The Cart page body (contracts/cart-ui.md): the saved cart for everyone, or my editing view
- * with People, Meals, Remove and Clear; Save and Discard are on the docked editing bar. Factors in the draft are recomputed here
+ * with Servings, Remove and Clear; Save and Discard are on the docked editing bar. Factors in the draft are recomputed here
  * with the api's rounding.
  */
 export function CartView({
@@ -64,12 +56,10 @@ export function CartView({
   const someoneElse = cart.editor && !cart.editor.is_me ? cart.editor : null;
 
   const entries = draft ? draft.entries : cart.entries;
-  const people = draft ? draft.people : cart.people;
-  const peopleIsDefault = draft ? draft.peopleIsDefault : cart.people_is_default;
 
-  function setMeals(index: number, meals: number) {
+  function setServings(index: number, servings: number) {
     if (!draft) return;
-    const next = draft.entries.map((entry, at) => (at === index ? { ...entry, meals } : entry));
+    const next = draft.entries.map((entry, at) => (at === index ? { ...entry, servings } : entry));
     onDraftChange({ ...draft, entries: next });
   }
 
@@ -83,20 +73,6 @@ export function CartView({
       {someoneElse ? <EditorNotice alias={someoneElse.alias} kind="cart" locale={locale} /> : null}
 
       <div className="flex flex-wrap items-end gap-4">
-        {draft ? (
-          <CountField
-            label={t.people}
-            hint={peopleIsDefault ? t.members : undefined}
-            value={people}
-            locale={locale}
-            onChange={(value) => onDraftChange({ ...draft, people: value, peopleIsDefault: false })}
-          />
-        ) : (
-          <p className="m-0 text-[1rem] text-foreground">
-            {t.people} {people}
-            {peopleIsDefault ? <span className="ml-1 text-muted">{t.members}</span> : null}
-          </p>
-        )}
         <div className="ml-auto flex flex-wrap gap-2">
           {draft ? (
             <>
@@ -132,10 +108,8 @@ export function CartView({
               entry={entry}
               locale={locale}
               from={from}
-              factor={
-                draft ? formatFactor(people, entry.meals, entry.base_servings) : entry.factor
-              }
-              onMealsChange={draft ? (meals) => setMeals(index, meals) : undefined}
+              factor={draft ? formatFactor(entry.servings, entry.base_servings) : entry.factor}
+              onServingsChange={draft ? (servings) => setServings(index, servings) : undefined}
               onRemove={
                 draft
                   ? () =>

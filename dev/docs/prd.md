@@ -6,7 +6,7 @@
 
 **User.** A non-technical couple that cooks at home and shops once a week. They keep recipes in their heads, in cookbooks and on websites.
 
-**Goal.** Turn recipes from any source (free text, a web page, a photo of a cookbook page) into structured recipes in a shared kitchen. Then answer questions about them and build a consolidated shopping list scaled to the number of people.
+**Goal.** Turn recipes from any source (free text, a web page, a photo of a cookbook page) into structured recipes in a shared kitchen. Then answer questions about them and build a consolidated shopping list scaled to the servings they plan to make.
 
 **What the AI does and what it doesn't.**
 - The AI structures recipes, matches ingredient names to the notebook's catalog and answers questions grounded in the kitchen's data.
@@ -208,8 +208,8 @@ recipe_ingredient(id, recipe_id, name, quantity?, unit?, size?, preparation?,
                   vague_note?, position)                               name: a normalized name in the notebook's catalog
 step(id, recipe_id, position, text)
 recipe_embedding(recipe_id, model, embedding vector(768), strategy_used, input_tokens, updated_at)  pk(recipe_id, model)
-cart(id, kitchen_id unique, people ≥ 1)
-cart_item(cart_id, recipe_id, meals ≥ 1)                               pk(cart_id, recipe_id); the recipe is in a notebook of the cart's kitchen
+cart(id, kitchen_id unique)
+cart_item(cart_id, recipe_id, servings 1–99)                               pk(cart_id, recipe_id); the recipe is in a notebook of the cart's kitchen
 shopping_list(id, kitchen_id, closing_date?, created_at)               snapshot of a finalized cart
 shopping_list_item(id, shopping_list_id, name, quantity?, unit?, size?, preparation?, recipe_ids[], position)
 conversation(id, kitchen_id, user_id, title, archived_at?, created_at, updated_at)
@@ -399,9 +399,8 @@ The user signs up, signs in, signs out, resets their password by email and edits
 ### J4 · Plan (cart)
 - Selected recipes, from the kitchen's notebooks, go to the kitchen's cart, which members share.
 - **Controls:**
-  - One global **People** number (default: the number of kitchen members, until a member sets it).
-  - Per recipe, **Meals**: how many times you'll eat it (default 1).
-- **Scale factor per recipe:** `people × meals / base_servings`.
+  - Per recipe, **Servings**: how many servings to make (default: the recipe's base servings, at most 99).
+- **Scale factor per recipe:** `servings / base_servings`.
 - **Edge cases:**
   - An empty cart disables export and shows a hint to add recipes.
   - A recipe deleted while in the cart disappears from it.
@@ -425,7 +424,7 @@ The user signs up, signs in, signs out, resets their password by email and edits
 **History:** Past shopping lists (with `closing_date` set) can be queried by the chat to answer questions like "What was the shopping list last time?" The chat reconstructs the history and surfaces cards with date, recipes, and kitchen.
 
 - **AC5.1** Recipe A needs 3 tbsp of flour and recipe B needs 1 cup → `flour — 1 cup + 3 tbsp` with chips A and B.
-- **AC5.2** `base_servings=4`, 3 people, 1 meal, 2 eggs → 1.5 is shown as **2 eggs**.
+- **AC5.2** `base_servings=4`, 3 servings, 2 eggs → 1.5 is shown as **2 eggs**.
 - **AC5.3** Rice in `g` in one recipe and in `cup` in another → two lines.
 - **AC5.4** Two recipes with 1 large onion each and one with 1 small onion → `onion, large — 2` and `onion, small — 1`.
 - **AC5.5** If PDF generation fails, an error is shown and the Markdown copy still works.
@@ -512,8 +511,8 @@ Every entity has full CRUD in the API. The UI only exposes what the journey need
 | RecipeIngredient, Step | nested in Recipe | ✓ | ✓ | ✓ | inside recipe edit | — | Also addressable at `/recipes/{id}/ingredients`, `/steps` |
 | Ingredient | ✓ | ✓ | rename, merge | only if unused | *Should* | — | `409` if used. A unique normalized name in one notebook's catalog |
 | Source | with recipe | ✓ | ✓ | ✓ | link on detail | — | Deleting keeps the recipe (`source_id` set to null) |
-| Cart | with kitchen | ✓ | people | clear | ✓ | ✓ (people) | One per kitchen |
-| CartItem | ✓ | ✓ | meals | ✓ | ✓ | ✓ (add/remove/meals) | |
+| Cart | with kitchen | ✓ | — | clear | ✓ | — | One per kitchen |
+| CartItem | ✓ | ✓ | servings | ✓ | ✓ | ✓ (add/remove/servings) | |
 | ShoppingList | finalize cart | ✓ | — | — | ✓ | ✓ (read), — (finalize) | Stored snapshots with closing_date; one active per kitchen |
 | ShoppingListItem | via finalize | ✓ | add/remove qty | add/remove | *Should* | ✓ (add/remove qty) | Editable when list is active |
 | RecipeEmbedding | system | system | system | system | — | — | **Internal, not exposed** |
@@ -622,7 +621,7 @@ steps[3]: "Fry the garlic in oil.","Add the tomato and cook 5 minutes.","Add the
 - **✓ Snapshots** (2026-10-23): a snapshot is an independent kitchen copy of a personal notebook. Its link to the original is an origin label only, cleared if the original is deleted; nothing syncs. Deleting the kitchen deletes its notebooks. Any kitchen member may add snapshots and rename or delete kitchen notebooks.
 - **✓ Name of a kitchen notebook made with the kitchen or on a first capture** (2026-10-23): "{alias}'s ({kitchen name}) Notebook".
 - **✓ A deleted recipe in a past chat citation** (2026-10-22): the citation keeps its text and shows "recipe removed" in place of the link.
-- **✓ Cart people default and single editor** (2026-10-29, spec 022): People follows the kitchen's member count until a member sets it; the cart and each recipe are edited by one session at a time, and the lock ends on save, discard, sign-out, session end, 5 minutes idle, or lost access.
+- **✓ Cart servings and single editor** (2026-10-29, spec 022; amended 2026-10-30, spec 023): each cart recipe has its own Servings, starting at its base servings, and the cart has no People number; the cart and each recipe are edited by one session at a time, and the lock ends on save, discard, sign-out, session end, 5 minutes idle, or lost access.
 - **✓ Categories** (2026-10-27): main ingredients and cuisines are out of the MVP and moved to *Later* (Appendix E). The 2026-10-22 decision (no category table, ids stored on the recipe) is kept there.
 
 ## Appendix E · Deferred: main ingredients and cuisines (out of the MVP, 2026-10-27)

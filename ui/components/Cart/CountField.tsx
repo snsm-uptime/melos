@@ -12,15 +12,13 @@ type CountFieldProps = {
   onChange: (value: number) => void;
   locale: Locale;
   disabled?: boolean;
-  /** Shown beside the label, e.g. "(members)". */
-  hint?: string;
 };
 
 /**
  * A whole number from 1 to 99 (spec 022 FR-004). Invalid or blank input keeps the last valid
  * value and says what is allowed; leaving the field shows the valid value again.
  */
-export function CountField({ label, value, onChange, locale, disabled, hint }: CountFieldProps) {
+export function CountField({ label, value, onChange, locale, disabled }: CountFieldProps) {
   const t = cartMessages[locale];
   const id = useId();
   const [text, setText] = useState(String(value));
@@ -36,7 +34,6 @@ export function CountField({ label, value, onChange, locale, disabled, hint }: C
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-[0.85rem] text-muted">
         {label}
-        {hint ? <span className="ml-1">{hint}</span> : null}
       </label>
       <input
         id={id}
@@ -48,6 +45,8 @@ export function CountField({ label, value, onChange, locale, disabled, hint }: C
         aria-describedby={invalid ? `${id}-error` : undefined}
         className="w-16 rounded-[var(--radius-sm,6px)] border border-border bg-background px-2 py-1 text-foreground"
         onChange={(event) => {
+          // Digits only: anything else never reaches the field.
+          if (/\D/.test(event.target.value)) return;
           setText(event.target.value);
           const parsed = parseCount(event.target.value);
           setInvalid(parsed === null);
@@ -58,11 +57,18 @@ export function CountField({ label, value, onChange, locale, disabled, hint }: C
           setInvalid(false);
         }}
       />
-      {invalid ? (
-        <span id={`${id}-error`} role="alert" className="text-[0.8rem] text-owe">
-          {t.countError}
-        </span>
-      ) : null}
+      {/* Space kept for one line, and the text out of the flow, so showing it moves nothing. */}
+      <div className="relative h-[1.2rem]">
+        {invalid ? (
+          <span
+            id={`${id}-error`}
+            role="alert"
+            className="absolute left-0 top-0 whitespace-nowrap text-[0.8rem] text-owe"
+          >
+            {t.countError}
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }
