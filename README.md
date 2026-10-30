@@ -190,7 +190,8 @@ Then check:
 - MCP: http://localhost:9000/health
 
 With `SEED_DEV_USER=1` (dev only) the API seeds two verified users (owner and
-member) sharing one kitchen, ready for testing auth and kitchen membership.
+member) sharing one kitchen, with one recipe from each of them, ready for testing auth,
+kitchen membership and the recipe lists.
 
 **Tests and linting**
 
