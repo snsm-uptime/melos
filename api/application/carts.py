@@ -16,7 +16,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from uuid import UUID
 
-from domain.cart import check_count, effective_people, format_factor, idle_expires_at, scale_factor
+from domain.cart import SERVINGS_MAX, check_count, format_factor, idle_expires_at, scale_factor
 from domain.errors import (
     CartLockedError,
     CartValueError,
@@ -58,14 +58,12 @@ class CartEntryView:
     notebook_id: UUID
     notebook_name: str
     base_servings: int
-    meals: int
+    servings: int
     factor: str
 
 
 @dataclass(frozen=True, slots=True)
 class CartDraftView:
-    people: int
-    people_is_default: bool
     entries: tuple[CartEntryView, ...]
     # Drafted recipes that were deleted since.
     dropped_recipe_ids: tuple[UUID, ...]
@@ -74,8 +72,6 @@ class CartDraftView:
 @dataclass(frozen=True, slots=True)
 class CartView:
     kitchen_id: UUID
-    people: int
-    people_is_default: bool
     entries: tuple[CartEntryView, ...]
     editor: EditorView | None
     draft: CartDraftView | None
@@ -103,7 +99,6 @@ def _entries(
     items: Sequence[CartDraftItem],
     facts: dict[UUID, CartRecipeFacts],
     kitchen_id: UUID,
-    people: int,
 ) -> tuple[tuple[CartEntryView, ...], tuple[UUID, ...]]:
     entries: list[CartEntryView] = []
     dropped: list[UUID] = []
@@ -119,8 +114,8 @@ def _entries(
                 notebook_id=fact.notebook_id,
                 notebook_name=fact.notebook_name,
                 base_servings=fact.base_servings,
-                meals=item.meals,
-                factor=format_factor(scale_factor(people, item.meals, fact.base_servings)),
+                servings=item.servings,
+                factor=format_factor(scale_factor(item.servings, fact.base_servings)),
             )
         )
     return tuple(entries), tuple(dropped)
@@ -171,20 +166,20 @@ class _CartUseCase:
         membership_id = self._locks.kitchen_membership_id(kitchen_id, ref.user_id)
         if membership_id is None:
             raise KitchenNotFoundError()
-        draft = CartDraft(people=saved.people, items=saved.items)
+        draft = CartDraft(items=saved.items)
         self._locks.take_cart(kitchen_id, ref, membership_id, draft)
         logger.info("cart edit outcome=locked items=%d", len(draft.items))
         return draft
 
-    def _kitchen_recipe(self, kitchen_id: UUID, recipe_id: UUID) -> None:
+    def _kitchen_recipe(self, kitchen_id: UUID, recipe_id: UUID) -> CartRecipeFacts:
         fact = self._carts.recipe_facts([recipe_id]).get(recipe_id)
         if fact is None or fact.kitchen_id != kitchen_id:
             raise RecipeNotFoundError()
+        return fact
 
     def _view(self, ref: SessionRef, kitchen_id: UUID) -> CartView:
         archived = self._kitchen_is_archived(ref.user_id, kitchen_id)
         saved = self._carts.read(kitchen_id)
-        members = self._carts.member_count(kitchen_id)
         holder = self._locks.cart_holder(kitchen_id)
         editor = editor_view(holder, ref)
         draft = (
@@ -196,22 +191,13 @@ class _CartUseCase:
             [i.recipe_id for i in draft.items] if draft else []
         )
         facts = self._carts.recipe_facts(list(dict.fromkeys(ids)))
-        people = effective_people(saved.people, members)
-        entries, _ = _entries(saved.items, facts, kitchen_id, people)
+        entries, _ = _entries(saved.items, facts, kitchen_id)
         draft_view = None
         if draft is not None:
-            draft_people = effective_people(draft.people, members)
-            draft_entries, dropped = _entries(draft.items, facts, kitchen_id, draft_people)
-            draft_view = CartDraftView(
-                people=draft_people,
-                people_is_default=draft.people is None,
-                entries=draft_entries,
-                dropped_recipe_ids=dropped,
-            )
+            draft_entries, dropped = _entries(draft.items, facts, kitchen_id)
+            draft_view = CartDraftView(entries=draft_entries, dropped_recipe_ids=dropped)
         return CartView(
             kitchen_id=kitchen_id,
-            people=people,
-            people_is_default=saved.people is None,
             entries=entries,
             editor=editor,
             draft=draft_view,
@@ -234,16 +220,20 @@ class StartCartEditService(_CartUseCase):
 
 
 class AddToDraftService(_CartUseCase):
-    """Quick add from a card or the recipe page: meals 1, no-op when already drafted (R7)."""
+    """Quick add from a card or the recipe page: starts at the recipe's servings (FR-015).
+
+    A no-op when already drafted (R7).
+    """
 
     def execute(self, ref: SessionRef, kitchen_id: UUID, recipe_id: UUID) -> CartView:
         saved = self._writable(ref, kitchen_id)
-        self._kitchen_recipe(kitchen_id, recipe_id)
+        fact = self._kitchen_recipe(kitchen_id, recipe_id)
         draft = self._start(ref, kitchen_id, saved)
         if all(i.recipe_id != recipe_id for i in draft.items):
             if len(draft.items) >= MAX_ITEMS:
                 raise CartValueError("items")
-            draft = replace(draft, items=(*draft.items, CartDraftItem(recipe_id, 1)))
+            servings = min(fact.base_servings, SERVINGS_MAX)
+            draft = replace(draft, items=(*draft.items, CartDraftItem(recipe_id, servings)))
         self._locks.set_cart_draft(kitchen_id, ref.session_id, draft)
         return self._view(ref, kitchen_id)
 
@@ -264,22 +254,22 @@ class ReplaceDraftService(_CartUseCase):
         self,
         ref: SessionRef,
         kitchen_id: UUID,
-        people: object,
         items: Sequence[tuple[UUID, object]],
     ) -> CartView:
         self._writable(ref, kitchen_id)
         self._my_draft(ref, kitchen_id)
-        checked_people = None if people is None else check_count(people, "people")
         if len(items) > MAX_ITEMS:
             raise CartValueError("items")
-        checked = tuple(CartDraftItem(rid, check_count(meals, "meals")) for rid, meals in items)
+        checked = tuple(
+            CartDraftItem(rid, check_count(servings, "servings")) for rid, servings in items
+        )
         ids = [i.recipe_id for i in checked]
         if len(set(ids)) != len(ids):
             raise CartValueError("items")
         facts = self._carts.recipe_facts(ids)
         if any(rid not in facts or facts[rid].kitchen_id != kitchen_id for rid in ids):
             raise RecipeNotFoundError()
-        self._locks.set_cart_draft(kitchen_id, ref.session_id, CartDraft(checked_people, checked))
+        self._locks.set_cart_draft(kitchen_id, ref.session_id, CartDraft(checked))
         return self._view(ref, kitchen_id)
 
 
@@ -296,7 +286,7 @@ class SaveCartService(_CartUseCase):
             if i.recipe_id in facts and facts[i.recipe_id].kitchen_id == kitchen_id
         )
         dropped = tuple(i.recipe_id for i in draft.items if i not in kept)
-        added = self._carts.save(kitchen_id, CartDraft(draft.people, kept), ref.user_id)
+        added = self._carts.save(kitchen_id, CartDraft(kept), ref.user_id)
         self._locks.release_cart(kitchen_id, ref.session_id)
         logger.info(
             "cart save outcome=saved items=%d added=%d dropped=%d",

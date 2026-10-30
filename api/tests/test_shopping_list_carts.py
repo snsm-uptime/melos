@@ -72,7 +72,7 @@ CARTS: list[tuple[str, list[Recipe], Expected]] = [
         [("sugar", None, (("0.67", "tbsp"),))],
     ),
     (
-        "factor 99 (People 99, Meals 1, base 1)",
+        "factor 99 (Servings 99, base 1)",
         [(F(99), [("pepper", F(1), "tsp", None)])],
         [("pepper", None, (("99", "tsp"),))],
     ),
@@ -130,7 +130,7 @@ CARTS: list[tuple[str, list[Recipe], Expected]] = [
         [("cream", None, (("0.63", "cup"),))],
     ),
     (
-        "People 2, Meals 99, base 4 = factor 99/2: 10 g → 495 g, 1 egg → 49.5 → 50",
+        "Servings 99, base 2 = factor 99/2: 10 g → 495 g, 1 egg → 49.5 → 50",
         [(F(99, 2), [("butter", F(10), "g", None), ("egg", F(1), "unit", None)])],
         [("butter", None, (("495", "g"),)), ("egg", None, (("50", "unit"),))],
     ),

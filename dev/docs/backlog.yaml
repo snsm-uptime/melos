@@ -361,6 +361,10 @@ stories:
       lint and typecheck clean. Not done: the browser walk of quickstart.md with two accounts at phone
       and desktop width (and keyboard and Spanish), and the timed 100 x 20 read on the dev stack (see
       specs/023-shopping-list/notes.md). Left in_progress until that walk is done.
+      Committed in 918b49e. Amendment 2026-10-30, not committed: per-recipe Servings replace People and
+      Meals (factor = Servings / base servings; migration 0008_cart_servings), cards in the cart get a
+      selected background, Remove is a close icon button. Also supersedes S-022's People and Meals rules.
+      Still to do: the walk of the quickstart amendment section (T078) with T047 and T048.
 
   - id: S-024
     title: Shopping list export as Markdown copy and PDF

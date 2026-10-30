@@ -29,7 +29,7 @@ describe("/api/kitchens/[kitchenId]/cart/draft BFF", () => {
     const { PUT } = await import("./route");
 
     const response = await PUT(
-      request("PUT", { people: null, items: [] }),
+      request("PUT", { items: [] }),
       context,
     );
 
@@ -38,6 +38,6 @@ describe("/api/kitchens/[kitchenId]/cart/draft BFF", () => {
     expect(url).toBe("http://api.test:8000/kitchens/k1/cart/draft");
     expect(init.method).toBe("PUT");
     expect(new Headers(init.headers).get("Cookie")).toBe("melos_session=tok");
-    expect(init.body).toBe(JSON.stringify({ people: null, items: [] }));
+    expect(init.body).toBe(JSON.stringify({ items: [] }));
   });
 });

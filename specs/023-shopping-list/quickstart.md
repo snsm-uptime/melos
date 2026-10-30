@@ -52,3 +52,17 @@ Before and after opening the list, compare `cart_item`, `recipe.cart_add_count`,
 ## 4. Performance check
 
 On the dev stack with a seeded cart of 100 recipes × 20 lines, `GET /api/kitchens/{id}/shopping-list` answers in under 1 s (SC-003). Record the time in `notes.md` as spec 022 did.
+
+## Amendment 2026-10-30: cart by servings
+
+Prerequisites: the dev stack rebuilt from this branch. Before migrating, note the list of a saved cart.
+
+1. Apply the migration: the same cart's Servings read People × Meals, and its shopping list amounts match the note. Any open cart draft is gone.
+2. Add a recipe with base servings 4: Servings 4, factor 1.
+3. Set Servings to 6: factor 1.5 and the list follows at once for the editor. A second account still sees the saved list until Save.
+4. Enter 0, blank, 1.5 and text: each is refused and the last value stays.
+5. Cart page in English and Spanish: no People field, no Meals or Comidas, and the label reads Servings or Porciones.
+6. Kitchen recipe list in light and dark themes: only cards in the cart have the selected background, and the text stays readable. Adding and removing updates it at once.
+7. While editing: each row has a close icon button with no text. Tab to it, confirm the announced name includes the recipe, and press Enter. In the read-only view it is absent.
+
+Record the results in `notes.md`. Migration check: upgrade, downgrade to `0007_cart_and_edit_locks`, upgrade again on a scratch database.

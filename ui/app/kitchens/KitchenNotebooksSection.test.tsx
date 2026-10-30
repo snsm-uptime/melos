@@ -42,8 +42,6 @@ vi.mock("@/lib/cartClient", async (importOriginal) => ({
 function cartWith(over: Record<string, unknown> = {}) {
   return {
     kitchen_id: "5e7b0c1a-0000-4000-8000-000000000001",
-    people: 2,
-    people_is_default: true,
     entries: [],
     editor: null,
     draft: null,
@@ -296,8 +294,6 @@ describe("KitchenNotebooksSection", () => {
       const editing = cartWith({
         editor: { alias: "ana", is_me: true, idle_expires_at: "2999-01-01T00:00:00Z" },
         draft: {
-          people: 2,
-          people_is_default: true,
           entries: [
             {
               recipe_id: "r1",
@@ -305,7 +301,7 @@ describe("KitchenNotebooksSection", () => {
               notebook_id: "c3d0-1",
               notebook_name: "x",
               base_servings: 4,
-              meals: 1,
+              servings: 1,
               factor: "0.5",
             },
           ],
@@ -335,7 +331,7 @@ describe("KitchenNotebooksSection", () => {
         notebook_id: "c3d0-1",
         notebook_name: "x",
         base_servings: 4,
-        meals: 1,
+        servings: 1,
         factor: "0.5",
       });
 
@@ -364,8 +360,6 @@ describe("KitchenNotebooksSection", () => {
             entries: [entry("a"), entry("b")],
             editor: { alias: "ana", is_me: true, idle_expires_at: "2999-01-01T00:00:00Z" },
             draft: {
-              people: 2,
-              people_is_default: true,
               entries: [entry("a"), entry("b"), entry("r1")],
               dropped_recipe_ids: [],
             },

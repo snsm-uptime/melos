@@ -10,6 +10,8 @@
 
 **Related**: PRD J4 (Plan), 1.5 C, 1.6 (`cart`, `cart_item`, `recipe.cart_add_count`, decided "Cart frequency"), Appendix A (Cart, CartItem). Builds on spec 056 (notebooks and their access rules), spec 021 (kitchen recipe list), spec 027 (recipe detail and Edit; FR-016 requires a cart entry to go with its deleted recipe; this spec amends its Edit with a single-editor lock) and spec 062 (the detail page's view-only servings control, which is separate from the cart's scale). Out of this feature: the consolidated shopping list (S-023), its Markdown and PDF export (S-024), finalizing a list (S-025), the cart-frequency sort and richer kitchen cards (S-047), MCP cart tools (S-032) and the chat (S-030).
 
+> **Superseded in part (2026-10-30):** spec 023's amendment replaces this spec's People and Meals rules with per-recipe Servings (factor = Servings ÷ base servings; no People number). See `specs/023-shopping-list/spec.md`, FR-015 to FR-019.
+
 ## Clarifications
 
 ### Session 2026-10-29

@@ -157,6 +157,74 @@
 
 ---
 
+## Amendment 2026-10-30: cart by servings (spec stories 5 to 7)
+
+**Input**: spec.md stories 5 to 7, FR-015 to FR-021; plan.md "Amendment"; research.md R9 to R13; data-model.md; contracts/cart-servings.md. This amendment overrides the note at the end of this file that the story adds no migration. Open tasks T047 and T048 run after this work, against the servings version. Write each test before its code and see it fail.
+
+### Phase 8: Foundational (blocks US5 to US7's cart rule)
+
+- [X] T051 Write migration tests in `api/tests/test_cart_servings_migration.py`: People 3 × Meals 2 gives 6; People NULL uses the member count; a product above 99 gives 99; open `cart_edit_lock` rows are deleted and recipe edit locks stay; downgrade gives `meals = servings`, `people = 1`
+- [X] T052 Create `api/adapters/persistence/migrations/versions/0008_cart_servings.py` revising `0007_cart_and_edit_locks`. Upgrade order: delete `cart_edit_lock` rows; set `meals = LEAST(99, COALESCE(cart.people, GREATEST(member count, 1)) * meals)`; rename `meals` to `servings` with no server default, NOT NULL; replace `ck_cart_item_meals` with `ck_cart_item_servings` ("servings BETWEEN 1 AND 99"); drop `ck_cart_people` and `people`. Write the downgrade from R10
+- [X] T053 Update `CartModel` and `CartItemModel` in `api/adapters/persistence/models.py` to match T052
+
+### Phase 9: User Story 5 - Plan the cart by servings (Priority: P1) 🎯 MVP
+
+**Goal**: Each entry has its own Servings, factor = Servings ÷ base servings, and People and Meals are gone.
+
+**Independent Test**: Add a recipe with base servings 4: Servings 4, factor 1. Set 6: factor 1.5, and the list is 1.5 times the recipe.
+
+- [X] T054 [P] [US5] Rewrite the People and Meals cases in `api/tests/test_cart_domain.py` for `scale_factor(servings, base_servings)` and remove the `effective_people` tests
+- [X] T055 [P] [US5] Update `api/tests/test_carts_application.py`: quick add starts at `min(base_servings, 99)`, `servings` values are checked as 1 to 99, and the fakes have no `member_count`
+- [X] T056 [P] [US5] Update `api/tests/test_carts_integration.py` to contracts/cart-servings.md: no `people` or `people_is_default`, `servings` on entries and in the draft request
+- [X] T057 [P] [US5] Update `api/tests/test_shopping_list_domain.py`, `api/tests/test_shopping_list_carts.py`, `api/tests/test_shopping_list_application.py` and `api/tests/test_shopping_list_integration.py`: express each cart as Servings, keeping its expected amounts (AC5.2 becomes base 4, Servings 3, 2 eggs → 2)
+- [X] T058 [US5] In `api/domain/cart.py`, make `scale_factor(servings, base_servings)` return `Fraction(servings, base_servings)`, replace the `PEOPLE_*` and `MEALS_*` constants with `SERVINGS_MIN`, `SERVINGS_MAX`, and remove `effective_people`; update the module docstring and the `CartValueError` docstring in `api/domain/errors.py`
+- [X] T059 [US5] In `api/application/ports.py`, rename `CartDraftItem.meals` to `servings`, remove `people` from `SavedCart` and `CartDraft`, and remove `CartRepository.member_count`
+- [X] T060 [US5] Implement T059 in `api/adapters/persistence/carts.py` and `api/adapters/persistence/edit_locks.py` (draft JSON `{"items": [{"recipe_id", "servings"}]}`)
+- [X] T061 [US5] In `api/application/carts.py`, remove People from the views and `execute` arguments, and make `_kitchen_recipe` return the base servings so `AddToDraftService` uses `min(base_servings, SERVINGS_MAX)` in place of 1 (FR-015)
+- [X] T062 [US5] In `api/application/shopping_list.py`, remove `people` from `_SeenCart` and scale by `scale_factor(item.servings, fact.base_servings)`
+- [X] T063 [US5] Update `api/api/schemas/carts.py` and `api/api/routes/carts.py` to contracts/cart-servings.md
+- [X] T064 [P] [US5] Update `ui/lib/cartFactor.test.ts`, `ui/lib/cartClient.test.ts`, `ui/app/api/kitchens/[kitchenId]/cart/draft/route.test.ts`, `ui/components/Cart/testRoot.tsx`, `ui/components/Cart/CartView.test.tsx`, `ui/components/Cart/CartScreen.test.tsx`, `ui/components/Cart/CountField.test.tsx`, `ui/app/kitchens/KitchenNotebooksSection.test.tsx` and `ui/components/RecipeDetail/RecipeDetailScreen.test.tsx` to the new shape
+- [X] T065 [US5] In `ui/lib/cartFactor.ts`, make it `formatFactor(servings, base)`; in `ui/lib/cartClient.ts`, use `servings` and remove `people`, `people_is_default` and their shape check
+- [X] T066 [US5] In `ui/lib/i18n/cart.ts`, add `servings` ("Servings" / "Porciones") and remove `meals` and `people`
+- [X] T067 [US5] Update `ui/components/Cart/CartEntryRow.tsx` (`onServingsChange`), `ui/components/Cart/CartView.tsx` (remove the People field, `people`, `peopleIsDefault`, the `hint` use) and `ui/components/Cart/CartScreen.tsx` (draft body `{ items }`); remove `hint` from `ui/components/Cart/CountField.tsx` if nothing else uses it
+- [X] T068 [US5] Check `git grep -n -i -E 'people|meals'` in `api/` and `ui/`: only the migrations, `ui/lib/i18n/landing.ts` and unrelated uses (notebook "people", invite text) may remain (FR-017, SC-009)
+
+**Checkpoint**: api tests and ui tests pass; US5 works through the cart.
+
+### Phase 10: User Story 6 - See which recipe cards are in the cart (Priority: P2)
+
+**Goal**: Cards in the cart have a selected background.
+
+**Independent Test**: With one of two recipes in the cart, only that card is tinted; removing it clears the tint.
+
+- [X] T069 [P] [US6] Add cases to `ui/components/RecipeCard/RecipeCard.test.tsx`: tinted with `cart.inCart` true; not tinted when false or with no `cart` prop; `aria-pressed` kept
+- [X] T070 [US6] Add `--card-selected: color-mix(in srgb, var(--accent) 12%, var(--surface))` to each theme block of `ui/app/globals.css` beside the menu tokens
+- [X] T071 [US6] In `ui/components/RecipeCard/RecipeCard.tsx`, use `bg-[var(--card-selected)]` in place of `bg-surface` when `cart?.inCart`
+
+### Phase 11: User Story 7 - Remove a recipe with the close icon (Priority: P3)
+
+**Goal**: Remove is an icon button with an accessible name.
+
+**Independent Test**: In the editing view each row has the icon and no "Remove" text; pressing it removes the recipe.
+
+- [X] T072 [P] [US7] Update `ui/components/Cart/CartView.test.tsx`: find Remove by the label `Remove {title}`; absent in read-only view
+- [X] T073 [US7] In `ui/lib/i18n/cart.ts`, replace `remove` with `removeRecipe(title)` (`Remove ${title}` / `Quitar ${title}`), and confirm no other use of `remove`
+- [X] T074 [US7] In `ui/components/Cart/CartEntryRow.tsx`, replace the text button with `IconButton` from `@/components/IconButton`, `tone="danger"`, `label={t.removeRecipe(entry.title)}`, `icon={<CloseIcon />}`
+
+### Phase 12: Polish
+
+- [X] T075 [P] Update `dev/docs/prd.md`: §1.6 `cart` and `cart_item`, J4 controls and scale factor, J5 step 1, AC5.2, Appendix A Cart and CartItem, and the Appendix D people default decision
+- [X] T076 [P] Add a note at the top of `specs/022-shared-cart/spec.md` that S-023's amendment of 2026-10-30 supersedes its People and Meals rules
+- [X] T077 Run `cd api && uv run ruff check . && uv run ruff format --check .` and `cd ui && npm test && npm run lint && npm run typecheck`, and the full api suite in the Compose test overlay; the only api failures allowed are the 5 baseline tests in `specs/023-shopping-list/notes.md`
+- [ ] T078 Run upgrade, downgrade to `0007_cart_and_edit_locks` and upgrade again on a scratch database, then walk the amendment section of `specs/023-shopping-list/quickstart.md` in the browser, including `CountField` error text at 360 px and tint contrast in both themes; record the results in `specs/023-shopping-list/notes.md`
+- [ ] T079 Update `dev/docs/backlog.yaml`: S-022 and S-023 notes and verification, including that the work is committed; set S-023 `done` only after T047, T048 and T078 pass
+
+### Order
+
+Phase 8 → Phase 9 → Phase 12. Phases 10 and 11 need only each other's shared files and can run any time; T073 and T066 both edit `ui/lib/i18n/cart.ts`, and T074 and T067 both edit `CartEntryRow.tsx`, so do those in sequence. In Phase 9 tasks T054 to T057 and T064 can run in parallel; T058 to T063 are in order. Note that US5 is one change across the api and ui, so the app does not run correctly between T058 and T067. Suggested MVP: phases 8 and 9.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase dependencies

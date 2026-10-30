@@ -16,8 +16,6 @@ const fetchMock = vi.fn();
 
 const CART: Cart = {
   kitchen_id: "k1",
-  people: 2,
-  people_is_default: true,
   entries: [],
   editor: null,
   draft: null,
@@ -37,7 +35,7 @@ describe("cartClient", () => {
   it.each([
     ["GET", () => fetchCart("k1"), "/api/kitchens/k1/cart"],
     ["POST", () => startCartEdit("k1"), "/api/kitchens/k1/cart/edit"],
-    ["PUT", () => putCartDraft("k1", { people: null, items: [] }), "/api/kitchens/k1/cart/draft"],
+    ["PUT", () => putCartDraft("k1", { items: [] }), "/api/kitchens/k1/cart/draft"],
     ["POST", () => addDraftItem("k1", "r1"), "/api/kitchens/k1/cart/draft/items"],
     ["DELETE", () => removeDraftItem("k1", "r1"), "/api/kitchens/k1/cart/draft/items/r1"],
     ["POST", () => saveCart("k1"), "/api/kitchens/k1/cart/save"],
@@ -78,9 +76,9 @@ describe("cartClient", () => {
   });
 
   it("keeps the field on 422", async () => {
-    fetchMock.mockResolvedValue(json({ code: "invalid_value", field: "meals" }, 422));
-    const result = await putCartDraft("k1", { people: 2, items: [] });
-    expect(result).toEqual({ ok: false, status: 422, code: "invalid_value", field: "meals" });
+    fetchMock.mockResolvedValue(json({ code: "invalid_value", field: "servings" }, 422));
+    const result = await putCartDraft("k1", { items: [] });
+    expect(result).toEqual({ ok: false, status: 422, code: "invalid_value", field: "servings" });
   });
 
   it("answers status 0 on a network failure", async () => {
@@ -95,7 +93,7 @@ describe("cartClient", () => {
       notebook_id: "n",
       notebook_name: "N",
       base_servings: 4,
-      meals: 1,
+      servings: 1,
       factor: "0.5",
     });
     const saved = { ...CART, entries: [entry("a")] };
@@ -103,7 +101,7 @@ describe("cartClient", () => {
     const mine = {
       ...saved,
       editor: { alias: "ana", is_me: true, idle_expires_at: null },
-      draft: { people: 2, people_is_default: true, entries: [entry("b")], dropped_recipe_ids: [] },
+      draft: { entries: [entry("b")], dropped_recipe_ids: [] },
     };
     expect([...cartRecipeIds(mine)]).toEqual(["b"]);
   });

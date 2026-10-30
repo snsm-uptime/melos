@@ -83,3 +83,17 @@ ShoppingList
 ## State transitions
 
 None. The list has no state of its own; it changes when the cart, its People or Meals, or a recipe's lines change.
+
+## Amendment 2026-10-30: cart by servings
+
+Migration `0008_cart_servings` (revises `0007_cart_and_edit_locks`). Rules are in [research.md](./research.md) R9 to R11.
+
+| Table | Change |
+|---|---|
+| `cart` | Drop `people` and `ck_cart_people` |
+| `cart_item` | Rename `meals` to `servings`, whole, 1 to 99, NOT NULL, no server default; replace `ck_cart_item_meals` with `ck_cart_item_servings` |
+| `cart_edit_lock` | Delete all rows. The `draft` JSON becomes `{"items": [{"recipe_id", "servings"}]}` |
+
+**Scale factor** (derived, never stored): `servings / base_servings`.
+
+**Order in the upgrade**: set the converted values while `people` still exists, then rename, then drop.

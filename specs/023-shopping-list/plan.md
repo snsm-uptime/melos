@@ -10,6 +10,8 @@ The Cart page gets a shopping list below the cart's recipes. It is built fresh o
 
 Technical approach: no schema change and no migration. The consolidation is a pure function in the existing `domain/cart.py` (exact `Fraction` arithmetic, sum first, `ceil` for counts, `format_factor` for amounts). One new use case, `GetShoppingListService` in `application/shopping_list.py`, checks kitchen access, picks the caller's draft or the saved cart, and loads ingredient lines through one new read-only port. One new route, `GET /kitchens/{id}/shopping-list`, returns structured data (names, amounts per unit, chips); the ui does the wording and the "Your call" heading in Spanish and English. The ui adds a `ShoppingListSection` to `CartScreen` that fetches the list again whenever the cart state changes (load, focus, draft PUT, save, discard).
 
+**Amendment 2026-10-30**: the cart moves to per-recipe Servings, recipe cards in the cart get a selected background, and Remove becomes a close icon button (spec stories 5 to 7). This one amendment changes the "No migration" statements below: see [Amendment: cart by servings](#amendment-cart-by-servings-2026-10-30), which wins wherever the two differ.
+
 ## Technical Context
 
 **Language/Version**: Python 3.12 (`api/`, uv). TypeScript, Next.js 16 App Router, React 19, Tailwind 4 (`ui/`).
@@ -110,3 +112,50 @@ No constitution violations. One deliberate trade-off:
 | Choice | Why needed | Simpler alternative rejected because |
 |---|---|---|
 | The ui fetches the list again after each saved draft change, instead of computing it in the browser | FR-001 says the editor's list follows the draft, and the rules (exact fractions, ceil after sum, ordering) must exist once, in `domain/cart.py`. | Computing in the ui would duplicate every rule in TypeScript and risk two answers for one cart. The cost is a short delay (the existing 300 ms draft debounce plus one request). |
+
+## Amendment: cart by servings (2026-10-30)
+
+### Summary
+
+`cart_item.meals` becomes `cart_item.servings` and `cart.people` is dropped. The factor is `servings / base_servings` everywhere, and `effective_people`, `member_count` and `people_is_default` go away. Quick add starts an entry at the recipe's base servings. Migration `0008_cart_servings` converts saved carts and clears open cart locks. The ui loses the People field, relabels the row control, tints cards in the cart and uses `IconButton` + `CloseIcon` for Remove. Decisions are in [research.md](./research.md) (R9 to R13).
+
+### Technical Context changes
+
+- **Storage**: writes, unlike the original story. New migration `0008_cart_servings` (revises `0007_cart_and_edit_locks`), tested up, down and up on a scratch database.
+- **Dependencies**: no new library.
+- **Performance**: one query fewer per read (no member count). SC-003 is unchanged.
+- **Scope**: one migration, about 10 api modules, about 8 ui modules, and 14 test files that use People or Meals.
+
+### Files
+
+| Area | Change |
+|---|---|
+| `api/domain/cart.py`, `errors.py` | `scale_factor(servings, base_servings)`; remove `effective_people` and the `PEOPLE_*`, `MEALS_*` constants in favour of `SERVINGS_MIN`, `SERVINGS_MAX` |
+| `api/application/ports.py`, `carts.py`, `shopping_list.py` | Remove `people` and `member_count`; `CartDraftItem.servings`; `AddToDraftService` uses the recipe's base servings |
+| `api/adapters/persistence/models.py`, `carts.py`, `edit_locks.py`, new migration | Column changes; draft JSON uses `servings` and has no `people` |
+| `api/api/routes/carts.py`, `api/api/schemas/carts.py` | Contract in [contracts/cart-servings.md](./contracts/cart-servings.md) |
+| `ui/lib/cartClient.ts`, `cartFactor.ts`, `i18n/cart.ts` | Fields, `formatFactor(servings, base)`, `servings` label, `removeRecipe(title)`; remove `meals`, `people`, and `remove` if unused |
+| `ui/components/Cart/CartView.tsx`, `CartEntryRow.tsx`, `CartScreen.tsx` | Remove the People field; `onServingsChange`; close icon button |
+| `ui/components/RecipeCard/RecipeCard.tsx`, `ui/app/globals.css` | Selected background from a new `--card-selected` token |
+
+`ui/lib/i18n/landing.ts` keeps its everyday use of "meals" and "people".
+
+### Constitution Check (amendment)
+
+| Principle | Result |
+|---|---|
+| 1. Simplicity and reuse | Pass. Removes a concept; reuses `IconButton`, `CloseIcon` and the `color-mix` token pattern. |
+| 2. Tech stack | Pass. No new dependency. |
+| 3. Hexagonal | Pass. The factor stays in `domain/`, and the default stays in `application/`. |
+| 4. Security and privacy | Pass. Access checks do not change. |
+| 5. No AI shortcuts | Pass. No model involved. |
+| 6. Testing | Pass. Each layer's tests are updated, and conversion is tested on the migration. |
+| 7. Deployment | Pass. The migration runs through the existing step. |
+| 8. Git discipline | Pass. One Alembic migration with a downgrade. |
+| 9. Scope | Pass with a note: the owner put this in S-023 on 2026-10-30. The PRD and spec 022 are updated as part of the work. |
+
+Post-design re-check: unchanged. No unjustified violation.
+
+### Documents to update during implementation
+
+PRD §1.6 (`cart`, `cart_item`), J4, J5 step 1, AC5.2, Appendix A (Cart, CartItem) and the people-default decision in Appendix D; spec 022 (note that this amendment supersedes its People and Meals text); `dev/docs/backlog.yaml` S-022 and S-023.

@@ -6,7 +6,7 @@ export type CartEntry = {
   notebook_id: string;
   notebook_name: string;
   base_servings: number;
-  meals: number;
+  servings: number;
   factor: string;
 };
 
@@ -19,16 +19,12 @@ export type CartEditor = {
 };
 
 export type CartDraft = {
-  people: number;
-  people_is_default: boolean;
   entries: CartEntry[];
   dropped_recipe_ids: string[];
 };
 
 export type Cart = {
   kitchen_id: string;
-  people: number;
-  people_is_default: boolean;
   entries: CartEntry[];
   editor: CartEditor | null;
   draft: CartDraft | null;
@@ -38,9 +34,7 @@ export type Cart = {
 };
 
 export type CartDraftBody = {
-  /** Null keeps following the member count. */
-  people: number | null;
-  items: { recipe_id: string; meals: number }[];
+  items: { recipe_id: string; servings: number }[];
 };
 
 /**
@@ -62,7 +56,6 @@ function asCart(data: unknown): Cart | null {
   const cart = data as Partial<Record<keyof Cart, unknown>>;
   if (
     typeof cart.kitchen_id !== "string" ||
-    typeof cart.people !== "number" ||
     !Array.isArray(cart.entries) ||
     typeof cart.can_edit !== "boolean"
   ) {

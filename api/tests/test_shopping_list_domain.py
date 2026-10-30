@@ -64,7 +64,7 @@ def test_ac51_flour_in_two_units_is_one_line() -> None:
 
 
 def test_ac52_count_is_rounded_up_after_scaling() -> None:
-    # base servings 4, People 3, Meals 1: factor 3/4, 2 eggs → 1.5 → 2
+    # base servings 4, Servings 3: factor 3/4, 2 eggs → 1.5 → 2
     result = build_shopping_list([recipe(1, "A", Fraction(3, 4), line("egg", 2, "unit"))])
     assert shown(result) == [("egg", None, (("2", "unit"),))]
     assert result.lines[0].kind == "count"

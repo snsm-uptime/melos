@@ -71,3 +71,34 @@ No `NEEDS CLARIFICATION` remains from the spec. Each item below is a decision th
 
 - **Decision**: SC-004 is covered by a table of 20 invented carts in `test_shopping_list_domain.py`, each with a hand-calculated expected result written in the test (no code that recomputes the answer). SC-003 is covered by an integration test that builds 100 recipes × 20 lines, counts SQL statements (as spec 022's 100-entry test does) and asserts a fixed small bound.
 - **Rationale**: Constitution §6; spec 022 already has the statement-count pattern. Invented names only (§4).
+
+## Amendment 2026-10-30: cart by servings
+
+### R9. Rename the column, not add one
+
+**Decision**: Rename `cart_item.meals` to `servings`, update the values in place, and drop `cart.people`.
+**Rationale**: The number has one meaning after the change, and FR-017 asks for no leftovers.
+**Alternatives considered**: Keeping `people` hidden (leaves dead logic, against FR-017); keeping the column name `meals` (misleading).
+
+### R10. Conversion of saved carts
+
+**Decision**: `servings = LEAST(99, COALESCE(cart.people, GREATEST(member count, 1)) * meals)`. Downgrade restores `meals = servings` and `people = 1`.
+**Rationale**: Keeps every amount the same up to the cap (SC-008). The downgrade also keeps amounts, though it cannot restore the original split or the "follows member count" state.
+**Alternatives considered**: Resetting to base servings (silently changes saved lists).
+
+### R11. Open drafts
+
+**Decision**: The migration deletes all `cart_edit_lock` rows, so drafts in progress are discarded and the locks freed.
+**Rationale**: The spec allows it, the draft lives for minutes, and rewriting JSONB during a deploy adds risk for little value. Recipe edit locks are not touched.
+**Alternatives considered**: Rewriting draft JSON with the conversion.
+
+### R12. Default Servings
+
+**Decision**: `AddToDraftService` sets Servings to the recipe's base servings, read through the kitchen-recipe check it already does. `servings` has no server default, so no write can miss it. Recipes have no upper limit on base servings, so the default is `min(base_servings, 99)`; a recipe above 99 starts below factor 1.
+**Rationale**: FR-015; a database default could not know the recipe.
+
+### R13. Selected card and remove button
+
+**Decision**: Add `--card-selected: color-mix(in srgb, var(--accent) 12%, var(--surface))` next to the menu tokens, and apply it when `cart.inCart` is true. Remove uses `IconButton` with `tone="danger"`, `CloseIcon` and the label `removeRecipe(title)`.
+**Rationale**: `inCart` already follows the draft for the editor (`cartRecipeIds`), so FR-020 needs no new data. Personal notebook cards have no `cart` prop and do not change. The `color-mix` token follows both themes; contrast is checked in the browser walk.
+**Alternatives considered**: `--menu-item-selected` (a menu token, and 22% is heavier than a card needs).

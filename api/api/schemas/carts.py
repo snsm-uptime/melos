@@ -15,7 +15,7 @@ class CartEntryResponse(BaseModel):
     notebook_id: UUID
     notebook_name: str
     base_servings: int
-    meals: int
+    servings: int
     factor: str
 
 
@@ -26,16 +26,12 @@ class EditorResponse(BaseModel):
 
 
 class CartDraftResponse(BaseModel):
-    people: int
-    people_is_default: bool
     entries: list[CartEntryResponse]
     dropped_recipe_ids: list[UUID]
 
 
 class CartResponse(BaseModel):
     kitchen_id: UUID
-    people: int
-    people_is_default: bool
     entries: list[CartEntryResponse]
     editor: EditorResponse | None
     draft: CartDraftResponse | None
@@ -49,11 +45,10 @@ class CartSaveResponse(CartResponse):
 class CartDraftItemBody(BaseModel):
     recipe_id: UUID
     # Checked by the use case, so a bad value answers invalid_value with its field.
-    meals: object = None
+    servings: object = None
 
 
 class CartDraftBody(BaseModel):
-    people: object = None
     items: list[CartDraftItemBody] = Field(max_length=MAX_ITEMS)
 
 
@@ -68,7 +63,7 @@ def _entry(entry: CartEntryView) -> CartEntryResponse:
         notebook_id=entry.notebook_id,
         notebook_name=entry.notebook_name,
         base_servings=entry.base_servings,
-        meals=entry.meals,
+        servings=entry.servings,
         factor=entry.factor,
     )
 
@@ -85,8 +80,6 @@ def _draft(draft: CartDraftView | None) -> CartDraftResponse | None:
     if draft is None:
         return None
     return CartDraftResponse(
-        people=draft.people,
-        people_is_default=draft.people_is_default,
         entries=[_entry(e) for e in draft.entries],
         dropped_recipe_ids=list(draft.dropped_recipe_ids),
     )
@@ -95,8 +88,6 @@ def _draft(draft: CartDraftView | None) -> CartDraftResponse | None:
 def cart_response(view: CartView) -> CartResponse:
     return CartResponse(
         kitchen_id=view.kitchen_id,
-        people=view.people,
-        people_is_default=view.people_is_default,
         entries=[_entry(e) for e in view.entries],
         editor=editor_response(view.editor),
         draft=_draft(view.draft),

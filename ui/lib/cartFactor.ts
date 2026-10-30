@@ -1,5 +1,5 @@
 /**
- * The cart's scale factor, people × meals / base servings, formatted as the api does
+ * The cart's scale factor, servings / base servings, formatted as the api does
  * (domain/cart.py): half-up to 2 decimals, trailing zeros removed. Integer arithmetic, so the
  * draft shows exactly what the saved cart will.
  */
@@ -7,9 +7,9 @@
 export const COUNT_MIN = 1;
 export const COUNT_MAX = 99;
 
-export function formatFactor(people: number, meals: number, base: number): string {
-  // Hundredths, rounded half-up: floor((2n + d) / 2d) with n = people·meals·100, d = base.
-  const numerator = people * meals * 100;
+export function formatFactor(servings: number, base: number): string {
+  // Hundredths, rounded half-up: floor((2n + d) / 2d) with n = servings·100, d = base.
+  const numerator = servings * 100;
   const hundredths = Math.floor((2 * numerator + base) / (2 * base));
   const whole = Math.floor(hundredths / 100);
   const rest = hundredths % 100;

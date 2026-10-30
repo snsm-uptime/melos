@@ -73,13 +73,12 @@ def save_cart(
     client: TestClient,
     kitchen_id: str,
     recipe_ids: list[str],
-    people: int | None = None,
-    meals: int = 1,
+    servings: int = 2,
 ) -> None:
     assert client.post(_cart(kitchen_id, "/edit")).status_code == 200
     put = client.put(
         _cart(kitchen_id, "/draft"),
-        json={"people": people, "items": [{"recipe_id": r, "meals": meals} for r in recipe_ids]},
+        json={"items": [{"recipe_id": r, "servings": servings} for r in recipe_ids]},
     )
     assert put.status_code == 200, put.text
     assert client.post(_cart(kitchen_id, "/save")).status_code == 200
@@ -112,7 +111,7 @@ def test_combined_scaled_list_has_the_contract_shape(
 ) -> None:
     people, kitchen_id, _, bread, pancakes = bread_and_pancakes(client, db_session)
     ana = people.as_("ana")
-    save_cart(ana, kitchen_id, [bread, pancakes], people=4)  # base 4 → factor 1
+    save_cart(ana, kitchen_id, [bread, pancakes], servings=4)  # base 4 → factor 1
 
     response = ana.get(_list(kitchen_id))
 
@@ -131,15 +130,15 @@ def test_combined_scaled_list_has_the_contract_shape(
     assert set(flour["recipes"][0]) == {"recipe_id", "title"}
 
 
-def test_amounts_follow_people_and_meals(client: TestClient, db_session: Session) -> None:
+def test_amounts_follow_servings(client: TestClient, db_session: Session) -> None:
     people, kitchen_id, _, bread, pancakes = bread_and_pancakes(client, db_session)
     ana = people.as_("ana")
-    save_cart(ana, kitchen_id, [pancakes], people=3)  # factor 3/4: 1.5 eggs → 2
+    save_cart(ana, kitchen_id, [pancakes], servings=3)  # factor 3/4: 1.5 eggs → 2
     assert shown(ana.get(_list(kitchen_id)).json()) == [
         ("egg", None, (("2", "unit"),)),
         ("flour", None, (("0.75", "cup"),)),
     ]
-    save_cart(ana, kitchen_id, [pancakes], people=3, meals=2)  # factor 3/2: 3 eggs, 1.5 cup
+    save_cart(ana, kitchen_id, [pancakes], servings=6)  # factor 3/2: 3 eggs, 1.5 cup
     assert shown(ana.get(_list(kitchen_id)).json()) == [
         ("egg", None, (("3", "unit"),)),
         ("flour", None, (("1.5", "cup"),)),
@@ -156,7 +155,7 @@ def test_rice_in_two_kinds_and_onions_by_size(client: TestClient, db_session: Se
         ana, notebook_id, "B", [measured("rice", 1, "cup"), measured("onion", 1, "unit", "large")]
     )
     c = recipe(ana, notebook_id, "C", [measured("onion", 1, "unit", "small")])
-    save_cart(ana, kitchen_id, [a, b, c], people=4)
+    save_cart(ana, kitchen_id, [a, b, c], servings=4)
 
     body = ana.get(_list(kitchen_id)).json()
 
@@ -174,7 +173,7 @@ def test_preparation_is_ignored(client: TestClient, db_session: Session) -> None
     ana = people.as_("ana")
     a = recipe(ana, notebook_id, "A", [{**measured("onion", 1, "unit"), "preparation": "chopped"}])
     b = recipe(ana, notebook_id, "B", [{**measured("onion", 1, "unit"), "preparation": "sliced"}])
-    save_cart(ana, kitchen_id, [a, b], people=4)
+    save_cart(ana, kitchen_id, [a, b], servings=4)
     assert shown(ana.get(_list(kitchen_id)).json()) == [("onion", None, (("2", "unit"),))]
 
 
@@ -199,7 +198,7 @@ def test_an_empty_cart_is_empty(client: TestClient, db_session: Session) -> None
 def test_archived_kitchen_can_still_be_read(client: TestClient, db_session: Session) -> None:
     people, kitchen_id, _, bread, _ = bread_and_pancakes(client, db_session)
     ana = people.as_("ana")
-    save_cart(ana, kitchen_id, [bread], people=4)
+    save_cart(ana, kitchen_id, [bread], servings=4)
     assert ana.post(f"/kitchens/{kitchen_id}/archive").status_code == 200
     response = people.as_("ben").get(_list(kitchen_id))
     assert response.status_code == 200
@@ -209,14 +208,14 @@ def test_archived_kitchen_can_still_be_read(client: TestClient, db_session: Sess
 def test_reading_the_list_changes_nothing(client: TestClient, db_session: Session) -> None:
     people, kitchen_id, _, bread, pancakes = bread_and_pancakes(client, db_session)
     ana = people.as_("ana")
-    save_cart(ana, kitchen_id, [bread, pancakes], people=4)
+    save_cart(ana, kitchen_id, [bread, pancakes], servings=4)
 
     def snapshot() -> tuple:
         db_session.expire_all()
         return (
             db_session.execute(
                 select(
-                    CartItemModel.recipe_id, CartItemModel.meals, CartItemModel.added_at
+                    CartItemModel.recipe_id, CartItemModel.servings, CartItemModel.added_at
                 ).order_by(CartItemModel.recipe_id)
             ).all(),
             db_session.execute(
@@ -247,7 +246,7 @@ def test_a_cart_of_100_recipes_with_20_lines_reads_fast_in_few_statements(
     cart_id = uuid4()
     db_session.add(CartModel(id=cart_id, kitchen_id=UUID(kitchen_id)))
     db_session.flush()
-    db_session.add_all(CartItemModel(cart_id=cart_id, recipe_id=rid, meals=1) for rid in ids)
+    db_session.add_all(CartItemModel(cart_id=cart_id, recipe_id=rid, servings=1) for rid in ids)
     units = ("g", "cup", "tbsp", "unit")
     db_session.add_all(
         RecipeIngredientModel(
@@ -293,7 +292,7 @@ def test_chips_list_the_recipes_of_a_line_in_cart_order(
 ) -> None:
     people, kitchen_id, _, bread, pancakes = bread_and_pancakes(client, db_session)
     ana = people.as_("ana")
-    save_cart(ana, kitchen_id, [bread, pancakes], people=4)
+    save_cart(ana, kitchen_id, [bread, pancakes], servings=4)
 
     body = ana.get(_list(kitchen_id)).json()
 
@@ -312,7 +311,7 @@ def test_two_recipes_with_the_same_title_are_two_chips(
     ana = people.as_("ana")
     first = recipe(ana, notebook_id, "Soup", [measured("salt", 1, "tsp")])
     second = recipe(ana, notebook_id, "Soup", [measured("salt", 1, "tsp")])
-    save_cart(ana, kitchen_id, [first, second], people=4)
+    save_cart(ana, kitchen_id, [first, second], servings=4)
 
     chips = ana.get(_list(kitchen_id)).json()["lines"][0]["recipes"]
 
@@ -330,7 +329,7 @@ def test_vague_lines_go_to_your_call_once_per_ingredient(
     ana = people.as_("ana")
     a = recipe(ana, notebook_id, "A", [vague("salt", "a pinch"), vague("butter", "to taste")])
     b = recipe(ana, notebook_id, "B", [vague("salt", "to taste"), measured("butter", 100, "g")])
-    save_cart(ana, kitchen_id, [a, b], people=4)
+    save_cart(ana, kitchen_id, [a, b], servings=4)
 
     body = ana.get(_list(kitchen_id)).json()
 
@@ -347,11 +346,11 @@ def test_vague_lines_go_to_your_call_once_per_ingredient(
     assert [r["title"] for r in butter["recipes"]] == ["A"]
 
 
-def test_vague_lines_are_not_scaled_by_people(client: TestClient, db_session: Session) -> None:
+def test_vague_lines_are_not_scaled_by_servings(client: TestClient, db_session: Session) -> None:
     people, kitchen_id, notebook_id = _home(client, db_session)
     ana = people.as_("ana")
     a = recipe(ana, notebook_id, "A", [vague("pepper", "a pinch")])
-    save_cart(ana, kitchen_id, [a], people=40, meals=9)
+    save_cart(ana, kitchen_id, [a], servings=99)
     body = ana.get(_list(kitchen_id)).json()
     assert body["lines"] == []
     assert body["your_call"][0]["notes"] == ["a pinch"]
@@ -360,10 +359,10 @@ def test_vague_lines_are_not_scaled_by_people(client: TestClient, db_session: Se
 # --- US4 ------------------------------------------------------------------------------------
 
 
-def _draft(client: TestClient, kitchen_id: str, recipe_ids: list[str], people: int | None) -> None:
+def _draft(client: TestClient, kitchen_id: str, recipe_ids: list[str], servings: int) -> None:
     put = client.put(
         _cart(kitchen_id, "/draft"),
-        json={"people": people, "items": [{"recipe_id": r, "meals": 1} for r in recipe_ids]},
+        json={"items": [{"recipe_id": r, "servings": servings} for r in recipe_ids]},
     )
     assert put.status_code == 200, put.text
 
@@ -373,9 +372,9 @@ def test_the_editor_sees_the_draft_and_another_member_the_saved_cart(
 ) -> None:
     people, kitchen_id, _, _, pancakes = bread_and_pancakes(client, db_session)
     ana = people.as_("ana")
-    save_cart(ana, kitchen_id, [pancakes], people=4)
+    save_cart(ana, kitchen_id, [pancakes], servings=4)
     assert ana.post(_cart(kitchen_id, "/edit")).status_code == 200
-    _draft(ana, kitchen_id, [pancakes], people=8)
+    _draft(ana, kitchen_id, [pancakes], servings=8)
 
     mine = shown(people.as_("ana").get(_list(kitchen_id)).json())
     theirs = shown(people.as_("ben").get(_list(kitchen_id)).json())
@@ -389,22 +388,22 @@ def test_discard_returns_the_editor_to_the_saved_list_and_save_shows_to_everyone
 ) -> None:
     people, kitchen_id, _, _, pancakes = bread_and_pancakes(client, db_session)
     ana = people.as_("ana")
-    save_cart(ana, kitchen_id, [pancakes], people=4)
+    save_cart(ana, kitchen_id, [pancakes], servings=4)
 
     ana.post(_cart(kitchen_id, "/edit"))
-    _draft(ana, kitchen_id, [pancakes], people=8)
+    _draft(ana, kitchen_id, [pancakes], servings=8)
     assert ana.delete(_cart(kitchen_id, "/edit")).status_code == 204
     assert shown(ana.get(_list(kitchen_id)).json())[0] == ("egg", None, (("2", "unit"),))
 
     ana.post(_cart(kitchen_id, "/edit"))
-    _draft(ana, kitchen_id, [pancakes], people=8)
+    _draft(ana, kitchen_id, [pancakes], servings=8)
     assert ana.post(_cart(kitchen_id, "/save")).status_code == 200
     for name in ("ana", "ben"):
         body = people.as_(name).get(_list(kitchen_id)).json()
         assert shown(body) == [("egg", None, (("4", "unit"),)), ("flour", None, (("2", "cup"),))]
 
 
-def test_changing_people_changes_every_amount_and_counts_round_up_again(
+def test_changing_servings_changes_every_amount_and_counts_round_up_again(
     client: TestClient, db_session: Session
 ) -> None:
     people, kitchen_id, _, _, pancakes = bread_and_pancakes(client, db_session)
@@ -416,7 +415,7 @@ def test_changing_people_changes_every_amount_and_counts_round_up_again(
         8: (("4", "unit"), ("2", "cup")),
     }
     for count, (egg, flour) in expected.items():
-        save_cart(ana, kitchen_id, [pancakes], people=count)
+        save_cart(ana, kitchen_id, [pancakes], servings=count)
         assert shown(ana.get(_list(kitchen_id)).json()) == [
             ("egg", None, (egg,)),
             ("flour", None, (flour,)),
@@ -428,7 +427,7 @@ def test_an_edited_recipe_shows_its_new_ingredients_on_the_next_read(
 ) -> None:
     people, kitchen_id, _, _, pancakes = bread_and_pancakes(client, db_session)
     ana = people.as_("ana")
-    save_cart(ana, kitchen_id, [pancakes], people=4)
+    save_cart(ana, kitchen_id, [pancakes], servings=4)
     assert shown(ana.get(_list(kitchen_id)).json())[1] == ("flour", None, (("1", "cup"),))
 
     db_session.execute(
@@ -447,7 +446,7 @@ def test_a_recipe_deleted_from_the_cart_never_reaches_the_list(
 ) -> None:
     people, kitchen_id, _, bread, pancakes = bread_and_pancakes(client, db_session)
     ana = people.as_("ana")
-    save_cart(ana, kitchen_id, [bread, pancakes], people=4)
+    save_cart(ana, kitchen_id, [bread, pancakes], servings=4)
     assert ana.delete(f"/recipes/{pancakes}").status_code in (200, 204)
     assert shown(ana.get(_list(kitchen_id)).json()) == [("flour", None, (("3", "tbsp"),))]
 
@@ -458,7 +457,7 @@ def test_reading_the_list_never_keeps_the_editors_lock_alive(
     people, kitchen_id, _, _, pancakes = bread_and_pancakes(client, db_session)
     ana = people.as_("ana")
     ana.post(_cart(kitchen_id, "/edit"))
-    _draft(ana, kitchen_id, [pancakes], people=4)
+    _draft(ana, kitchen_id, [pancakes], servings=4)
 
     def last_active() -> object:
         db_session.expire_all()

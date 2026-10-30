@@ -1,4 +1,4 @@
-"""Cart rules (spec 022): the people default, the scale factor and the edit-lock idle limit.
+"""Cart rules (spec 022): the servings range, the scale factor and the edit-lock idle limit.
 The shopping list built from a cart (spec 023) lives here too.
 
 Pure: no I/O, no FastAPI, no SQLAlchemy.
@@ -18,8 +18,8 @@ from uuid import UUID
 
 from domain.errors import CartValueError
 
-PEOPLE_MIN = MEALS_MIN = 1
-PEOPLE_MAX = MEALS_MAX = 99
+SERVINGS_MIN = 1
+SERVINGS_MAX = 99
 
 # A lock ends this long after its holder's last activity (research R10).
 LOCK_IDLE = timedelta(minutes=5)
@@ -27,16 +27,9 @@ LOCK_IDLE = timedelta(minutes=5)
 LOCK_WARN = timedelta(minutes=1)
 
 
-def effective_people(saved: int | None, member_count: int) -> int:
-    """The saved people number, or the kitchen's member count while none is saved (FR-002)."""
-    if saved is not None:
-        return saved
-    return min(max(member_count, PEOPLE_MIN), PEOPLE_MAX)
-
-
-def scale_factor(people: int, meals: int, base_servings: int) -> Fraction:
-    """people × meals / base servings, exact."""
-    return Fraction(people * meals, base_servings)
+def scale_factor(servings: int, base_servings: int) -> Fraction:
+    """servings / base servings, exact."""
+    return Fraction(servings, base_servings)
 
 
 def format_factor(value: Fraction) -> str:
@@ -50,7 +43,7 @@ def check_count(value: object, field: str) -> int:
     """A whole number from 1 to 99, else CartValueError(field). A bool is not a number here."""
     if isinstance(value, bool) or not isinstance(value, int):
         raise CartValueError(field)
-    if not PEOPLE_MIN <= value <= PEOPLE_MAX:
+    if not SERVINGS_MIN <= value <= SERVINGS_MAX:
         raise CartValueError(field)
     return value
 

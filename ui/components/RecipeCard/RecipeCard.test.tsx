@@ -52,6 +52,17 @@ describe("RecipeCard", () => {
     expect(container.querySelector("a, button, input")).toBeNull();
   });
 
+  it("tints only a card in the cart and keeps the button's state", () => {
+    render({ cart: { inCart: true, onToggle: () => {} } });
+    const card = () => container.querySelector("article") as HTMLElement;
+    expect(card().className).toContain("bg-[var(--card-selected)]");
+    expect(container.querySelector('button[aria-pressed="true"]')).not.toBeNull();
+    render({ cart: { inCart: false, onToggle: () => {} } });
+    expect(card().className).not.toContain("card-selected");
+    render();
+    expect(card().className).not.toContain("card-selected");
+  });
+
   it("shows the notebook name only when asked", () => {
     render();
     expect(container.textContent).not.toContain("Home");

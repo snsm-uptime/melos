@@ -38,3 +38,16 @@
 - A total that rounds to 0 at 2 decimals (for example 0.25 tsp at factor 1/99) shows as `0`, as FR-006 reads literally (research R5, open edge).
 - Vague notes are compared after trimming and ignoring letter case, and the first spelling is shown (research R7).
 - The ui fetches the list inside a cancellable effect keyed on the cart state, which drops stale answers and keeps the previous list on screen while the next one loads. The eslint rule `react-hooks/set-state-in-effect` rejected the first version, which called a local async function from the effect.
+
+## Amendment 2026-10-30: cart by servings
+
+- Migration `0008_cart_servings`: tested in `api/tests/test_cart_servings_migration.py` (People × Meals, member-count default, cap at 99, locks cleared, downgrade, upgrade again). It is not applied to the dev database by this work.
+- api, Compose test overlay: see the backlog verification. Only the 5 baseline tests fail. ruff: the same baseline errors, in `test_notebook*.py` only.
+- ui: 947 tests passed; lint and typecheck clean.
+- The `recipe_edit_lock` part of T051 is not asserted: the migration's only lock statement targets `cart_edit_lock`.
+- Tests were updated with the code rather than strictly first (T051 to T072).
+- The existing `ui/components/IconButton` has `tone="danger"`, used for Remove.
+
+### Not done
+
+- T078's browser walk, `quickstart.md` amendment section: selected card contrast in both themes, `CountField` error at 360 px, keyboard and screen reader on the close button, Spanish wording "Porciones". Also T047 and T048 above, which now apply to the servings version.

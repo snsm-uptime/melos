@@ -138,7 +138,7 @@ def test_add_save_see_and_remove(client: TestClient, db_session: Session) -> Non
     empty = ana.get(_url(kitchen_id))
     assert empty.status_code == 200, empty.text
     body = empty.json()
-    assert body["entries"] == [] and body["people"] == 2 and body["people_is_default"]
+    assert body["entries"] == [] and "people" not in body
     assert body["editor"] is None and body["can_edit"]
 
     a = _save(ana, notebook_id, "A")
@@ -151,9 +151,9 @@ def test_add_save_see_and_remove(client: TestClient, db_session: Session) -> Non
     saved = ana.post(_url(kitchen_id, "/save"))
     assert saved.status_code == 200, saved.text
     entries = ana.get(_url(kitchen_id)).json()["entries"]
-    assert [(e["title"], e["meals"], e["factor"]) for e in entries] == [
-        ("A", 1, "0.5"),
-        ("B", 1, "0.5"),
+    assert [(e["title"], e["servings"], e["factor"]) for e in entries] == [
+        ("A", 4, "1"),
+        ("B", 4, "1"),
     ]
 
     assert ana.delete(_url(kitchen_id, f"/draft/items/{a}")).status_code == 200
@@ -189,39 +189,20 @@ def test_discard_is_idempotent(client: TestClient, db_session: Session) -> None:
 # --- US2 ------------------------------------------------------------------------------------
 
 
-def test_people_meals_and_factor(client: TestClient, db_session: Session) -> None:
+def test_servings_and_factor(client: TestClient, db_session: Session) -> None:
     people, kitchen_id, notebook_id = _home(client, db_session)
     ana = people.as_("ana")
     a = _save(ana, notebook_id)
     ana.post(_url(kitchen_id, "/edit"))
-    put = ana.put(
-        _url(kitchen_id, "/draft"), json={"people": 3, "items": [{"recipe_id": a, "meals": 2}]}
-    )
+    put = ana.put(_url(kitchen_id, "/draft"), json={"items": [{"recipe_id": a, "servings": 6}]})
     assert put.status_code == 200, put.text
-    bad = ana.put(
-        _url(kitchen_id, "/draft"), json={"people": 3, "items": [{"recipe_id": a, "meals": 0}]}
-    )
+    bad = ana.put(_url(kitchen_id, "/draft"), json={"items": [{"recipe_id": a, "servings": 0}]})
     assert bad.status_code == 422 and bad.json()["code"] == "invalid_value"
-    assert bad.json()["field"] == "meals"
+    assert bad.json()["field"] == "servings"
     draft = ana.get(_url(kitchen_id)).json()["draft"]
-    assert draft["entries"][0]["meals"] == 2 and draft["people"] == 3
+    assert draft["entries"][0]["servings"] == 6
     ana.post(_url(kitchen_id, "/save"))
     assert ana.get(_url(kitchen_id)).json()["entries"][0]["factor"] == "1.5"
-
-
-def test_default_people_follows_members_until_saved(
-    client: TestClient, db_session: Session
-) -> None:
-    people, kitchen_id, _ = _home(client, db_session)
-    _join(db_session, kitchen_id, people.register("cat"))
-    ana = people.as_("ana")
-    assert ana.get(_url(kitchen_id)).json()["people"] == 3
-    ana.post(_url(kitchen_id, "/edit"))
-    ana.put(_url(kitchen_id, "/draft"), json={"people": 4, "items": []})
-    ana.post(_url(kitchen_id, "/save"))
-    _join(db_session, kitchen_id, people.register("dan"))
-    body = people.as_("ana").get(_url(kitchen_id)).json()
-    assert body["people"] == 4 and not body["people_is_default"]
 
 
 # --- US3 ------------------------------------------------------------------------------------
@@ -311,12 +292,12 @@ def test_deletes_cascade_out_of_the_cart(client: TestClient, db_session: Session
     ana.post(_url(kitchen_id, "/edit"))
     ana.put(
         _url(kitchen_id, "/draft"),
-        json={"people": 3, "items": [{"recipe_id": a, "meals": 1}, {"recipe_id": b, "meals": 1}]},
+        json={"items": [{"recipe_id": a, "servings": 1}, {"recipe_id": b, "servings": 1}]},
     )
     ana.post(_url(kitchen_id, "/save"))
     assert ana.delete(f"/recipes/{a}").status_code == 204
     body = ana.get(_url(kitchen_id)).json()
-    assert [e["recipe_id"] for e in body["entries"]] == [b] and body["people"] == 3
+    assert [e["recipe_id"] for e in body["entries"]] == [b]
 
     db_session.delete(db_session.get(NotebookModel, UUID(notebook_id)))
     db_session.flush()
@@ -368,7 +349,7 @@ def test_a_cart_of_100_reads_in_few_statements(
     cart_id = uuid4()
     db_session.add(CartModel(id=cart_id, kitchen_id=UUID(kitchen_id)))
     db_session.flush()
-    db_session.add_all(CartItemModel(cart_id=cart_id, recipe_id=rid, meals=1) for rid in ids)
+    db_session.add_all(CartItemModel(cart_id=cart_id, recipe_id=rid, servings=2) for rid in ids)
     db_session.flush()
 
     statements: list[str] = []

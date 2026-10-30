@@ -69,6 +69,7 @@
   /* Dropdown rows: tint --surface so --foreground stays readable. Hover < selected. */
   --menu-item-hover: color-mix(in srgb, var(--accent) 10%, var(--surface));
   --menu-item-selected: color-mix(in srgb, var(--accent) 22%, var(--surface));
+  --card-selected: color-mix(in srgb, var(--accent) 12%, var(--surface));
 
   /* Soft-Ledger spacing (4px rhythm + named locks) */
   --space-1: 4px;

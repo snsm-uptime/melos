@@ -430,7 +430,6 @@ class CartModel(Base):
 
     __tablename__ = "cart"
     __table_args__ = (
-        CheckConstraint("people IS NULL OR people BETWEEN 1 AND 99", name="ck_cart_people"),
         UniqueConstraint("kitchen_id", name="uq_cart_kitchen_id"),
     )
 
@@ -442,8 +441,6 @@ class CartModel(Base):
         ForeignKey("kitchens.id", ondelete="CASCADE"),
         nullable=False,
     )
-    # Null: follow the kitchen's member count (FR-002).
-    people: Mapped[int | None] = mapped_column(Integer, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -454,7 +451,7 @@ class CartModel(Base):
 
 class CartItemModel(Base):
     __tablename__ = "cart_item"
-    __table_args__ = (CheckConstraint("meals BETWEEN 1 AND 99", name="ck_cart_item_meals"),)
+    __table_args__ = (CheckConstraint("servings BETWEEN 1 AND 99", name="ck_cart_item_servings"),)
 
     cart_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("cart.id", ondelete="CASCADE"), primary_key=True
@@ -462,7 +459,7 @@ class CartItemModel(Base):
     recipe_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("recipe.id", ondelete="CASCADE"), primary_key=True
     )
-    meals: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+    servings: Mapped[int] = mapped_column(Integer, nullable=False)
     added_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -36,8 +36,10 @@ type State =
 
 function body(draft: LocalDraft) {
   return {
-    people: draft.peopleIsDefault ? null : draft.people,
-    items: draft.entries.map((entry) => ({ recipe_id: entry.recipe_id, meals: entry.meals })),
+    items: draft.entries.map((entry) => ({
+      recipe_id: entry.recipe_id,
+      servings: entry.servings,
+    })),
   };
 }
 

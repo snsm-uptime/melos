@@ -364,12 +364,11 @@ class LockAccess:
 @dataclass(frozen=True, slots=True)
 class CartDraftItem:
     recipe_id: UUID
-    meals: int
+    servings: int
 
 
 @dataclass(frozen=True, slots=True)
 class CartDraft:
-    people: int | None
     items: tuple[CartDraftItem, ...]
 
 
@@ -387,7 +386,6 @@ class CartRecipeFacts:
 @dataclass(frozen=True, slots=True)
 class SavedCart:
     kitchen_id: UUID
-    people: int | None
     # In added order.
     items: tuple[CartDraftItem, ...]
 
@@ -398,17 +396,15 @@ class CartRepository(Protocol):
         ...
 
     def read(self, kitchen_id: UUID) -> SavedCart:
-        """The saved cart; no row reads as SavedCart(kitchen_id, None, ())."""
+        """The saved cart; no row reads as SavedCart(kitchen_id, ())."""
         ...
-
-    def member_count(self, kitchen_id: UUID) -> int: ...
 
     def recipe_facts(self, recipe_ids: Sequence[UUID]) -> dict[UUID, CartRecipeFacts]:
         """Facts of the recipes that exist; missing ids are absent."""
         ...
 
     def save(self, kitchen_id: UUID, draft: CartDraft, user_id: UUID) -> tuple[UUID, ...]:
-        """Replace items and people, raise cart_add_count by 1 for each recipe not in the
+        """Replace the items, raise cart_add_count by 1 for each recipe not in the
         saved items, and return the newly added ids."""
         ...
 

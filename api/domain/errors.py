@@ -364,7 +364,7 @@ class NotEditingError(DomainError):
 
 
 class CartValueError(DomainError):
-    """Raised when people or meals is not a whole number from 1 to 99, or a recipe repeats."""
+    """Raised when servings is not a whole number from 1 to 99, or a recipe repeats."""
 
     MESSAGE = "Enter a whole number from 1 to 99."
     CODE = "invalid_value"

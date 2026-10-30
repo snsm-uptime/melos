@@ -19,7 +19,6 @@ from domain.cart import (
     ShoppingLine,
     ShoppingList,
     build_shopping_list,
-    effective_people,
     scale_factor,
 )
 from domain.errors import KitchenNotFoundError
@@ -38,7 +37,6 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True, slots=True)
 class _SeenCart:
-    people: int | None
     items: tuple[CartDraftItem, ...]
     is_draft: bool
 
@@ -71,7 +69,6 @@ class GetShoppingListService:
             raise KitchenNotFoundError()
 
         seen = self._cart_seen_by(ref, kitchen_id)
-        people = effective_people(seen.people, self._carts.member_count(kitchen_id))
         items = seen.items
         if not items:
             return ShoppingListView(is_empty=True, shopping_list=build_shopping_list([]))
@@ -88,7 +85,7 @@ class GetShoppingListService:
                 ScaledRecipe(
                     recipe_id=fact.recipe_id,
                     title=fact.title,
-                    factor=scale_factor(people, item.meals, fact.base_servings),
+                    factor=scale_factor(item.servings, fact.base_servings),
                     lines=tuple(
                         ShoppingLine(
                             name=line.name,
@@ -121,6 +118,6 @@ class GetShoppingListService:
         if holder is not None and holder.session_id == ref.session_id:
             draft = self._locks.cart_draft(kitchen_id, ref.session_id)
             if draft is not None:
-                return _SeenCart(draft.people, draft.items, is_draft=True)
+                return _SeenCart(draft.items, is_draft=True)
         saved = self._carts.read(kitchen_id)
-        return _SeenCart(saved.people, saved.items, is_draft=False)
+        return _SeenCart(saved.items, is_draft=False)

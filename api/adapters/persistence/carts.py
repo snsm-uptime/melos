@@ -20,7 +20,6 @@ from sqlalchemy.orm import Session
 from adapters.persistence.models import (
     CartItemModel,
     CartModel,
-    KitchenMembershipModel,
     NotebookModel,
     RecipeIngredientModel,
     RecipeModel,
@@ -35,11 +34,11 @@ class SqlAlchemyCartRepository:
 
     def _items(self, cart_id: uuid.UUID) -> tuple[CartDraftItem, ...]:
         rows = self._db.execute(
-            select(CartItemModel.recipe_id, CartItemModel.meals)
+            select(CartItemModel.recipe_id, CartItemModel.servings)
             .where(CartItemModel.cart_id == cart_id)
             .order_by(CartItemModel.added_at, CartItemModel.recipe_id)
         ).all()
-        return tuple(CartDraftItem(recipe_id=r, meals=m) for r, m in rows)
+        return tuple(CartDraftItem(recipe_id=r, servings=s) for r, s in rows)
 
     def get_or_create_for_update(self, kitchen_id: uuid.UUID) -> SavedCart:
         self._db.execute(
@@ -51,25 +50,13 @@ class SqlAlchemyCartRepository:
             select(CartModel).where(CartModel.kitchen_id == kitchen_id).with_for_update()
         )
         assert row is not None
-        return SavedCart(kitchen_id, row.people, self._items(row.id))
+        return SavedCart(kitchen_id, self._items(row.id))
 
     def read(self, kitchen_id: uuid.UUID) -> SavedCart:
-        row = self._db.execute(
-            select(CartModel.id, CartModel.people).where(CartModel.kitchen_id == kitchen_id)
-        ).first()
-        if row is None:
-            return SavedCart(kitchen_id, None, ())
-        return SavedCart(kitchen_id, row[1], self._items(row[0]))
-
-    def member_count(self, kitchen_id: uuid.UUID) -> int:
-        return (
-            self._db.scalar(
-                select(func.count())
-                .select_from(KitchenMembershipModel)
-                .where(KitchenMembershipModel.kitchen_id == kitchen_id)
-            )
-            or 0
-        )
+        cart_id = self._db.scalar(select(CartModel.id).where(CartModel.kitchen_id == kitchen_id))
+        if cart_id is None:
+            return SavedCart(kitchen_id, ())
+        return SavedCart(kitchen_id, self._items(cart_id))
 
     def recipe_facts(self, recipe_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, CartRecipeFacts]:
         if not recipe_ids:
@@ -110,7 +97,7 @@ class SqlAlchemyCartRepository:
                     {
                         "cart_id": cart_id,
                         "recipe_id": item.recipe_id,
-                        "meals": item.meals,
+                        "servings": item.servings,
                         # Kept items keep their place; new ones go last in draft order.
                         "added_at": before.get(item.recipe_id) or now + (position * _MICRO),
                     }
@@ -120,7 +107,7 @@ class SqlAlchemyCartRepository:
         self._db.execute(
             update(CartModel)
             .where(CartModel.id == cart_id)
-            .values(people=draft.people, updated_at=func.now(), updated_by=user_id)
+            .values(updated_at=func.now(), updated_by=user_id)
         )
         if added:
             self._db.execute(

@@ -62,7 +62,9 @@ export function RecipeCard({ recipe, locale, showNotebook = false, from, cart }:
   const c = cartMessages[locale];
   return (
     <article
-      className={`relative flex min-w-0 items-center gap-[var(--space-3)] rounded-[var(--radius-md)] border border-border bg-surface p-[var(--space-3)]${
+      className={`relative flex min-w-0 items-center gap-[var(--space-3)] rounded-[var(--radius-md)] border border-border ${
+        cart?.inCart ? "bg-[var(--card-selected)]" : "bg-surface"
+      } p-[var(--space-3)]${
         // The title link's overlay makes the whole card the target; show that it is one.
         from ? " cursor-pointer transition-colors hover:border-accent focus-within:border-accent" : ""
       }`}
