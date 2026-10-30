@@ -16,9 +16,19 @@ vi.mock("@/components/PreferencesProvider", () => ({
 
 import { AppShell } from "@/components/AppShell";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
+import { KitchenCartCountProvider, usePublishKitchenCartCount } from "./cartCount";
 import { KitchenDetailChrome, type KitchenShare } from "./KitchenDetailChrome";
 
 const t = kitchensMessages.en;
+
+type CartProp = { href: string; label: string; locale: "en" | "es" };
+const CART: CartProp = { href: "/kitchens/k1/cart", label: "Cart", locale: "en" };
+
+/** Stands in for the notebooks section, which publishes the cart count. */
+function Publisher({ count }: { count: number | null }) {
+  usePublishKitchenCartCount(count);
+  return null;
+}
 
 const share: KitchenShare = {
   kitchenId: "l1",
@@ -89,7 +99,7 @@ describe("KitchenDetailChrome", () => {
     expect(push).toHaveBeenCalledWith("/home");
   });
 
-  async function renderWith(shareProp?: KitchenShare, cart?: { href: string; label: string }) {
+  async function renderWith(shareProp?: KitchenShare, cart?: CartProp) {
     await act(async () => {
       root.render(
         <AppShell>
@@ -149,7 +159,7 @@ describe("KitchenDetailChrome", () => {
   });
 
   it("puts the cart button before the share button and opens the cart (spec 022)", async () => {
-    await renderWith(share, { href: "/kitchens/k1/cart", label: "Cart" });
+    await renderWith(share, CART);
     const buttons = Array.from(container.querySelectorAll("header button"));
     expect(buttons.map((b) => b.getAttribute("aria-label"))).toEqual([
       "Back",
@@ -163,10 +173,72 @@ describe("KitchenDetailChrome", () => {
   });
 
   it("shows the cart button to a member who is not the owner", async () => {
-    await renderWith(undefined, { href: "/kitchens/k1/cart", label: "Cart" });
+    await renderWith(undefined, CART);
     const labels = Array.from(container.querySelectorAll("header button")).map((b) =>
       b.getAttribute("aria-label"),
     );
     expect(labels).toEqual(["Back", "Cart"]);
+  });
+
+  async function renderWithCount(count: number | null, cart: CartProp = CART) {
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <KitchenCartCountProvider>
+            <KitchenDetailChrome title="Household" cart={cart} />
+            <Publisher count={count} />
+          </KitchenCartCountProvider>
+        </AppShell>,
+      );
+    });
+  }
+
+  function cartButton() {
+    return container.querySelector("header button:not([aria-label=Back])") as HTMLButtonElement;
+  }
+
+  it("shows the number of recipes in a circular badge on the cart icon's bottom right corner", async () => {
+    await renderWithCount(3);
+    const badge = cartButton().querySelector('[role="img"]') as HTMLElement;
+    expect(badge.textContent).toBe("3");
+    expect(badge.getAttribute("aria-label")).toBe("3 recipes");
+    expect(badge.className).toContain("rounded-full");
+    expect(badge.className).toContain("absolute");
+    expect(badge.className).toContain("-bottom-1");
+    expect(badge.className).toContain("-right-1.5");
+    // Anchored to the icon, not to the button.
+    expect(badge.parentElement?.className).toContain("relative");
+    expect(badge.parentElement?.querySelector("svg")).not.toBeNull();
+  });
+
+  it("puts the count in the button's accessible name", async () => {
+    await renderWithCount(1);
+    expect(cartButton().getAttribute("aria-label")).toBe("Cart, 1 recipe");
+  });
+
+  it("names the count in Spanish", async () => {
+    await renderWithCount(2, { ...CART, label: "Carrito", locale: "es" });
+    expect(cartButton().getAttribute("aria-label")).toBe("Carrito, 2 recetas");
+    expect(cartButton().querySelector('[role="img"]')?.getAttribute("aria-label")).toBe("2 recetas");
+  });
+
+  it("shows no badge for an empty or unknown cart", async () => {
+    await renderWithCount(0);
+    expect(cartButton().querySelector('[role="img"]')).toBeNull();
+    expect(cartButton().getAttribute("aria-label")).toBe("Cart");
+
+    await renderWithCount(null);
+    expect(cartButton().querySelector('[role="img"]')).toBeNull();
+  });
+
+  it("follows the count when it changes", async () => {
+    await renderWithCount(1);
+    await renderWithCount(4);
+    expect(cartButton().querySelector('[role="img"]')?.textContent).toBe("4");
+  });
+
+  it("shows no badge without the provider", async () => {
+    await renderWith(undefined, CART);
+    expect(cartButton().querySelector('[role="img"]')).toBeNull();
   });
 });

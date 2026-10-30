@@ -11,6 +11,7 @@ import { notebooksMessages } from "./notebooks";
 import { passwordResetMessages } from "./password-reset";
 import { recipeDetailMessages } from "./recipeDetail";
 import { recipeListMessages } from "./recipeLists";
+import { shoppingListMessages } from "./shoppingList";
 import { signInMessages } from "./signin";
 import { signupMessages } from "./signup";
 import { verifyMessages } from "./verify";
@@ -31,6 +32,7 @@ const SETS: Record<string, { en: unknown; es: unknown }> = {
   passwordReset: passwordResetMessages,
   recipeDetail: recipeDetailMessages,
   recipeLists: recipeListMessages,
+  shoppingList: shoppingListMessages,
   signIn: signInMessages,
   signup: signupMessages,
   verify: verifyMessages,

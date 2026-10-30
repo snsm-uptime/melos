@@ -7,8 +7,12 @@ import { CartIcon, ShareIcon } from "@/app/icons";
 import { ActionDialog } from "@/components/ActionDialog";
 import { Avatar } from "@/components/Avatar";
 import { useChromeHeader } from "@/components/ChromeBack";
+import { Badge } from "@/components/Badge";
 import { IconButton } from "@/components/IconButton";
+import type { Locale } from "@/lib/i18n/locale";
+import { shoppingListMessages } from "@/lib/i18n/shoppingList";
 import { SectionLabel } from "@/components/soft-ledger/SectionLabel";
+import { useKitchenCartCount } from "./cartCount";
 import { InviteForm, type InviteFormMessages } from "./InviteForm";
 import { memberLabel, type KitchenMember } from "./kitchensClient";
 
@@ -32,8 +36,11 @@ type Props = {
   title: string;
   /** Owner only: adds the share button at the end of the chrome and its dialog. */
   share?: KitchenShare;
-  /** Every member: a cart button before the share button that opens the kitchen's cart. */
-  cart?: { href: string; label: string };
+  /**
+   * Every member: a cart button before the share button that opens the kitchen's cart. A circular
+   * badge on its bottom right corner shows how many recipes are in the cart, in the given language.
+   */
+  cart?: { href: string; label: string; locale: Locale };
 };
 
 /** Opts kitchen detail into AppShell Back + title, the cart button and the owner's share button. */
@@ -43,18 +50,36 @@ export function KitchenDetailChrome({ title, share, cart }: Props) {
   const openLabel = share?.labels.open;
   const cartHref = cart?.href;
   const cartLabel = cart?.label;
+  const cartLocale = cart?.locale;
+  const cartCount = useKitchenCartCount();
 
   const trailing = useMemo(
     () =>
       openLabel || cartHref ? (
         <>
-          {cartHref && cartLabel ? (
+          {cartHref && cartLabel && cartLocale ? (
             <IconButton
               type="button"
               variant="ghost"
-              label={cartLabel}
+              label={
+                cartCount
+                  ? `${cartLabel}, ${shoppingListMessages[cartLocale].recipeCount(cartCount)}`
+                  : cartLabel
+              }
               onClick={() => push(cartHref)}
-              icon={<CartIcon className="size-6" />}
+              icon={
+                <span className="relative inline-flex">
+                  <CartIcon className="size-6" />
+                  {cartCount ? (
+                    <Badge
+                      size="sm"
+                      count={cartCount}
+                      label={shoppingListMessages[cartLocale].recipeCount(cartCount)}
+                      className="absolute -bottom-1 -right-1.5 ring-2 ring-background"
+                    />
+                  ) : null}
+                </span>
+              }
             />
           ) : null}
           {openLabel ? (
@@ -69,7 +94,7 @@ export function KitchenDetailChrome({ title, share, cart }: Props) {
           ) : null}
         </>
       ) : undefined,
-    [openLabel, cartHref, cartLabel, push],
+    [openLabel, cartHref, cartLabel, cartLocale, cartCount, push],
   );
 
   useChromeHeader({

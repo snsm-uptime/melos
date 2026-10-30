@@ -16,6 +16,7 @@ import {
   type Cart,
 } from "@/lib/cartClient";
 import { cartMessages } from "@/lib/i18n/cart";
+import { usePublishKitchenCartCount } from "./cartCount";
 import { listAddress, readListAddress } from "@/lib/listAddress";
 import type { Locale } from "@/lib/i18n/locale";
 import { notebooksMessages } from "@/lib/i18n/notebooks";
@@ -75,6 +76,8 @@ export function KitchenNotebooksSection({
   const toast = useToast();
   useCartIdleToasts(kitchenId, cart?.editor, locale, loadCart);
   const inCart = cart ? cartRecipeIds(cart) : null;
+  // The header's cart button shows this count on its badge.
+  usePublishKitchenCartCount(inCart ? inCart.size : null);
   // An archived kitchen's cart cannot change, so its cards get no button.
   const archivedCart = Boolean(cart && !cart.can_edit && !cart.editor);
 

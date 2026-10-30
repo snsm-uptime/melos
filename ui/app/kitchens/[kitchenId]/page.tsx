@@ -7,6 +7,7 @@ import { getApiInternalUrl } from "@/lib/api";
 import { cartMessages } from "@/lib/i18n/cart";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
 import { fetchSession } from "@/lib/session";
+import { KitchenCartCountProvider } from "../cartCount";
 import { KitchenDetailChrome, type KitchenShare } from "../KitchenDetailChrome";
 import { KitchenNotebooksSection } from "../KitchenNotebooksSection";
 import type { KitchenMember } from "../kitchensClient";
@@ -155,18 +156,22 @@ export default async function KitchenDetailPage({
           </p>
         </>
       ) : (
-        <>
+        <KitchenCartCountProvider>
           <KitchenDetailChrome
             title={kitchenTitle as string}
             share={share}
-            cart={{ href: `/kitchens/${encodeURIComponent(kitchenId)}/cart`, label: cartMessages[locale].cart }}
+            cart={{
+              href: `/kitchens/${encodeURIComponent(kitchenId)}/cart`,
+              label: cartMessages[locale].cart,
+              locale,
+            }}
           />
           <KitchenNotebooksSection
             kitchenId={kitchenId}
             isArchived={Boolean(detail?.is_archived)}
             locale={locale}
           />
-        </>
+        </KitchenCartCountProvider>
       )}
     </main>
   );
