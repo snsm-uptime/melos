@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from decimal import Decimal
 from typing import Protocol
 from uuid import UUID
 
@@ -453,4 +454,27 @@ class EditLockRepository(Protocol):
 
     def now(self) -> datetime:
         """The clock liveness uses (database time in the adapter)."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class CartIngredientLine:
+    """One ingredient line of a recipe, as the shopping list reads it (spec 023).
+
+    Either vague (`vague_note` set, `quantity` and `unit` null) or measured (`quantity > 0` and
+    `unit` set). Preparation is not part of it (FR-004).
+    """
+
+    name: str
+    quantity: Decimal | None
+    unit: str | None
+    size: str | None
+    vague_note: str | None
+
+
+class IngredientLineReader(Protocol):
+    """Read only: the ingredient lines of recipes, for the shopping list (spec 023)."""
+
+    def lines_for(self, recipe_ids: Sequence[UUID]) -> dict[UUID, tuple[CartIngredientLine, ...]]:
+        """Each recipe's lines in `position` order; a recipe with no lines is absent or empty."""
         ...

@@ -19,6 +19,9 @@ const { client } = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/cartClient", () => client);
 
+const { shopping } = vi.hoisted(() => ({ shopping: { fetchShoppingList: vi.fn() } }));
+vi.mock("@/lib/shoppingListClient", () => shopping);
+
 import { ToastProvider, ToastViewport } from "@/components/Toast";
 
 import { CartScreen, DRAFT_DEBOUNCE_MS } from "./CartScreen";
@@ -52,6 +55,23 @@ describe("CartScreen", () => {
     replace.mockReset();
     for (const fn of Object.values(client)) fn.mockReset();
     client.fetchCart.mockResolvedValue({ ok: true, value: cart({ entries: [entry("a")] }) });
+    shopping.fetchShoppingList.mockReset();
+    shopping.fetchShoppingList.mockResolvedValue({
+      ok: true,
+      value: {
+        is_empty: false,
+        lines: [
+          {
+            name: "flour",
+            kind: "volume",
+            size: null,
+            amounts: [{ quantity: "1", unit: "cup" }],
+            recipes: [],
+          },
+        ],
+        your_call: [],
+      },
+    });
   });
   afterEach(() => {
     view.unmount();
@@ -72,6 +92,49 @@ describe("CartScreen", () => {
     await render();
     expect(client.fetchCart).toHaveBeenCalledWith("k1");
     expect(view.container.textContent).toContain("Recipe a");
+  });
+
+  it("shows the shopping list below the cart's recipes", async () => {
+    await render();
+    expect(shopping.fetchShoppingList).toHaveBeenCalledWith("k1");
+    const text = view.container.textContent ?? "";
+    expect(text).toContain("Shopping list");
+    expect(text).toContain("flour — 1 cup");
+    expect(text.indexOf("Recipe a")).toBeLessThan(text.indexOf("Shopping list"));
+  });
+
+  it("fetches the shopping list again after starting an edit and after each draft answer", async () => {
+    client.startCartEdit.mockResolvedValue({ ok: true, value: editing });
+    // Each api answer is a new object, as parsed JSON always is.
+    client.putCartDraft.mockImplementation(async () => ({ ok: true, value: { ...editing } }));
+    await render();
+    expect(shopping.fetchShoppingList).toHaveBeenCalledTimes(1);
+
+    click(view.container, "Edit");
+    await flush();
+    expect(shopping.fetchShoppingList).toHaveBeenCalledTimes(2);
+
+    const meals = view.container.querySelectorAll("input")[1] as HTMLInputElement;
+    type(meals, "3");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DRAFT_DEBOUNCE_MS);
+    });
+    expect(client.putCartDraft).toHaveBeenCalledTimes(1);
+    expect(shopping.fetchShoppingList).toHaveBeenCalledTimes(3);
+  });
+
+  it("fetches the shopping list again after a discard", async () => {
+    client.startCartEdit.mockResolvedValue({ ok: true, value: editing });
+    client.discardCart.mockResolvedValue({ ok: true, value: true });
+    await render();
+    click(view.container, "Edit");
+    await flush();
+    const before = shopping.fetchShoppingList.mock.calls.length;
+
+    click(view.container, "Discard");
+    await flush();
+
+    expect(shopping.fetchShoppingList.mock.calls.length).toBeGreaterThan(before);
   });
 
   it("shows the not-found text on 404", async () => {

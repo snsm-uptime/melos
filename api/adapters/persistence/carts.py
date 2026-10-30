@@ -6,7 +6,13 @@ import uuid
 from collections.abc import Sequence
 from datetime import timedelta
 
-from application.ports import CartDraft, CartDraftItem, CartRecipeFacts, SavedCart
+from application.ports import (
+    CartDraft,
+    CartDraftItem,
+    CartIngredientLine,
+    CartRecipeFacts,
+    SavedCart,
+)
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
@@ -16,6 +22,7 @@ from adapters.persistence.models import (
     CartModel,
     KitchenMembershipModel,
     NotebookModel,
+    RecipeIngredientModel,
     RecipeModel,
 )
 
@@ -122,3 +129,34 @@ class SqlAlchemyCartRepository:
                 .values(cart_add_count=RecipeModel.cart_add_count + 1)
             )
         return added
+
+
+class SqlAlchemyIngredientLineReader:
+    """Ingredient lines for the shopping list, all recipes in one query (spec 023 research R4)."""
+
+    def __init__(self, db: Session) -> None:
+        self._db = db
+
+    def lines_for(
+        self, recipe_ids: Sequence[uuid.UUID]
+    ) -> dict[uuid.UUID, tuple[CartIngredientLine, ...]]:
+        if not recipe_ids:
+            return {}
+        rows = self._db.execute(
+            select(
+                RecipeIngredientModel.recipe_id,
+                RecipeIngredientModel.name,
+                RecipeIngredientModel.quantity,
+                RecipeIngredientModel.unit,
+                RecipeIngredientModel.size,
+                RecipeIngredientModel.vague_note,
+            )
+            .where(RecipeIngredientModel.recipe_id.in_(list(recipe_ids)))
+            .order_by(RecipeIngredientModel.recipe_id, RecipeIngredientModel.position)
+        ).all()
+        grouped: dict[uuid.UUID, list[CartIngredientLine]] = {}
+        for recipe_id, name, quantity, unit, size, vague_note in rows:
+            grouped.setdefault(recipe_id, []).append(
+                CartIngredientLine(name, quantity, unit, size, vague_note)
+            )
+        return {recipe_id: tuple(lines) for recipe_id, lines in grouped.items()}
