@@ -14,7 +14,6 @@ describe("account i18n", () => {
       "system",
       "signOut",
       "passwordReset",
-      "navAccount",
       "loading",
       "saveLanguageFailed",
       "saveThemeFailed",
@@ -26,8 +25,4 @@ describe("account i18n", () => {
     }
   });
 
-  it("keeps Account title (not Settings)", () => {
-    expect(accountMessages.en.title.toLowerCase()).toBe("account");
-    expect(accountMessages.es.title.toLowerCase()).toBe("cuenta");
-  });
 });

@@ -54,6 +54,7 @@ fi
 
 compose_require_env "$ROOT"
 compose_require_files "$ROOT"
+compose_require_free_pgdata "$ROOT"
 
 UP_ARGS=(up --build)
 if [[ "$DETACH" == "1" ]]; then

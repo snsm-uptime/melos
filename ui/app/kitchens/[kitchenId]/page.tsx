@@ -8,7 +8,11 @@ import { cartMessages } from "@/lib/i18n/cart";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
 import { fetchSession } from "@/lib/session";
 import { KitchenCartCountProvider } from "../cartCount";
-import { KitchenDetailChrome, type KitchenShare } from "../KitchenDetailChrome";
+import {
+  KitchenDetailChrome,
+  type KitchenManage,
+  type KitchenShare,
+} from "../KitchenDetailChrome";
 import { KitchenNotebooksSection } from "../KitchenNotebooksSection";
 import type { KitchenMember } from "../kitchensClient";
 import styles from "../kitchens.module.scss";
@@ -77,6 +81,7 @@ export default async function KitchenDetailPage({
   let detail: DetailPayload | null = null;
   let members: KitchenMember[] = [];
   let membersLoadError = false;
+  let defaultKitchenId: string | null = null;
   let notFound = false;
   let loadError = false;
   try {
@@ -90,11 +95,16 @@ export default async function KitchenDetailPage({
     if (response.status === 404) {
       notFound = true;
     } else if (response.ok) {
-      const [detailData, membersRes] = await Promise.all([
+      const [detailData, membersRes, panelRes] = await Promise.all([
         response.json() as Promise<DetailPayload>,
         fetch(`${getApiInternalUrl()}/kitchens/${encodeURIComponent(kitchenId)}/members`, requestInit),
+        fetch(`${getApiInternalUrl()}/side-panel`, requestInit),
       ]);
       detail = detailData;
+      if (panelRes.ok) {
+        const panel = (await panelRes.json()) as { default_kitchen_id?: string | null };
+        defaultKitchenId = panel.default_kitchen_id ?? null;
+      }
       if (membersRes.ok) {
         members = asMembers(await membersRes.json());
         membersLoadError = members.length === 0;
@@ -144,6 +154,15 @@ export default async function KitchenDetailPage({
       }
     : undefined;
 
+  const manage: KitchenManage = {
+    kitchenId,
+    name: kitchenTitle ?? "",
+    isOwner,
+    isArchived: Boolean(detail?.is_archived),
+    isDefault: defaultKitchenId === kitchenId,
+    locale,
+  };
+
   return (
     <main className={styles.detailMain}>
       {notFound || !showKitchenDetail ? (
@@ -160,6 +179,7 @@ export default async function KitchenDetailPage({
           <KitchenDetailChrome
             title={kitchenTitle as string}
             share={share}
+            manage={manage}
             cart={{
               href: `/kitchens/${encodeURIComponent(kitchenId)}/cart`,
               label: cartMessages[locale].cart,

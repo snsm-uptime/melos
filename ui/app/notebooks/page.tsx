@@ -10,11 +10,6 @@ export default async function NotebookPage() {
   const locale = await getServerLocale();
 
   return (
-    <NotebookTabScreen
-      locale={locale}
-      viewerAlias={me.alias}
-      userId={me.user_id}
-      photoBase64={me.photo_base64}
-    />
+    <NotebookTabScreen locale={locale} viewerAlias={me.alias} />
   );
 }

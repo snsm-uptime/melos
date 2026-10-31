@@ -1,24 +1,23 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  panelEntryFromPath,
   showsAppChrome,
   showsFloatingLanguageSwitch,
   showsLanguageSwitch,
-  tabKeyFromPath,
 } from "./appChrome";
 
 describe("showsAppChrome", () => {
-  it("keeps the tab bar on authenticated product surfaces", () => {
+  it("keeps the side panel on authenticated product surfaces", () => {
     expect(showsAppChrome("/home")).toBe(true);
     expect(showsAppChrome("/kitchens/abc")).toBe(true);
-    expect(showsAppChrome("/account")).toBe(true);
     expect(showsAppChrome("/notebooks")).toBe(true);
     expect(showsAppChrome("/notebooks/nb-1")).toBe(true);
     expect(showsAppChrome("/recipes/r1")).toBe(true);
     expect(showsAppChrome("/recipes/r1/edit")).toBe(true);
   });
 
-  it("hides the tab bar on auth, setup and removed finance routes", () => {
+  it("hides the side panel on auth, setup and removed finance routes", () => {
     expect(showsAppChrome("/")).toBe(false);
     expect(showsAppChrome("/sign-in")).toBe(false);
     expect(showsAppChrome("/signup")).toBe(false);
@@ -31,24 +30,21 @@ describe("showsAppChrome", () => {
   });
 });
 
-describe("tabKeyFromPath", () => {
-  it("marks Home active on home and kitchen detail", () => {
-    expect(tabKeyFromPath("/home")).toBe("home");
-    expect(tabKeyFromPath("/kitchens/abc")).toBe("home");
+describe("panelEntryFromPath", () => {
+  it("marks nothing on /home and the kitchen under any kitchen path", () => {
+    expect(panelEntryFromPath("/home")).toBeUndefined();
+    expect(panelEntryFromPath("/kitchens/k1/cart")).toBe("kitchen:k1");
   });
 
-  it("marks Account from its route", () => {
-    expect(tabKeyFromPath("/account")).toBe("account");
+  it("marks another kitchen, also while the default is unknown", () => {
+    expect(panelEntryFromPath("/kitchens/k2/cart")).toBe("kitchen:k2");
+    expect(panelEntryFromPath("/kitchens/k2")).toBe("kitchen:k2");
   });
 
-  it("marks Notebook on the tab and its sub-paths", () => {
-    expect(tabKeyFromPath("/notebooks")).toBe("notebook");
-    expect(tabKeyFromPath("/notebooks/nb-1")).toBe("notebook");
-  });
-
-  it("marks Notebook on a recipe's detail and edit pages", () => {
-    expect(tabKeyFromPath("/recipes/r1")).toBe("notebook");
-    expect(tabKeyFromPath("/recipes/r1/edit")).toBe("notebook");
+  it("marks Notebooks on notebooks and on a recipe's pages", () => {
+    expect(panelEntryFromPath("/notebooks")).toBe("notebooks");
+    expect(panelEntryFromPath("/notebooks/nb-1")).toBe("notebooks");
+    expect(panelEntryFromPath("/recipes/r1/edit")).toBe("notebooks");
   });
 });
 

@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep -n \"label\\\\|^  [a-z_]*:$\" api/domain/categories.yaml)"
+      "Bash(grep -n \"label\\\\|^  [a-z_]*:$\" api/domain/categories.yaml)",
+      "Bash(python3 -)",
+      "Bash(python3 -c \"import yaml;yaml.safe_load\\(open\\('dev/docs/backlog.yaml'\\)\\)\")"
     ]
   }
 }

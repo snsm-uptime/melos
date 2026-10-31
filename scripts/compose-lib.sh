@@ -161,6 +161,42 @@ compose_lite_run() {
   )
 }
 
+# MELOS_DATA as Compose sees it: .env may write it with ${HOME}, $HOME or ~.
+compose_data_root() {
+  local value
+  value="$(compose_env_get MELOS_DATA "$1/.env")"
+  value="${value:-$HOME/melos}"
+  value="${value/#\~/$HOME}"
+  value="${value//\$\{HOME\}/$HOME}"
+  value="${value//\$HOME/$HOME}"
+  echo "${value%/}"
+}
+
+# Refuse to start when a running container of another Compose project uses this
+# checkout's Postgres data directory: two servers on one directory corrupt it.
+# A different project name does not separate bind mounts.
+compose_require_free_pgdata() {
+  local root="$1" project data_root pgdata id mount other
+  project="$(compose_env_get MELOS_COMPOSE_NAME "$root/.env")"
+  project="${project:-melos}"
+  data_root="$(compose_data_root "$root")"
+  pgdata="$data_root/pgdata"
+
+  while IFS= read -r id; do
+    [[ -n "$id" ]] || continue
+    other="$(docker inspect -f '{{index .Config.Labels "com.docker.compose.project"}}' "$id")"
+    [[ "$other" == "$project" ]] && continue
+    while IFS= read -r mount; do
+      if [[ "$mount" == "$pgdata" ]]; then
+        echo "Refusing to start: $pgdata is already in use by" >&2
+        echo "container $(docker inspect -f '{{.Name}}' "$id") (project ${other:-none})." >&2
+        echo "Stop that stack, or give this checkout its own MELOS_DATA in .env." >&2
+        exit 1
+      fi
+    done < <(docker inspect -f '{{range .Mounts}}{{println .Source}}{{end}}' "$id")
+  done < <(docker ps -q)
+}
+
 compose_run() {
   local root="$1"
   shift

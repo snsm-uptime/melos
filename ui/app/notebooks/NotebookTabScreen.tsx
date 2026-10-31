@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AddRecipeCallToAction } from "@/components/AddRecipeCallToAction";
-import { ChromeAvatarLink } from "@/components/ChromeAvatarLink";
 import { useChromeHeader } from "@/components/ChromeBack";
 import { NotebookCard } from "@/components/NotebookCard/NotebookCard";
 import { SavedNotice } from "@/components/RecipeDraft/SavedNotice";
@@ -30,18 +29,13 @@ type TabState =
 export function NotebookTabScreen({
   locale,
   viewerAlias,
-  userId,
-  photoBase64,
 }: {
   locale: Locale;
   viewerAlias: string | null;
-  userId: string;
-  photoBase64: string | null;
 }) {
   const t = notebooksMessages[locale];
   // A top-level tab root, like Home: the avatar leads and the title sits in the shared header.
   useChromeHeader({
-    leading: <ChromeAvatarLink alias={viewerAlias} userId={userId} photoBase64={photoBase64} />,
     title: t.title,
   });
   const router = useRouter();

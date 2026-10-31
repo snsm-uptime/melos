@@ -292,3 +292,11 @@ body {
 *::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
 }
+
+/* Side panel: the slide speed and the sizes its absolute offsets depend on. */
+:root {
+  --panel-slide: 300ms;
+  --panel-width-open: 16rem;
+  --panel-width-closed: 3.75rem;
+  --panel-target: 2.75rem;
+}

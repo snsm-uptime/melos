@@ -169,9 +169,17 @@ A wallet body with a folded flap tucked into its top edge and a clasp dot cut ou
 - Style: Fill-based
 - Accepts: className, SVG element props
 
-### HomeIcon
+### StarIcon
 
-A house outline with a door. Used for the Home tab in the app's tab bar.
+A five-point star. Outline by default, solid with `filled`. Marks the default kitchen in the side panel.
+
+- ViewBox: `0 0 24 24`
+- Style: Stroke-based, fill optional
+- Accepts: className, filled, SVG element props
+
+### SettingsIcon
+
+Two slider lines. Used for the Settings entry in the side panel.
 
 - ViewBox: `0 0 24 24`
 - Style: Stroke-based

@@ -90,7 +90,7 @@ The MCP service is a separate container that exposes tools for external AI provi
 | `domain/` (pure, no I/O) | `recipe.py` (Unit, Size, Dimension, validation rules) · `cart.py` (scale + consolidate) · `ingredient_catalog.py` (name normalization, merge rules, normalizing a copied recipe against the target catalog) · `toon.py` (TOON encoder for our fixed shapes) · `render.py` (`to_markdown`, `to_embed_text`) · `kitchen.py`, `membership.py`, `invite.py` (from finance's lists) · `notebook.py` (owner, members, kitchen links; reuses the membership and invite rules) |
 | `application/` | `ports.py`: `RecipeExtractor`, `Embedder`, `ChatModel`, `PageFetcher`, `PdfRenderer`, repositories · use cases: `capture_recipe`, `recipes`, `ingredients`, `vocabulary`, `carts`, `shopping_list`, `conversations`, `exports`, `kitchens`, `invites`, `notebooks`, `notebook_invites` + reused auth use cases |
 | `adapters/` | `llm/gemini.py` (extract, chat, embed — `google-genai` SDK) · `web/page_fetcher.py` + `web/jsonld.py` · `pdf/weasyprint.py` + `templates/` + `fonts/` · `persistence/` (SQLAlchemy, Alembic, pgvector) · `email/` (reused) |
-| `api/routes/` | `auth` (reused), `kitchens`, `members`, `invites`, `notebooks`, `notebook-invites`, `recipes`, `drafts`, `ingredients`, `recipe-vocabulary`, `sources`, `carts`, `shopping-list`, `conversations`, `messages`, `exports`, `health` |
+| `api/routes/` | `auth` (reused), `kitchens`, `side-panel`, `members`, `invites`, `notebooks`, `notebook-invites`, `recipes`, `drafts`, `ingredients`, `recipe-vocabulary`, `sources`, `carts`, `shopping-list`, `conversations`, `messages`, `exports`, `health` |
 
 Recipes and the ingredient catalog belong to a notebook (`notebook_id`). There are two kinds (decided 2026-10-23, flow H): a **personal notebook** is created by a person, its owner, other people join it as notebook members through a notebook invite, and it is visible only to them; a **kitchen notebook** belongs to one kitchen, and every member of that kitchen reads and writes it while they belong to the kitchen. A personal notebook is never shown in a kitchen; it is added to one as a snapshot, an independent copy. Kitchen membership, kitchen invites, kitchen notebooks, the cart, the shopping list and conversations belong to a kitchen (`kitchen_id`). Access is checked in `application/`, the same way finance checks list access. A user who may not see a kitchen or a notebook gets `404`, not `403`, so the response doesn't reveal that it exists.
 
@@ -194,6 +194,7 @@ invite(id, kitchen_id, email, token_hash, invited_by, expires_at, accepted_at)
 notebook(id, name, kitchen_id?, source_notebook_id?, created_at)     kitchen_id set: a kitchen notebook, which belongs to that kitchen (several per kitchen); null: a personal notebook. source_notebook_id: the notebook a snapshot came from (FK notebook.id, ON DELETE SET NULL), an origin label only
 notebook_membership(notebook_id, user_id, role: owner|member, created_at)   personal notebooks only; pk(notebook_id, user_id); exactly one owner per personal notebook
 notebook_invite(id, notebook_id, email, token_hash, invited_by, expires_at, accepted_at)   personal notebooks only; same rules as invite
+users.default_kitchen_id (nullable, FK kitchens.id, ON DELETE SET NULL)  the kitchen Home opens; resolved on read and stored: the stored kitchen if active and the person belongs to it, else their earliest-created active owned kitchen, else their earliest-joined active kitchen, else null (spec 064)
 users.default_notebook_id (nullable, FK notebook.id, ON DELETE SET NULL)  the person's default personal notebook, named "{alias}'s Notebook"; null until their first visit to it, which creates it silently, and again after the notebook is deleted
 ingredient(id, notebook_id, name, created_at)                         unique(notebook_id, name); a catalog is a set of unique normalized names
 source(id, user_id, type: text|url|photo, url, raw_text, created_at)
@@ -306,6 +307,7 @@ The user's input (text, URL or photo) is never lost on error.
 
 ### 1.10 Shared UI components
 
+- **Side panel** (`SidePanel`, spec 064). One left panel replaces the bottom bar on every authenticated page, in this order: avatar, alias with recipe count, Home, other kitchens A to Z, Notebooks, log out. From `md` up it is icons only when closed and icons with labels when open, remembered per device. On phones it is a drawer over the content, opened from the header.
 - **Add-recipe call to action** (`AddRecipeCallToAction`). A rounded-corner placeholder rectangle with a plus icon at its centre. Every page that lets a user add a recipe uses it; the first uses are a person's notebook (the Notebook tab in the bottom bar) and a kitchen's Notebook tab (J2). Tapping it opens the add-recipe options dialog: a vertical list separated by dividers, with no confirm or cancel buttons, in this order: URL (disabled, not implemented yet), Picture (disabled, "coming soon", until S-041), Text (opens the text sheet). The option list lives in this component only.
 - Built on the existing `ActionDialog` (its confirm and cancel props become optional) and `Sheet`. The picture sheet, when built (S-041), has an inner dashed border of about 2rem with the text "Upload file or drag and drop".
 
@@ -328,7 +330,7 @@ The user signs up, signs in, signs out, resets their password by email and edits
 ### J1 · Kitchen and members
 - Every user gets "My kitchen" on sign up. They can create more, rename them and choose `content_language` (default `en`).
 - The owner invites by email. The invitee signs up or signs in and lands in that kitchen.
-- A kitchen switcher in the app shell remembers the last kitchen opened.
+- The left side panel lists the person's kitchens: Home opens their default kitchen, and opening any kitchen records it as the last one opened (spec 064).
 - **Edge cases:**
   - The last owner cannot leave or be demoted.
   - Changing `content_language` after recipes exist shows a warning: existing names are not translated.
@@ -354,7 +356,7 @@ The user signs up, signs in, signs out, resets their password by email and edits
 - **AC1a.4** Adding Ana's notebook to kitchen Home as a snapshot creates a Home notebook with copies of its recipes, labelled as coming from Ana's notebook; editing a recipe in either one does not change the other.
 
 ### J2 · Capture a recipe
-- **Entry:** in a notebook (the member's notebook from the Notebook tab in the bottom bar, or a kitchen's Notebook tab), a placeholder image rectangle (standard rounded corners) below the page header shows a plus icon at its centre. Tapping it opens an options dialog with no confirm or cancel buttons: a vertical list separated by dividers, in this order:
+- **Entry:** in a notebook (the member's notebook from Notebooks in the left side panel, or a kitchen's Notebook tab), a placeholder image rectangle (standard rounded corners) below the page header shows a plus icon at its centre. Tapping it opens an options dialog with no confirm or cancel buttons: a vertical list separated by dividers, in this order:
   - **URL:** a link to one recipe page. Shown but disabled until built.
   - **Picture:** one image of a cookbook page (JPEG/PNG/HEIC, up to 10 MB). Shown but disabled, marked "coming soon", until S-041. The upload sheet has an inner dashed border (about 2rem thick) with the text "Upload file or drag and drop".
   - **Text:** a free description. Opens a text sheet with the paste input and submit control.
@@ -405,6 +407,7 @@ The user signs up, signs in, signs out, resets their password by email and edits
   - An empty cart disables export and shows a hint to add recipes.
   - A recipe deleted while in the cart disappears from it.
 - **One editor at a time** (spec 022, decided 2026-10-29): one member at a time changes the cart, through a draft that only Save shows to the others. The others see the saved cart and "{alias} is editing the cart". The lock belongs to the editor's session and ends on save, discard, sign-out, session end, 5 minutes without activity, or loss of access to the kitchen. While editing, the member sees an editing bar on the Cart page; elsewhere, toasts above the tab bar (a refused add while someone else edits, and the idle warning).
+- **Toasts** sit at the bottom of the content area, with the safe-area padding (spec 064).
 
 ### J5 · Shop (shopping list)
 **Consolidation (`domain/cart.py`, pure):**
@@ -622,6 +625,7 @@ steps[3]: "Fry the garlic in oil.","Add the tomato and cook 5 minutes.","Add the
 - **✓ Name of a kitchen notebook made with the kitchen or on a first capture** (2026-10-23): "{alias}'s ({kitchen name}) Notebook".
 - **✓ A deleted recipe in a past chat citation** (2026-10-22): the citation keeps its text and shows "recipe removed" in place of the link.
 - **✓ Cart servings and single editor** (2026-10-29, spec 022; amended 2026-10-30, spec 023): each cart recipe has its own Servings, starting at its base servings, and the cart has no People number; the cart and each recipe are edited by one session at a time, and the lock ends on save, discard, sign-out, session end, 5 minutes idle, or lost access.
+- **✓ Navigation** (2026-10-30, spec 064): a left side panel replaces the bottom bar and the kitchens list. Each person has one default kitchen, and kitchen actions moved to the kitchen header row and a "+" in the panel.
 - **✓ Categories** (2026-10-27): main ingredients and cuisines are out of the MVP and moved to *Later* (Appendix E). The 2026-10-22 decision (no category table, ids stored on the recipe) is kept there.
 
 ## Appendix E · Deferred: main ingredients and cuisines (out of the MVP, 2026-10-27)
