@@ -1,4 +1,4 @@
-import type { ShoppingLine, YourCallEntry } from "./shoppingListClient";
+import type { HandItem, ShoppingLine, YourCallEntry } from "./shoppingListClient";
 
 /**
  * A measured line as the member reads it (spec 023 FR-009): `{name}[, {size}] — {amounts}`.
@@ -16,4 +16,11 @@ export function formatLine(line: ShoppingLine): string {
 /** A "Your call" entry (spec 023 FR-007): the name, then every distinct note joined with ", ". */
 export function formatYourCall(entry: YourCallEntry): string {
   return `${entry.name} — ${entry.notes.join(", ")}`;
+}
+
+/** An item added by hand: its name, then its amount when it has one (spec 025). */
+export function formatHandItem(item: HandItem): string {
+  if (item.quantity === null) return item.name;
+  const amount = item.unit === "unit" ? item.quantity : `${item.quantity} ${item.unit}`;
+  return `${item.name} — ${amount}`;
 }

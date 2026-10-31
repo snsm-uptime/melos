@@ -372,3 +372,54 @@ class CartValueError(DomainError):
     def __init__(self, field: str) -> None:
         super().__init__(self.MESSAGE)
         self.field = field
+
+
+class ShoppingItemError(DomainError):
+    """Raised when an item added by hand breaks a line rule (spec 025 FR-003)."""
+
+    MESSAGE = "Check the item's name and amount."
+    CODE = "invalid_item"
+
+    def __init__(self, field: str) -> None:
+        super().__init__(self.MESSAGE)
+        self.field = field
+
+
+class ShoppingItemNotFoundError(DomainError):
+    """Raised for an unknown item, a cart line or an item of a closed list (spec 025)."""
+
+    MESSAGE = "Item not found."
+    CODE = "item_not_found"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class ShoppingListNotFoundError(DomainError):
+    """Raised for a list that is not a closed list of this kitchen (spec 025 FR-011)."""
+
+    MESSAGE = "Shopping list not found."
+    CODE = "list_not_found"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class ShoppingListNotActiveError(DomainError):
+    """Raised when Done names a list that is no longer the active one (spec 025 FR-008)."""
+
+    MESSAGE = "This list is already closed."
+    CODE = "list_not_active"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class ShoppingListEmptyError(DomainError):
+    """Raised when Done is pressed on a list with no items (spec 025 FR-007)."""
+
+    MESSAGE = "This list has no items."
+    CODE = "list_empty"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)

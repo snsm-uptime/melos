@@ -3,8 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { PencilIcon } from "@/app/icons";
 import { useChromeHeader } from "@/components/ChromeBack";
-import { useToastDock } from "@/components/Toast";
+import { IconButton } from "@/components/IconButton";
+import { useToast, useToastDock } from "@/components/Toast";
 
 import {
   discardCart,
@@ -17,6 +19,7 @@ import {
 } from "@/lib/cartClient";
 import type { Locale } from "@/lib/i18n/locale";
 import { cartMessages } from "@/lib/i18n/cart";
+import { shoppingListMessages } from "@/lib/i18n/shoppingList";
 
 import styles from "@/app/notebooks/notebooks.module.scss";
 
@@ -51,6 +54,7 @@ function body(draft: LocalDraft) {
 export function CartScreen({ kitchenId, locale }: { kitchenId: string; locale: Locale }) {
   const t = cartMessages[locale];
   const router = useRouter();
+  const toast = useToast();
   const [state, setState] = useState<State>({ status: "loading" });
   const [draft, setDraft] = useState<LocalDraft | null>(null);
   const [dropped, setDropped] = useState(0);
@@ -58,7 +62,6 @@ export function CartScreen({ kitchenId, locale }: { kitchenId: string; locale: L
   const [pending, setPending] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const queued = useRef<LocalDraft | null>(null);
-  useChromeHeader({ backHref: `/kitchens/${encodeURIComponent(kitchenId)}`, title: t.cart });
 
   const show = useCallback((cart: Cart, keepDraft = false) => {
     setState({ status: "ready", cart });
@@ -166,9 +169,29 @@ export function CartScreen({ kitchenId, locale }: { kitchenId: string; locale: L
     state.status === "ready" && state.cart.editor?.is_me ? state.cart.editor.idle_expires_at : null;
   const editing = state.status === "ready" && Boolean(state.cart.editor?.is_me);
   // The bar keeps one element between renders; its actions read the latest handlers.
-  const actions = useRef({ save, discard, load });
+  const actions = useRef({ edit, save, discard, load });
   useEffect(() => {
-    actions.current = { save, discard, load };
+    actions.current = { edit, save, discard, load };
+  });
+  const canStartEdit = state.status === "ready" && state.cart.can_edit && !editing;
+  const trailing = useMemo(
+    () =>
+      canStartEdit ? (
+        <IconButton
+          type="button"
+          variant="ghost"
+          label={t.edit}
+          disabled={pending}
+          onClick={() => void actions.current.edit()}
+          icon={<PencilIcon className="size-6" />}
+        />
+      ) : null,
+    [canStartEdit, pending, t.edit],
+  );
+  useChromeHeader({
+    backHref: `/kitchens/${encodeURIComponent(kitchenId)}`,
+    title: t.cart,
+    trailing,
   });
   const bar = useMemo(
     () =>
@@ -230,10 +253,17 @@ export function CartScreen({ kitchenId, locale }: { kitchenId: string; locale: L
         locale={locale}
         dropped={dropped}
         pending={pending}
-        onEdit={() => void edit()}
         onDraftChange={change}
       />
-      <ShoppingListSection kitchenId={kitchenId} locale={locale} cart={cart} />
+      <ShoppingListSection
+        kitchenId={kitchenId}
+        locale={locale}
+        cart={cart}
+        onClosed={() => {
+          toast.show({ id: "cart-closed", text: shoppingListMessages[locale].cartClosed });
+          void load();
+        }}
+      />
     </div>
   );
 }

@@ -14,6 +14,10 @@ import { ShoppingListSection } from "./ShoppingListSection";
 function list(over: Partial<ShoppingList> = {}): ShoppingList {
   return {
     is_empty: false,
+    status: "active",
+    list_id: "l1",
+    kitchen_is_archived: false,
+    hand_items: [],
     lines: [
       {
         name: "flour",
@@ -54,7 +58,9 @@ describe("ShoppingListSection", () => {
   afterEach(() => view.unmount());
 
   function render() {
-    view.render(<ShoppingListSection kitchenId="k1" locale="en" cart={cart()} />);
+    view.render(
+      <ShoppingListSection kitchenId="k1" locale="en" cart={cart()} onClosed={() => {}} />,
+    );
   }
 
   it("shows a loading status first, then the lines under the heading", async () => {
@@ -77,15 +83,58 @@ describe("ShoppingListSection", () => {
     expect(client.fetchShoppingList).toHaveBeenCalledWith("k1");
   });
 
-  it("renders nothing at all for an empty cart", async () => {
+  it("offers the item form for an empty cart, with no Done", async () => {
     client.fetchShoppingList.mockResolvedValue({
       ok: true,
-      value: list({ is_empty: true, lines: [] }),
+      value: list({ is_empty: true, lines: [], status: "live", list_id: null }),
+    });
+    render();
+    await settle();
+
+    expect(view.container.querySelector("form")).not.toBeNull();
+    expect(view.container.textContent).not.toContain("Done");
+  });
+
+  it("renders nothing for an empty archived kitchen", async () => {
+    client.fetchShoppingList.mockResolvedValue({
+      ok: true,
+      value: list({
+        is_empty: true,
+        lines: [],
+        status: "live",
+        list_id: null,
+        kitchen_is_archived: true,
+      }),
     });
     render();
     await settle();
 
     expect(view.container.innerHTML).toBe("");
+  });
+
+  it("shows the status and hides Done and the form when archived", async () => {
+    client.fetchShoppingList.mockResolvedValue({
+      ok: true,
+      value: list({ kitchen_is_archived: true }),
+    });
+    render();
+    await settle();
+
+    expect(view.container.textContent).toContain("Saved");
+    expect(view.container.querySelector("form")).toBeNull();
+    expect(view.container.textContent).not.toContain("Done");
+  });
+
+  it("disables Done while I edit the cart", async () => {
+    client.fetchShoppingList.mockResolvedValue({ ok: true, value: list({ status: "draft" }) });
+    render();
+    await settle();
+
+    const done = Array.from(view.container.querySelectorAll("button")).find(
+      (b) => b.textContent === "Done",
+    );
+    expect(done?.disabled).toBe(true);
+    expect(view.container.textContent).toContain("Showing your unsaved cart");
   });
 
   it("shows an error with Retry that fetches again", async () => {
@@ -227,7 +276,7 @@ describe("ShoppingListSection", () => {
 
   it("shows the heading in Spanish", async () => {
     client.fetchShoppingList.mockResolvedValue({ ok: true, value: list() });
-    view.render(<ShoppingListSection kitchenId="k1" locale="es" cart={cart()} />);
+    view.render(<ShoppingListSection kitchenId="k1" locale="es" cart={cart()} onClosed={() => {}} />);
     await settle();
 
     expect(view.container.querySelector("h2")?.textContent).toBe("Lista de compras");
@@ -235,7 +284,9 @@ describe("ShoppingListSection", () => {
 
   describe("following the cart (spec 023 US4)", () => {
     function renderFor(current: ReturnType<typeof cart>) {
-      view.render(<ShoppingListSection kitchenId="k1" locale="en" cart={current} />);
+      view.render(
+        <ShoppingListSection kitchenId="k1" locale="en" cart={current} onClosed={() => {}} />,
+      );
     }
 
     it("fetches again whenever the cart state is replaced", async () => {
@@ -308,7 +359,7 @@ describe("ShoppingListSection", () => {
       expect(view.container.textContent).not.toContain("flour");
     });
 
-    it("renders nothing when the cart becomes empty", async () => {
+    it("drops the lines when the cart becomes empty", async () => {
       client.fetchShoppingList.mockResolvedValueOnce({ ok: true, value: list() });
       renderFor(cart());
       await settle();
@@ -321,7 +372,7 @@ describe("ShoppingListSection", () => {
       renderFor(cart());
       await settle();
 
-      expect(view.container.innerHTML).toBe("");
+      expect(view.container.textContent).not.toContain("flour");
     });
   });
 });

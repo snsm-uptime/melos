@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Protocol
 from uuid import UUID
@@ -12,6 +12,7 @@ from uuid import UUID
 from domain.default_kitchen import MemberKitchen
 from domain.notebook import Notebook, NotebookRole
 from domain.recipe import EditedRecipe, NewRecipe
+from domain.shopping_list import SavedLine, SavedList
 
 # Canonical session TTL (30d).
 # adapters.persistence.sessions re-exports this for SESSION_COOKIE_MAX_AGE.
@@ -389,6 +390,45 @@ class SavedCart:
     kitchen_id: UUID
     # In added order.
     items: tuple[CartDraftItem, ...]
+
+
+class ShoppingListRepository(Protocol):
+    """Saved lists (spec 025). Callers hold the cart row lock, which serializes these writes."""
+
+    def active(self, kitchen_id: UUID) -> SavedList | None:
+        ...
+
+    def get_or_create_active(self, kitchen_id: UUID) -> SavedList:
+        """The active list, created empty when there is none."""
+        ...
+
+    def replace_cart_lines(self, list_id: UUID, lines: Sequence[SavedLine]) -> None:
+        """Replace the rows of origin cart; hand items stay."""
+        ...
+
+    def add_item(self, list_id: UUID, item: SavedLine) -> None:
+        ...
+
+    def remove_hand_item(self, list_id: UUID, item_id: UUID) -> bool:
+        """False when the list holds no such item added by hand."""
+        ...
+
+    def close(self, list_id: UUID, closing_date: date) -> bool:
+        """Set the closing date if still active; False when it was already closed."""
+        ...
+
+    def closed(self, kitchen_id: UUID) -> tuple[SavedList, ...]:
+        """Closed lists, newest first."""
+        ...
+
+    def closed_by_id(self, kitchen_id: UUID, list_id: UUID) -> SavedList | None:
+        ...
+
+
+class ShoppingListRefresher(Protocol):
+    def refresh(self, kitchen_id: UUID) -> None:
+        """Bring the active list in line with the saved cart (spec 025 FR-001)."""
+        ...
 
 
 class CartRepository(Protocol):

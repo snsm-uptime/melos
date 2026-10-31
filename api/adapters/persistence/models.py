@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
@@ -467,6 +468,65 @@ class CartItemModel(Base):
     added_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class ShoppingListModel(Base):
+    """A kitchen's saved list; active while closing_date is null (spec 025)."""
+
+    __tablename__ = "shopping_list"
+    __table_args__ = (
+        Index(
+            "uq_shopping_list_active",
+            "kitchen_id",
+            unique=True,
+            postgresql_where=text("closing_date IS NULL"),
+        ),
+        Index("ix_shopping_list_closed", "kitchen_id", text("closing_date DESC")),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    kitchen_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("kitchens.id", ondelete="CASCADE"), nullable=False
+    )
+    closing_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ShoppingListItemModel(Base):
+    """One saved line. Recipes are copied as JSON so a line outlives them (spec 025 R6)."""
+
+    __tablename__ = "shopping_list_item"
+    __table_args__ = (
+        CheckConstraint("origin IN ('cart', 'hand')", name="ck_shopping_list_item_origin"),
+        CheckConstraint(
+            "section IN ('measured', 'your_call')", name="ck_shopping_list_item_section"
+        ),
+        CheckConstraint(
+            "kind IS NULL OR kind IN ('mass', 'volume', 'count')",
+            name="ck_shopping_list_item_kind",
+        ),
+        Index("ix_shopping_list_item_list", "shopping_list_id", "origin", "position"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    shopping_list_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("shopping_list.id", ondelete="CASCADE"), nullable=False
+    )
+    origin: Mapped[str] = mapped_column(Text, nullable=False)
+    section: Mapped[str] = mapped_column(Text, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str | None] = mapped_column(Text, nullable=True)
+    size: Mapped[str | None] = mapped_column(Text, nullable=True)
+    amounts: Mapped[list] = mapped_column(JSONB, nullable=False)
+    notes: Mapped[list] = mapped_column(JSONB, nullable=False)
+    recipes: Mapped[list] = mapped_column(JSONB, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class CartEditLockModel(Base):
