@@ -48,6 +48,7 @@ class NotebookView:
     kitchen_id: UUID | None
     kitchen_is_archived: bool | None
     is_default: bool
+    recipe_count: int
 
 
 def notebook_view(facts: NotebookFacts) -> NotebookView:
@@ -64,6 +65,7 @@ def notebook_view(facts: NotebookFacts) -> NotebookView:
         kitchen_is_archived=facts.kitchen_is_archived,
         # A kitchen notebook is never anyone's default (data-model.md "Read model").
         is_default=facts.is_default and facts.notebook.kind == "personal",
+        recipe_count=facts.recipe_count,
     )
 
 

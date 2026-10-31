@@ -82,6 +82,7 @@ class FakeNotebookRepo:
                 owner_alias=self.aliases.get(owner_id),
                 kitchen_is_archived=kitchen.is_archived,
                 is_default=is_default,
+                recipe_count=0,
             )
         owner_id = next(
             (u for (n, u), r in self.roles.items() if n == notebook_id and r == "owner"), None
@@ -93,6 +94,7 @@ class FakeNotebookRepo:
             owner_alias=self.aliases.get(owner_id) if owner_id is not None else None,
             kitchen_is_archived=None,
             is_default=is_default,
+            recipe_count=0,
         )
 
     def visible_facts_for(self, user_id: UUID) -> list[NotebookFacts]:
@@ -736,6 +738,7 @@ def test_get_notebook_by_id_for_personal_and_kitchen_members() -> None:
         kitchen_id=home,
         kitchen_is_archived=False,
         is_default=False,
+        recipe_count=0,
     )
 
 

@@ -86,6 +86,7 @@ class NotebookFacts:
     # Read with the notebook (kitchen notebooks only).
     kitchen_is_archived: bool | None
     is_default: bool
+    recipe_count: int
 
 
 class NotebookRepository(Protocol):

@@ -16,6 +16,7 @@ from adapters.persistence.models import (
     KitchenModel,
     NotebookMembershipModel,
     NotebookModel,
+    RecipeModel,
     UserModel,
 )
 
@@ -49,6 +50,12 @@ def _facts_query(user_id: UUID) -> Select[Any]:
         .correlate(None)
         .scalar_subquery()
     )
+    recipe_count = (
+        select(func.count(RecipeModel.id))
+        .where(RecipeModel.notebook_id == NotebookModel.id)
+        .correlate(NotebookModel)
+        .scalar_subquery()
+    )
     return (
         select(
             NotebookModel,
@@ -59,6 +66,7 @@ def _facts_query(user_id: UUID) -> Select[Any]:
             ),
             KitchenModel.is_archived,
             func.coalesce(NotebookModel.id == default_id, False).label("is_default"),
+            recipe_count.label("recipe_count"),
         )
         .outerjoin(KitchenModel, KitchenModel.id == NotebookModel.kitchen_id)
         .outerjoin(
@@ -89,7 +97,7 @@ def _facts_query(user_id: UUID) -> Select[Any]:
 
 
 def _facts(row: Row[Any]) -> NotebookFacts:
-    notebook_row, role, in_kitchen, owner_alias, is_archived, is_default = row
+    notebook_row, role, in_kitchen, owner_alias, is_archived, is_default, recipe_count = row
     return NotebookFacts(
         notebook=_notebook(notebook_row),
         role=role,
@@ -97,6 +105,7 @@ def _facts(row: Row[Any]) -> NotebookFacts:
         owner_alias=owner_alias,
         kitchen_is_archived=is_archived,
         is_default=bool(is_default),
+        recipe_count=recipe_count,
     )
 
 

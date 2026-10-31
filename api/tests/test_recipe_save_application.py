@@ -88,6 +88,7 @@ def personal(role: str = "owner") -> tuple[NotebookFacts, UUID]:
             owner_alias="ana",
             kitchen_is_archived=None,
             is_default=True,
+            recipe_count=0,
         ),
         notebook_id,
     )
@@ -103,6 +104,7 @@ def kitchen(*, in_kitchen: bool = True, archived: bool = False) -> tuple[Noteboo
             owner_alias="ana",
             kitchen_is_archived=archived,
             is_default=False,
+            recipe_count=0,
         ),
         notebook_id,
     )

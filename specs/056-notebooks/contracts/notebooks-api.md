@@ -17,7 +17,8 @@ Every answer uses this shape (`NotebookResponse`). A personal notebook:
   "owner_alias": "ana",
   "kitchen_id": null,
   "kitchen_is_archived": null,
-  "is_default": true
+  "is_default": true,
+  "recipe_count": 12
 }
 ```
 
@@ -32,7 +33,8 @@ A kitchen notebook:
   "owner_alias": "ana",
   "kitchen_id": "5e7b…",
   "kitchen_is_archived": false,
-  "is_default": false
+  "is_default": false,
+  "recipe_count": 3
 }
 ```
 
@@ -45,6 +47,7 @@ A kitchen notebook:
 | `kitchen_id` | Kitchen: the kitchen it belongs to. Personal: `null` |
 | `kitchen_is_archived` | Kitchen: whether its kitchen is archived, read at request time; the ui hides "add recipe" when `true` (spec 016 FR-033). Personal: `null` |
 | `is_default` | `true` only on the caller's default notebook; always `false` for a kitchen notebook |
+| `recipe_count` | How many recipes are in the notebook; `0` when it has none |
 
 The origin label (`source_notebook_id`) is not in the answer; S-035 adds it as a new field (research R3).
 

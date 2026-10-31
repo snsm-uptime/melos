@@ -23,6 +23,7 @@ from adapters.persistence.models import (
     KitchenModel,
     NotebookMembershipModel,
     NotebookModel,
+    RecipeModel,
     UserModel,
 )
 from adapters.persistence.notebooks import (
@@ -338,6 +339,24 @@ def test_deleting_a_user_removes_memberships_and_keeps_every_notebook(db_session
 
 
 # --- Catalog (FR-004, FR-012, FR-018) ---------------------------------------
+
+
+def test_recipe_count_counts_only_the_notebooks_own_recipes(db_session: Session) -> None:
+    owner_id = _user(db_session)
+    family = _personal_notebook(db_session, owner_id, "Family")
+    empty = _personal_notebook(db_session, owner_id, "Empty")
+    for title in ("Arepas", "Sancocho"):
+        db_session.add(RecipeModel(notebook_id=family, title=title, base_servings=2))
+    db_session.flush()
+
+    repository = SqlAlchemyNotebookRepository(db_session)
+
+    assert repository.facts_for(owner_id, family).recipe_count == 2
+    assert repository.facts_for(owner_id, empty).recipe_count == 0
+    visible = {
+        facts.notebook.id: facts.recipe_count for facts in repository.visible_facts_for(owner_id)
+    }
+    assert visible == {family: 2, empty: 0}
 
 
 def test_catalog_readers_return_the_right_names(db_session: Session) -> None:

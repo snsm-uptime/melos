@@ -19,6 +19,7 @@ class NotebookResponse(BaseModel):
     kitchen_id: UUID | None
     kitchen_is_archived: bool | None
     is_default: bool
+    recipe_count: int
 
 
 class NotebooksResponse(BaseModel):

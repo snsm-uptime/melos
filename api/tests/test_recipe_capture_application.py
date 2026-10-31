@@ -82,6 +82,7 @@ def personal_facts(user_id: UUID, *, role: str = "owner") -> tuple[NotebookFacts
         owner_alias="ana",
         kitchen_is_archived=None,
         is_default=True,
+        recipe_count=0,
     )
     return fact, notebook_id
 
@@ -95,6 +96,7 @@ def kitchen_facts(*, in_kitchen: bool = True, archived: bool = False) -> tuple[N
         owner_alias="ana",
         kitchen_is_archived=archived,
         is_default=False,
+        recipe_count=0,
     )
     return fact, notebook_id
 
