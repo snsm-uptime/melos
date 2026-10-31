@@ -11,7 +11,6 @@ import { PrimaryButton } from "./PrimaryButton";
 import { SectionLabel } from "./SectionLabel";
 import { SoftLedgerRadio } from "./Radio";
 import { SoftLedgerSelect } from "./Select";
-import { TabBar } from "./TabBar";
 
 vi.mock("next/link", () => ({
   default: ({
@@ -73,45 +72,6 @@ describe("Soft-Ledger primitives", () => {
     });
     expect(host.textContent).toContain("Shared recipes will land here.");
     expect(host.querySelector("h2")?.textContent).toBe("Members");
-  });
-
-  it("TabBar renders one link per item + aria-current on the active tab", () => {
-    function DummyIcon(props: { className?: string }) {
-      return <svg {...props} />;
-    }
-    act(() => {
-      root.render(
-        <TabBar
-          items={[
-            { key: "home", href: "/home", label: "Home", Icon: DummyIcon },
-            { key: "upload", href: "/upload", label: "Upload", Icon: DummyIcon },
-            { key: "budgets", href: "/budgets", label: "Budgets", Icon: DummyIcon },
-            { key: "account", href: "/account", label: "Account", Icon: DummyIcon },
-          ]}
-          ariaLabel="Primary"
-          active="home"
-        />,
-      );
-    });
-    const nav = host.querySelector("nav");
-    expect(nav?.getAttribute("aria-label")).toBe("Primary");
-    expect(nav?.className).toContain("justify-evenly");
-    const links = Array.from(host.querySelectorAll("a"));
-    expect(links).toHaveLength(4);
-    expect(links[0]?.getAttribute("href")).toBe("/home");
-    expect(links[0]?.getAttribute("aria-label")).toBe("Home");
-    expect(links[0]?.getAttribute("aria-current")).toBe("page");
-    expect(links[0]?.className).toEqual(links[1]?.className);
-    expect(links[0]?.className).not.toContain("text-accent");
-    expect(links[1]?.getAttribute("href")).toBe("/upload");
-    expect(links[1]?.getAttribute("aria-label")).toBe("Upload");
-    expect(links[1]?.getAttribute("aria-current")).toBeNull();
-    expect(links[2]?.getAttribute("href")).toBe("/budgets");
-    expect(links[2]?.getAttribute("aria-label")).toBe("Budgets");
-    expect(links[2]?.getAttribute("aria-current")).toBeNull();
-    expect(links[3]?.getAttribute("href")).toBe("/account");
-    expect(links[3]?.getAttribute("aria-label")).toBe("Account");
-    expect(links.every((link) => link.querySelector("svg") !== null)).toBe(true);
   });
 
   it("PrimaryButton mounts and uses rounded-sm (not pill)", () => {

@@ -5,19 +5,15 @@ import { requireAlias } from "@/lib/alias";
 import { getApiInternalUrl } from "@/lib/api";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
 import { fetchSession } from "@/lib/session";
-import type { KitchenItem } from "@/app/kitchens/kitchensClient";
 import kitchensStyles from "@/app/kitchens/kitchens.module.scss";
-import { HomeChrome } from "./HomeChrome";
-import { HomeKitchensSection } from "./HomeKitchensSection";
 import { getServerLocale } from "@/lib/serverLocale";
+import { NoKitchensPrompt } from "./NoKitchensPrompt";
 
 export const dynamic = "force-dynamic";
 
-type MembershipLoad =
-  | { ok: true; kitchens: KitchenItem[] }
-  | { ok: false };
+type DefaultLoad = { ok: true; kitchenId: string | null } | { ok: false };
 
-async function fetchMembershipKitchens(): Promise<MembershipLoad> {
+async function fetchDefaultKitchen(): Promise<DefaultLoad> {
   const jar = await cookies();
   const cookieHeader = jar
     .getAll()
@@ -25,7 +21,7 @@ async function fetchMembershipKitchens(): Promise<MembershipLoad> {
     .join("; ");
 
   try {
-    const response = await fetch(`${getApiInternalUrl()}/kitchens`, {
+    const response = await fetch(`${getApiInternalUrl()}/side-panel`, {
       method: "GET",
       headers: {
         Accept: "application/json",
@@ -34,53 +30,37 @@ async function fetchMembershipKitchens(): Promise<MembershipLoad> {
       cache: "no-store",
     });
     if (!response.ok) return { ok: false };
-    const data = (await response.json()) as { kitchens?: KitchenItem[] };
-    if (!Array.isArray(data.kitchens)) return { ok: false };
-    return { ok: true, kitchens: data.kitchens };
+    const data = (await response.json()) as { default_kitchen_id?: string | null };
+    return { ok: true, kitchenId: data.default_kitchen_id ?? null };
   } catch {
     return { ok: false };
   }
 }
 
-/** Home: Kitchens only — Cards moved to its own /cards route. */
+/** Home opens the default kitchen; with no kitchens it offers to create one (spec 064 R7). */
 export default async function Home() {
   const session = await fetchSession();
   if (!session) {
     redirect("/sign-in?returnTo=/home");
   }
   // No kitchen chrome without an alias — redirects to setup on first signed-in visit.
-  const me = await requireAlias("/home");
+  await requireAlias("/home");
 
-  const locale = await getServerLocale();
-  const t = kitchensMessages[locale];
-  const loaded = await fetchMembershipKitchens();
+  const loaded = await fetchDefaultKitchen();
+  if (loaded.ok && loaded.kitchenId) {
+    redirect(`/kitchens/${encodeURIComponent(loaded.kitchenId)}`);
+  }
 
-  if (!loaded.ok) {
-    return (
-      <main className={kitchensStyles.main}>
-        <HomeChrome
-          title={t.title}
-          alias={me.alias}
-          userId={me.user_id}
-          photoBase64={me.photo_base64}
-        />
+  const t = kitchensMessages[await getServerLocale()];
+  return (
+    <main className={kitchensStyles.main}>
+      {loaded.ok ? (
+        <NoKitchensPrompt />
+      ) : (
         <p className={kitchensStyles.error} role="alert">
           {t.loadError}
         </p>
-      </main>
-    );
-  }
-
-  return (
-    <main className={kitchensStyles.main}>
-      <HomeKitchensSection
-        title={t.title}
-        alias={me.alias}
-        userId={me.user_id}
-        photoBase64={me.photo_base64}
-        initialKitchens={loaded.kitchens}
-        currentUserId={session.user_id}
-      />
+      )}
     </main>
   );
 }

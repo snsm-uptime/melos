@@ -1,11 +1,9 @@
 /**
  * First-paint / post-auth landing choke (UX-DR9).
- * Story 2.4 passes inviteKitchenId to land on the inviting kitchen instead of remember-last.
+ * Story 2.4 passes inviteKitchenId to land on the inviting kitchen instead of the default one.
  */
 export type AuthenticatedLandingInput = {
   inviteKitchenId?: string | null;
-  lastOpenedKitchenId?: string | null;
-  lastOpenedStillAccessible?: boolean;
 };
 
 export function resolveAuthenticatedLanding(
@@ -14,10 +12,6 @@ export function resolveAuthenticatedLanding(
   const invite = input.inviteKitchenId?.trim();
   if (invite) {
     return `/kitchens/${encodeURIComponent(invite)}`;
-  }
-  const remembered = input.lastOpenedKitchenId?.trim();
-  if (remembered && input.lastOpenedStillAccessible) {
-    return `/kitchens/${encodeURIComponent(remembered)}`;
   }
   return "/home";
 }

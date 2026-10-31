@@ -640,6 +640,21 @@ stories:
       languages, phone width). The Spanish wording was drafted by the assistant and needs the
       owner's review before release.
 
+  - id: S-064
+    title: Left side panel replaces the bottom tab bar and the kitchens list, with default kitchen, recipe count and log out
+    epic: Platform
+    priority: should
+    status: in_progress
+    source: user request 2026-10-30 (not in prd.md; replaces the tab bar of PRD 1.10 and J2); specs/064-kitchen-side-panel
+    notes: >
+      Adds users.default_kitchen_id, resolved on read so signup and the auth routes do not change.
+      Kitchen management moves to the kitchen header row and a "+" in the panel. Priority set when
+      planning; the owner decides whether it goes before the open Must stories (constitution 9).
+      The owner approved building it before the open Must stories on 2026-10-30.
+      Built on branch 064-kitchen-side-panel. Verification 2026-10-30: ui 987 tests, typecheck and lint pass;
+      api 911 pass, 4 fail in capture and notebook tests outside this story; migration 0009 down and up passes.
+      Not verified: the browser walk in quickstart.md. next build stopped on a root-owned ui/next-env.d.ts.
+
   - id: S-048
     title: Copy a recipe into another notebook (normalize names, confirm)
     epic: Recipes

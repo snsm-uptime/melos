@@ -52,8 +52,7 @@ compose_require_env "$ROOT"
 compose_require_files "$ROOT"
 
 ENV_FILE="$ROOT/.env"
-DATA_ROOT="$(compose_env_get MELOS_DATA "$ENV_FILE")"
-DATA_ROOT="${DATA_ROOT:-$HOME/melos}"
+DATA_ROOT="$(compose_data_root "$ROOT")"
 PGDATA_DIR="$DATA_ROOT/pgdata"
 
 echo "==> This will DELETE all Postgres data for this checkout:"

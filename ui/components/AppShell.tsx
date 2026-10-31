@@ -2,9 +2,9 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 
-import { BackIcon, HomeIcon, NotebookIcon } from "@/app/icons";
+import { BackIcon, MenuIcon } from "@/app/icons";
 import {
   ChromeBackProvider,
   chromeHeaderIsActive,
@@ -12,11 +12,12 @@ import {
 } from "@/components/ChromeBack";
 import { IconButton } from "@/components/IconButton";
 import { usePreferences } from "@/components/PreferencesProvider";
-import { TabBar, type TabBarItem } from "@/components/soft-ledger/TabBar";
+import { SidePanel } from "@/components/SidePanel";
 import { ToastProvider, ToastViewport } from "@/components/Toast";
-import { showsAppChrome, showsFloatingLanguageSwitch, tabKeyFromPath } from "@/lib/appChrome";
+import { showsAppChrome, showsFloatingLanguageSwitch } from "@/lib/appChrome";
 import { cartMessages } from "@/lib/i18n/cart";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
+import { sidePanelMessages } from "@/lib/i18n/sidePanel";
 import { Chip } from "./Chip";
 import { SignedOutLanguageSwitch } from "./SignedOutLanguageSwitch";
 
@@ -40,17 +41,13 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   const showHeader = chromeHeaderIsActive(header);
   // Decoupled from showHeader: public screens (e.g. /sign-in) opt into
   // just the header — a way back to "/" — via useChromeHeader, without also
-  // gaining the authenticated TabBar that showsAppChrome gates.
-  const showTabBar = showsAppChrome(pathname);
-  // A tab root leads with its avatar instead of Back; the avatar sits on the page gutter so it
+  // gaining the authenticated side panel that showsAppChrome gates.
+  const showPanel = showsAppChrome(pathname);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
+  // A screen can lead with its avatar instead of Back; the avatar sits on the page gutter so it
   // lines up with the content below it (screens with a Back button keep the tighter inset).
   const leadsWithAvatar = Boolean(header.leading) && !header.onBack && !header.backHref;
-
-  // Recipes, cart and chat tabs join Home as those features land.
-  const tabs: TabBarItem[] = [
-    { key: "home", href: "/home", label: t.tabHome, Icon: HomeIcon },
-    { key: "notebook", href: "/notebooks", label: t.tabNotebook, Icon: NotebookIcon },
-  ];
 
   // The English/Spanish switch of the signed-out screens (spec 063 FR-017), on both layouts:
   // /sign-in opts into the header, the other signed-out screens have none. /sign-in puts its
@@ -58,7 +55,7 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   const languageSwitch = showsFloatingLanguageSwitch(pathname) ? <SignedOutLanguageSwitch /> : null;
   const dismissLabel = cartMessages[locale].dismiss;
 
-  if (!showHeader && !showTabBar) {
+  if (!showHeader && !showPanel) {
     return (
       <div className="fixed inset-0 overflow-y-auto">
         {languageSwitch}
@@ -72,14 +69,15 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden">
-      <div className="relative flex flex-col flex-1 min-h-0">
+    <div className="fixed inset-0 flex overflow-hidden">
+      {showPanel ? <SidePanel drawerOpen={drawerOpen} onDrawerClose={closeDrawer} /> : null}
+      <div className="relative flex min-w-0 flex-col flex-1 min-h-0">
         {languageSwitch}
         {header.progressBar ? <div className="shrink-0">{header.progressBar}</div> : null}
-        {showHeader ? (
+        {showHeader || showPanel ? (
           <header
             data-app-chrome="header"
-            className={`flex shrink-0 items-center gap-2 ${
+            className={`flex shrink-0 items-center gap-2 ${showHeader ? "" : "md:hidden "}${
               header.progressBar
                 ? "pt-[max(1rem,env(safe-area-inset-top))]"
                 : "pt-[max(0.5rem,env(safe-area-inset-top))]"
@@ -89,7 +87,19 @@ function AppShellFrame({ children }: { children: ReactNode }) {
                 : "pl-[max(0.5rem,env(safe-area-inset-left))]"
             }`}
           >
-            <div className="flex w-10 shrink-0 items-center justify-start self-center">
+            {showPanel ? (
+              <span className="inline-flex shrink-0 md:hidden">
+                <IconButton
+                  variant="ghost"
+                  className="size-11"
+                  label={sidePanelMessages[locale].open}
+                  aria-haspopup="dialog"
+                  icon={<MenuIcon className="size-6" />}
+                  onClick={() => setDrawerOpen(true)}
+                />
+              </span>
+            ) : null}
+            <div className="flex w-10 shrink-0 items-center justify-start self-center empty:hidden">
               {header.onBack || header.backHref ? (
                 <IconButton
                   variant="ghost"
@@ -125,17 +135,12 @@ function AppShellFrame({ children }: { children: ReactNode }) {
           </header>
         ) : null}
         <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">{children}</div>
-        {/* Toasts sit at the bottom of the screen body, directly above the tab bar (spec 022 R13). */}
+        {/* Toasts sit at the bottom of the content area (spec 064 R12). */}
         <ToastViewport
           dismissLabel={dismissLabel}
-          className={`absolute inset-x-0 bottom-0 z-20${
-            showTabBar ? "" : " pb-[max(0.5rem,env(safe-area-inset-bottom))]"
-          }`}
+          className="absolute inset-x-0 bottom-0 z-20 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
         />
       </div>
-      {showTabBar ? (
-        <TabBar items={tabs} ariaLabel={t.tabNavAria} active={tabKeyFromPath(pathname)} />
-      ) : null}
     </div>
   );
 }

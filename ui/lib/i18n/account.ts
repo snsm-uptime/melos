@@ -3,8 +3,6 @@ import type { Locale } from "@/lib/i18n/locale";
 
 export const accountMessages = {
   en: {
-    title: "Account",
-    subtitle: "Language, appearance, photo, and sign out.",
     photo: "Photo",
     photoUpload: "Upload photo",
     photoRemove: "Remove photo",
@@ -26,16 +24,12 @@ export const accountMessages = {
     loading: "Loading…",
     saveLanguageFailed: "Could not save language. Try again.",
     saveThemeFailed: "Could not save theme. Try again.",
-    navAccount: "Account",
-    goToAccount: "Go to account",
     manageCards: "Manage cards",
     errorGeneric: "Something went wrong. Try again.",
     errorUnauthorized: "Sign in to manage your account.",
     errorForbidden: "You don't have access to that kitchen.",
   },
   es: {
-    title: "Cuenta",
-    subtitle: "Idioma, apariencia, foto y cerrar sesión.",
     photo: "Foto",
     photoUpload: "Subir foto",
     photoRemove: "Quitar foto",
@@ -57,8 +51,6 @@ export const accountMessages = {
     loading: "Cargando…",
     saveLanguageFailed: "No se pudo guardar el idioma. Inténtalo de nuevo.",
     saveThemeFailed: "No se pudo guardar el tema. Inténtalo de nuevo.",
-    navAccount: "Cuenta",
-    goToAccount: "Ir a la cuenta",
     manageCards: "Administrar tarjetas",
     errorGeneric: "Algo salió mal. Inténtalo de nuevo.",
     errorUnauthorized: "Inicia sesión para administrar tu cuenta.",

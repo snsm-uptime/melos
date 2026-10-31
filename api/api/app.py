@@ -21,6 +21,7 @@ from api.routes.notebooks import router as notebooks_router
 from api.routes.recipe_capture import router as recipe_capture_router
 from api.routes.recipes import router as recipes_router
 from api.routes.shopping_list import router as shopping_list_router
+from api.routes.side_panel import router as side_panel_router
 from api.settings import load_auth_settings
 
 logging.basicConfig(
@@ -67,5 +68,6 @@ def create_app() -> FastAPI:
     application.include_router(recipes_router, dependencies=[Depends(require_user_alias)])
     application.include_router(carts_router, dependencies=[Depends(require_user_alias)])
     application.include_router(shopping_list_router, dependencies=[Depends(require_user_alias)])
+    application.include_router(side_panel_router, dependencies=[Depends(require_user_alias)])
     application.include_router(invites_router)
     return application

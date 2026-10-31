@@ -92,11 +92,11 @@ describe("NotebookTabScreen", () => {
 
   function render(viewerAlias: string | null = "ben") {
     act(() => {
-      root.render(<NotebookTabScreen locale="en" viewerAlias={viewerAlias} userId="user-1" photoBase64={null} />);
+      root.render(<NotebookTabScreen locale="en" viewerAlias={viewerAlias} />);
     });
   }
 
-  it("puts the title and the viewer's avatar in the shared header, not in the page body", async () => {
+  it("puts the title in the shared header, not in the page body", async () => {
     stubBff({
       "/api/notebooks/default": [{ status: 200, body: defaultNotebook }],
       "/api/notebooks": [{ status: 200, body: { notebooks: [defaultNotebook] } }],
@@ -105,7 +105,7 @@ describe("NotebookTabScreen", () => {
     act(() => {
       root.render(
         <AppShell>
-          <NotebookTabScreen locale="en" viewerAlias="ana" userId="user-1" photoBase64={null} />
+          <NotebookTabScreen locale="en" viewerAlias="ana" />
         </AppShell>,
       );
     });
@@ -113,7 +113,7 @@ describe("NotebookTabScreen", () => {
 
     const header = container.querySelector('[data-app-chrome="header"]') as HTMLElement;
     expect(header.querySelector("h1")?.textContent).toBe("Notebook");
-    expect(header.querySelector('a[href="/account"]')).toBeTruthy();
+    expect(header.querySelector('a[href="/account"]')).toBeNull();
     expect(container.querySelectorAll("h1")).toHaveLength(1);
   });
 

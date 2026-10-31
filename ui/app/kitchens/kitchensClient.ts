@@ -276,7 +276,16 @@ export async function unarchiveKitchen(
   kitchenId: string,
   messages: KitchensClientMessages,
 ): Promise<OkRename | ErrorResult> {
-  return postKitchenAction(kitchenId, "unarchive", messages);
+  const result = await postKitchenAction(kitchenId, "unarchive", messages);
+  if (result.ok) {
+    const { id, name, owner_id } = result.kitchen;
+    patchMembershipKitchens((prev) =>
+      prev.some((item) => item.id === id)
+        ? prev
+        : [...prev, { id, name, owner_id, role: "owner", is_archived: false }],
+    );
+  }
+  return result;
 }
 
 /** Persist last-opened via /auth/me (account column) after ACL on the API. */

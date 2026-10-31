@@ -288,3 +288,26 @@ describe("kitchensClient archive (Story 9.2)", () => {
     expect(result).toEqual({ ok: false, error: "forbidden" });
   });
 });
+
+describe("unarchiveKitchen and the panel's list (spec 064 FR-017)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resetMembershipKitchensStore();
+  });
+
+  const restored = { id: "k9", name: "Old", owner_id: "u1", is_archived: false };
+
+  it("adds the restored kitchen to the membership store", async () => {
+    replaceMembershipKitchens([]);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(restored))));
+    await unarchiveKitchen("k9", messages);
+    expect(getMembershipKitchensSnapshot()?.map((k) => k.id)).toEqual(["k9"]);
+  });
+
+  it("changes nothing when the restore fails", async () => {
+    replaceMembershipKitchens([]);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{}", { status: 403 })));
+    await unarchiveKitchen("k9", messages);
+    expect(getMembershipKitchensSnapshot()).toEqual([]);
+  });
+});

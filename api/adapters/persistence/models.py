@@ -45,6 +45,10 @@ class UserModel(Base):
     last_opened_kitchen_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("kitchens.id", ondelete="SET NULL"), nullable=True
     )
+    # The kitchen Home opens. Null until first resolved, and again after it is deleted.
+    default_kitchen_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("kitchens.id", ondelete="SET NULL"), nullable=True
+    )
     # Null until the member first asks for their default notebook, and again
     # after it is deleted. users and notebook reference each other: use_alter.
     default_notebook_id: Mapped[uuid.UUID | None] = mapped_column(
