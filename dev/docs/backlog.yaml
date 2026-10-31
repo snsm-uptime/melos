@@ -663,6 +663,17 @@ stories:
       api 911 pass, 4 fail in capture and notebook tests outside this story; migration 0009 down and up passes.
       Not verified: the browser walk in quickstart.md. next build stopped on a root-owned ui/next-env.d.ts.
 
+  - id: S-065
+    title: Animated cauldron loading indicator (rising bubbles, side-to-side tilt, themed colors)
+    epic: Platform
+    priority: should
+    status: in_design
+    source: user request 2026-10-30 (not in prd.md); specs/065-cauldron-loader
+    notes: >
+      Should, so constitution 9 puts it after the open Must stories unless the owner decides otherwise.
+      Clarified 2026-10-30: replaces every loading state, including button spinners; two tilt defaults
+      (25 general, 10 in buttons); two-tone colors inside buttons; no display delay.
+
   - id: S-048
     title: Copy a recipe into another notebook (normalize names, confirm)
     epic: Recipes
