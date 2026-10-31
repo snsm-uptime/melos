@@ -29,5 +29,5 @@
 - **Rationale**: A saved line must survive recipe deletion. The UI links only when the recipe still exists: `exists` comes from one lookup per read, so saved data never changes.
 
 ## R7. Closing date
-- **Decision**: A `date` set from the server's current UTC day, in a conditional update on `closing_date IS NULL`.
-- **Rationale**: A second Done changes nothing and answers 409. The one-day edge near midnight is acceptable for a couple's weekly list.
+- **Decision**: The browser sends the member's local day with Done. The server takes it if it is within one day of the UTC day, else 422 `invalid_date`, and uses the UTC day when none is sent. The write is a conditional update on `closing_date IS NULL`.
+- **Rationale**: The member sees the date they pressed Done, also in the evening in the Americas, where the UTC day is already tomorrow. Every time zone is within a day of UTC, so a wrong clock cannot backdate a list. A second Done changes nothing and answers 409.

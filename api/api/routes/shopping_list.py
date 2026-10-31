@@ -20,6 +20,7 @@ from application.shopping_list import (
 from domain.errors import (
     KitchenArchivedError,
     KitchenNotFoundError,
+    ShoppingDateError,
     ShoppingItemError,
     ShoppingItemNotFoundError,
     ShoppingListEmptyError,
@@ -66,6 +67,8 @@ def _run(call: Callable[[], object]) -> object | JSONResponse:
         return _error(status.HTTP_403_FORBIDDEN, exc.CODE, exc.MESSAGE)
     except (ShoppingListNotActiveError, ShoppingListEmptyError) as exc:
         return _error(status.HTTP_409_CONFLICT, exc.CODE, exc.MESSAGE)
+    except ShoppingDateError as exc:
+        return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, exc.CODE, exc.MESSAGE)
     except ShoppingItemError as exc:
         return _error(
             status.HTTP_422_UNPROCESSABLE_CONTENT, exc.CODE, exc.MESSAGE, field=exc.field
@@ -140,7 +143,9 @@ def close_shopping_list(
     ref: SessionRef = Depends(require_session_ref),
     service: CloseShoppingListService = Depends(get_close_shopping_list),
 ) -> Response:
-    return _closed(_run(lambda: service.execute(ref, kitchen_id, body.list_id)))
+    return _closed(
+        _run(lambda: service.execute(ref, kitchen_id, body.list_id, body.closing_date))
+    )
 
 
 @router.get("/kitchens/{kitchen_id}/shopping-lists")

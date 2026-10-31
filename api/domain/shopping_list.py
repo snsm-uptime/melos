@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from fractions import Fraction
 from typing import Literal
@@ -29,7 +29,7 @@ from domain.cart import (
     format_factor,
     unit_kind,
 )
-from domain.errors import ShoppingItemError
+from domain.errors import ShoppingDateError, ShoppingItemError
 
 Origin = Literal["cart", "hand"]
 Section = Literal["measured", "your_call"]
@@ -137,6 +137,18 @@ def hand_item(
         (),
         (),
     )
+
+
+def closing_date(sent: date | None, utc_today: date) -> date:
+    """The member's local day, or the UTC day when none is sent.
+
+    Every time zone is within a day of UTC, so anything further is refused (R7).
+    """
+    if sent is None:
+        return utc_today
+    if abs(sent - utc_today) > timedelta(days=1):
+        raise ShoppingDateError()
+    return sent
 
 
 def _quantity(value: object) -> str:

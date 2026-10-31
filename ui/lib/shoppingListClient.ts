@@ -175,11 +175,23 @@ export function removeShoppingItem(
   );
 }
 
+/** The member's own calendar day as YYYY-MM-DD: Done closes on the day they see (spec 025 R7). */
+export function localDate(now: Date = new Date()): string {
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
 export function closeShoppingList(
   kitchenId: string,
   listId: string,
 ): Promise<ShoppingResult<ClosedList>> {
-  return call(`${listPath(kitchenId)}/done`, "POST", { list_id: listId }, asClosedList);
+  return call(
+    `${listPath(kitchenId)}/done`,
+    "POST",
+    { list_id: listId, closing_date: localDate() },
+    asClosedList,
+  );
 }
 
 export function fetchClosedLists(kitchenId: string): Promise<ShoppingResult<ClosedListSummary[]>> {

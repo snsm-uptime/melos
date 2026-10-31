@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import threading
 import time
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -277,3 +278,27 @@ def test_a_saved_list_of_100_recipes_opens_fast(client: TestClient, db_session: 
     assert response.status_code == 200
     assert len(response.json()["lines"]) == 500
     assert elapsed < 1
+
+
+def test_done_uses_the_members_date_and_refuses_another_day(
+    client: TestClient, db_session: Session
+) -> None:
+    people, kitchen, _nb, bread, _p = bread_and_pancakes(client, db_session)
+    ana = people.as_("ana")
+    save_cart(ana, kitchen, [bread])
+    list_id = ana.get(_list(kitchen)).json()["list_id"]
+    today = datetime.now(UTC).date()
+
+    far = ana.post(
+        _list(kitchen) + "/done",
+        json={"list_id": list_id, "closing_date": str(today - timedelta(days=5))},
+    )
+    assert (far.status_code, far.json()["code"]) == (422, "invalid_date")
+    assert ana.get(_list(kitchen)).json()["list_id"] == list_id
+
+    yesterday = str(today - timedelta(days=1))
+    done = ana.post(
+        _list(kitchen) + "/done", json={"list_id": list_id, "closing_date": yesterday}
+    )
+    assert done.status_code == 200, done.text
+    assert done.json()["closing_date"] == yesterday

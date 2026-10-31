@@ -31,7 +31,7 @@ Hand items of the active list. 200 with the read shape. 404 `item_not_found`, al
 
 ## POST /kitchens/{id}/shopping-list/done
 
-Body: `{"list_id": "uuid"}`. 200 with the closed list. 409 `list_not_active` if already closed; 409 `list_empty` if it has no items.
+Body: `{"list_id": "uuid", "closing_date": "2026-10-30"}`. `closing_date` is the member's local day; when absent, the UTC day. 200 with the closed list. 409 `list_not_active` if already closed; 409 `list_empty` if it has no items; 422 `invalid_date` if the date is more than a day from the UTC day.
 
 ## GET /kitchens/{id}/shopping-lists
 
