@@ -165,12 +165,13 @@ describe("AppShell chrome header", () => {
       );
     });
     const panel = () => container.querySelector('[data-side-panel="panel"]') as HTMLElement;
-    expect(panel().className).toContain("hidden");
+    const backdrop = () => container.querySelector('[data-side-panel="backdrop"]') as HTMLElement;
+    expect(panel().className).toContain("max-md:-translate-x-full");
     await act(async () => {
       (container.querySelector('header button[aria-label="Open menu"]') as HTMLElement).click();
     });
-    expect(panel().className).toContain("fixed");
-    expect(container.querySelector('[data-side-panel="backdrop"]')).toBeTruthy();
+    expect(panel().className).not.toContain("max-md:-translate-x-full");
+    expect(backdrop().className).not.toContain("invisible");
   });
 
   it("renders title and details on the same header row as back", async () => {
@@ -278,6 +279,21 @@ describe("AppShell chrome header", () => {
       );
     });
     expect((container.querySelector("header") as HTMLElement).className).toContain("pl-[max(0.5rem");
+  });
+
+  it("insets a kitchen title by the page gutter on larger screens, past the phone menu button", async () => {
+    pathname = "/kitchens/k1";
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <EnableHeader title="Kitchen" />
+        </AppShell>,
+      );
+    });
+    const { className } = container.querySelector("header") as HTMLElement;
+    expect(className).toContain("md:pl-[max(var(--page-gutter)");
+    expect(className).toContain(" pl-[max(0.5rem");
+    expect(className).toContain("pr-[max(var(--page-gutter)");
   });
 
   describe("signed-out language switch (spec 063)", () => {

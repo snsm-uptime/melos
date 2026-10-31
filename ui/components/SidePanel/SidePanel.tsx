@@ -160,20 +160,19 @@ export function SidePanel({
 
   return (
     <PanelLayoutContext.Provider value={layout}>
-      {drawerOpen ? (
-        <button
-          type="button"
-          aria-label={t.close}
-          data-side-panel="backdrop"
-          className="fixed inset-0 z-30 border-0 bg-black/40 md:hidden"
-          onClick={onDrawerClose}
-        />
-      ) : null}
+      {/* The drawer and its backdrop stay mounted so they can slide and fade out as well as in. */}
+      <button
+        type="button"
+        aria-label={t.close}
+        data-side-panel="backdrop"
+        className={`fixed inset-0 z-30 border-0 bg-black/40 transition-[opacity,visibility] md:hidden ${PANEL_SLIDE} ${drawerOpen ? "" : "invisible opacity-0"}`}
+        onClick={onDrawerClose}
+      />
       <nav
         aria-label={t.nav}
         data-side-panel="panel"
         data-open={isOpen}
-        className={`${drawerOpen ? "fixed inset-y-0 left-0 z-40 flex w-(--panel-width-open)" : "hidden"} flex-col border-r border-border bg-surface pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] md:static md:z-auto md:flex md:shrink-0 md:transition-[width] ${PANEL_SLIDE} ${isOpen ? "md:w-(--panel-width-open)" : "md:w-(--panel-width-closed)"}`}
+        className={`fixed inset-y-0 left-0 z-40 flex w-(--panel-width-open) flex-col border-r border-border bg-surface pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] transition-[translate,visibility] md:static md:z-auto md:shrink-0 md:transition-[width] ${PANEL_SLIDE} ${drawerOpen ? "" : "max-md:invisible max-md:-translate-x-full"} ${isOpen ? "md:w-(--panel-width-open)" : "md:w-(--panel-width-closed)"}`}
       >
         <div className="flex shrink-0 flex-col items-start gap-2 px-2">
           <IconButton

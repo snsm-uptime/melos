@@ -28,14 +28,14 @@ export function SidePanelIdentity({
   return (
     <div className="mb-2 flex h-20 items-center gap-3 px-2">
       <div
-        className={`relative flex aspect-square shrink-0 transition-[width] ${PANEL_SLIDE} ${wide ? "w-16" : "w-7"}`}
+        className={`relative flex aspect-square shrink-0 transition-[width] ${PANEL_SLIDE} ${wide ? "w-16" : "w-16 md:w-7"}`}
       >
         <Avatar
           alias={me?.alias ?? null}
           seed={me?.user_id ?? "account"}
           photoBase64={me?.photo_base64 ?? null}
           fluid
-          className={`transition-[font-size] ${PANEL_SLIDE} ${wide ? "text-[1.75rem]" : "text-[0.75rem]"}`}
+          className={`transition-[font-size] ${PANEL_SLIDE} ${wide ? "text-[1.75rem]" : "text-[1.75rem] md:text-[0.75rem]"}`}
         />
         <div className={openOnlyClass}>
           <label className={`${photoActionClass} -bottom-1.5 -left-1.5`}>

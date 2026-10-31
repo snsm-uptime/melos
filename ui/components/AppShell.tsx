@@ -45,9 +45,14 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   const showPanel = showsAppChrome(pathname);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
-  // A screen can lead with its avatar instead of Back; the avatar sits on the page gutter so it
-  // lines up with the content below it (screens with a Back button keep the tighter inset).
-  const leadsWithAvatar = Boolean(header.leading) && !header.onBack && !header.backHref;
+  // The header sits on the page gutter so it lines up with the content below it. Icon buttons at
+  // its start keep the tighter inset: Back, and on phones the panel's menu button.
+  const headerInset =
+    header.onBack || header.backHref
+      ? "pl-[max(0.5rem,env(safe-area-inset-left))]"
+      : header.leading || !showPanel
+        ? "pl-[max(var(--page-gutter),env(safe-area-inset-left))]"
+        : "pl-[max(0.5rem,env(safe-area-inset-left))] md:pl-[max(var(--page-gutter),env(safe-area-inset-left))]";
 
   // The English/Spanish switch of the signed-out screens (spec 063 FR-017), on both layouts:
   // /sign-in opts into the header, the other signed-out screens have none. /sign-in puts its
@@ -81,11 +86,7 @@ function AppShellFrame({ children }: { children: ReactNode }) {
               header.progressBar
                 ? "pt-[max(1rem,env(safe-area-inset-top))]"
                 : "pt-[max(0.5rem,env(safe-area-inset-top))]"
-            } pr-[max(1rem,env(safe-area-inset-right))] pb-1 ${
-              leadsWithAvatar
-                ? "pl-[max(var(--page-gutter),env(safe-area-inset-left))]"
-                : "pl-[max(0.5rem,env(safe-area-inset-left))]"
-            }`}
+            } pr-[max(var(--page-gutter),env(safe-area-inset-right))] pb-1 ${headerInset}`}
           >
             {showPanel ? (
               <span className="inline-flex shrink-0 md:hidden">

@@ -222,7 +222,8 @@ describe("SidePanel", () => {
     expect(window.localStorage.getItem(SIDE_PANEL_KEY)).toBe("true");
     expect(nav().className).toContain("md:w-(--panel-width-open)");
     expect(link("Apple").querySelector("span:last-child")?.className).not.toContain("md:hidden");
-    await act(async () => button("Close menu").click());
+    const toggle = nav().querySelector('button[aria-label="Close menu"]') as HTMLButtonElement;
+    await act(async () => toggle.click());
     expect(window.localStorage.getItem(SIDE_PANEL_KEY)).toBe("false");
   });
 
@@ -232,11 +233,17 @@ describe("SidePanel", () => {
     expect(nav().className).toContain("md:w-(--panel-width-open)");
   });
 
-  it("is off screen on phones until the drawer opens", async () => {
+  it("slides the drawer in and out on phones, staying mounted so both directions animate", async () => {
+    const backdrop = () => host.querySelector('[data-side-panel="backdrop"]') as HTMLElement;
     await render();
-    expect(nav().className.split(" ")).toContain("hidden");
+    expect(nav().className.split(" ")).not.toContain("hidden");
+    expect(nav().className).toContain("max-md:-translate-x-full");
+    expect(nav().className).toContain("max-md:invisible");
+    expect(backdrop().className).toContain("invisible");
     await render(true);
-    expect(nav().className).toContain("fixed");
+    expect(nav().className).toContain("transition-[translate,visibility]");
+    expect(nav().className).not.toContain("max-md:-translate-x-full");
+    expect(backdrop().className).not.toContain("invisible");
   });
 
   it("closes the drawer on Escape, on the backdrop and on choosing an entry, without saving it", async () => {
