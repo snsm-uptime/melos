@@ -6,7 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const replace = vi.fn();
 const router = { replace };
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
-vi.mock("@/components/ChromeBack", () => ({ useChromeHeader: () => {} }));
+const chrome = vi.hoisted(() => ({ trailing: null as unknown }));
+vi.mock("@/components/ChromeBack", () => ({
+  useChromeHeader: (config: { trailing?: unknown }) => {
+    chrome.trailing = config.trailing ?? null;
+  },
+}));
 
 const { client } = vi.hoisted(() => ({
   client: {
@@ -19,7 +24,9 @@ const { client } = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/cartClient", () => client);
 
-const { shopping } = vi.hoisted(() => ({ shopping: { fetchShoppingList: vi.fn() } }));
+const { shopping } = vi.hoisted(() => ({
+  shopping: { fetchShoppingList: vi.fn(), closeShoppingList: vi.fn() },
+}));
 vi.mock("@/lib/shoppingListClient", () => shopping);
 
 import { ToastProvider, ToastViewport } from "@/components/Toast";
@@ -46,6 +53,13 @@ function click(container: HTMLElement, label: string) {
   act(() => button?.click());
 }
 
+/** The pencil at the end of the chrome. */
+function pressEdit() {
+  const pencil = chrome.trailing as { props: { onClick: () => void; label: string } };
+  expect(pencil.props.label).toBe("Edit");
+  act(() => pencil.props.onClick());
+}
+
 describe("CartScreen", () => {
   let view: ReturnType<typeof mount>;
 
@@ -60,6 +74,10 @@ describe("CartScreen", () => {
       ok: true,
       value: {
         is_empty: false,
+      status: "live",
+      list_id: null,
+      kitchen_is_archived: false,
+      hand_items: [],
         lines: [
           {
             name: "flour",
@@ -88,6 +106,35 @@ describe("CartScreen", () => {
     await flush();
   }
 
+  it("empties the cart on screen and shows a toast after Done", async () => {
+    shopping.fetchShoppingList.mockResolvedValue({
+      ok: true,
+      value: {
+        is_empty: false,
+        status: "active",
+        list_id: "l1",
+        kitchen_is_archived: false,
+        hand_items: [{ id: "i", name: "soap", quantity: null, unit: null, size: null }],
+        lines: [],
+        your_call: [],
+      },
+    });
+    shopping.closeShoppingList.mockResolvedValue({ ok: true, value: {} });
+    await render();
+    client.fetchCart.mockResolvedValue({ ok: true, value: cart({ entries: [] }) });
+
+    click(view.container, "Done");
+    const buttons = Array.from(document.querySelectorAll("button")).filter(
+      (b) => b.textContent === "Done",
+    );
+    act(() => buttons[buttons.length - 1].click());
+    await flush();
+
+    expect(shopping.closeShoppingList).toHaveBeenCalledWith("k1", "l1");
+    expect(document.body.textContent).toContain("Cart closed.");
+    expect(view.container.textContent).not.toContain("Recipe a");
+  });
+
   it("loads the saved cart", async () => {
     await render();
     expect(client.fetchCart).toHaveBeenCalledWith("k1");
@@ -110,7 +157,7 @@ describe("CartScreen", () => {
     await render();
     expect(shopping.fetchShoppingList).toHaveBeenCalledTimes(1);
 
-    click(view.container, "Edit");
+    pressEdit();
     await flush();
     expect(shopping.fetchShoppingList).toHaveBeenCalledTimes(2);
 
@@ -127,7 +174,7 @@ describe("CartScreen", () => {
     client.startCartEdit.mockResolvedValue({ ok: true, value: editing });
     client.discardCart.mockResolvedValue({ ok: true, value: true });
     await render();
-    click(view.container, "Edit");
+    pressEdit();
     await flush();
     const before = shopping.fetchShoppingList.mock.calls.length;
 
@@ -153,7 +200,7 @@ describe("CartScreen", () => {
       value: { ...cart({ entries: [entry("a", { servings: 3 })] }), dropped_recipe_ids: [] },
     });
     await render();
-    click(view.container, "Edit");
+    pressEdit();
     await flush();
     const viewport = () => view.container.querySelector("[data-toast-viewport]");
     expect(viewport()?.textContent).toContain("You're editing the cart.");
@@ -183,7 +230,7 @@ describe("CartScreen", () => {
     click(view.container, "Save");
     await flush();
     expect(view.container.textContent).toContain("Your cart changes were discarded");
-    expect(view.container.textContent).toContain("Edit");
+    expect(chrome.trailing).not.toBeNull();
   });
 
   it("reloads when the window gets focus again", async () => {

@@ -25,6 +25,7 @@ from adapters.persistence.repositories import (
     SqlAlchemyKitchenRepository,
 )
 from adapters.persistence.sessions import SqlAlchemySessionStore
+from adapters.persistence.shopping_lists import SqlAlchemyShoppingListRepository
 from application.carts import (
     AddToDraftService,
     DiscardCartService,
@@ -49,7 +50,14 @@ from application.recipe_manage import (
 )
 from application.recipe_save import SaveRecipeDraft
 from application.recipe_vocabulary import vocabulary_answer
-from application.shopping_list import GetShoppingListService
+from application.shopping_list import (
+    ActiveListSync,
+    AddShoppingItemService,
+    ClosedShoppingListsService,
+    CloseShoppingListService,
+    GetShoppingListService,
+    RemoveShoppingItemService,
+)
 from domain.errors import AliasRequiredError
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -308,8 +316,21 @@ def get_replace_draft(db: Session = Depends(get_db)) -> ReplaceDraftService:
     return _cart(ReplaceDraftService, db)
 
 
+def _shopping_list_sync(db: Session) -> ActiveListSync:
+    return ActiveListSync(
+        SqlAlchemyCartRepository(db),
+        SqlAlchemyIngredientLineReader(db),
+        SqlAlchemyShoppingListRepository(db),
+    )
+
+
 def get_save_cart(db: Session = Depends(get_db)) -> SaveCartService:
-    return _cart(SaveCartService, db)
+    return SaveCartService(
+        SqlAlchemyKitchenRepository(db),
+        SqlAlchemyCartRepository(db),
+        SqlAlchemyEditLockRepository(db),
+        _shopping_list_sync(db),
+    )
 
 
 def get_discard_cart(db: Session = Depends(get_db)) -> DiscardCartService:
@@ -322,4 +343,34 @@ def get_get_shopping_list(db: Session = Depends(get_db)) -> GetShoppingListServi
         SqlAlchemyCartRepository(db),
         SqlAlchemyEditLockRepository(db),
         SqlAlchemyIngredientLineReader(db),
+        SqlAlchemyShoppingListRepository(db),
+    )
+
+
+def _list_change(cls, db: Session):  # noqa: ANN001, ANN202
+    return cls(
+        SqlAlchemyKitchenRepository(db),
+        SqlAlchemyCartRepository(db),
+        SqlAlchemyShoppingListRepository(db),
+        _shopping_list_sync(db),
+    )
+
+
+def get_add_shopping_item(db: Session = Depends(get_db)) -> AddShoppingItemService:
+    return _list_change(AddShoppingItemService, db)
+
+
+def get_remove_shopping_item(db: Session = Depends(get_db)) -> RemoveShoppingItemService:
+    return _list_change(RemoveShoppingItemService, db)
+
+
+def get_close_shopping_list(db: Session = Depends(get_db)) -> CloseShoppingListService:
+    return _list_change(CloseShoppingListService, db)
+
+
+def get_closed_shopping_lists(db: Session = Depends(get_db)) -> ClosedShoppingListsService:
+    return ClosedShoppingListsService(
+        SqlAlchemyKitchenRepository(db),
+        SqlAlchemyCartRepository(db),
+        SqlAlchemyShoppingListRepository(db),
     )

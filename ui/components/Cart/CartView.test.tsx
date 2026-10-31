@@ -20,7 +20,6 @@ function click(container: HTMLElement, label: string) {
 describe("CartView", () => {
   let view: ReturnType<typeof mount>;
   const handlers = {
-    onEdit: vi.fn(),
     onDraftChange: vi.fn(),
   };
 
@@ -51,7 +50,14 @@ describe("CartView", () => {
     expect(view.container.textContent).not.toContain("People");
   });
 
-  it("shows saved entries with notebook, base servings, servings and factor, and Edit", () => {
+  it("puts the empty hint first, with no Edit button in the page", () => {
+    render();
+    const first = view.container.querySelector("section")?.firstElementChild;
+    expect(first?.textContent).toContain("Add recipes from the kitchen's notebooks");
+    expect(buttons(view.container)).toEqual([]);
+  });
+
+  it("shows saved entries with notebook, base servings, servings and factor", () => {
     render({ cart: cart({ entries: [entry("a")] }) });
     const text = view.container.textContent ?? "";
     expect(text).toContain("Recipe a");
@@ -60,9 +66,7 @@ describe("CartView", () => {
     expect(text).toContain("Servings 1");
     expect(text).toContain("×0.5");
     expect(view.container.querySelector('a[href^="/recipes/a?from="]')).not.toBeNull();
-    expect(buttons(view.container)).toEqual(["Edit"]);
-    click(view.container, "Edit");
-    expect(handlers.onEdit).toHaveBeenCalled();
+    expect(buttons(view.container)).toEqual([]);
   });
 
   it("disables everything and names the editor while someone else edits", () => {

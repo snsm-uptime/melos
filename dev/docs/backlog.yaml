@@ -376,12 +376,20 @@ stories:
     acceptance: [AC5.5]
 
   - id: S-025
-    title: Finalize shopping list as a snapshot with closing_date
+    title: Saved shopping list from the cart and hand-added items, closed with Done (closing_date)
     epic: Cart
     priority: must
-    status: backlog
+    status: in_progress
     journey: J5
-    source: prd.md J5 Finalize, 1.6 (shopping_list)
+    source: prd.md J5 Saved list, 1.6 (shopping_list); specs/025-finalize-shopping-list
+    verification: >
+      Implemented 2026-10-30 on branch 025-finalize-shopping-list, not committed. Migration
+      0009_shopping_lists: upgrade, downgrade and upgrade tested. api in Compose (test overlay): 938
+      passed, 4 failed; the 4 are capture and notebook tests this story does not touch. ruff clean.
+      ui: 975 vitest tests, lint and typecheck clean. Walked over HTTP through the BFF with one
+      account. Not done: the browser walk of quickstart.md with two accounts at phone and desktop
+      width and in both languages. Known issue: the closing date is the UTC day, so Done in the
+      evening in the Americas records tomorrow (see specs/025-finalize-shopping-list/notes.md).
 
   - id: S-035
     title: Add a personal notebook to a kitchen as a snapshot (independent kitchen copy)
@@ -580,6 +588,7 @@ stories:
     priority: should
     status: backlog
     source: prd.md Appendix A (ShoppingListItem)
+    notes: Adding and removing hand items moved to S-025 (2026-10-30). This story keeps editing the other lines.
 
   - id: S-047
     title: Kitchen recipes page as cards with image or default pot, author chips, ingredient filter and cart-frequency sort

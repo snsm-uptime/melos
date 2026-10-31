@@ -76,4 +76,16 @@ describe("RecipeChips", () => {
     );
     expect(anchors()[0].className).toContain("min-h-11");
   });
+
+  it("shows a saved chip whose recipe is gone as plain text", () => {
+    view.render(
+      <RecipeChips
+        kitchenId="k1"
+        locale="en"
+        recipes={[{ recipe_id: "r1", title: "Bread", exists: false }]}
+      />,
+    );
+    expect(anchors()).toEqual([]);
+    expect(view.container.textContent).toContain("Bread");
+  });
 });

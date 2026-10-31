@@ -91,12 +91,15 @@ export function ChromeBackProvider({ children }: { children: ReactNode }) {
   const orders = useRef(new Map<string, number>());
   const nextOrder = useRef(0);
 
+  const live = useRef(new Set<string>());
+
   const claim = useCallback((id: string) => {
     if (!orders.current.has(id)) orders.current.set(id, nextOrder.current++);
   }, []);
   const upsert = useCallback(
     (id: string, config: ChromeHeaderConfig, forRoute: string) => {
       claim(id);
+      live.current.add(id);
       const order = orders.current.get(id) as number;
       if (config.title) {
         setRemembered((current) => {
@@ -124,7 +127,12 @@ export function ChromeBackProvider({ children }: { children: ReactNode }) {
     [claim],
   );
   const remove = useCallback((id: string) => {
-    orders.current.delete(id);
+    // A place outlives the same task: StrictMode re-runs effects at once, children first, and a
+    // fresh place then would rank a layout above its own page. A real unmount frees it just after.
+    live.current.delete(id);
+    queueMicrotask(() => {
+      if (!live.current.has(id)) orders.current.delete(id);
+    });
     setEntries((current) =>
       current.some((entry) => entry.id === id)
         ? current.filter((entry) => entry.id !== id)

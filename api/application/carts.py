@@ -36,6 +36,7 @@ from application.ports import (
     LockHolder,
     SavedCart,
     SessionRef,
+    ShoppingListRefresher,
 )
 
 logger = logging.getLogger(__name__)
@@ -274,7 +275,20 @@ class ReplaceDraftService(_CartUseCase):
 
 
 class SaveCartService(_CartUseCase):
-    """Apply the draft, raise the add count of newly added recipes, free the cart (R6, R8)."""
+    """Apply the draft, raise the add count of newly added recipes, free the cart (R6, R8).
+
+    The active shopping list follows in the same transaction (spec 025 FR-001).
+    """
+
+    def __init__(
+        self,
+        kitchens: KitchenRepository,
+        carts: CartRepository,
+        locks: EditLockRepository,
+        shopping_list: ShoppingListRefresher,
+    ) -> None:
+        super().__init__(kitchens, carts, locks)
+        self._shopping_list = shopping_list
 
     def execute(self, ref: SessionRef, kitchen_id: UUID) -> SavedCartResult:
         self._writable(ref, kitchen_id)
@@ -287,6 +301,7 @@ class SaveCartService(_CartUseCase):
         )
         dropped = tuple(i.recipe_id for i in draft.items if i not in kept)
         added = self._carts.save(kitchen_id, CartDraft(kept), ref.user_id)
+        self._shopping_list.refresh(kitchen_id)
         self._locks.release_cart(kitchen_id, ref.session_id)
         logger.info(
             "cart save outcome=saved items=%d added=%d dropped=%d",

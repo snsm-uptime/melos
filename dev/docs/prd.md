@@ -124,7 +124,7 @@ question + @mentioned recipe ids
   → save the user message and the assistant message with its citations
 ```
 
-**C. Shopping list.** The cart is stored per kitchen. `domain/cart.py` builds the consolidated list on every read. It is derived data and never stored.
+**C. Shopping list.** The cart is stored per kitchen. `domain/cart.py` builds the consolidated list. While a kitchen has no active list, the list is derived on read. Saving a cart creates or refreshes the kitchen's active list, which is stored together with any items added by hand (spec 025, 2026-10-30).
 
 **D. PDF.**
 ```
@@ -210,8 +210,8 @@ step(id, recipe_id, position, text)
 recipe_embedding(recipe_id, model, embedding vector(768), strategy_used, input_tokens, updated_at)  pk(recipe_id, model)
 cart(id, kitchen_id unique)
 cart_item(cart_id, recipe_id, servings 1–99)                               pk(cart_id, recipe_id); the recipe is in a notebook of the cart's kitchen
-shopping_list(id, kitchen_id, closing_date?, created_at)               snapshot of a finalized cart
-shopping_list_item(id, shopping_list_id, name, quantity?, unit?, size?, preparation?, recipe_ids[], position)
+shopping_list(id, kitchen_id, closing_date?, created_at)               active while closing_date is null; at most one active per kitchen; read only once closed
+shopping_list_item(id, shopping_list_id, origin: cart|hand, section, name, kind?, size?, amounts[], notes[], recipes (id and title), position)
 conversation(id, kitchen_id, user_id, title, archived_at?, created_at, updated_at)
 message(id, conversation_id, role: user|assistant, content, found?, cited_recipe_ids[], created_at)
 + auth tables reused from finance (user, session, password_reset_token, email_verification, preferences)
@@ -419,7 +419,11 @@ The user signs up, signs in, signs out, resets their password by email and edits
 **Export:**
 - **PDF**, with the chips as text in parentheses.
 - **Markdown** in a copy box, to paste into a chat.
-- **Finalize:** When exported or marked "done", the shopping list is saved as a snapshot (`shopping_list` + `shopping_list_item` records) with a `closing_date`. Only one active (non-closed) shopping list per kitchen at a time.
+
+**Saved list** (spec 025, decided 2026-10-30):
+- Saving the cart creates or refreshes the kitchen's active list, saved as `shopping_list` + `shopping_list_item` records. Only one active (non-closed) list per kitchen at a time.
+- Members add and remove individual items by hand, even with an empty cart. Refreshing from the cart keeps them.
+- **Done** ("Listo") closes the list: `closing_date` is set to today and the list never changes again. The cart is emptied and the member sees a toast. Export does not close a list.
 
 **History:** Past shopping lists (with `closing_date` set) can be queried by the chat to answer questions like "What was the shopping list last time?" The chat reconstructs the history and surfaces cards with date, recipes, and kitchen.
 
@@ -513,8 +517,8 @@ Every entity has full CRUD in the API. The UI only exposes what the journey need
 | Source | with recipe | ✓ | ✓ | ✓ | link on detail | — | Deleting keeps the recipe (`source_id` set to null) |
 | Cart | with kitchen | ✓ | — | clear | ✓ | — | One per kitchen |
 | CartItem | ✓ | ✓ | servings | ✓ | ✓ | ✓ (add/remove/servings) | |
-| ShoppingList | finalize cart | ✓ | — | — | ✓ | ✓ (read), — (finalize) | Stored snapshots with closing_date; one active per kitchen |
-| ShoppingListItem | via finalize | ✓ | add/remove qty | add/remove | *Should* | ✓ (add/remove qty) | Editable when list is active |
+| ShoppingList | on cart save or first added item | ✓ | Done sets closing_date | — | ✓ | ✓ (read), — (Done) | Stored; one active per kitchen; read only once closed |
+| ShoppingListItem | cart save, or by hand | ✓ | add/remove qty (*Should*) | hand items: remove | hand add and remove: ✓; other edits: *Should* | ✓ (add/remove qty) | Changeable while the list is active |
 | RecipeEmbedding | system | system | system | system | — | — | **Internal, not exposed** |
 | Conversation | ✓ | ✓ | title, archive | ✓ | ✓ | ✓ | User-owned only |
 | Message | ✓ (`POST` = ask) | ✓ | — | ✓ | ✓ | ✓ (ask) | **Immutable**, no update |

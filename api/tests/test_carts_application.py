@@ -222,6 +222,11 @@ class FakeLocks:
 ANA, BEN, CAT, DAN = uuid4(), uuid4(), uuid4(), uuid4()
 
 
+class _NoList:
+    def refresh(self, kitchen_id: UUID) -> None:
+        pass
+
+
 @dataclass
 class Setup:
     world: World
@@ -233,6 +238,8 @@ class Setup:
     ben: SessionRef
 
     def svc(self, cls):  # noqa: ANN001, ANN201
+        if cls is SaveCartService:
+            return cls(self.world.kitchens, self.carts, self.locks, _NoList())
         return cls(self.world.kitchens, self.carts, self.locks)
 
     def get(self, ref: SessionRef):  # noqa: ANN201

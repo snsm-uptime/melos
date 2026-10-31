@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { act, Fragment, type ReactNode } from "react";
+import { act, Fragment, StrictMode, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -253,3 +253,25 @@ function depthTree(levels: ChromeHeaderConfig[], depth: number): ReactNode {
     index === depth ? null : <Screen header={levels[index]}>{build(index + 1)}</Screen>;
   return build(0);
 }
+describe("ChromeBack under StrictMode", () => {
+  it("keeps a nested screen on top when its effects run twice", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <ChromeBackProvider>
+            <Screen header={{ backHref: "/home" }}>
+              <Screen header={{ title: "Cart", backHref: "/kitchen" }} />
+            </Screen>
+            <Probe />
+          </ChromeBackProvider>
+        </StrictMode>,
+      );
+    });
+    expect(container.querySelector("output")?.textContent).toBe("Cart|/kitchen");
+    act(() => root.unmount());
+    container.remove();
+  });
+});

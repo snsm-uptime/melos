@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass, field
-from datetime import timedelta
+from dataclasses import dataclass, field, replace
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from application.ports import (
     CartDraft,
@@ -18,6 +18,7 @@ from application.ports import (
     SessionRef,
 )
 from application.shopping_list import GetShoppingListService
+from domain.shopping_list import SavedLine, SavedList
 from tests.test_carts_application import Setup, _setup
 
 
@@ -31,6 +32,62 @@ class FakeLines:
     def lines_for(self, recipe_ids: Sequence[UUID]) -> dict[UUID, tuple[CartIngredientLine, ...]]:
         self.reads.append(tuple(recipe_ids))
         return {rid: self.lines[rid] for rid in recipe_ids if rid in self.lines}
+
+
+@dataclass
+class FakeLists:
+    """Saved lists in memory."""
+
+    lists: dict[UUID, SavedList] = field(default_factory=dict)
+
+    def active(self, kitchen_id: UUID) -> SavedList | None:
+        for saved in self.lists.values():
+            if saved.kitchen_id == kitchen_id and saved.closing_date is None:
+                return saved
+        return None
+
+    def get_or_create_active(self, kitchen_id: UUID) -> SavedList:
+        found = self.active(kitchen_id)
+        if found is not None:
+            return found
+        saved = SavedList(uuid4(), kitchen_id, None, datetime.now(UTC), ())
+        self.lists[saved.id] = saved
+        return saved
+
+    def replace_cart_lines(self, list_id: UUID, lines: Sequence[SavedLine]) -> None:
+        saved = self.lists[list_id]
+        hand = tuple(i for i in saved.items if i.origin == "hand")
+        cart = tuple(replace(line, id=uuid4()) for line in lines)
+        self.lists[list_id] = replace(saved, items=cart + hand)
+
+    def add_item(self, list_id: UUID, item: SavedLine) -> None:
+        saved = self.lists[list_id]
+        self.lists[list_id] = replace(saved, items=(*saved.items, replace(item, id=uuid4())))
+
+    def remove_hand_item(self, list_id: UUID, item_id: UUID) -> bool:
+        saved = self.lists[list_id]
+        kept = tuple(i for i in saved.items if not (i.id == item_id and i.origin == "hand"))
+        self.lists[list_id] = replace(saved, items=kept)
+        return len(kept) != len(saved.items)
+
+    def close(self, list_id: UUID, closing_date: date) -> bool:
+        saved = self.lists[list_id]
+        if saved.closing_date is not None:
+            return False
+        self.lists[list_id] = replace(saved, closing_date=closing_date)
+        return True
+
+    def closed(self, kitchen_id: UUID) -> tuple[SavedList, ...]:
+        rows = [
+            s for s in self.lists.values() if s.kitchen_id == kitchen_id and s.closing_date
+        ]
+        return tuple(sorted(rows, key=lambda s: s.created_at, reverse=True))
+
+    def closed_by_id(self, kitchen_id: UUID, list_id: UUID) -> SavedList | None:
+        saved = self.lists.get(list_id)
+        if saved is None or saved.kitchen_id != kitchen_id or saved.closing_date is None:
+            return None
+        return saved
 
 
 class ReadOnlyLocks:
@@ -62,6 +119,7 @@ class Fixture:
         self.s: Setup = _setup(archived=archived)
         self.lines = FakeLines()
         self.locks = ReadOnlyLocks(self.s.locks)
+        self.lists = FakeLists()
 
     def recipe(self, title: str, lines: Sequence[CartIngredientLine], base: int = 4) -> UUID:
         rid = self.s.carts.add_recipe(self.s.notebook, title, base)
@@ -79,6 +137,7 @@ class Fixture:
             self.s.carts,
             self.locks,
             self.lines,  # type: ignore[arg-type]
+            self.lists,
         )
 
     def get(self, ref: SessionRef | None = None, kitchen_id: UUID | None = None):  # noqa: ANN201

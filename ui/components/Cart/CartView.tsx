@@ -31,12 +31,12 @@ type CartViewProps = {
   /** Recipes removed on save because they were deleted. */
   dropped: number;
   pending?: boolean;
-  onEdit: () => void;
   onDraftChange: (next: LocalDraft) => void;
 };
 
 /**
- * The Cart page body (contracts/cart-ui.md): the saved cart for everyone, or my editing view
+ * The Cart page body (contracts/cart-ui.md): the saved cart for everyone, or my editing view,
+ * which starts from the pencil at the end of the chrome,
  * with Servings, Remove and Clear; Save and Discard are on the docked editing bar. Factors in the draft are recomputed here
  * with the api's rounding.
  */
@@ -47,7 +47,6 @@ export function CartView({
   locale,
   dropped,
   pending = false,
-  onEdit,
   onDraftChange,
 }: CartViewProps) {
   const t = cartMessages[locale];
@@ -65,34 +64,6 @@ export function CartView({
 
   return (
     <section className="flex flex-col gap-4 px-4">
-      {dropped > 0 ? (
-        <p role="status" className="m-0 text-[0.9rem] text-muted">
-          {t.dropped(dropped)}
-        </p>
-      ) : null}
-      {someoneElse ? <EditorNotice alias={someoneElse.alias} kind="cart" locale={locale} /> : null}
-
-      <div className="flex flex-wrap items-end gap-4">
-        <div className="ml-auto flex flex-wrap gap-2">
-          {draft ? (
-            <>
-              <button
-                type="button"
-                className={SECONDARY}
-                disabled={pending || draft.entries.length === 0}
-                onClick={() => setClearing(true)}
-              >
-                {t.clear}
-              </button>
-            </>
-          ) : cart.can_edit ? (
-            <button type="button" className={PRIMARY} disabled={pending} onClick={onEdit}>
-              {t.edit}
-            </button>
-          ) : null}
-        </div>
-      </div>
-
       {entries.length === 0 ? (
         <p className="m-0 text-[0.9rem] text-muted">
           {t.empty}.{" "}
@@ -100,7 +71,28 @@ export function CartView({
             {t.emptyLink}
           </Link>
         </p>
-      ) : (
+      ) : null}
+      {dropped > 0 ? (
+        <p role="status" className="m-0 text-[0.9rem] text-muted">
+          {t.dropped(dropped)}
+        </p>
+      ) : null}
+      {someoneElse ? <EditorNotice alias={someoneElse.alias} kind="cart" locale={locale} /> : null}
+
+      {draft ? (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            className={SECONDARY}
+            disabled={pending || draft.entries.length === 0}
+            onClick={() => setClearing(true)}
+          >
+            {t.clear}
+          </button>
+        </div>
+      ) : null}
+
+      {entries.length > 0 ? (
         <ul className="m-0 flex list-none flex-col gap-2 p-0">
           {entries.map((entry, index) => (
             <CartEntryRow
@@ -122,7 +114,7 @@ export function CartView({
             />
           ))}
         </ul>
-      )}
+      ) : null}
 
       <ActionDialog
         open={clearing}
@@ -141,7 +133,5 @@ export function CartView({
   );
 }
 
-const PRIMARY =
-  "rounded-[var(--radius-md)] border border-accent bg-accent px-4 py-2 text-[0.9rem] font-[550] text-background disabled:opacity-50";
 const SECONDARY =
   "rounded-[var(--radius-md)] border border-border bg-background px-4 py-2 text-[0.9rem] text-foreground disabled:opacity-50";

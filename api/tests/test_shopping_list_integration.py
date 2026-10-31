@@ -117,7 +117,15 @@ def test_combined_scaled_list_has_the_contract_shape(
 
     assert response.status_code == 200, response.text
     body = response.json()
-    assert set(body) == {"is_empty", "lines", "your_call"}
+    assert set(body) == {
+        "is_empty",
+        "status",
+        "list_id",
+        "kitchen_is_archived",
+        "lines",
+        "your_call",
+        "hand_items",
+    }
     assert body["is_empty"] is False and body["your_call"] == []
     assert shown(body) == [
         ("egg", None, (("2", "unit"),)),
@@ -127,7 +135,7 @@ def test_combined_scaled_list_has_the_contract_shape(
     assert set(flour) == {"name", "kind", "size", "amounts", "recipes"}
     assert flour["kind"] == "volume"
     assert body["lines"][0]["kind"] == "count"
-    assert set(flour["recipes"][0]) == {"recipe_id", "title"}
+    assert set(flour["recipes"][0]) == {"recipe_id", "title", "exists"}
 
 
 def test_amounts_follow_servings(client: TestClient, db_session: Session) -> None:
@@ -192,7 +200,8 @@ def test_non_member_and_unknown_kitchen_get_the_same_404(
 def test_an_empty_cart_is_empty(client: TestClient, db_session: Session) -> None:
     people, kitchen_id, _ = _home(client, db_session)
     body = people.as_("ana").get(_list(kitchen_id)).json()
-    assert body == {"is_empty": True, "lines": [], "your_call": []}
+    assert (body["is_empty"], body["lines"], body["your_call"]) == (True, [], [])
+    assert (body["status"], body["list_id"], body["hand_items"]) == ("live", None, [])
 
 
 def test_archived_kitchen_can_still_be_read(client: TestClient, db_session: Session) -> None:
@@ -297,11 +306,13 @@ def test_chips_list_the_recipes_of_a_line_in_cart_order(
     body = ana.get(_list(kitchen_id)).json()
 
     by_name = {ln["name"]: ln for ln in body["lines"]}
-    assert by_name["flour"]["recipes"] == [
-        {"recipe_id": bread, "title": "Bread"},
-        {"recipe_id": pancakes, "title": "Pancakes"},
+    assert [(r["recipe_id"], r["title"]) for r in by_name["flour"]["recipes"]] == [
+        (bread, "Bread"),
+        (pancakes, "Pancakes"),
     ]
-    assert by_name["egg"]["recipes"] == [{"recipe_id": pancakes, "title": "Pancakes"}]
+    assert by_name["egg"]["recipes"] == [
+        {"recipe_id": pancakes, "title": "Pancakes", "exists": True}
+    ]
 
 
 def test_two_recipes_with_the_same_title_are_two_chips(
@@ -334,7 +345,7 @@ def test_vague_lines_go_to_your_call_once_per_ingredient(
     body = ana.get(_list(kitchen_id)).json()
 
     assert shown(body) == [("butter", None, (("100", "g"),))]
-    assert body["lines"][0]["recipes"] == [{"recipe_id": b, "title": "B"}]
+    assert body["lines"][0]["recipes"] == [{"recipe_id": b, "title": "B", "exists": True}]
     assert [(e["name"], e["notes"]) for e in body["your_call"]] == [
         ("butter", ["to taste"]),
         ("salt", ["a pinch", "to taste"]),
@@ -438,6 +449,9 @@ def test_an_edited_recipe_shows_its_new_ingredients_on_the_next_read(
     )
     db_session.flush()
 
+    # The saved list keeps its lines until the next cart save (spec 025 FR-001).
+    assert shown(ana.get(_list(kitchen_id)).json())[1] == ("flour", None, (("1", "cup"),))
+    save_cart(ana, kitchen_id, [pancakes], servings=4)
     assert shown(ana.get(_list(kitchen_id)).json())[1] == ("flour", None, (("3", "cup"),))
 
 
@@ -448,6 +462,10 @@ def test_a_recipe_deleted_from_the_cart_never_reaches_the_list(
     ana = people.as_("ana")
     save_cart(ana, kitchen_id, [bread, pancakes], servings=4)
     assert ana.delete(f"/recipes/{pancakes}").status_code in (200, 204)
+    # The saved list keeps it until the next cart save, its chip marked gone (spec 025 R6).
+    chips = ana.get(_list(kitchen_id)).json()["lines"][0]["recipes"]
+    assert {c["title"]: c["exists"] for c in chips} == {"Pancakes": False}
+    save_cart(ana, kitchen_id, [bread], servings=4)
     assert shown(ana.get(_list(kitchen_id)).json()) == [("flour", None, (("3", "tbsp"),))]
 
 
