@@ -176,7 +176,7 @@ describe("NotebookTabScreen", () => {
     expect(calls).toEqual(["/api/notebooks/default", "/api/notebooks"]);
     const names = Array.from(container.querySelectorAll("h3")).map((h) => h.textContent);
     expect(names).toEqual(["ana's Notebook", "Family list"]);
-    expect(container.textContent).toContain("Default");
+    expect(container.querySelector('[aria-label="Default"]')).not.toBeNull();
     // Each card links to its recipe list (S-021).
     const hrefs = Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href"));
     expect(hrefs).toEqual(["/notebooks/nb-default", "/notebooks/nb-shared"]);

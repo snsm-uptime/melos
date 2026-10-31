@@ -78,7 +78,7 @@ export function AddRecipeCallToAction({
         </AccentButton>
       ) : (
         // Fills its grid row so it matches the card beside it; never shorter than the shortest
-        // NotebookCard (one title line, its padding and border).
+        // NotebookCard (one title line, the recipe count, its padding and border).
         <AddItemCard
           label={t.addRecipe}
           onClick={() => setOptionsOpen(true)}

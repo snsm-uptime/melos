@@ -119,6 +119,7 @@ export function NotebookTabScreen({
               <NotebookCard
                 name={notebook.name}
                 ownerAlias={notebook.owner_alias}
+                recipeCount={notebook.recipe_count}
                 access={notebook.access}
                 isDefault={notebook.is_default}
                 viewerAlias={viewerAlias}
