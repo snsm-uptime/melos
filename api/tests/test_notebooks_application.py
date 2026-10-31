@@ -576,6 +576,15 @@ def test_kitchen_capture_auto_selects_user_notebook_or_creates_one() -> None:
     )
     assert result == CaptureNotebook(notebook_id=ben_notebook, created=False)
 
+    # A notebook of another kitchen is not a pick
+    stranger = _kitchen_notebook(world, _kitchen(world, ana), "elsewhere", ana)
+    with pytest.raises(NotebookNotFoundError):
+        _resolve(world).execute(
+            ResolveCaptureNotebookCommand(
+                actor_user_id=ana, kitchen_id=home, picked_notebook_id=stranger
+            )
+        )
+
 
 def test_kitchen_capture_creates_user_notebook_on_first_capture() -> None:
     ana, ben, carl = uuid4(), uuid4(), uuid4()

@@ -804,7 +804,7 @@ def test_capture_notebook_survives_a_failed_save(engine: Engine) -> None:
         _cleanup(factory, notebooks=[result.notebook_id], kitchens=[kitchen_id], users=[ana])
 
 
-def test_capture_race_on_one_kitchen_makes_one_notebook(engine: Engine) -> None:
+def test_capture_race_on_one_kitchen_makes_one_notebook_per_member(engine: Engine) -> None:
     factory = sessionmaker(bind=engine)
     with factory() as setup:
         ana = _user(setup, alias=f"ana_{uuid4().hex[:6]}")
@@ -817,7 +817,8 @@ def test_capture_race_on_one_kitchen_makes_one_notebook(engine: Engine) -> None:
 
     results: list[UUID] = []
     errors: list[BaseException] = []
-    start = threading.Barrier(2, timeout=10)
+    actors = (ana, ana, ben, ben)
+    start = threading.Barrier(len(actors), timeout=10)
 
     def run(actor: UUID) -> None:
         with factory() as session:
@@ -832,17 +833,18 @@ def test_capture_race_on_one_kitchen_makes_one_notebook(engine: Engine) -> None:
                 session.rollback()
                 errors.append(exc)
 
-    workers = [threading.Thread(target=run, args=(actor,)) for actor in (ana, ben)]
+    workers = [threading.Thread(target=run, args=(actor,)) for actor in actors]
     for worker in workers:
         worker.start()
     for worker in workers:
         worker.join(timeout=20)
     try:
         assert not errors, errors
-        assert len(results) == 2
-        assert results[0] == results[1]
+        assert len(results) == len(actors)
+        assert len(set(results)) == 2
         with factory() as check:
-            assert _notebook_count(check, kitchen_id=kitchen_id) == 1
+            assert _notebook_count(check, kitchen_id=kitchen_id, owner_user_id=ana) == 1
+            assert _notebook_count(check, kitchen_id=kitchen_id, owner_user_id=ben) == 1
     finally:
         _cleanup(factory, notebooks=results, kitchens=[kitchen_id], users=[ana, ben])
 

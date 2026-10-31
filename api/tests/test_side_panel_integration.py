@@ -174,7 +174,9 @@ def test_a_read_with_no_change_stays_within_four_statements(
     statements: list[str] = []
 
     def record(_conn, _cursor, statement, *_rest) -> None:
-        statements.append(statement)
+        # The test session's own SAVEPOINT is not part of the read.
+        if not statement.startswith("SAVEPOINT"):
+            statements.append(statement)
 
     bind = db_session.get_bind()
     event.listen(bind, "before_cursor_execute", record)

@@ -348,8 +348,10 @@ class ResolveCaptureNotebookService:
         if kitchen.is_archived:
             raise KitchenArchivedError()
 
-        # If the user explicitly picked a notebook, use it
+        # If the user explicitly picked one of this kitchen's notebooks, use it
         if command.picked_notebook_id is not None:
+            if command.picked_notebook_id not in self._notebooks.kitchen_ids_for(kitchen.id):
+                raise NotebookNotFoundError()
             return CaptureNotebook(notebook_id=command.picked_notebook_id, created=False)
 
         # Look for the user's kitchen notebook in this kitchen
