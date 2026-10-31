@@ -7,6 +7,7 @@ export type NotebookResponse = {
   owner_alias: string | null;
   access: "owner" | "member" | "kitchen_member";
   is_default: boolean;
+  recipe_count: number;
   kitchen_id: string | null;
   kitchen_is_archived: boolean | null;
 };

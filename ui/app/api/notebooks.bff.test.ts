@@ -33,6 +33,7 @@ const notebook = {
   kitchen_id: null,
   kitchen_is_archived: null,
   is_default: true,
+  recipe_count: 0,
 };
 
 describe("notebooks BFF", () => {
@@ -105,6 +106,7 @@ describe("notebooks BFF", () => {
           kitchen_id: "k1",
           kitchen_is_archived: false,
           is_default: false,
+          recipe_count: 0,
         },
       ],
     };

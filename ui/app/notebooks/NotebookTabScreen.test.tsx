@@ -30,6 +30,7 @@ const defaultNotebook = {
   owner_alias: "ana",
   access: "owner",
   is_default: true,
+  recipe_count: 0,
   kitchen_id: null,
   kitchen_is_archived: null,
 };
@@ -41,6 +42,7 @@ const sharedNotebook = {
   owner_alias: "ben",
   access: "member",
   is_default: false,
+  recipe_count: 0,
   kitchen_id: null,
   kitchen_is_archived: null,
 };

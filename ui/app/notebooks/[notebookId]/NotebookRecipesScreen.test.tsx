@@ -35,6 +35,7 @@ const notebook = {
   owner_alias: "ana",
   access: "owner",
   is_default: true,
+  recipe_count: 0,
   kitchen_id: null,
   kitchen_is_archived: null,
 };

@@ -59,6 +59,7 @@ const homeNotebook = {
   owner_alias: "ana",
   access: "kitchen_member",
   is_default: false,
+  recipe_count: 0,
   kitchen_id: kitchenId,
   kitchen_is_archived: false,
 };
@@ -70,6 +71,7 @@ const secondNotebook = {
   owner_alias: null,
   access: "kitchen_member",
   is_default: false,
+  recipe_count: 0,
   kitchen_id: kitchenId,
   kitchen_is_archived: false,
 };
