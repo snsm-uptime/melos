@@ -27,6 +27,10 @@
      elevation-3 lift on activated controls; see --lift-* below. */
   --shadow-elevation-1: 0 1px 2px 0 var(--lift-key), 0 1px 3px 1px var(--lift-ambient);
 
+  /* Material's 2dp card shadow: umbra, penumbra and ambient layers. */
+  --shadow-2dp:
+    0 2px 2px 0 rgb(0 0 0 / 0.14), 0 3px 1px -2px rgb(0 0 0 / 0.12), 0 1px 5px 0 rgb(0 0 0 / 0.2);
+
   --spacing-strip-inset: var(--strip-inset);
   --spacing-page-gutter: var(--page-gutter);
   --spacing-nav-x: var(--nav-x);

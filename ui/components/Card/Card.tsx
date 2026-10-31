@@ -14,9 +14,9 @@ type CardPartProps = {
   className?: string;
 };
 
-/** Surface fill, hairline border and the resting elevation-1 shadow. */
+/** Surface fill, hairline border and the resting 2dp shadow. */
 export const cardClassName =
-  "flex min-w-0 flex-col overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-elevation-1";
+  "flex min-w-0 flex-col overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-2dp";
 
 /** A raised surface. Compose with `CardHeader` and `CardBody`, or put content in it directly. */
 export function Card({ children, as: Element = "div", className }: CardProps) {
