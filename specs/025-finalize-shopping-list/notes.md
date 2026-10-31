@@ -14,7 +14,7 @@
 
 - api in Compose (test overlay): 938 passed, 4 failed. The 4 are in capture and notebook tests this story does not touch (the text limit, vocabulary, and two kitchen-capture notebook tests). ruff clean.
 - ui: 975 vitest tests, lint and typecheck clean.
-- Migration 0009: upgrade, downgrade and upgrade tested. Applied to the worktree's dev database.
+- Migration 0010: upgrade, downgrade and upgrade tested. Applied to the worktree's dev database.
 - HTTP walk through the BFF on the worktree stack, one account in a throwaway kitchen, deleted afterwards: hand item on an empty cart, draft, save, refused item, Done, second Done, cart kept, history, the three pages answer 200, outsider 404.
 
 ## Open

@@ -1,4 +1,4 @@
-"""Migration 0009_shopping_lists: upgrade, downgrade, upgrade (spec 025).
+"""Migration 0010_shopping_lists: upgrade, downgrade, upgrade (spec 025).
 
 Requires DATABASE_URL. Skips when unset. Runs on the shared test database and restores head.
 """
@@ -26,7 +26,7 @@ def test_up_down_up() -> None:
     try:
         command.upgrade(cfg, "head")
         assert inspect(engine).has_table("shopping_list_item")
-        command.downgrade(cfg, "0008_cart_servings")
+        command.downgrade(cfg, "0009_default_kitchen")
         assert not inspect(engine).has_table("shopping_list")
     finally:
         command.upgrade(cfg, "head")

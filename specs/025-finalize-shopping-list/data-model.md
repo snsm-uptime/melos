@@ -1,6 +1,6 @@
 # Data Model: Saved Shopping List
 
-Migration `0009_shopping_lists`, down revision `0008_cart_servings`.
+Migration `0010_shopping_lists`, down revision `0009_default_kitchen`.
 
 ## shopping_list
 

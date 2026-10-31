@@ -14,7 +14,7 @@ A kitchen gets one stored active shopping list. Saving the cart creates or refre
 
 **Primary Dependencies**: Existing only: FastAPI, SQLAlchemy, Alembic, `domain/cart.py` (`build_shopping_list`), `domain/ingredient_catalog.py` (`normalize_name`).
 
-**Storage**: PostgreSQL 16. New tables `shopping_list` and `shopping_list_item`, migration `0009_shopping_lists` (down revision `0008_cart_servings`). See [data-model.md](./data-model.md).
+**Storage**: PostgreSQL 16. New tables `shopping_list` and `shopping_list_item`, migration `0010_shopping_lists` (down revision `0009_default_kitchen`). See [data-model.md](./data-model.md).
 
 **Testing**: pytest + ruff (domain, application with fake ports, Compose integration, migration up/down/up); vitest, eslint, typecheck (ui); two-account browser walk ([quickstart.md](./quickstart.md)).
 
@@ -66,7 +66,7 @@ api/
 ├── application/carts.py                            # SaveCartService refreshes the list
 ├── application/ports.py                            # ShoppingListRepository
 ├── adapters/persistence/shopping_lists.py          # new
-├── adapters/persistence/migrations/versions/0009_shopping_lists.py  # new
+├── adapters/persistence/migrations/versions/0010_shopping_lists.py  # new
 ├── api/routes/shopping_list.py, api/schemas/shopping_list.py, api/deps.py
 └── tests/
 ui/

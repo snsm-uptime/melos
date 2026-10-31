@@ -3,8 +3,8 @@
 A list is active while closing_date is null, with at most one active list per kitchen. Lines
 copy their recipes as JSON with no foreign key, so a list outlives them.
 
-Revision ID: 0009_shopping_lists
-Revises: 0008_cart_servings
+Revision ID: 0010_shopping_lists
+Revises: 0009_default_kitchen
 Create Date: 2026-10-30
 """
 
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0009_shopping_lists"
-down_revision: str | None = "0008_cart_servings"
+revision: str = "0010_shopping_lists"
+down_revision: str | None = "0009_default_kitchen"
 branch_labels: str | None = None
 depends_on: str | None = None
 

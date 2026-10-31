@@ -16,7 +16,7 @@
 
 **Blocks every user story.**
 
-- [X] T002 Create migration api/adapters/persistence/migrations/versions/0009_shopping_lists.py (down revision `0008_cart_servings`) with both tables from data-model.md, the partial unique index on `kitchen_id` where `closing_date IS NULL`, the index on `(kitchen_id, closing_date DESC)`, and ON DELETE CASCADE from kitchen and list
+- [X] T002 Create migration api/adapters/persistence/migrations/versions/0010_shopping_lists.py (down revision `0009_default_kitchen`) with both tables from data-model.md, the partial unique index on `kitchen_id` where `closing_date IS NULL`, the index on `(kitchen_id, closing_date DESC)`, and ON DELETE CASCADE from kitchen and list
 - [X] T003 [P] Add a migration test for upgrade, downgrade and upgrade in api/tests/test_shopping_lists_migration.py
 - [X] T004 [P] Add saved list types and rules in api/domain/shopping_list.py: `origin` is `cart` or `hand`; `section` is `measured` or `your_call`; a hand item has a non-blank name, normalized by `normalize_name`, `quantity` and `unit` together, a unit from the PRD set, and `size` only with unit `unit`; a mapping from `ShoppingList` to stored cart lines in S-023 order
 - [X] T005 [P] Add domain tests in api/tests/test_shopping_list_saved_domain.py
