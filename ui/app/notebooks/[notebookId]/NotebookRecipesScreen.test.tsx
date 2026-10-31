@@ -156,7 +156,7 @@ describe("NotebookRecipesScreen", () => {
     await render();
 
     expect(container.textContent).toContain("This notebook is unavailable.");
-    expect(container.querySelector("input")).toBeNull();
+    expect(container.querySelector("main input")).toBeNull();
   });
 
   it("redirects to the alias step when an alias is required", async () => {

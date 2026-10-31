@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import Protocol
 from uuid import UUID
 
+from domain.default_kitchen import MemberKitchen
 from domain.notebook import Notebook, NotebookRole
 from domain.recipe import EditedRecipe, NewRecipe
 from domain.shopping_list import SavedLine, SavedList
@@ -514,3 +515,17 @@ class IngredientLineReader(Protocol):
     def lines_for(self, recipe_ids: Sequence[UUID]) -> dict[UUID, tuple[CartIngredientLine, ...]]:
         """Each recipe's lines in `position` order; a recipe with no lines is absent or empty."""
         ...
+
+
+class SidePanelRepository(Protocol):
+    """Everything the side panel reads about the caller (spec 064)."""
+
+    def stored_default_kitchen(self, user_id: UUID) -> UUID | None: ...
+
+    def member_kitchens(self, user_id: UUID) -> Sequence[MemberKitchen]: ...
+
+    def set_default_kitchen(self, user_id: UUID, kitchen_id: UUID | None) -> None: ...
+
+    def count_recipes_added(self, user_id: UUID) -> int: ...
+
+    def count_notebooks(self, user_id: UUID) -> int: ...

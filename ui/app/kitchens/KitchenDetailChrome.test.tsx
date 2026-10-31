@@ -5,8 +5,14 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const push = vi.fn();
+const refresh = vi.fn();
+const archiveKitchen = vi.fn();
+const unarchiveKitchen = vi.fn();
+const deleteKitchen = vi.fn();
+const renameKitchen = vi.fn();
+const setDefaultKitchen = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ push, refresh }),
   usePathname: () => "/kitchens/l1",
 }));
 
@@ -14,10 +20,29 @@ vi.mock("@/components/PreferencesProvider", () => ({
   usePreferences: () => ({ locale: "en" }),
 }));
 
+vi.mock("./kitchensClient", async (original) => ({
+  ...(await original<typeof import("./kitchensClient")>()),
+  fetchKitchens: async () => ({ ok: true, kitchens: [] }),
+  archiveKitchen: (...args: unknown[]) => archiveKitchen(...args),
+  unarchiveKitchen: (...args: unknown[]) => unarchiveKitchen(...args),
+  deleteKitchen: (...args: unknown[]) => deleteKitchen(...args),
+  renameKitchen: (...args: unknown[]) => renameKitchen(...args),
+}));
+
+vi.mock("@/lib/sidePanelClient", async (original) => ({
+  ...(await original<typeof import("@/lib/sidePanelClient")>()),
+  fetchSidePanel: async () => null,
+  setDefaultKitchen: (...args: unknown[]) => setDefaultKitchen(...args),
+}));
+
 import { AppShell } from "@/components/AppShell";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
 import { KitchenCartCountProvider, usePublishKitchenCartCount } from "./cartCount";
-import { KitchenDetailChrome, type KitchenShare } from "./KitchenDetailChrome";
+import {
+  KitchenDetailChrome,
+  type KitchenManage,
+  type KitchenShare,
+} from "./KitchenDetailChrome";
 
 const t = kitchensMessages.en;
 
@@ -79,7 +104,7 @@ describe("KitchenDetailChrome", () => {
     container.remove();
   });
 
-  it("renders the kitchen title with a Back control and no help icon", async () => {
+  it("renders the kitchen title with no Back control and no help icon", async () => {
     await act(async () => {
       root.render(
         <AppShell>
@@ -90,13 +115,8 @@ describe("KitchenDetailChrome", () => {
 
     const header = container.querySelector("header");
     expect(header?.querySelector("h1")?.textContent).toBe("Household");
-    expect(header?.querySelector('button[aria-label="Back"]')).toBeTruthy();
+    expect(header?.querySelector('button[aria-label="Back"]')).toBeNull();
     expect(header?.querySelector('button[aria-label^="Learn more"]')).toBeNull();
-
-    await act(async () => {
-      (header!.querySelector('button[aria-label="Back"]') as HTMLButtonElement).click();
-    });
-    expect(push).toHaveBeenCalledWith("/home");
   });
 
   async function renderWith(shareProp?: KitchenShare, cart?: CartProp) {
@@ -119,7 +139,7 @@ describe("KitchenDetailChrome", () => {
     await renderWith(share);
 
     const buttons = Array.from(container.querySelectorAll("header button"));
-    expect(buttons.map((b) => b.getAttribute("aria-label"))).toEqual(["Back", t.mobileInviteAria]);
+    expect(buttons.map((b) => b.getAttribute("aria-label"))).toEqual(["Open menu", t.mobileInviteAria]);
     expect(document.querySelector("[role=dialog]")).toBeNull();
 
     await act(async () => {
@@ -162,7 +182,7 @@ describe("KitchenDetailChrome", () => {
     await renderWith(share, CART);
     const buttons = Array.from(container.querySelectorAll("header button"));
     expect(buttons.map((b) => b.getAttribute("aria-label"))).toEqual([
-      "Back",
+      "Open menu",
       "Cart",
       t.mobileInviteAria,
     ]);
@@ -177,7 +197,7 @@ describe("KitchenDetailChrome", () => {
     const labels = Array.from(container.querySelectorAll("header button")).map((b) =>
       b.getAttribute("aria-label"),
     );
-    expect(labels).toEqual(["Back", "Cart"]);
+    expect(labels).toEqual(["Open menu", "Cart"]);
   });
 
   async function renderWithCount(count: number | null, cart: CartProp = CART) {
@@ -194,7 +214,7 @@ describe("KitchenDetailChrome", () => {
   }
 
   function cartButton() {
-    return container.querySelector("header button:not([aria-label=Back])") as HTMLButtonElement;
+    return container.querySelector('header button[aria-label^="Ca"]') as HTMLButtonElement;
   }
 
   it("shows the number of recipes in a circular badge on the cart icon's bottom right corner", async () => {
@@ -240,5 +260,128 @@ describe("KitchenDetailChrome", () => {
   it("shows no badge without the provider", async () => {
     await renderWith(undefined, CART);
     expect(cartButton().querySelector('[role="img"]')).toBeNull();
+  });
+
+  describe("kitchen actions (spec 064)", () => {
+    const manage: KitchenManage = {
+      kitchenId: "k1",
+      name: "Household",
+      isOwner: true,
+      isArchived: false,
+      isDefault: false,
+      locale: "en",
+    };
+    const inRow = () =>
+      Array.from(document.querySelectorAll('[role="menu"] button')).map((b) => b.textContent);
+    const button = (label: string) =>
+      (container.querySelector(`header button[aria-label="${label}"]`) ??
+        Array.from(document.querySelectorAll('[role="menu"] button')).find(
+          (b) => b.textContent === label,
+        )) as HTMLButtonElement;
+    const dialogButton = (text: string) =>
+      Array.from(document.querySelectorAll('[role="dialog"] button')).find(
+        (b) => b.textContent === text,
+      ) as HTMLButtonElement;
+
+    async function renderManage(next: Partial<KitchenManage> = {}) {
+      await act(async () => {
+        root.render(
+          <AppShell>
+            <KitchenDetailChrome title="Household" manage={{ ...manage, ...next }} />
+          </AppShell>,
+        );
+      });
+      const dots = button(t.menuAria);
+      if (dots) await act(async () => dots.click());
+    }
+
+    beforeEach(() => vi.clearAllMocks());
+
+    it("gives an owner every action", async () => {
+      await renderManage();
+      expect(inRow()).toEqual([
+        "Set as default",
+        "Rename kitchen",
+        "Archive kitchen",
+        t.deleteAria,
+      ]);
+    });
+
+    it("gives a non-owner only set as default", async () => {
+      await renderManage({ isOwner: false });
+      expect(inRow()).toEqual(["Set as default"]);
+    });
+
+    it("gives an archived kitchen's owner only restore", async () => {
+      await renderManage({ isArchived: true });
+      expect(inRow()).toEqual(["Restore kitchen"]);
+    });
+
+    it("gives a non-owner of an archived kitchen nothing", async () => {
+      await renderManage({ isArchived: true, isOwner: false });
+      expect(inRow()).toEqual([]);
+    });
+
+    it("hides set as default on the default kitchen", async () => {
+      await renderManage({ isDefault: true });
+      expect(inRow()).not.toContain("Set as default");
+    });
+
+    it("sets the default and refreshes the page", async () => {
+      setDefaultKitchen.mockResolvedValue({ default_kitchen_id: "k1", recipes_added: 0, notebooks: 2 });
+      await renderManage();
+      await act(async () => button("Set as default").click());
+      expect(setDefaultKitchen).toHaveBeenCalledWith("k1");
+      expect(refresh).toHaveBeenCalled();
+    });
+
+    it("goes to Home after archive", async () => {
+      archiveKitchen.mockResolvedValue({ ok: true, kitchen: {} });
+      await renderManage();
+      await act(async () => button("Archive kitchen").click());
+      expect(push).toHaveBeenCalledWith("/home");
+    });
+
+    it("stays when archive fails", async () => {
+      archiveKitchen.mockResolvedValue({ ok: false, error: "No" });
+      await renderManage();
+      await act(async () => button("Archive kitchen").click());
+      expect(push).not.toHaveBeenCalled();
+    });
+
+    it("confirms before delete, then goes to Home", async () => {
+      deleteKitchen.mockResolvedValue({ ok: true });
+      await renderManage();
+      await act(async () => button(t.deleteAria).click());
+      expect(deleteKitchen).not.toHaveBeenCalled();
+      expect(document.body.textContent).toContain(t.deleteConfirm);
+      await act(async () => dialogButton(t.deleteAction).click());
+      expect(deleteKitchen.mock.calls[0][0]).toBe("k1");
+      expect(push).toHaveBeenCalledWith("/home");
+    });
+
+    it("restores and stays on the kitchen", async () => {
+      unarchiveKitchen.mockResolvedValue({ ok: true, kitchen: {} });
+      await renderManage({ isArchived: true });
+      await act(async () => button("Restore kitchen").click());
+      expect(push).not.toHaveBeenCalled();
+      expect(refresh).toHaveBeenCalled();
+    });
+
+    it("renames from a dialog that starts with the current name", async () => {
+      renameKitchen.mockResolvedValue({ ok: true, kitchen: {} });
+      await renderManage();
+      await act(async () => button("Rename kitchen").click());
+      expect((document.querySelector('[role="dialog"] input') as HTMLInputElement).value).toBe(
+        "Household",
+      );
+      await act(async () => dialogButton("Save").click());
+      expect(renameKitchen.mock.calls[0].slice(0, 2)).toEqual(["k1", "Household"]);
+    });
+
+    it("puts the actions behind the dots menu", async () => {
+      await renderManage();
+      expect(button(t.menuAria)).toBeTruthy();
+    });
   });
 });

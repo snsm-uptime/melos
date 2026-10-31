@@ -11,24 +11,7 @@ describe("resolveAuthenticatedLanding", () => {
     expect(
       resolveAuthenticatedLanding({
         inviteKitchenId: "invite-kitchen",
-        lastOpenedKitchenId: "old",
-        lastOpenedStillAccessible: true,
       }),
     ).toBe("/kitchens/invite-kitchen");
-  });
-
-  it("uses remembered kitchen only when still accessible via ACL", () => {
-    expect(
-      resolveAuthenticatedLanding({
-        lastOpenedKitchenId: "abc",
-        lastOpenedStillAccessible: true,
-      }),
-    ).toBe("/kitchens/abc");
-    expect(
-      resolveAuthenticatedLanding({
-        lastOpenedKitchenId: "abc",
-        lastOpenedStillAccessible: false,
-      }),
-    ).toBe("/home");
   });
 });

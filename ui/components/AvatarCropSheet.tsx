@@ -119,7 +119,7 @@ function CropEditor({
 
 /**
  * Shared crop/zoom sheet for the avatar upload flow — built once, imported by
- * both AccountMenu and AliasSetupForm (they must not duplicate this wiring).
+ * both SidePanelIdentity and AliasSetupForm (they must not duplicate this wiring).
  */
 export function AvatarCropSheet({ file, open, onClose, ...editorProps }: Props) {
   const objectUrl = useMemo(() => {

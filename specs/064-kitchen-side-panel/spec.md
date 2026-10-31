@@ -8,6 +8,13 @@
 
 **Input**: User description: "I want to use the current kitchens page and merge it with the @ui/components/soft-ledger/TabBar.tsx as a left panel that uses icons only on the closed version, and icons and labels when opened. The left panel will have the following order: [Avatar Icon](remove logout from settings) [Alias] (amount of recipes added) [home] (default kitchen) [other kitchens listed] [notebooks] at the very end [log out]"
 
+## Clarifications
+
+### Session 2026-10-30
+
+- Q: On phones, should the drawer stay open after someone picks a page, or close? → A: It closes after choosing an entry; remembered state applies only to larger screens.
+- Q: On phones, should the kitchen actions sit behind a "more" menu, or stay as separate buttons in the header row? → A: Cart and invite stay visible; the other actions go in a "more" menu on phones; larger screens show all buttons.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Move around the app from one left panel (Priority: P1)
@@ -42,7 +49,7 @@ The person keeps the panel closed to save space, showing icons only, and opens i
 1. **Given** a closed panel, **When** it is shown, **Then** each entry shows only its icon, and each entry still has an accessible name.
 2. **Given** a closed panel, **When** the person opens it, **Then** each entry shows its icon and its label, and the alias and recipe count are visible.
 3. **Given** an open panel, **When** the person closes it, **Then** it returns to icons only.
-4. **Given** a person left the panel open or closed, **When** they move to another page, **Then** it stays in that state.
+4. **Given** a person on a larger screen left the panel open or closed, **When** they move to another page, **Then** it stays in that state. On phones, the panel closes after the person chooses an entry.
 5. **Given** kitchens with the same icon in a closed panel, **When** the person looks at them, **Then** each one can be told apart without opening the panel.
 
 ---
@@ -130,12 +137,12 @@ The person can still create, rename, invite to, archive, restore and delete kitc
 - **FR-008**: Opening a kitchen from the panel MUST record it as last opened, as the kitchens page does today.
 - **FR-009**: The Notebooks entry MUST open the notebooks page.
 - **FR-010**: The panel MUST mark the entry matching the current page, including for pages nested under a kitchen or notebook.
-- **FR-011**: The panel's open or closed state MUST persist across pages and reloads on the same device.
+- **FR-011**: On larger screens, the panel's open or closed state MUST persist across pages and reloads on the same device. On phones, the panel MUST start closed and MUST close after the person chooses an entry.
 - **FR-012**: Each closed-state entry MUST have an accessible name, and kitchens MUST be distinguishable from each other, for example by an initial.
 - **FR-013**: Every panel entry and the open/close control MUST work with keyboard and touch, and meet the app's existing touch-target size.
 - **FR-014**: The log out control MUST be removed from settings and added to the panel, ending the session and clearing cached personal data exactly as today. Password reset MUST stay in settings.
 - **FR-015**: All panel text MUST be available in English and Spanish, with the recipe count correctly pluralized.
-- **FR-016**: All kitchen management actions available today MUST remain available, with unchanged permissions. The standalone kitchens list page is removed. Rename, invite, delete and archive or restore MUST be icon buttons at the end of the kitchen's header row. Creating MUST be a "+" entry in the panel.
+- **FR-016**: All kitchen management actions available today MUST remain available, with unchanged permissions. The standalone kitchens list page is removed. Rename, invite, delete and archive or restore MUST be icon buttons at the end of the kitchen's header row. Creating MUST be a "+" entry in the panel. On phones, invite MUST stay in the header row, and rename, delete, archive or restore, and set as default MUST be in a "more" menu at the end of that row.
 - **FR-016a**: The archive toggle MUST move to the end of the "Kitchens" subtitle row in the panel and switch the panel's kitchen list between active and archived kitchens.
 - **FR-017**: The panel's kitchen list MUST update without a reload after a kitchen is created, renamed, archived, restored or deleted.
 - **FR-018**: On phones, the panel MUST be fully hidden when closed, MUST open from a header button, and MUST open over the content, so recipe and cart content keeps the full screen width. Icons-only applies to larger screens.
@@ -154,7 +161,7 @@ The person can still create, rename, invite to, archive, restore and delete kitc
 - **SC-002**: 100% of actions available today on the kitchens page and bottom tab bar remain reachable after the change.
 - **SC-003**: In the closed state, 100% of entries are announced by name by a screen reader.
 - **SC-004**: Log out exists in exactly one place, and after using it no protected page can be opened without signing in again.
-- **SC-005**: The panel state survives 100% of page changes and reloads on the same device.
+- **SC-005**: On larger screens, the panel state survives 100% of page changes and reloads on the same device.
 - **SC-006**: A newly saved recipe is included in the count the next time the panel is shown.
 - **SC-007**: With 20 kitchens, the avatar and log out remain reachable without scrolling the page.
 

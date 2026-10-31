@@ -36,3 +36,8 @@
 ## 271026
 
 - **Scope decision:** main ingredients and cuisines are out of the MVP and moved to *Later* (S-061). The PRD keeps their design in Appendix E; the draft response and `GET /recipe-vocabulary` lose their category keys; code is commented out under `MVP-OUT:`. Ingredient catalog matching (S-018) is untouched. Plan with validation checks: `dev/docs/mvp-descope-categories.md`. Details in `dev/memory/271026.md`.
+
+## 291026
+
+- **Finished changes:** S-022 was implemented uncommitted: shared kitchen cart with a server-held draft, single-editor locks for the cart and recipe edit (session-scoped, 5 minutes idle, cascade on lost access) and migration 0007. Its UI clarification added the cart-icon button, toasts above the tab bar and an editing bar on the Cart page only. Browser walks T052 and T064 were still to do.
+- **Project fact:** the Compose test database `melos_test` must exist before the api test overlay runs.

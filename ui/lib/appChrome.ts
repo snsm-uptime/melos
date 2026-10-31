@@ -1,32 +1,27 @@
-import type { TabKey } from "@/components/soft-ledger/TabBar";
+const APP_CHROME_PREFIXES = ["/home", "/kitchens", "/notebooks", "/recipes"] as const;
 
-const APP_CHROME_PREFIXES = ["/home", "/kitchens", "/account", "/notebooks", "/recipes"] as const;
-
-/** Authenticated product surfaces that keep the bottom tab bar mounted. */
+/** Authenticated product surfaces that show the side panel. */
 export function showsAppChrome(pathname: string): boolean {
   return APP_CHROME_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }
 
-export function tabKeyFromPath(pathname: string): TabKey | undefined {
-  if (
-    pathname === "/home" ||
-    pathname.startsWith("/home/") ||
-    pathname === "/kitchens" ||
-    pathname.startsWith("/kitchens/")
-  ) {
-    return "home";
-  }
-  // A recipe lives in a notebook, so its detail and edit pages keep the Notebook tab active.
+/** "notebooks" or `kitchen:{id}`. */
+export type PanelEntry = string;
+
+/** The side panel entry for a page. */
+export function panelEntryFromPath(pathname: string): PanelEntry | undefined {
+  const kitchenId = /^\/kitchens\/([^/]+)/.exec(pathname)?.[1];
+  if (kitchenId) return `kitchen:${kitchenId}`;
+  // A recipe lives in a notebook, so its detail and edit pages keep Notebooks marked.
   if (
     pathname === "/notebooks" ||
     pathname.startsWith("/notebooks/") ||
     pathname.startsWith("/recipes/")
   ) {
-    return "notebook";
+    return "notebooks";
   }
-  if (pathname === "/account" || pathname.startsWith("/account/")) return "account";
   return undefined;
 }
 

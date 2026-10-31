@@ -141,7 +141,7 @@ describe("AppShell chrome header", () => {
     expect(container.querySelector("nav")).toBeNull();
   });
 
-  it("still shows the TabBar (without a header) on authenticated tab routes when no screen opts in", async () => {
+  it("shows the panel on authenticated routes, with a header for the menu button on phones only", async () => {
     pathname = "/home";
     await act(async () => {
       root.render(
@@ -151,8 +151,26 @@ describe("AppShell chrome header", () => {
       );
     });
 
-    expect(container.querySelector("header")).toBeNull();
+    expect(container.querySelector("header")?.className).toContain("md:hidden");
     expect(container.querySelector("nav")).toBeTruthy();
+  });
+
+  it("opens the drawer from the header's menu button", async () => {
+    pathname = "/notebooks";
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <p>screen</p>
+        </AppShell>,
+      );
+    });
+    const panel = () => container.querySelector('[data-side-panel="panel"]') as HTMLElement;
+    expect(panel().className).toContain("hidden");
+    await act(async () => {
+      (container.querySelector('header button[aria-label="Open menu"]') as HTMLElement).click();
+    });
+    expect(panel().className).toContain("fixed");
+    expect(container.querySelector('[data-side-panel="backdrop"]')).toBeTruthy();
   });
 
   it("renders title and details on the same header row as back", async () => {
@@ -262,24 +280,6 @@ describe("AppShell chrome header", () => {
     expect((container.querySelector("header") as HTMLElement).className).toContain("pl-[max(0.5rem");
   });
 
-  it("shows the Notebook tab and marks it current on /notebooks", async () => {
-    pathname = "/notebooks";
-    await act(async () => {
-      root.render(
-        <AppShell>
-          <p>screen</p>
-        </AppShell>,
-      );
-    });
-
-    const links = Array.from(container.querySelectorAll("nav a"));
-    expect(links.map((link) => link.getAttribute("aria-label"))).toEqual(["Home", "Notebook"]);
-    const notebook = container.querySelector('nav a[aria-label="Notebook"]');
-    expect(notebook?.getAttribute("href")).toBe("/notebooks");
-    expect(notebook?.getAttribute("aria-current")).toBe("page");
-    expect(container.querySelector('nav a[aria-label="Home"]')?.getAttribute("aria-current")).toBeNull();
-  });
-
   describe("signed-out language switch (spec 063)", () => {
     const switchPresent = () => container.querySelector('[role="group"]') !== null;
 
@@ -302,13 +302,13 @@ describe("AppShell chrome header", () => {
       expect(switchPresent()).toBe(true);
     });
 
-    it.each(["/home", "/account", "/alias"])("does not show on %s", (path) => {
+    it.each(["/home", "/alias"])("does not show on %s", (path) => {
       renderAt(path, <p>screen</p>);
       expect(switchPresent()).toBe(false);
     });
   });
 
-  it("puts the toast viewport at the bottom of the screen body, above the tab bar (spec 022)", async () => {
+  it("puts the toast viewport at the bottom of the content area, beside the panel (spec 064)", async () => {
     pathname = "/home";
     const grabbed: { show: (toast: { id: string; text: string }) => void } = { show: () => {} };
     function Shout({ onShow }: { onShow: (show: typeof grabbed.show) => void }) {
@@ -332,6 +332,6 @@ describe("AppShell chrome header", () => {
     expect(viewport.textContent).toBe("ben is editing the cart");
     expect(viewport.className).toContain("absolute");
     expect(viewport.parentElement?.contains(nav)).toBe(false);
-    expect(viewport.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(viewport.className).toContain("safe-area-inset-bottom");
   });
 });

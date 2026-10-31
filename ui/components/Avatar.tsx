@@ -16,6 +16,8 @@ export type AvatarProps = {
   /** Base64 data URI; renders the photo instead of the initials circle when set. */
   photoBase64?: string | null;
   size?: AvatarSize;
+  /** Fills the parent; the caller sets the size and the initial's font size. */
+  fluid?: boolean;
   className?: string;
 };
 
@@ -37,8 +39,9 @@ function initialFor(alias: string | null): string {
  * circle with auto-contrast text. Hovering shows the alias via the shared
  * Tooltip; pass `alias={null}` to suppress it (Tooltip no-ops on an empty label).
  */
-export function Avatar({ alias, seed, photoBase64, size = "sm", className }: AvatarProps) {
+export function Avatar({ alias, seed, photoBase64, size = "sm", fluid = false, className }: AvatarProps) {
   const px = sizePx[size];
+  const box = fluid ? { width: "100%", height: "100%" } : { width: px, height: px };
   const [photoFailed, setPhotoFailed] = useState(false);
 
   if (photoBase64 && !photoFailed) {
@@ -50,7 +53,7 @@ export function Avatar({ alias, seed, photoBase64, size = "sm", className }: Ava
           alt={alias ?? ""}
           onError={() => setPhotoFailed(true)}
           className={`inline-block flex-shrink-0 rounded-[8px] object-cover ${className ?? ""}`}
-          style={{ width: px, height: px, cursor: "pointer" }}
+          style={{ ...box, cursor: "pointer" }}
         />
       </Tooltip>
     );
@@ -65,11 +68,10 @@ export function Avatar({ alias, seed, photoBase64, size = "sm", className }: Ava
         aria-label={alias ?? ""}
         className={`inline-flex flex-shrink-0 items-center justify-center rounded-[8px] font-[600] leading-none ${className ?? ""}`}
         style={{
-          width: px,
-          height: px,
+          ...box,
           backgroundColor: bg,
           color: fg,
-          fontSize: Math.round(px * 0.42),
+          ...(fluid ? {} : { fontSize: Math.round(px * 0.42) }),
           cursor: "pointer"
         }}
       >

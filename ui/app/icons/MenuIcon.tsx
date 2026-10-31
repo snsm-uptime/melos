@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 
-export function HomeIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
+export function MenuIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg
       className={className}
@@ -11,13 +11,7 @@ export function HomeIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
       {...props}
     >
       <path
-        d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V10.5Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M9 21V13h6v8"
+        d="M4 6h16M4 12h16M4 18h16"
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
