@@ -140,15 +140,12 @@
   /* Material 3 elevation: two lights cast every shadow — a key light straight
      overhead (tight, dark, no spread) and an ambient light all around (soft,
      wide, spread). The pair is what reads as a sheet of paper off the page;
-     a single wide blur reads as a glow. M3's alphas assume black on white, so
-     the ink is pulled most of the way to black — enough weight on the cream
-     background while keeping the palette's warm cast. Shared by any control
-     that lifts on activation (UploadButton, IconButton's ghost `active`
-     state, the review screen's keycap legend) so they all cast the same
-     shadow rather than each re-deriving it. */
-  --lift-ink: color-mix(in srgb, var(--foreground) 45%, #000);
-  --lift-key: color-mix(in srgb, var(--lift-ink) 0%, transparent);
-  --lift-ambient: color-mix(in srgb, var(--lift-ink) 50%, transparent);
+     a single wide blur reads as a glow. These are M3's standard shadow colours,
+     in both themes. Shared by any control that lifts on activation (UploadButton,
+     IconButton's ghost `active` state, the review screen's keycap legend) so
+     they all cast the same shadow rather than each re-deriving it. */
+  --lift-key: rgb(0 0 0 / 0.3);
+  --lift-ambient: rgb(0 0 0 / 0.15);
 }
 
 html.light {
@@ -186,9 +183,6 @@ html.dark {
 
   --secondary: #adbdff;
   --on-secondary: #17140f;
-
-  /* --foreground is cream here and would halo the shadow instead of shading it. */
-  --lift-ink: #000;
 }
 
 /*
@@ -226,8 +220,6 @@ html.dark {
 
     --secondary: #adbdff;
     --on-secondary: #17140f;
-
-    --lift-ink: #000;
   }
 }
 
