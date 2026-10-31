@@ -297,8 +297,6 @@ def test_done_uses_the_members_date_and_refuses_another_day(
     assert ana.get(_list(kitchen)).json()["list_id"] == list_id
 
     yesterday = str(today - timedelta(days=1))
-    done = ana.post(
-        _list(kitchen) + "/done", json={"list_id": list_id, "closing_date": yesterday}
-    )
+    done = ana.post(_list(kitchen) + "/done", json={"list_id": list_id, "closing_date": yesterday})
     assert done.status_code == 200, done.text
     assert done.json()["closing_date"] == yesterday
