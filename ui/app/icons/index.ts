@@ -3,6 +3,7 @@ export { SendIcon } from "./SendIcon";
 export { CloseIcon } from "./CloseIcon";
 export { AlertIcon } from "./AlertIcon";
 export { PlusIcon } from "./PlusIcon";
+export { BookmarkIcon } from "./BookmarkIcon";
 export { CartIcon } from "./CartIcon";
 export { CartPlusIcon } from "./CartPlusIcon";
 export { DotsIcon } from "./DotsIcon";

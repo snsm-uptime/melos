@@ -12,6 +12,7 @@ Centralized location for all custom SVG icon components used throughout the UI. 
 | `PlusIcon` | Add/create actions | Plus sign |
 | `CartIcon` | Open the kitchen's cart | Empty cart, same shape as `CartPlusIcon` |
 | `CartPlusIcon` | Add/remove a recipe from the cart | `inCart` turns the + into × |
+| `BookmarkIcon` | The default notebook | Outline bookmark |
 | `DotsIcon` | Menu triggers | Vertical dots, 16×16 viewBox |
 | `ShareIcon` | Invite/share actions | Connected circles |
 | `PieChartIcon` | Analytics/split settings | Pie chart |
@@ -167,6 +168,14 @@ A wallet body with a folded flap tucked into its top edge and a clasp dot cut ou
 
 - ViewBox: `0 0 24 24`
 - Style: Fill-based
+- Accepts: className, SVG element props
+
+### BookmarkIcon
+
+An outline bookmark ribbon. Marks the default notebook on its card.
+
+- ViewBox: `0 0 24 24`
+- Style: Stroke-based
 - Accepts: className, SVG element props
 
 ### StarIcon
