@@ -176,9 +176,7 @@ def test_unit_missing_line_returns_draft_incomplete_with_the_line_problem() -> N
     result = service.extract(ACCEPTANCE_TEXT, [], 10.0)
 
     assert isinstance(result, DraftIncomplete)
-    assert result.problems.line_problems == (
-        LineProblem("butter", LineProblemKind.UNIT_MISSING),
-    )
+    assert result.problems.line_problems == (LineProblem("butter", LineProblemKind.UNIT_MISSING),)
 
 
 def test_incomplete_draft_log_names_kinds_only(caplog, monkeypatch: pytest.MonkeyPatch) -> None:

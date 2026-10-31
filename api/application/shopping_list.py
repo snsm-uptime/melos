@@ -39,6 +39,7 @@ from domain.shopping_list import (
     SavedLine,
     SavedList,
     cart_lines,
+    closing_date,
     hand_item,
     hand_lines,
     recipe_titles,
@@ -226,9 +227,7 @@ class GetShoppingListService:
             len(built.lines),
             len(built.your_call),
         )
-        return ShoppingListView(
-            is_empty=False, shopping_list=built, kitchen_is_archived=archived
-        )
+        return ShoppingListView(is_empty=False, shopping_list=built, kitchen_is_archived=archived)
 
     def _my_draft(self, ref: SessionRef, kitchen_id: UUID) -> tuple[CartDraftItem, ...] | None:
         """My draft while my session holds the live cart lock (spec 023 FR-001).
@@ -289,16 +288,23 @@ class RemoveShoppingItemService(_ListChange):
 
 
 class CloseShoppingListService(_ListChange):
-    """Done: today's date, for good, and the saved cart is emptied (FR-009)."""
+    """Done: the member's date, for good, and the saved cart is emptied (FR-009)."""
 
-    def execute(self, ref: SessionRef, kitchen_id: UUID, list_id: UUID) -> ClosedListView:
+    def execute(
+        self,
+        ref: SessionRef,
+        kitchen_id: UUID,
+        list_id: UUID,
+        local_date: date | None = None,
+    ) -> ClosedListView:
+        closes_on = closing_date(local_date, datetime.now(UTC).date())
         self._writable(ref, kitchen_id)
         active = self._lists.active(kitchen_id)
         if active is None or active.id != list_id:
             raise ShoppingListNotActiveError()
         if not active.items:
             raise ShoppingListEmptyError()
-        if not self._lists.close(list_id, datetime.now(UTC).date()):
+        if not self._lists.close(list_id, closes_on):
             raise ShoppingListNotActiveError()
         self._carts.save(kitchen_id, CartDraft(()), ref.user_id)
         closed = self._lists.closed_by_id(kitchen_id, list_id)

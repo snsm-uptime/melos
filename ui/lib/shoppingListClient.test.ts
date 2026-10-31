@@ -6,6 +6,7 @@ import {
   fetchClosedList,
   fetchClosedLists,
   fetchShoppingList,
+  localDate,
   removeShoppingItem,
   type ShoppingList,
 } from "./shoppingListClient";
@@ -116,6 +117,20 @@ describe("saved list calls", () => {
       status: 409,
       code: "list_empty",
     });
+  });
+
+  it("sends the member's own day with Done", async () => {
+    fetchMock.mockResolvedValue(json({ id: "l1", closing_date: "2026-10-30" }));
+    await closeShoppingList("k1", "l1");
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({
+      list_id: "l1",
+      closing_date: localDate(),
+    });
+  });
+
+  it("reads the local calendar, padded", () => {
+    expect(localDate(new Date(2026, 0, 5, 23, 30))).toBe("2026-01-05");
   });
 
   it("reads closed lists", async () => {

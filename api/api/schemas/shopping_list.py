@@ -69,6 +69,8 @@ class AddShoppingItemBody(BaseModel):
 
 class CloseShoppingListBody(BaseModel):
     list_id: UUID
+    # The member's local day; the UTC day when absent.
+    closing_date: date | None = None
 
 
 class ClosedListSummaryResponse(BaseModel):

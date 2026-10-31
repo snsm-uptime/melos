@@ -78,9 +78,7 @@ class FakeLists:
         return True
 
     def closed(self, kitchen_id: UUID) -> tuple[SavedList, ...]:
-        rows = [
-            s for s in self.lists.values() if s.kitchen_id == kitchen_id and s.closing_date
-        ]
+        rows = [s for s in self.lists.values() if s.kitchen_id == kitchen_id and s.closing_date]
         return tuple(sorted(rows, key=lambda s: s.created_at, reverse=True))
 
     def closed_by_id(self, kitchen_id: UUID, list_id: UUID) -> SavedList | None:

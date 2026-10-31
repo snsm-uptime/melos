@@ -20,5 +20,4 @@
 ## Open
 
 - T037, the browser walk with two accounts at phone and desktop width, in both languages, is not done.
-- The closing date is the UTC day (R7). The HTTP walk recorded 2026-10-31 on the local evening of 2026-10-30, so Done in the evening in the Americas records tomorrow.
 - SC-002 and the timed 100-recipe read on the dev stack are unmeasured; the test harness read is under 1 s.

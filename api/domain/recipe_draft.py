@@ -506,9 +506,7 @@ def _check_line(line: IngredientLine) -> IngredientLine:
         raise InvalidDraftError("quantity")
     unit = lookup_unit(line.unit or "")
     if unit is None:
-        raise InvalidDraftError(
-            f"{line.name} unit: {line.unit} quantity: {line.quantity}"
-        )
+        raise InvalidDraftError(f"{line.name} unit: {line.unit} quantity: {line.quantity}")
     size = _clean_size(line.size) if unit == "unit" else None
     return IngredientLine(
         name=name,
@@ -589,9 +587,7 @@ def _match_lines(
         matches.append(match)
         if match.kind == "matched" and match.entry is not None:
             if not same_spelling(written, match.entry):
-                changes.append(
-                    NameChange(line=index, from_name=written, to=match.entry)
-                )
+                changes.append(NameChange(line=index, from_name=written, to=match.entry))
             line = replace(line, name=match.entry)
         lines.append(replace(line, text_name=written, catalog_match=raw.catalog_match))
     return tuple(lines), tuple(matches), tuple(changes)

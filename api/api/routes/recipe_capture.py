@@ -126,9 +126,7 @@ def _draft_body(captured: CapturedDraft) -> dict[str, Any]:
 
 def _outcome_response(outcome: CaptureOutcome) -> JSONResponse:
     if isinstance(outcome, CapturedDraft):
-        return JSONResponse(
-            status_code=status.HTTP_200_OK, content=_draft_body(outcome)
-        )
+        return JSONResponse(status_code=status.HTTP_200_OK, content=_draft_body(outcome))
     if isinstance(outcome, NotARecipe):
         if outcome.reason == NotRecipeReason.MULTIPLE_RECIPES:
             return _error(
@@ -230,13 +228,9 @@ def capture_recipe_text(
         )
         outcome = capture.execute(capture_command)
     except TextEmptyError as exc:
-        return _error(
-            status.HTTP_422_UNPROCESSABLE_CONTENT, TextEmptyError.CODE, str(exc)
-        )
+        return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, TextEmptyError.CODE, str(exc))
     except TextTooLongError as exc:
-        return _error(
-            status.HTTP_422_UNPROCESSABLE_CONTENT, TextTooLongError.CODE, str(exc)
-        )
+        return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, TextTooLongError.CODE, str(exc))
     except NotebookNotFoundError:
         return _error(
             status.HTTP_404_NOT_FOUND,

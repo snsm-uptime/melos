@@ -134,9 +134,7 @@ def test_a_draft_is_saved_into_the_personal_notebook(client: TestClient, db_sess
     assert source is not None and source.type == "text" and source.raw_text == TEXT
     steps = list(db_session.scalars(select(StepModel).where(StepModel.recipe_id == recipe.id)))
     assert [step.text for step in steps] == ["Simmer the onion."]
-    assert _counts(db_session) == tuple(
-        n + d for n, d in zip(before, (1, 2, 1, 1, 2), strict=True)
-    )
+    assert _counts(db_session) == tuple(n + d for n, d in zip(before, (1, 2, 1, 1, 2), strict=True))
 
 
 def test_a_repeated_save_returns_the_same_recipe(client: TestClient, db_session: Session):
@@ -154,9 +152,7 @@ def test_a_repeated_save_returns_the_same_recipe(client: TestClient, db_session:
     assert _counts(db_session) == counts
 
 
-def test_a_kitchen_draft_goes_to_the_kitchen_notebook_only(
-    client: TestClient, db_session: Session
-):
+def test_a_kitchen_draft_goes_to_the_kitchen_notebook_only(client: TestClient, db_session: Session):
     user_id = _register(client, "ben_save@example.com")
     _, notebook_id = _kitchen_notebook(client)
     personal_id = _personal_notebook(client)
@@ -175,9 +171,7 @@ def test_the_author_is_the_signed_in_member_not_a_body_field(
 ):
     user_id = _register(client, "author_save@example.com")
     notebook_id = _personal_notebook(client)
-    response = client.post(
-        "/recipes", json=_body(notebook_id, author_id=str(uuid4()))
-    )
+    response = client.post("/recipes", json=_body(notebook_id, author_id=str(uuid4())))
     recipe = db_session.get(RecipeModel, UUID(response.json()["recipe"]["id"]))
     assert recipe is not None and recipe.author_id == user_id
 
@@ -315,9 +309,9 @@ def test_a_kitchen_without_a_notebook_gets_one_at_save(client: TestClient, db_se
     kitchen = client.post("/kitchens", json={"name": "Quiet"}).json()
     kitchen_id = kitchen["id"]
     notebook_count = db_session.scalar(
-        select(func.count()).select_from(NotebookModel).where(
-            NotebookModel.kitchen_id == UUID(kitchen_id)
-        )
+        select(func.count())
+        .select_from(NotebookModel)
+        .where(NotebookModel.kitchen_id == UUID(kitchen_id))
     )
     response = client.post("/recipes", json=_body(None, kitchen_id=kitchen_id))
     assert response.status_code == 201, response.text
@@ -366,9 +360,7 @@ def test_a_duplicate_save_key_is_reported_and_the_session_stays_usable(
     assert db_session.scalar(select(func.count()).select_from(RecipeModel)) is not None
 
 
-def test_adding_the_same_catalog_name_twice_leaves_one_row(
-    client: TestClient, db_session: Session
-):
+def test_adding_the_same_catalog_name_twice_leaves_one_row(client: TestClient, db_session: Session):
     _register(client, "twice_save@example.com")
     notebook_id = UUID(_personal_notebook(client))
     catalog = SqlAlchemyIngredientCatalog(db_session)

@@ -136,7 +136,7 @@ A member opens the kitchen's closed lists, newest first, and opens one.
 
 ## Assumptions
 
-- The closing date is the current day; members do not pick it.
+- The closing date is the current day where the member is; members do not pick it.
 - Any kitchen member may change a list and press Done (PRD §3).
 - Lists are kept as long as the kitchen exists and go with it; the v1 UI has no delete.
 - Cart-based lines cannot be edited or removed from the list; members change them through the cart. Items do not get bought-ticks.

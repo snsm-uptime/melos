@@ -423,3 +423,13 @@ class ShoppingListEmptyError(DomainError):
 
     def __init__(self) -> None:
         super().__init__(self.MESSAGE)
+
+
+class ShoppingDateError(DomainError):
+    """Raised when a closing date is more than a day from the UTC date (spec 025 R7)."""
+
+    MESSAGE = "That closing date isn't today."
+    CODE = "invalid_date"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)

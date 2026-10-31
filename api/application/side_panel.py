@@ -41,9 +41,7 @@ class SetDefaultKitchenService:
         self._repo = repo
 
     def execute(self, user_id: UUID, kitchen_id: UUID) -> SidePanelView:
-        kitchen = next(
-            (k for k in self._repo.member_kitchens(user_id) if k.id == kitchen_id), None
-        )
+        kitchen = next((k for k in self._repo.member_kitchens(user_id) if k.id == kitchen_id), None)
         if kitchen is None:
             raise KitchenNotFoundError()
         if kitchen.is_archived:

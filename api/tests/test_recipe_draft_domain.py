@@ -372,9 +372,7 @@ def test_no_unit_is_unit_missing() -> None:
 
 def test_unknown_unit_is_unit_not_recognized() -> None:
     problems = problems_of(draft(lines=(line(unit="widgets"),)))
-    assert problems.line_problems == (
-        LineProblem("flour", LineProblemKind.UNIT_NOT_RECOGNIZED),
-    )
+    assert problems.line_problems == (LineProblem("flour", LineProblemKind.UNIT_NOT_RECOGNIZED),)
 
 
 def test_line_with_neither_quantity_nor_unit_gives_two_entries_with_one_name() -> None:

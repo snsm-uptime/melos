@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from fractions import Fraction
 from uuid import uuid4
 
@@ -12,9 +13,10 @@ from domain.cart import (
     ShoppingLine,
     build_shopping_list,
 )
-from domain.errors import ShoppingItemError
+from domain.errors import ShoppingDateError, ShoppingItemError
 from domain.shopping_list import (
     cart_lines,
+    closing_date,
     hand_item,
     hand_lines,
     recipe_titles,
@@ -92,3 +94,18 @@ def test_hand_lines_and_titles() -> None:
     assert recipe_titles(lines) == ("Bread",)
     assert hand_lines((*lines, hand_item("soap")))[0].name == "soap"
     assert recipe.title == "Bread"
+
+
+@pytest.mark.parametrize("day", [30, 31])
+def test_closing_date_takes_the_members_day(day: int) -> None:
+    assert closing_date(date(2026, 10, day), date(2026, 10, 31)) == date(2026, 10, day)
+
+
+def test_closing_date_falls_back_to_the_utc_day() -> None:
+    assert closing_date(None, date(2026, 10, 31)) == date(2026, 10, 31)
+
+
+@pytest.mark.parametrize("sent", [date(2026, 10, 29), date(2026, 11, 2)])
+def test_closing_date_refuses_anything_further_than_a_day(sent: date) -> None:
+    with pytest.raises(ShoppingDateError):
+        closing_date(sent, date(2026, 10, 31))

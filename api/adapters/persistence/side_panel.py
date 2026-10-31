@@ -56,11 +56,14 @@ class SqlAlchemySidePanelRepository:
 
     def count_notebooks(self, user_id: uuid.UUID) -> int:
         """The personal notebooks the Notebooks page lists."""
-        return self._db.scalar(
-            select(func.count())
-            .select_from(NotebookMembershipModel)
-            .where(NotebookMembershipModel.user_id == user_id)
-        ) or 0
+        return (
+            self._db.scalar(
+                select(func.count())
+                .select_from(NotebookMembershipModel)
+                .where(NotebookMembershipModel.user_id == user_id)
+            )
+            or 0
+        )
 
     def count_recipes_added(self, user_id: uuid.UUID) -> int:
         """Archived kitchens count: they stay reachable through the archive toggle (research R3)."""
@@ -70,12 +73,15 @@ class SqlAlchemySidePanelRepository:
         notebooks = select(NotebookMembershipModel.notebook_id).where(
             NotebookMembershipModel.user_id == user_id
         )
-        return self._db.scalar(
-            select(func.count())
-            .select_from(RecipeModel)
-            .join(NotebookModel, NotebookModel.id == RecipeModel.notebook_id)
-            .where(
-                RecipeModel.author_id == user_id,
-                or_(NotebookModel.kitchen_id.in_(kitchens), NotebookModel.id.in_(notebooks)),
+        return (
+            self._db.scalar(
+                select(func.count())
+                .select_from(RecipeModel)
+                .join(NotebookModel, NotebookModel.id == RecipeModel.notebook_id)
+                .where(
+                    RecipeModel.author_id == user_id,
+                    or_(NotebookModel.kitchen_id.in_(kitchens), NotebookModel.id.in_(notebooks)),
+                )
             )
-        ) or 0
+            or 0
+        )
