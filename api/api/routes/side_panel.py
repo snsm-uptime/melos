@@ -19,7 +19,9 @@ router = APIRouter(prefix="/side-panel", tags=["side-panel"])
 
 def _response(view: SidePanelView) -> SidePanelResponse:
     return SidePanelResponse(
-        default_kitchen_id=view.default_kitchen_id, recipes_added=view.recipes_added
+        default_kitchen_id=view.default_kitchen_id,
+        recipes_added=view.recipes_added,
+        notebooks=view.notebooks,
     )
 
 
