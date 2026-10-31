@@ -138,9 +138,7 @@ class SqlAlchemyShoppingListRepository:
                 ShoppingListModel.kitchen_id == kitchen_id,
                 ShoppingListModel.closing_date.is_not(None),
             )
-            .order_by(
-                ShoppingListModel.closing_date.desc(), ShoppingListModel.created_at.desc()
-            )
+            .order_by(ShoppingListModel.closing_date.desc(), ShoppingListModel.created_at.desc())
         ).all()
         return self._with_items(rows)
 

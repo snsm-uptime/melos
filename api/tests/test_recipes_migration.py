@@ -67,9 +67,13 @@ def test_upgrade_downgrade_upgrade_keeps_notebooks_and_catalogs(engine: Engine) 
         command.upgrade(_config(url), "head")
         assert {"source", "recipe", "recipe_ingredient", "step"} <= _tables(engine)
         with engine.connect() as conn:
-            names = conn.execute(
-                text("select name from ingredient where notebook_id = :id"), {"id": notebook_id}
-            ).scalars().all()
+            names = (
+                conn.execute(
+                    text("select name from ingredient where notebook_id = :id"), {"id": notebook_id}
+                )
+                .scalars()
+                .all()
+            )
         assert names == ["onion"]
     finally:
         with engine.begin() as conn:
@@ -138,9 +142,7 @@ def test_recipe_checks_reject_blank_title_and_zero_servings(engine: Engine, reci
     for title, servings in (("  ", 4), ("Soup", 0)):
         with pytest.raises(IntegrityError), engine.begin() as conn:
             conn.execute(
-                text(
-                    "insert into recipe (notebook_id, title, base_servings) values (:n, :t, :s)"
-                ),
+                text("insert into recipe (notebook_id, title, base_servings) values (:n, :t, :s)"),
                 {"n": notebook, "t": title, "s": servings},
             )
 

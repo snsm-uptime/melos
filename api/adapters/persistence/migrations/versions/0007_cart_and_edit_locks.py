@@ -73,9 +73,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["cart_id"], ["cart.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["session_id"], ["sessions.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(
-            ["membership_id"], ["kitchen_memberships.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["membership_id"], ["kitchen_memberships.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("cart_id"),
     )
 

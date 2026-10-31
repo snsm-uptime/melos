@@ -70,9 +70,7 @@ def _run(call: Callable[[], object]) -> object | JSONResponse:
     except ShoppingDateError as exc:
         return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, exc.CODE, exc.MESSAGE)
     except ShoppingItemError as exc:
-        return _error(
-            status.HTTP_422_UNPROCESSABLE_CONTENT, exc.CODE, exc.MESSAGE, field=exc.field
-        )
+        return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, exc.CODE, exc.MESSAGE, field=exc.field)
 
 
 def _list_body(
@@ -143,9 +141,7 @@ def close_shopping_list(
     ref: SessionRef = Depends(require_session_ref),
     service: CloseShoppingListService = Depends(get_close_shopping_list),
 ) -> Response:
-    return _closed(
-        _run(lambda: service.execute(ref, kitchen_id, body.list_id, body.closing_date))
-    )
+    return _closed(_run(lambda: service.execute(ref, kitchen_id, body.list_id, body.closing_date)))
 
 
 @router.get("/kitchens/{kitchen_id}/shopping-lists")

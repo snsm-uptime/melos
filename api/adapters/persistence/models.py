@@ -304,9 +304,7 @@ class SourceModel(Base):
     """Where a recipe came from (spec 020). Deleting a source keeps the recipe."""
 
     __tablename__ = "source"
-    __table_args__ = (
-        CheckConstraint("type IN ('text', 'url', 'photo')", name="ck_source_type"),
-    )
+    __table_args__ = (CheckConstraint("type IN ('text', 'url', 'photo')", name="ck_source_type"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
@@ -377,9 +375,7 @@ class RecipeIngredientModel(Base):
     __table_args__ = (
         UniqueConstraint("recipe_id", "position", name="uq_recipe_ingredient_position"),
         CheckConstraint("quantity IS NULL OR quantity > 0", name="ck_recipe_ingredient_quantity"),
-        CheckConstraint(
-            f"unit IS NULL OR unit IN {UNITS_SQL}", name="ck_recipe_ingredient_unit"
-        ),
+        CheckConstraint(f"unit IS NULL OR unit IN {UNITS_SQL}", name="ck_recipe_ingredient_unit"),
         CheckConstraint(
             "size IS NULL OR (size IN ('small', 'medium', 'large') AND unit = 'unit')",
             name="ck_recipe_ingredient_size",
@@ -434,9 +430,7 @@ class CartModel(Base):
     """A kitchen's one shared cart (spec 022), created on first use."""
 
     __tablename__ = "cart"
-    __table_args__ = (
-        UniqueConstraint("kitchen_id", name="uq_cart_kitchen_id"),
-    )
+    __table_args__ = (UniqueConstraint("kitchen_id", name="uq_cart_kitchen_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
@@ -484,9 +478,7 @@ class ShoppingListModel(Base):
         Index("ix_shopping_list_closed", "kitchen_id", text("closing_date DESC")),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     kitchen_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("kitchens.id", ondelete="CASCADE"), nullable=False
     )
@@ -512,9 +504,7 @@ class ShoppingListItemModel(Base):
         Index("ix_shopping_list_item_list", "shopping_list_id", "origin", "position"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     shopping_list_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("shopping_list.id", ondelete="CASCADE"), nullable=False
     )

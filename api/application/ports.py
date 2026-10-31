@@ -395,8 +395,7 @@ class SavedCart:
 class ShoppingListRepository(Protocol):
     """Saved lists (spec 025). Callers hold the cart row lock, which serializes these writes."""
 
-    def active(self, kitchen_id: UUID) -> SavedList | None:
-        ...
+    def active(self, kitchen_id: UUID) -> SavedList | None: ...
 
     def get_or_create_active(self, kitchen_id: UUID) -> SavedList:
         """The active list, created empty when there is none."""
@@ -406,8 +405,7 @@ class ShoppingListRepository(Protocol):
         """Replace the rows of origin cart; hand items stay."""
         ...
 
-    def add_item(self, list_id: UUID, item: SavedLine) -> None:
-        ...
+    def add_item(self, list_id: UUID, item: SavedLine) -> None: ...
 
     def remove_hand_item(self, list_id: UUID, item_id: UUID) -> bool:
         """False when the list holds no such item added by hand."""
@@ -421,8 +419,7 @@ class ShoppingListRepository(Protocol):
         """Closed lists, newest first."""
         ...
 
-    def closed_by_id(self, kitchen_id: UUID, list_id: UUID) -> SavedList | None:
-        ...
+    def closed_by_id(self, kitchen_id: UUID, list_id: UUID) -> SavedList | None: ...
 
 
 class ShoppingListRefresher(Protocol):

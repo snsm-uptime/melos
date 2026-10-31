@@ -227,9 +227,7 @@ class GetShoppingListService:
             len(built.lines),
             len(built.your_call),
         )
-        return ShoppingListView(
-            is_empty=False, shopping_list=built, kitchen_is_archived=archived
-        )
+        return ShoppingListView(is_empty=False, shopping_list=built, kitchen_is_archived=archived)
 
     def _my_draft(self, ref: SessionRef, kitchen_id: UUID) -> tuple[CartDraftItem, ...] | None:
         """My draft while my session holds the live cart lock (spec 023 FR-001).

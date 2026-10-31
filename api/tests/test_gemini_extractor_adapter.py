@@ -101,9 +101,9 @@ def api_error(cls, code: int, body: dict | None = None, response=None):
 
 def test_missing_key_is_ai_provider_error_with_no_sdk_call() -> None:
     client = _StubClient(response(RECIPE_JSON))
-    result = GeminiRecipeExtractor(
-        api_key="", model="gemini-test", client=client
-    ).extract("text", [], 10.0)
+    result = GeminiRecipeExtractor(api_key="", model="gemini-test", client=client).extract(
+        "text", [], 10.0
+    )
 
     assert result == AIProviderError()
     assert client.models.calls == []
@@ -111,9 +111,9 @@ def test_missing_key_is_ai_provider_error_with_no_sdk_call() -> None:
 
 def test_missing_model_is_ai_provider_error_with_no_sdk_call() -> None:
     client = _StubClient(response(RECIPE_JSON))
-    result = GeminiRecipeExtractor(
-        api_key=SECRET_KEY, model="  ", client=client
-    ).extract("text", [], 10.0)
+    result = GeminiRecipeExtractor(api_key=SECRET_KEY, model="  ", client=client).extract(
+        "text", [], 10.0
+    )
 
     assert result == AIProviderError()
     assert client.models.calls == []
@@ -448,9 +448,9 @@ def test_log_line_has_error_class_and_request_reference_only(
 def test_empty_key_logs_only_the_class(caplog: pytest.LogCaptureFixture) -> None:
     caplog.set_level(logging.ERROR)
 
-    GeminiRecipeExtractor(
-        api_key="", model="gemini-test", client=_StubClient(None)
-    ).extract(PASTED_SECRET, [], 10.0)
+    GeminiRecipeExtractor(api_key="", model="gemini-test", client=_StubClient(None)).extract(
+        PASTED_SECRET, [], 10.0
+    )
 
     assert "class=AIProviderError" in caplog.text
     assert PASTED_SECRET not in caplog.text
@@ -469,9 +469,7 @@ def test_stalled_service_returns_unavailable_within_wait_plus_one_second() -> No
             api_key=SECRET_KEY,
             http_options=types.HttpOptions(base_url=f"http://127.0.0.1:{port}"),
         )
-        stalled = GeminiRecipeExtractor(
-            api_key=SECRET_KEY, model="gemini-test", client=sdk
-        )
+        stalled = GeminiRecipeExtractor(api_key=SECRET_KEY, model="gemini-test", client=sdk)
 
         started = time.monotonic()
         result = stalled.extract("text", [], 0.5)
