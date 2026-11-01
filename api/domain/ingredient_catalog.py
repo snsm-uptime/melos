@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Literal
 
@@ -110,3 +110,30 @@ def propose_entry(name: str, catalog: Sequence[str]) -> str | None:
         if match_line(None, name, entry, catalog).kind == "matched":
             return entry
     return None
+
+
+def names_to_add(incoming: Iterable[str], existing: Iterable[str]) -> list[str]:
+    """The incoming names no known name matches, when someone joins a notebook (spec 057).
+
+    The rule is `match_line`'s: two names match when one's key is among the other's singular
+    forms. Two sets give that answer in linear time, where `propose_entry` per name would be
+    quadratic or worse (research R6). Sorted input makes the result the same for any order, and
+    each accepted name becomes known, so "tomato" and "tomatoes" add one name (FR-018).
+    """
+    keys: set[str] = set()
+    forms: set[str] = set()
+    for name in existing:
+        key = normalize_name(name)
+        keys.add(key)
+        forms |= singular_forms(key)
+
+    added: list[str] = []
+    for name in sorted(incoming):
+        key = normalize_name(name)
+        name_forms = singular_forms(key)
+        if not key or key in forms or name_forms & keys:
+            continue
+        added.append(name)
+        keys.add(key)
+        forms |= name_forms
+    return added

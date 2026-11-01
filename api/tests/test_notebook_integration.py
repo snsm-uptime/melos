@@ -879,6 +879,15 @@ def test_notebook_routes_are_gets_on_the_four_contract_paths(client: TestClient)
         for path, operations in paths.items()
         if path.startswith("/notebooks") and "/captures/" not in path
     }
+    # Spec 057: the members and invites of a personal notebook.
+    sharing = {
+        "/notebooks/{notebook_id}/members": {"get"},
+        "/notebooks/{notebook_id}/members/me": {"delete"},
+        "/notebooks/{notebook_id}/members/{member_id}": {"delete"},
+        "/notebooks/{notebook_id}/invites": {"get", "post"},
+        "/notebooks/{notebook_id}/invites/{invite_id}": {"delete"},
+        "/notebooks/{notebook_id}/invites/{invite_id}/resend": {"post"},
+    }
 
     assert set(notebook_paths) == {
         "/notebooks",
@@ -890,8 +899,12 @@ def test_notebook_routes_are_gets_on_the_four_contract_paths(client: TestClient)
         "/notebooks/{notebook_id}/recipes",
         "/notebooks/kitchens/{kitchen_id}/snapshots",
         "/notebooks/kitchens/{kitchen_id}/capture-notebook",
+        *sharing,
     }
-    # Spec 035 adds the only two writes: a snapshot and the member's own capture notebook.
+    assert {path: notebook_paths.pop(path) for path in sharing} == sharing
+    # S-059: creating a personal notebook is the one write on the list itself.
+    assert notebook_paths.pop("/notebooks") == {"get", "post"}
+    # Spec 035 adds two writes: a snapshot and the member's own capture notebook.
     writes = {
         "/notebooks/kitchens/{kitchen_id}/snapshots",
         "/notebooks/kitchens/{kitchen_id}/capture-notebook",

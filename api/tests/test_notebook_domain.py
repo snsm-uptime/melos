@@ -7,16 +7,19 @@ from uuid import uuid4
 import pytest
 from domain.errors import (
     InvalidNotebookError,
+    InvalidNotebookNameError,
     KitchenArchivedError,
     NotebookChoiceRequiredError,
     NotebookNotFoundError,
 )
 from domain.notebook import (
+    NOTEBOOK_NAME_MAX_LENGTH,
     Notebook,
     choose_capture_notebook,
     default_notebook_name,
     kitchen_notebook_name,
     notebook_access,
+    validate_notebook_name,
 )
 
 
@@ -144,3 +147,13 @@ def test_kitchen_archived_error_code() -> None:
 
 def test_notebook_choice_required_error_code() -> None:
     assert NotebookChoiceRequiredError.CODE == "notebook_choice_required"
+
+
+def test_a_new_notebook_name_is_trimmed() -> None:
+    assert validate_notebook_name("  Postres  ") == "Postres"
+
+
+@pytest.mark.parametrize("raw", ["", "   ", "x" * (NOTEBOOK_NAME_MAX_LENGTH + 1)])
+def test_a_blank_or_long_notebook_name_is_refused(raw: str) -> None:
+    with pytest.raises(InvalidNotebookNameError):
+        validate_notebook_name(raw)

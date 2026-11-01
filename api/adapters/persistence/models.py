@@ -295,6 +295,40 @@ class NotebookMembershipModel(Base):
     )
 
 
+class NotebookInviteModel(Base):
+    """An offer for one email to join one personal notebook (spec 057).
+
+    Cancelling or replacing an invite deletes its row (research R2). The sender is nullable
+    because an invite belongs to the notebook and outlives them (research R3).
+    """
+
+    __tablename__ = "notebook_invite"
+    __table_args__ = (
+        Index(
+            "uq_notebook_invite_open",
+            "notebook_id",
+            "email",
+            unique=True,
+            postgresql_where=text("used_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    notebook_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("notebook.id", ondelete="CASCADE"), nullable=False
+    )
+    email: Mapped[str] = mapped_column(String(320), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    invited_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class IngredientModel(Base):
     __tablename__ = "ingredient"
     __table_args__ = (UniqueConstraint("notebook_id", "name", name="uq_ingredient_notebook_name"),)

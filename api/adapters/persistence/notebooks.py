@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from application.ports import NotebookFacts
+from application.ports import NotebookFacts, NotebookMemberRecord
 from domain.errors import PrincipalNotFoundError
-from domain.notebook import Notebook
-from sqlalchemy import Row, Select, and_, exists, func, or_, select
+from domain.notebook import Notebook, NotebookRole
+from sqlalchemy import Row, Select, and_, case, delete, exists, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
 from adapters.persistence.models import (
@@ -267,6 +267,58 @@ class SqlAlchemyNotebookRepository:
                 )
             )
         )
+
+    def lock_notebook(self, notebook_id: UUID) -> None:
+        # Same strength as lock_kitchen: recipe saves take FOR KEY SHARE and are not blocked.
+        self._session.execute(
+            select(NotebookModel.id)
+            .where(NotebookModel.id == notebook_id)
+            .with_for_update(key_share=True)
+        ).one()
+
+    def members_of(self, notebook_id: UUID) -> list[NotebookMemberRecord]:
+        rows = self._session.execute(
+            select(
+                NotebookMembershipModel.user_id,
+                UserModel.alias,
+                NotebookMembershipModel.role,
+            )
+            .join(UserModel, UserModel.id == NotebookMembershipModel.user_id)
+            .where(NotebookMembershipModel.notebook_id == notebook_id)
+            .order_by(
+                case((NotebookMembershipModel.role == "owner", 0), else_=1),
+                NotebookMembershipModel.created_at,
+                NotebookMembershipModel.user_id,
+            )
+        ).all()
+        return [
+            NotebookMemberRecord(user_id=row.user_id, alias=row.alias, role=row.role)
+            for row in rows
+        ]
+
+    def role_of(self, notebook_id: UUID, user_id: UUID) -> NotebookRole | None:
+        return self._session.scalar(
+            select(NotebookMembershipModel.role).where(
+                NotebookMembershipModel.notebook_id == notebook_id,
+                NotebookMembershipModel.user_id == user_id,
+            )
+        )
+
+    def add_member(self, notebook_id: UUID, user_id: UUID) -> None:
+        self._session.add(
+            NotebookMembershipModel(notebook_id=notebook_id, user_id=user_id, role="member")
+        )
+        self._session.flush()
+
+    def delete_membership(self, notebook_id: UUID, user_id: UUID) -> bool:
+        # A SQL delete, so fk_recipe_edit_lock_notebook_membership ends the person's locks.
+        result = self._session.execute(
+            delete(NotebookMembershipModel).where(
+                NotebookMembershipModel.notebook_id == notebook_id,
+                NotebookMembershipModel.user_id == user_id,
+            )
+        )
+        return bool(result.rowcount)
 
 
 class SqlAlchemyUserDefaultNotebook:

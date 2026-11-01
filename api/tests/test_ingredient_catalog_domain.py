@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import time
+
 import pytest
 from domain.ingredient_catalog import (
     NEW,
     LineMatch,
     match_line,
+    names_to_add,
     normalize_name,
+    propose_entry,
     same_spelling,
     singular_forms,
 )
@@ -100,3 +104,74 @@ def test_multi_word_names_singularize_their_last_word() -> None:
 def test_short_words_are_not_singularized() -> None:
     assert singular_forms("gas") == frozenset({"gas"})
     assert singular_forms("rice") == frozenset({"rice"})
+
+
+# --- names_to_add: the merge when someone joins a notebook (spec 057) ---------------------
+
+
+def test_merge_leaves_out_a_plural_of_a_notebook_name() -> None:
+    assert names_to_add(["onions"], ["onion"]) == []
+
+
+def test_merge_leaves_out_a_singular_of_a_notebook_plural() -> None:
+    assert names_to_add(["onion"], ["onions"]) == []
+
+
+def test_merge_adds_a_name_the_notebook_lacks() -> None:
+    assert names_to_add(["saffron"], ["onion"]) == ["saffron"]
+
+
+def test_merge_adds_one_of_two_forms_of_a_new_name() -> None:
+    assert names_to_add(["tomatoes", "tomato"], []) == ["tomato"]
+
+
+@pytest.mark.parametrize(
+    ("incoming", "existing"),
+    [("Azúcar", "azucar"), ("HARINA", "harina"), ("  sal  ", "sal"), ("JALAPEÑOS", "jalapeno")],
+)
+def test_merge_ignores_accents_case_and_spaces(incoming: str, existing: str) -> None:
+    assert names_to_add([incoming], [existing]) == []
+
+
+def test_merge_of_nothing_adds_nothing() -> None:
+    assert names_to_add([], ["onion"]) == []
+    assert names_to_add([], []) == []
+
+
+def test_merge_skips_a_blank_name() -> None:
+    assert names_to_add(["   "], []) == []
+
+
+def test_merge_is_the_same_for_any_input_order() -> None:
+    names = ["tomatoes", "saffron", "tomato", "leaves", "leaf"]
+    assert names_to_add(names, []) == names_to_add(list(reversed(names)), [])
+
+
+SAMPLE = [
+    "onion", "onions", "tomato", "tomatoes", "berry", "berries", "leaf", "leaves", "knife",
+    "knives", "bay leaves", "bay leaf", "azúcar", "AZUCAR", "pasta", "pastas", "garlic", "couscous",
+    "hummus", "glass", "peach", "peaches", "limón", "limones", "pan", "panes", "pie", "pies", "sal",
+    "sales", "aji", "ajis", "cheese", "cheeses", "bus", "gas", "harina de maíz", "harina de maiz",
+]  # fmt: skip
+
+
+@pytest.mark.parametrize("existing", [[], ["onion", "pies"], SAMPLE[::2], SAMPLE[1::3]])
+def test_merge_agrees_with_match_line(existing: list[str]) -> None:
+    """Each name left out matches something known; each name added matches nothing known."""
+    added = names_to_add(SAMPLE, existing)
+    assert len(added) == len(set(added))
+    for name in SAMPLE:
+        known = [*existing, *added]
+        matches = propose_entry(name, known) is not None
+        assert matches, f"{name} should match {known}"
+    for index, name in enumerate(added):
+        others = [*existing, *added[:index]]
+        assert propose_entry(name, others) is None, f"{name} matched {others}"
+
+
+def test_merge_of_500_by_500_names_is_quick() -> None:
+    incoming = [f"name{index}x" for index in range(500)]
+    existing = [f"name{index}y" for index in range(500)]
+    started = time.perf_counter()
+    assert len(names_to_add(incoming, existing)) == 500
+    assert time.perf_counter() - started < 2

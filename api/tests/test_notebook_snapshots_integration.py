@@ -1030,3 +1030,52 @@ def test_a_plain_kitchen_notebook_has_no_label(
 
     assert body["origin_notebook_name"] is None
     assert body["is_snapshot"] is False
+
+
+# --- Creating a personal notebook (S-059, creation only) ---------------------
+
+
+def test_a_new_notebook_is_empty_owned_by_the_caller_and_starts_from_their_names(
+    client: TestClient, db_session: Session
+) -> None:
+    user_id, _ = _register(client, "ana")
+    _personal(db_session, user_id, "Mine", names=("onion",))
+    response = client.post("/notebooks", json={"name": "  Postres  "})
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["name"] == "Postres"
+    assert body["kind"] == "personal"
+    assert body["access"] == "owner"
+    assert body["is_default"] is False
+    assert body["recipe_count"] == 0
+    notebook_id = UUID(body["id"])
+    assert client.get(f"/notebooks/{notebook_id}").status_code == 200
+    assert client.get(f"/notebooks/{notebook_id}/recipes").json()["items"] == []
+    names = db_session.scalars(
+        select(IngredientModel.name).where(IngredientModel.notebook_id == notebook_id)
+    ).all()
+    assert list(names) == ["onion"]
+
+
+def test_a_new_notebook_does_not_replace_the_default(client: TestClient) -> None:
+    _register(client, "ana")
+    default_id = client.get("/notebooks/default").json()["id"]
+    client.post("/notebooks", json={"name": "Postres"})
+    assert client.get("/notebooks/default").json()["id"] == default_id
+
+
+@pytest.mark.parametrize("name", ["", "   ", "x" * 201])
+def test_a_new_notebook_needs_a_name(client: TestClient, name: str) -> None:
+    _register(client, "ana")
+    before = len(client.get("/notebooks").json()["notebooks"])
+    response = client.post("/notebooks", json={"name": name})
+    assert (response.status_code, response.json()["code"]) == (422, "invalid_notebook_name")
+    assert len(client.get("/notebooks").json()["notebooks"]) == before
+
+
+def test_creating_a_notebook_needs_an_alias(client: TestClient) -> None:
+    client.cookies.clear()
+    email = f"noalias_{uuid4().hex[:6]}@example.com"
+    client.post("/auth/register", json={"email": email, "password": "password1"})
+    response = client.post("/notebooks", json={"name": "Postres"})
+    assert (response.status_code, response.json()["code"]) == (403, "alias_required")

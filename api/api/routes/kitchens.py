@@ -60,6 +60,7 @@ from api.schemas.kitchens import (
     RenameKitchenBody,
 )
 from api.settings import AuthSettings
+from api.smtp_responses import smtp_error_response
 
 logger = logging.getLogger(__name__)
 
@@ -85,14 +86,6 @@ def _kitchen_not_found() -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
         content={"detail": KitchenNotFoundError.MESSAGE, "code": "kitchen_not_found"},
-    )
-
-
-def _smtp_error_response(exc: SmtpConfigurationError | SmtpSendError) -> JSONResponse:
-    code = "smtp_config_error" if isinstance(exc, SmtpConfigurationError) else "smtp_send_error"
-    return JSONResponse(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        content={"detail": str(exc), "code": code},
     )
 
 
@@ -243,7 +236,7 @@ def invite_member(
             kitchen_id,
             type(exc).__name__,
         )
-        return _smtp_error_response(exc)
+        return smtp_error_response(exc)
 
     logger.info(
         "kitchen_invite_sent kitchen_id=%s invite_id=%s template=%s",

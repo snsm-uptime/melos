@@ -7,10 +7,13 @@ read as ids.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import asdict
 
+from adapters.email import SmtpEmailSender, load_smtp_settings
 from adapters.persistence.ingredient_catalog import SqlAlchemyIngredientCatalog
+from adapters.persistence.notebook_invites import SqlAlchemyNotebookInviteRepository
 from adapters.persistence.notebooks import (
     SqlAlchemyNotebookRepository,
     SqlAlchemyTransactionCommitter,
@@ -21,9 +24,31 @@ from adapters.persistence.repositories import (
     SqlAlchemyAuthUserRepository,
     SqlAlchemyKitchenRepository,
 )
+from application.notebook_invites import (
+    CancelNotebookInviteCommand,
+    CancelNotebookInviteService,
+    ListNotebookInvitesCommand,
+    ListNotebookInvitesService,
+    NotebookInviteSent,
+    NotebookInviteView,
+    ResendNotebookInviteCommand,
+    ResendNotebookInviteService,
+    SendNotebookInviteCommand,
+    SendNotebookInviteService,
+)
+from application.notebook_members import (
+    LeaveNotebookCommand,
+    LeaveNotebookService,
+    ListNotebookMembersCommand,
+    ListNotebookMembersService,
+    RemoveNotebookMemberCommand,
+    RemoveNotebookMemberService,
+)
 from application.notebooks import (
     AddNotebookSnapshotCommand,
     AddNotebookSnapshotService,
+    CreateNotebookCommand,
+    CreateNotebookService,
     GetDefaultNotebookCommand,
     GetDefaultNotebookService,
     GetNotebookCommand,
@@ -44,10 +69,20 @@ from application.recipe_lists import (
     RecipeListResult,
 )
 from domain.errors import (
+    AlreadyInNotebookError,
+    InvalidInviteEmailError,
+    InvalidNotebookNameError,
     InvalidPageError,
     KitchenArchivedError,
     KitchenNotFoundError,
+    NotebookInviteNotFoundError,
+    NotebookMemberNotFoundError,
     NotebookNotFoundError,
+    NotebookNotShareableError,
+    NotebookOwnerOnlyError,
+    NotebookOwnerStaysError,
+    SmtpConfigurationError,
+    SmtpSendError,
     SnapshotExistsError,
 )
 from fastapi import APIRouter, Depends, Query, Response, status
@@ -55,17 +90,32 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from api.deps import (
+    get_auth_settings,
     get_db,
     get_list_kitchen_recipes,
     get_list_notebook_recipes,
     require_authenticated_user,
+    require_user_alias,
+)
+from api.schemas.notebook_invites import (
+    NotebookInviteResponse,
+    NotebookInviteSentResponse,
+    NotebookInvitesResponse,
+    NotebookMemberResponse,
+    NotebookMembersResponse,
+    SendNotebookInviteRequest,
 )
 from api.schemas.notebooks import (
     AddNotebookSnapshotRequest,
+    CreateNotebookRequest,
     NotebookResponse,
     NotebooksResponse,
 )
 from api.schemas.recipe_lists import RecipePageResponse
+from api.settings import AuthSettings
+from api.smtp_responses import smtp_error_response
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/notebooks", tags=["notebooks"])
 
@@ -109,6 +159,54 @@ def _invalid_query() -> JSONResponse:
     )
 
 
+# The sharing refusals of the contract, each with the same detail and code wherever it arises.
+_SharingRefusal = (
+    NotebookNotFoundError
+    | NotebookNotShareableError
+    | NotebookOwnerOnlyError
+    | NotebookOwnerStaysError
+    | NotebookInviteNotFoundError
+    | NotebookMemberNotFoundError
+    | AlreadyInNotebookError
+)
+_SHARING_STATUS: dict[type[_SharingRefusal], int] = {
+    NotebookNotFoundError: status.HTTP_404_NOT_FOUND,
+    NotebookNotShareableError: status.HTTP_403_FORBIDDEN,
+    NotebookOwnerOnlyError: status.HTTP_403_FORBIDDEN,
+    NotebookOwnerStaysError: status.HTTP_403_FORBIDDEN,
+    NotebookInviteNotFoundError: status.HTTP_404_NOT_FOUND,
+    NotebookMemberNotFoundError: status.HTTP_404_NOT_FOUND,
+    AlreadyInNotebookError: status.HTTP_409_CONFLICT,
+}
+_SHARING_REFUSALS = tuple(_SHARING_STATUS)
+
+
+def _sharing_refused(exc: _SharingRefusal) -> JSONResponse:
+    return JSONResponse(
+        status_code=_SHARING_STATUS[type(exc)],
+        content={"detail": exc.MESSAGE, "code": exc.CODE},
+    )
+
+
+def _invite_response(view: NotebookInviteView) -> NotebookInviteResponse:
+    return NotebookInviteResponse(**asdict(view))
+
+
+def _sent_response(sent: NotebookInviteSent) -> NotebookInviteSentResponse:
+    return NotebookInviteSentResponse(status="sent", invite=_invite_response(sent.invite))
+
+
+def _invite_smtp_failed(
+    db: Session, exc: SmtpConfigurationError | SmtpSendError, notebook_id: uuid.UUID
+) -> JSONResponse:
+    """Undoes the stored invite, so an earlier link keeps working (research R7)."""
+    db.rollback()
+    logger.error(
+        "notebook_invite_smtp_failed notebook_id=%s code=%s", notebook_id, type(exc).__name__
+    )
+    return smtp_error_response(exc)
+
+
 def _recipe_page(result: RecipeListResult) -> RecipePageResponse:
     return RecipePageResponse(**asdict(result))
 
@@ -126,6 +224,30 @@ def list_my_notebooks(
         ListMyNotebooksCommand(actor_user_id=user_id)
     )
     return NotebooksResponse(notebooks=[_response(view) for view in views])
+
+
+@router.post("", response_model=NotebookResponse, status_code=status.HTTP_201_CREATED)
+def create_notebook(
+    body: CreateNotebookRequest,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    db: Session = Depends(get_db),
+) -> NotebookResponse | JSONResponse:
+    service = CreateNotebookService(
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyIngredientCatalog(db),
+        SqlAlchemyTransactionCommitter(db),
+    )
+    try:
+        view = service.execute(CreateNotebookCommand(actor_user_id=user_id, name=body.name))
+    except InvalidNotebookNameError:
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": InvalidNotebookNameError.MESSAGE,
+                "code": InvalidNotebookNameError.CODE,
+            },
+        )
+    return _response(view)
 
 
 @router.get("/default", response_model=NotebookResponse)
@@ -292,3 +414,167 @@ def list_notebook_recipes(
     except InvalidPageError:
         return _invalid_page()
     return _recipe_page(result)
+
+
+@router.get("/{notebook_id}/members", response_model=NotebookMembersResponse)
+def list_notebook_members(
+    notebook_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    db: Session = Depends(get_db),
+) -> NotebookMembersResponse | JSONResponse:
+    service = ListNotebookMembersService(SqlAlchemyNotebookRepository(db))
+    try:
+        rows = service.execute(
+            ListNotebookMembersCommand(actor_user_id=user_id, notebook_id=notebook_id)
+        )
+    except _SHARING_REFUSALS as exc:
+        return _sharing_refused(exc)
+    return NotebookMembersResponse(members=[NotebookMemberResponse(**asdict(row)) for row in rows])
+
+
+# Declared before /members/{member_id}, or "me" would be read as an id.
+@router.delete("/{notebook_id}/members/me", status_code=status.HTTP_204_NO_CONTENT)
+def leave_notebook(
+    notebook_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    db: Session = Depends(get_db),
+) -> Response:
+    service = LeaveNotebookService(SqlAlchemyNotebookRepository(db))
+    try:
+        service.execute(LeaveNotebookCommand(actor_user_id=user_id, notebook_id=notebook_id))
+    except _SHARING_REFUSALS as exc:
+        return _sharing_refused(exc)
+    logger.info("notebook_member_left notebook_id=%s user_id=%s", notebook_id, user_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete("/{notebook_id}/members/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_notebook_member(
+    notebook_id: uuid.UUID,
+    member_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    db: Session = Depends(get_db),
+) -> Response:
+    service = RemoveNotebookMemberService(SqlAlchemyNotebookRepository(db))
+    try:
+        service.execute(
+            RemoveNotebookMemberCommand(
+                actor_user_id=user_id, notebook_id=notebook_id, user_id=member_id
+            )
+        )
+    except _SHARING_REFUSALS as exc:
+        return _sharing_refused(exc)
+    logger.info("notebook_member_removed notebook_id=%s user_id=%s", notebook_id, member_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{notebook_id}/invites", response_model=NotebookInvitesResponse)
+def list_notebook_invites(
+    notebook_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    db: Session = Depends(get_db),
+) -> NotebookInvitesResponse | JSONResponse:
+    service = ListNotebookInvitesService(
+        SqlAlchemyNotebookRepository(db), SqlAlchemyNotebookInviteRepository(db)
+    )
+    try:
+        rows = service.execute(
+            ListNotebookInvitesCommand(actor_user_id=user_id, notebook_id=notebook_id)
+        )
+    except _SHARING_REFUSALS as exc:
+        return _sharing_refused(exc)
+    return NotebookInvitesResponse(invites=[_invite_response(row) for row in rows])
+
+
+@router.post(
+    "/{notebook_id}/invites",
+    response_model=NotebookInviteSentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def send_notebook_invite(
+    notebook_id: uuid.UUID,
+    body: SendNotebookInviteRequest,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    db: Session = Depends(get_db),
+    settings: AuthSettings = Depends(get_auth_settings),
+) -> NotebookInviteSentResponse | JSONResponse:
+    users = SqlAlchemyAuthUserRepository(db)
+    try:
+        # load_smtp_settings inside try: a misconfiguration answers smtp_config_error.
+        service = SendNotebookInviteService(
+            SqlAlchemyNotebookRepository(db),
+            SqlAlchemyNotebookInviteRepository(db),
+            users,
+            users,
+            SmtpEmailSender(load_smtp_settings()),
+            public_app_url=settings.public_app_url,
+        )
+        sent = service.execute(
+            SendNotebookInviteCommand(
+                actor_user_id=user_id, notebook_id=notebook_id, email=body.email
+            )
+        )
+    except InvalidInviteEmailError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={"detail": str(exc), "code": "invalid_invite_email"},
+        )
+    except _SHARING_REFUSALS as exc:
+        return _sharing_refused(exc)
+    except (SmtpConfigurationError, SmtpSendError) as exc:
+        return _invite_smtp_failed(db, exc, notebook_id)
+    logger.info("notebook_invite_sent notebook_id=%s invite_id=%s", notebook_id, sent.invite.id)
+    return _sent_response(sent)
+
+
+@router.post("/{notebook_id}/invites/{invite_id}/resend", response_model=NotebookInviteSentResponse)
+def resend_notebook_invite(
+    notebook_id: uuid.UUID,
+    invite_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    db: Session = Depends(get_db),
+    settings: AuthSettings = Depends(get_auth_settings),
+) -> NotebookInviteSentResponse | JSONResponse:
+    users = SqlAlchemyAuthUserRepository(db)
+    try:
+        service = ResendNotebookInviteService(
+            SqlAlchemyNotebookRepository(db),
+            SqlAlchemyNotebookInviteRepository(db),
+            users,
+            users,
+            SmtpEmailSender(load_smtp_settings()),
+            public_app_url=settings.public_app_url,
+        )
+        sent = service.execute(
+            ResendNotebookInviteCommand(
+                actor_user_id=user_id, notebook_id=notebook_id, invite_id=invite_id
+            )
+        )
+    except _SHARING_REFUSALS as exc:
+        return _sharing_refused(exc)
+    except (SmtpConfigurationError, SmtpSendError) as exc:
+        return _invite_smtp_failed(db, exc, notebook_id)
+    logger.info("notebook_invite_resent notebook_id=%s invite_id=%s", notebook_id, invite_id)
+    return _sent_response(sent)
+
+
+@router.delete("/{notebook_id}/invites/{invite_id}", status_code=status.HTTP_204_NO_CONTENT)
+def cancel_notebook_invite(
+    notebook_id: uuid.UUID,
+    invite_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    db: Session = Depends(get_db),
+) -> Response:
+    service = CancelNotebookInviteService(
+        SqlAlchemyNotebookRepository(db), SqlAlchemyNotebookInviteRepository(db)
+    )
+    try:
+        service.execute(
+            CancelNotebookInviteCommand(
+                actor_user_id=user_id, notebook_id=notebook_id, invite_id=invite_id
+            )
+        )
+    except _SHARING_REFUSALS as exc:
+        return _sharing_refused(exc)
+    logger.info("notebook_invite_cancelled notebook_id=%s invite_id=%s", notebook_id, invite_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
