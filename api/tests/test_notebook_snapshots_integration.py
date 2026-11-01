@@ -143,7 +143,7 @@ def _recipe(
             RecipeIngredientModel(
                 recipe_id=recipe_id, position=2, name="salt", vague_note="a pinch"
             ),
-        ][: line_count]
+        ][:line_count]
     )
     db.add_all(
         [
@@ -410,9 +410,7 @@ def test_another_member_can_read_and_cart_a_copy(
     assert detail["source"]["url"] == "https://example.com/rice"
     listed = client.get(f"/notebooks/kitchens/{kitchen}/recipes").json()["items"]
     assert [item["id"] for item in listed] == [str(copy_id)]
-    carted = client.post(
-        f"/kitchens/{kitchen}/cart/draft/items", json={"recipe_id": str(copy_id)}
-    )
+    carted = client.post(f"/kitchens/{kitchen}/cart/draft/items", json={"recipe_id": str(copy_id)})
     assert carted.status_code == 200, carted.text
 
 

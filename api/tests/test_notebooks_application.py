@@ -130,11 +130,7 @@ class FakeNotebookRepo:
             self.hide_next_kitchen_read = False
             return None
         for n in self.notebooks.values():
-            if (
-                n.kitchen_id == kitchen_id
-                and n.owner_user_id == user_id
-                and n.snapshot_key is None
-            ):
+            if n.kitchen_id == kitchen_id and n.owner_user_id == user_id and n.snapshot_key is None:
                 return n.id
         return None
 
