@@ -58,6 +58,16 @@ def test_owner_on_personal_notebook_rejected() -> None:
         Notebook(id=uuid4(), name="ana's Notebook", owner_user_id=uuid4())
 
 
+def test_snapshot_key_on_personal_notebook_rejected() -> None:
+    with pytest.raises(InvalidNotebookError):
+        Notebook(id=uuid4(), name="ana's Notebook", snapshot_key=uuid4())
+
+
+def test_snapshot_key_on_kitchen_notebook_allowed() -> None:
+    key = uuid4()
+    assert Notebook(id=uuid4(), name="x", kitchen_id=uuid4(), snapshot_key=key).snapshot_key == key
+
+
 def test_default_notebook_name_uses_alias_in_the_language() -> None:
     assert default_notebook_name("ana", "en") == "ana's Notebook"
     assert default_notebook_name("ana", "es") == "Cuaderno de ana"

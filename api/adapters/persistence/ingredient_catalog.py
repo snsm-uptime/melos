@@ -59,6 +59,12 @@ class SqlAlchemyIngredientCatalog:
             .on_conflict_do_nothing(index_elements=["notebook_id", "name"])
         )
 
+    def copy_names(self, source_id: UUID, target_id: UUID) -> None:
+        names = select(literal(target_id, PgUUID(as_uuid=True)), IngredientModel.name).where(
+            IngredientModel.notebook_id == source_id
+        )
+        self._session.execute(insert(IngredientModel).from_select(["notebook_id", "name"], names))
+
     def add_names(self, notebook_id: UUID, names: Sequence[str]) -> None:
         if not names:
             return

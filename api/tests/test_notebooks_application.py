@@ -130,7 +130,11 @@ class FakeNotebookRepo:
             self.hide_next_kitchen_read = False
             return None
         for n in self.notebooks.values():
-            if n.kitchen_id == kitchen_id and n.owner_user_id == user_id:
+            if (
+                n.kitchen_id == kitchen_id
+                and n.owner_user_id == user_id
+                and n.snapshot_key is None
+            ):
                 return n.id
         return None
 
@@ -144,6 +148,20 @@ class FakeNotebookRepo:
 
     def lock_kitchen(self, kitchen_id: UUID) -> None:
         self.calls.append("lock_kitchen")
+
+    def find_snapshot(self, kitchen_id: UUID, snapshot_key: UUID) -> UUID | None:
+        self.calls.append("find_snapshot")
+        for n in self.notebooks.values():
+            if n.kitchen_id == kitchen_id and n.snapshot_key == snapshot_key:
+                return n.id
+        return None
+
+    def has_snapshot_of(self, kitchen_id: UUID, source_notebook_id: UUID) -> bool:
+        self.calls.append("has_snapshot_of")
+        return any(
+            n.kitchen_id == kitchen_id and n.source_notebook_id == source_notebook_id
+            for n in self.notebooks.values()
+        )
 
     def delete(self, notebook_id: UUID) -> None:
         """ON DELETE SET NULL on users.default_notebook_id."""
@@ -186,6 +204,9 @@ class FakeIngredientCatalog:
 
     def seed_from_person(self, notebook_id: UUID, user_id: UUID) -> None:
         self.names[notebook_id] = set(self.names_for_person(user_id))
+
+    def copy_names(self, source_id: UUID, target_id: UUID) -> None:
+        self.names[target_id] = set(self.names.get(source_id, set()))
 
 
 @dataclass

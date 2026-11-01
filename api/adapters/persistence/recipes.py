@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import datetime
-from uuid import UUID
+from typing import Any
+from uuid import UUID, uuid4
 
 from application.ports import (
     DuplicateSaveKeyError,
@@ -15,7 +16,7 @@ from application.ports import (
 from domain.errors import RecipeChangedError, RecipeNotFoundError
 from domain.recipe import EditedRecipe, NewRecipe
 from domain.recipe_draft import IngredientLine
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -169,6 +170,101 @@ class SqlAlchemyRecipeRepository:
         detail = self.get_detail(recipe_id)
         assert detail is not None
         return detail
+
+    def copy_all(self, source_id: UUID, target_id: UUID) -> int:
+        # FOR SHARE: an edit being saved finishes first, and none starts until this commits, so
+        # a recipe's lines and steps can't come from two versions (spec 035 research R4).
+        recipes = self._session.execute(
+            select(
+                RecipeModel.id,
+                RecipeModel.source_id,
+                RecipeModel.author_id,
+                RecipeModel.title,
+                RecipeModel.base_servings,
+                RecipeModel.servings_estimated,
+                RecipeModel.created_at,
+            )
+            .where(RecipeModel.notebook_id == source_id)
+            .with_for_update(read=True)
+        ).all()
+        if not recipes:
+            return 0
+        new_recipe_ids = {recipe.id: uuid4() for recipe in recipes}
+        new_source_ids = {recipe.source_id: uuid4() for recipe in recipes if recipe.source_id}
+
+        # A copy gets its own source row: deleting a recipe deletes its source (research R5).
+        sources = self._session.execute(
+            select(
+                SourceModel.id,
+                SourceModel.user_id,
+                SourceModel.type,
+                SourceModel.url,
+                SourceModel.raw_text,
+                SourceModel.created_at,
+            ).where(SourceModel.id.in_(new_source_ids))
+        ).all()
+        self._insert(
+            SourceModel,
+            [
+                {
+                    "id": new_source_ids[source.id],
+                    "user_id": source.user_id,
+                    "type": source.type,
+                    "url": source.url,
+                    "raw_text": source.raw_text,
+                    "created_at": source.created_at,
+                }
+                for source in sources
+            ],
+        )
+        self._insert(
+            RecipeModel,
+            [
+                {
+                    "id": new_recipe_ids[recipe.id],
+                    "notebook_id": target_id,
+                    "author_id": recipe.author_id,
+                    "source_id": new_source_ids.get(recipe.source_id),
+                    "title": recipe.title,
+                    "base_servings": recipe.base_servings,
+                    "servings_estimated": recipe.servings_estimated,
+                    # Kept, because the kitchen list sorts by it (research R5).
+                    "created_at": recipe.created_at,
+                }
+                for recipe in recipes
+            ],
+        )
+        lines = self._session.execute(
+            select(
+                RecipeIngredientModel.recipe_id,
+                RecipeIngredientModel.position,
+                RecipeIngredientModel.name,
+                RecipeIngredientModel.quantity,
+                RecipeIngredientModel.unit,
+                RecipeIngredientModel.size,
+                RecipeIngredientModel.preparation,
+                RecipeIngredientModel.vague_note,
+            ).where(RecipeIngredientModel.recipe_id.in_(new_recipe_ids))
+        ).all()
+        self._insert(
+            RecipeIngredientModel,
+            [{**line._asdict(), "recipe_id": new_recipe_ids[line.recipe_id]} for line in lines],
+        )
+        steps = self._session.execute(
+            select(StepModel.recipe_id, StepModel.position, StepModel.text).where(
+                StepModel.recipe_id.in_(new_recipe_ids)
+            )
+        ).all()
+        self._insert(
+            StepModel,
+            [{**step._asdict(), "recipe_id": new_recipe_ids[step.recipe_id]} for step in steps],
+        )
+        return len(recipes)
+
+    def _insert(self, model: type[Any], rows: Sequence[dict[str, Any]]) -> None:
+        # An empty list would insert one row of defaults.
+        if rows:
+            self._session.execute(insert(model), rows)
 
     def delete(self, recipe_id: UUID) -> None:
         row = self._lock(recipe_id)

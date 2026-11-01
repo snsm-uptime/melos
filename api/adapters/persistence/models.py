@@ -217,6 +217,17 @@ class NotebookModel(Base):
             "owner_user_id IS NULL OR kitchen_id IS NOT NULL",
             name="ck_notebook_owner_is_kitchen",
         ),
+        CheckConstraint(
+            "snapshot_key IS NULL OR kitchen_id IS NOT NULL",
+            name="ck_notebook_snapshot_is_kitchen",
+        ),
+        Index(
+            "uq_notebook_kitchen_snapshot_key",
+            "kitchen_id",
+            "snapshot_key",
+            unique=True,
+            postgresql_where=text("snapshot_key IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -238,13 +249,16 @@ class NotebookModel(Base):
         nullable=True,
         index=True,
     )
-    # Origin label of a snapshot (S-035). Never set by this feature.
+    # Origin label of a snapshot (spec 035), cleared when the original is deleted.
     source_notebook_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("notebook.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
+    # Set once on a snapshot and never cleared: it marks one for good, unlike the label above,
+    # and makes a repeated request safe (spec 035 research R1, R3).
+    snapshot_key: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

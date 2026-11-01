@@ -1,7 +1,8 @@
-"""Notebook reads: my notebooks, my default, a kitchen's notebooks and one notebook (spec 056).
+"""Notebooks: my notebooks, my default, a kitchen's notebooks and one notebook (spec 056), and
+adding a snapshot and the member's own capture notebook in a kitchen (spec 035).
 
 Static segments are declared before /{notebook_id} so "default" and "kitchens" are not
-read as ids. The capture notebook step has no route (FR-013).
+read as ids.
 """
 
 from __future__ import annotations
@@ -12,13 +13,17 @@ from dataclasses import asdict
 from adapters.persistence.ingredient_catalog import SqlAlchemyIngredientCatalog
 from adapters.persistence.notebooks import (
     SqlAlchemyNotebookRepository,
+    SqlAlchemyTransactionCommitter,
     SqlAlchemyUserDefaultNotebook,
 )
+from adapters.persistence.recipes import SqlAlchemyRecipeRepository
 from adapters.persistence.repositories import (
     SqlAlchemyAuthUserRepository,
     SqlAlchemyKitchenRepository,
 )
 from application.notebooks import (
+    AddNotebookSnapshotCommand,
+    AddNotebookSnapshotService,
     GetDefaultNotebookCommand,
     GetDefaultNotebookService,
     GetNotebookCommand,
@@ -28,6 +33,8 @@ from application.notebooks import (
     ListMyNotebooksCommand,
     ListMyNotebooksService,
     NotebookView,
+    ResolveCaptureNotebookCommand,
+    ResolveCaptureNotebookService,
 )
 from application.recipe_lists import (
     ListKitchenRecipesCommand,
@@ -36,8 +43,14 @@ from application.recipe_lists import (
     ListNotebookRecipesService,
     RecipeListResult,
 )
-from domain.errors import InvalidPageError, KitchenNotFoundError, NotebookNotFoundError
-from fastapi import APIRouter, Depends, Query, status
+from domain.errors import (
+    InvalidPageError,
+    KitchenArchivedError,
+    KitchenNotFoundError,
+    NotebookNotFoundError,
+    SnapshotExistsError,
+)
+from fastapi import APIRouter, Depends, Query, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -47,7 +60,11 @@ from api.deps import (
     get_list_notebook_recipes,
     require_authenticated_user,
 )
-from api.schemas.notebooks import NotebookResponse, NotebooksResponse
+from api.schemas.notebooks import (
+    AddNotebookSnapshotRequest,
+    NotebookResponse,
+    NotebooksResponse,
+)
 from api.schemas.recipe_lists import RecipePageResponse
 
 router = APIRouter(prefix="/notebooks", tags=["notebooks"])
@@ -68,6 +85,13 @@ def _notebook_not_found() -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
         content={"detail": NotebookNotFoundError.MESSAGE, "code": NotebookNotFoundError.CODE},
+    )
+
+
+def _kitchen_archived() -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_403_FORBIDDEN,
+        content={"detail": KitchenArchivedError.MESSAGE, "code": KitchenArchivedError.CODE},
     )
 
 
@@ -138,6 +162,78 @@ def list_kitchen_notebooks(
     except KitchenNotFoundError:
         return _kitchen_not_found()
     return NotebooksResponse(notebooks=[_response(view) for view in views])
+
+
+@router.post(
+    "/kitchens/{kitchen_id}/snapshots",
+    response_model=NotebookResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_notebook_snapshot(
+    kitchen_id: uuid.UUID,
+    body: AddNotebookSnapshotRequest,
+    response: Response,
+    user_id: uuid.UUID = Depends(require_authenticated_user),
+    db: Session = Depends(get_db),
+) -> NotebookResponse | JSONResponse:
+    service = AddNotebookSnapshotService(
+        SqlAlchemyKitchenRepository(db),
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyIngredientCatalog(db),
+        SqlAlchemyRecipeRepository(db),
+    )
+    try:
+        added = service.execute(
+            AddNotebookSnapshotCommand(
+                actor_user_id=user_id,
+                kitchen_id=kitchen_id,
+                source_notebook_id=body.source_notebook_id,
+                snapshot_key=body.snapshot_key,
+                confirm_repeat=body.confirm_repeat,
+            )
+        )
+    except KitchenNotFoundError:
+        return _kitchen_not_found()
+    except KitchenArchivedError:
+        return _kitchen_archived()
+    except NotebookNotFoundError:
+        return _notebook_not_found()
+    except SnapshotExistsError:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"detail": SnapshotExistsError.MESSAGE, "code": SnapshotExistsError.CODE},
+        )
+    if not added.created:
+        response.status_code = status.HTTP_200_OK
+    return _response(added.notebook)
+
+
+@router.post("/kitchens/{kitchen_id}/capture-notebook", response_model=NotebookResponse)
+def resolve_capture_notebook(
+    kitchen_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(require_authenticated_user),
+    db: Session = Depends(get_db),
+) -> NotebookResponse | JSONResponse:
+    service = ResolveCaptureNotebookService(
+        SqlAlchemyKitchenRepository(db),
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyUserDefaultNotebook(db),
+        SqlAlchemyAuthUserRepository(db),
+        SqlAlchemyIngredientCatalog(db),
+        SqlAlchemyTransactionCommitter(db),
+    )
+    try:
+        captured = service.execute(
+            ResolveCaptureNotebookCommand(actor_user_id=user_id, kitchen_id=kitchen_id)
+        )
+    except KitchenNotFoundError:
+        return _kitchen_not_found()
+    except KitchenArchivedError:
+        return _kitchen_archived()
+    view = GetNotebookService(SqlAlchemyNotebookRepository(db)).execute(
+        GetNotebookCommand(actor_user_id=user_id, notebook_id=captured.notebook_id)
+    )
+    return _response(view)
 
 
 @router.get("/kitchens/{kitchen_id}/recipes", response_model=RecipePageResponse)

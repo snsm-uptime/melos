@@ -888,7 +888,15 @@ def test_notebook_routes_are_gets_on_the_four_contract_paths(client: TestClient)
         # The recipe lists (spec 021) are reads under the same router.
         "/notebooks/kitchens/{kitchen_id}/recipes",
         "/notebooks/{notebook_id}/recipes",
+        "/notebooks/kitchens/{kitchen_id}/snapshots",
+        "/notebooks/kitchens/{kitchen_id}/capture-notebook",
     }
+    # Spec 035 adds the only two writes: a snapshot and the member's own capture notebook.
+    writes = {
+        "/notebooks/kitchens/{kitchen_id}/snapshots",
+        "/notebooks/kitchens/{kitchen_id}/capture-notebook",
+    }
+    assert {path: notebook_paths.pop(path) for path in writes} == dict.fromkeys(writes, {"post"})
     assert {method for operations in notebook_paths.values() for method in operations} == {"get"}
     capture_paths = {path: set(ops) for path, ops in paths.items() if "/captures/" in path}
     assert capture_paths == {"/notebooks/{notebook_id}/captures/text": {"post"}}

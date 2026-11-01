@@ -29,11 +29,13 @@ class Notebook:
     id: UUID
     name: str
     kitchen_id: UUID | None = None
-    # Origin label of a snapshot (S-035 sets it). Only a kitchen notebook may carry one.
+    # Origin label of a snapshot (spec 035). Only a kitchen notebook may carry one.
     source_notebook_id: UUID | None = None
     # The member who created a kitchen notebook (FR-002). A personal notebook keeps
     # its owner in notebook_membership instead.
     owner_user_id: UUID | None = None
+    # Marks a snapshot for good, even after its label is cleared (spec 035 research R1).
+    snapshot_key: UUID | None = None
 
     def __post_init__(self) -> None:
         if not self.name.strip():
@@ -43,6 +45,8 @@ class Notebook:
         if self.source_notebook_id == self.id:
             raise InvalidNotebookError()
         if self.owner_user_id is not None and self.kitchen_id is None:
+            raise InvalidNotebookError()
+        if self.snapshot_key is not None and self.kitchen_id is None:
             raise InvalidNotebookError()
 
     @property

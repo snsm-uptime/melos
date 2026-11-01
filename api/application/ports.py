@@ -87,6 +87,14 @@ class NotebookFacts:
     kitchen_is_archived: bool | None
     is_default: bool
     recipe_count: int
+    # The original's current name, for a snapshot whose original still exists (spec 035 R8).
+    origin_notebook_name: str | None = None
+    # True on the notebook user_kitchen_notebook returns for the caller.
+    is_own_capture_notebook: bool = False
+
+    @property
+    def is_snapshot(self) -> bool:
+        return self.notebook.snapshot_key is not None
 
 
 class NotebookRepository(Protocol):
@@ -127,9 +135,21 @@ class NotebookRepository(Protocol):
         """Serialize first creations in a kitchen (FOR NO KEY UPDATE on the kitchen row)."""
         ...
 
+    def find_snapshot(self, kitchen_id: UUID, snapshot_key: UUID) -> UUID | None:
+        """The kitchen's snapshot made with this key, or None."""
+        ...
+
+    def has_snapshot_of(self, kitchen_id: UUID, source_notebook_id: UUID) -> bool:
+        """Whether the kitchen has a snapshot still labelled as coming from this notebook."""
+        ...
+
 
 class IngredientCatalog(Protocol):
     def names_for_notebook(self, notebook_id: UUID) -> list[str]: ...
+
+    def copy_names(self, source_id: UUID, target_id: UUID) -> None:
+        """Copy every name of the source's catalog to the target's, unchanged (spec 035 FR-011)."""
+        ...
 
     def names_for_person(self, user_id: UUID) -> list[str]:
         """Distinct names across the user's personal notebooks (never kitchen notebooks)."""
@@ -216,6 +236,14 @@ class RecipeRepository(Protocol):
         """Remove the recipe, its lines, its steps and its source row.
 
         Raises RecipeNotFoundError when it is gone.
+        """
+        ...
+
+    def copy_all(self, source_id: UUID, target_id: UUID) -> int:
+        """Copy every recipe of the source notebook to the target as last saved; returns the count.
+
+        Each copy has its own lines, steps and source row, keeps its author and creation time, and
+        starts with no save key and a cart count of zero (spec 035 data-model.md).
         """
         ...
 
