@@ -394,10 +394,17 @@ stories:
     title: Add a personal notebook to a kitchen as a snapshot (independent kitchen copy)
     epic: Recipes
     priority: must
-    status: backlog
+    status: done
     journey: J1a, J3
-    source: prd.md 1.5H, 1.6 (notebook.source_notebook_id), J1a, J3 Add to a kitchen; AC1a.4
+    source: prd.md 1.5H, 1.6 (notebook.source_notebook_id), J1a, J3 Add to a kitchen; AC1a.4; specs/035-notebook-snapshot
     acceptance: [AC1a.4]
+    verification: >
+      Implemented 2026-11-01 on branch 035-notebook-snapshot. Migration
+      0011_notebook_snapshot_key: upgrade, downgrade and upgrade tested. api on a throwaway Postgres:
+      1029 passed; ruff clean. ui: 1121 vitest tests, lint and typecheck clean. Browser walk at 360px
+      and 1280px in English and Spanish: 83 checks passed. Not done: quickstart steps 3, 7 and 8
+      end to end (7 and 8 need a Gemini key), a full keyboard-only pass, and SC-002 on the deployed
+      server (T046). Details in specs/035-notebook-snapshot/notes.md.
     notes: >
       Re-scoped 2026-10-23 twice (was "Use a recipe from my notebook in a kitchen", then "Link a
       notebook to a kitchen"). Any kitchen member copies one of their personal notebooks into the
@@ -463,6 +470,8 @@ stories:
       list on 2026-10-22: adds embed-on-save and embeds the recipes saved before it.
       Spec 027: re-embed in UpdateRecipeService (edit), and remove the embedding on delete in
       DeleteRecipeService (FR-016); the schema guard test fails until the new table is handled.
+      Spec 035: recipes copied into a snapshot need embeddings too, and copy_all must add any
+      embedding row it should carry.
 
   - id: S-026
     title: Capture a recipe from a URL (SSRF-safe fetch, JSON-LD first)
@@ -689,8 +698,10 @@ stories:
       Any recipe the person can read, into a notebook they can write to. Names are
       normalized against the target's catalog with the S-018 matcher; the target's names win and
       the person sees every change before confirming. The person is the copy's author. The copy
-      has no link to the original; the two drift apart. The copy step is reused by S-035
-      (snapshots).
+      has no link to the original; the two drift apart. S-035 built the shared step first:
+      SqlAlchemyRecipeRepository.copy_all copies a whole notebook and keeps authors, so a single
+      recipe copy reuses its parts and adds the name matching. Copied recipes need embeddings
+      (S-019).
 
   # ---------------------------------------------------------------------------
   # Later or not in v1

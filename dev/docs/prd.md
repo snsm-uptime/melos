@@ -191,7 +191,7 @@ kitchen deleted → its kitchen notebooks are deleted with it; the personal note
 kitchen(id, name, content_language: en|es, created_at)
 membership(kitchen_id, user_id, role: owner|member, created_at)       pk(kitchen_id, user_id)
 invite(id, kitchen_id, email, token_hash, invited_by, expires_at, accepted_at)
-notebook(id, name, kitchen_id?, source_notebook_id?, created_at)     kitchen_id set: a kitchen notebook, which belongs to that kitchen (several per kitchen); null: a personal notebook. source_notebook_id: the notebook a snapshot came from (FK notebook.id, ON DELETE SET NULL), an origin label only
+notebook(id, name, kitchen_id?, source_notebook_id?, snapshot_key?, created_at)     kitchen_id set: a kitchen notebook, which belongs to that kitchen (several per kitchen); null: a personal notebook. source_notebook_id: the notebook a snapshot came from (FK notebook.id, ON DELETE SET NULL), an origin label only. snapshot_key: set once on a snapshot and never cleared, unique per kitchen; it marks a snapshot for good and makes a repeated add safe (spec 035)
 notebook_membership(notebook_id, user_id, role: owner|member, created_at)   personal notebooks only; pk(notebook_id, user_id); exactly one owner per personal notebook
 notebook_invite(id, notebook_id, email, token_hash, invited_by, expires_at, accepted_at)   personal notebooks only; same rules as invite
 users.default_kitchen_id (nullable, FK kitchens.id, ON DELETE SET NULL)  the kitchen Home opens; resolved on read and stored: the stored kitchen if active and the person belongs to it, else their earliest-created active owned kitchen, else their earliest-joined active kitchen, else null (spec 064)
@@ -511,7 +511,8 @@ Every entity has full CRUD in the API. The UI only exposes what the journey need
 | Notebook | ✓ | ✓ | name | personal: owner only; kitchen: any kitchen member | ✓ | ✓ (read) | Personal: one owner, any number of members. Kitchen: belongs to the kitchen, every kitchen member reads and writes it |
 | NotebookMembership | via notebook invite | ✓ | — | leave / remove | ✓ | — | Personal notebooks only. The owner cannot leave |
 | NotebookInvite | notebook owner | notebook owner | resend | revoke | ✓ | — | Reuses the kitchen invite flow |
-| Notebook snapshot (action) | any kitchen member | — | — | — | ✓ | — | Not stored as such: creates a kitchen notebook copied from a personal notebook, labelled with its origin (flow H) |
+| Notebook snapshot (action) | any kitchen member, `POST /notebooks/kitchens/{id}/snapshots` | — | — | — | ✓ | — | Not stored as such: creates a kitchen notebook copied from a personal notebook, labelled with its origin (flow H) |
+| Capture notebook (action) | `POST /notebooks/kitchens/{id}/capture-notebook` | — | — | — | ✓ | — | Not stored as such: returns the member's own kitchen notebook, created if needed, when they submit a capture (spec 035) |
 | Recipe | via draft confirm, a copy or a snapshot | ✓ | those who can write to its notebook | same as update | ✓ | capture (✓), read (✓), update (—), delete (—) | In exactly one notebook. Records its author. Update re-embeds. Copies drift apart |
 | Recipe copy (action) | Copy to notebook | — | — | — | ✓ | — | Not stored: creates a new Recipe in the target notebook (flow G) |
 | Draft | `POST /drafts` | — | — | — | ✓ | ✓ | Not stored; the response holds the draft |
