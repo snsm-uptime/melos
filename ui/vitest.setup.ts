@@ -11,3 +11,10 @@ function markReactActEnvironment() {
 
 markReactActEnvironment();
 beforeEach(markReactActEnvironment);
+
+/** jsdom has no layout, so nothing ever resizes; a test that needs it stubs its own. */
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};

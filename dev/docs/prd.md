@@ -307,7 +307,7 @@ The user's input (text, URL or photo) is never lost on error.
 
 ### 1.10 Shared UI components
 
-- **Side panel** (`SidePanel`, spec 064). One left panel replaces the bottom bar on every authenticated page, in this order: avatar, alias with recipe count, Home, other kitchens A to Z, Notebooks, log out. From `md` up it is icons only when closed and icons with labels when open, remembered per device. On phones it is a drawer over the content, opened from the header.
+- **Side panel** (`SidePanel`, spec 064). One left panel replaces the bottom bar on every authenticated page, in this order: avatar, alias with recipe count, Home, other kitchens A to Z, Notebooks, log out. From `md` up it is icons only when closed and icons with labels when open, remembered per device. Closed, it has no scrollbar, and when the kitchens would overflow it shows only the default kitchen. On phones it is a drawer over the content, opened from the header.
 - **Add-recipe call to action** (`AddRecipeCallToAction`). A rounded-corner placeholder rectangle with a plus icon at its centre. Every page that lets a user add a recipe uses it; the first uses are a person's notebook (the Notebook tab in the bottom bar) and a kitchen's Notebook tab (J2). Tapping it opens the add-recipe options dialog: a vertical list separated by dividers, with no confirm or cancel buttons, in this order: URL (disabled, not implemented yet), Picture (disabled, "coming soon", until S-041), Text (opens the text sheet). The option list lives in this component only.
 - Built on the existing `ActionDialog` (its confirm and cancel props become optional) and `Sheet`. The picture sheet, when built (S-041), has an inner dashed border of about 2rem with the text "Upload file or drag and drop".
 
