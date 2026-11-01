@@ -182,7 +182,7 @@ describe("NotebookTabScreen", () => {
     expect(hrefs).toEqual(["/notebooks/nb-default", "/notebooks/nb-shared"]);
   });
 
-  it("puts the add-recipe call to action in the first cell, before the cards", async () => {
+  it("puts the new notebook tile in the first cell, before the cards", async () => {
     stubBff({
       "/api/notebooks/default": [{ status: 200, body: defaultNotebook }],
       "/api/notebooks": [{ status: 200, body: { notebooks: [defaultNotebook, sharedNotebook] } }],
@@ -194,8 +194,7 @@ describe("NotebookTabScreen", () => {
     const cells = container.querySelectorAll("ul > li");
     expect(cells).toHaveLength(3);
     const add = cells[0].querySelector("button") as HTMLButtonElement;
-    expect(add.getAttribute("aria-label")).toBe("Add a recipe");
-    expect(add.disabled).toBe(false);
+    expect(add.getAttribute("aria-label")).toBe("New notebook");
     expect(cells[0].querySelector("h3")).toBeNull();
   });
 
@@ -317,41 +316,5 @@ describe("NotebookTabScreen", () => {
     });
     await flush();
     expect(container.textContent).toContain("No notebooks yet.");
-  });
-
-  it("captures only into personal notebooks, so a kitchen notebook adds no picker", async () => {
-    const kitchenNotebook = {
-      ...sharedNotebook,
-      id: "nb-kitchen",
-      name: "Home notebook",
-      kind: "kitchen",
-      access: "kitchen_member",
-      kitchen_id: "k1",
-      kitchen_is_archived: false,
-    };
-    stubBff({
-      "/api/notebooks/default": [{ status: 200, body: defaultNotebook }],
-      "/api/notebooks": [{ status: 200, body: { notebooks: [defaultNotebook, kitchenNotebook] } }],
-    });
-    act(() => {
-      root.render(<NotebookTabScreen locale="en" viewerAlias="ana" />);
-    });
-    await flush();
-
-    const press = (label: string) =>
-      act(() =>
-        (
-          Array.from(document.querySelectorAll("button")).find(
-            (el) => el.getAttribute("aria-label") === label || el.textContent?.trim() === label,
-          ) as HTMLButtonElement
-        ).click(),
-      );
-    press("Add a recipe");
-    press("Text");
-    await flush();
-
-    expect(document.querySelector("textarea")).not.toBeNull();
-    expect(document.querySelector("select")).toBeNull();
-    clearCapture();
   });
 });

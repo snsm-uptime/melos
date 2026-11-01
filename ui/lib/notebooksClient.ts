@@ -43,6 +43,17 @@ export function getJson<T>(
   });
 }
 
+async function failure(response: Response): Promise<NotebookError> {
+  let code: string | null = null;
+  try {
+    const body = (await response.json()) as { code?: unknown } | null;
+    if (typeof body?.code === "string") code = body.code;
+  } catch {
+    code = null;
+  }
+  return { ok: false, status: response.status, code };
+}
+
 async function requestJson<T>(
   path: string,
   parse: (data: unknown) => T | null,
@@ -54,16 +65,7 @@ async function requestJson<T>(
   } catch {
     return { ok: false, status: 0, code: null };
   }
-  if (!response.ok) {
-    let code: string | null = null;
-    try {
-      const body = (await response.json()) as { code?: unknown } | null;
-      if (typeof body?.code === "string") code = body.code;
-    } catch {
-      code = null;
-    }
-    return { ok: false, status: response.status, code };
-  }
+  if (!response.ok) return failure(response);
   let value: T | null = null;
   try {
     value = parse(await response.json());
@@ -96,6 +98,15 @@ export function fetchDefaultNotebook(): Promise<NotebookResult<NotebookResponse>
 /** The caller's personal notebooks, oldest first. */
 export function fetchPersonalNotebooks(): Promise<NotebookResult<NotebookResponse[]>> {
   return getJson("/api/notebooks", asNotebookList);
+}
+
+/** A new personal notebook with no recipes, owned by the caller (S-059). */
+export function createNotebook(name: string): Promise<NotebookResult<NotebookResponse>> {
+  return requestJson("/api/notebooks", asNotebook, {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
 }
 
 /** The notebooks of one kitchen, for a member of it. */
@@ -148,4 +159,110 @@ export function resolveCaptureNotebook(
     asNotebook,
     { method: "POST", headers: { Accept: "application/json" } },
   );
+}
+
+export type NotebookMember = {
+  user_id: string;
+  /** Null for an account with none; the screen shows "unknown". */
+  alias: string | null;
+  role: "owner" | "member";
+  is_self: boolean;
+};
+
+export type NotebookInvite = {
+  id: string;
+  email: string;
+  expires_at: string;
+  expired: boolean;
+};
+
+const notebookPath = (notebookId: string) => `/api/notebooks/${encodeURIComponent(notebookId)}`;
+
+function asInvite(data: unknown): NotebookInvite | null {
+  if (!data || typeof data !== "object") return null;
+  const row = data as { id?: unknown; email?: unknown };
+  return typeof row.id === "string" && typeof row.email === "string"
+    ? (data as NotebookInvite)
+    : null;
+}
+
+function asSentInvite(data: unknown): NotebookInvite | null {
+  return data && typeof data === "object" ? asInvite((data as { invite?: unknown }).invite) : null;
+}
+
+/** A refused or failed write keeps its status and code; a 204 is `ok` with nothing in it. */
+async function requestEmpty(path: string): Promise<NotebookResult<null>> {
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      method: "DELETE",
+      headers: { Accept: "application/json" },
+      credentials: "same-origin",
+    });
+  } catch {
+    return { ok: false, status: 0, code: null };
+  }
+  return response.ok ? { ok: true, value: null } : failure(response);
+}
+
+/** The owner and members by alias, owner first (spec 057). No email appears here. */
+export function fetchNotebookMembers(
+  notebookId: string,
+): Promise<NotebookResult<NotebookMember[]>> {
+  return getJson(`${notebookPath(notebookId)}/members`, (data) => {
+    const rows = (data as { members?: unknown } | null)?.members;
+    return Array.isArray(rows) ? (rows as NotebookMember[]) : null;
+  });
+}
+
+/** A notebook's open and expired invites, for its owner. */
+export function fetchNotebookInvites(
+  notebookId: string,
+): Promise<NotebookResult<NotebookInvite[]>> {
+  return getJson(`${notebookPath(notebookId)}/invites`, (data) => {
+    const rows = (data as { invites?: unknown } | null)?.invites;
+    return Array.isArray(rows) ? (rows as NotebookInvite[]) : null;
+  });
+}
+
+/** Sends an invite by email; the answer never says whether the address has an account. */
+export function inviteToNotebook(
+  notebookId: string,
+  email: string,
+): Promise<NotebookResult<NotebookInvite>> {
+  return requestJson(`${notebookPath(notebookId)}/invites`, asSentInvite, {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+}
+
+/** A new link and a new 7 days; any earlier link stops working. */
+export function resendNotebookInvite(
+  notebookId: string,
+  inviteId: string,
+): Promise<NotebookResult<NotebookInvite>> {
+  return requestJson(
+    `${notebookPath(notebookId)}/invites/${encodeURIComponent(inviteId)}/resend`,
+    asSentInvite,
+    { method: "POST", headers: { Accept: "application/json" } },
+  );
+}
+
+export function cancelNotebookInvite(
+  notebookId: string,
+  inviteId: string,
+): Promise<NotebookResult<null>> {
+  return requestEmpty(`${notebookPath(notebookId)}/invites/${encodeURIComponent(inviteId)}`);
+}
+
+export function leaveNotebook(notebookId: string): Promise<NotebookResult<null>> {
+  return requestEmpty(`${notebookPath(notebookId)}/members/me`);
+}
+
+export function removeNotebookMember(
+  notebookId: string,
+  userId: string,
+): Promise<NotebookResult<null>> {
+  return requestEmpty(`${notebookPath(notebookId)}/members/${encodeURIComponent(userId)}`);
 }

@@ -181,13 +181,57 @@ describe("NotebookRecipesScreen", () => {
     expect(container.textContent).not.toContain("Add a recipe");
   });
 
-  it("shows the not found message for a notebook the member cannot see", async () => {
+  it("goes to the notebooks when the member cannot see this one", async () => {
     stub({ notebook: { status: 404, body: { code: "notebook_not_found" } } });
 
     await render();
 
-    expect(container.textContent).toContain("This notebook is unavailable.");
+    expect(replace).toHaveBeenCalledWith("/notebooks");
     expect(container.querySelector("main input")).toBeNull();
+  });
+
+  it("goes to the notebooks when access ends while the list is open", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const gone = url.includes("/recipes");
+        return {
+          ok: !gone,
+          status: gone ? 404 : 200,
+          json: async () => (gone ? { code: "notebook_not_found" } : notebook),
+        };
+      }),
+    );
+
+    await render();
+
+    expect(replace).toHaveBeenCalledWith("/notebooks");
+  });
+
+  const empty = { items: [], page: 1, page_size: 12, total: 0, total_pages: 0 };
+  const shareButton = () => container.querySelector('button[aria-label="Share this notebook"]');
+
+  it("puts the share button in the chrome on a personal notebook and opens the dialog", async () => {
+    stub({ notebook: { status: 200, body: notebook }, recipes: empty });
+
+    await render();
+
+    expect(container.querySelector("main")?.contains(shareButton())).toBe(false);
+    expect(shareButton()).not.toBeNull();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    act(() => shareButton()?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+  });
+
+  it("has no share button on a kitchen notebook", async () => {
+    stub({
+      notebook: { status: 200, body: { ...notebook, kind: "kitchen", access: "kitchen_member" } },
+      recipes: empty,
+    });
+
+    await render();
+
+    expect(shareButton()).toBeNull();
   });
 
   it("redirects to the alias step when an alias is required", async () => {

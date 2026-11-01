@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getApiInternalUrl } from "@/lib/api";
+import { forwardRecipeRequest } from "@/lib/recipeBff";
 
 /**
  * Same-origin BFF: /api/notebooks → api /notebooks (the caller's personal notebooks).
@@ -32,4 +33,9 @@ export async function GET(request: NextRequest) {
         upstream.headers.get("Content-Type") || "application/json",
     },
   });
+}
+
+/** Same-origin BFF: a new personal notebook (S-059). */
+export async function POST(request: NextRequest) {
+  return forwardRecipeRequest(request, { method: "POST", path: "/notebooks", withBody: true });
 }

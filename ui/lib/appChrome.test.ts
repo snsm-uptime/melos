@@ -59,6 +59,7 @@ describe("showsLanguageSwitch (spec 063)", () => {
       "/reset-password",
       "/verify",
       "/invites/accept",
+      "/invites/notebook",
     ]) {
       expect(showsLanguageSwitch(path)).toBe(true);
     }

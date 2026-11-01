@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { AddRecipeCallToAction } from "@/components/AddRecipeCallToAction";
 import { useChromeHeader } from "@/components/ChromeBack";
 import { NotebookCard } from "@/components/NotebookCard/NotebookCard";
 import { SavedNotice } from "@/components/RecipeDraft/SavedNotice";
@@ -16,6 +15,7 @@ import {
   type NotebookResponse,
 } from "@/lib/notebooksClient";
 
+import { NewNotebookCard } from "./NewNotebookCard";
 import styles from "./notebooks.module.scss";
 
 /** Same target as `aliasSetupHref` in lib/alias, kept local so this client file never imports server code. */
@@ -101,20 +101,9 @@ export function NotebookTabScreen({
       ) : null}
       {state.status === "ready" && state.notebooks.length > 0 ? (
         <ul className={styles.grid}>
-          {/* The first cell adds a recipe; the picker preselects the default notebook. */}
+          {/* The first cell makes a notebook; recipes are added inside a notebook. */}
           <li>
-            <AddRecipeCallToAction
-              candidates={state.notebooks
-                .filter((notebook) => notebook.kind === "personal")
-                .map((notebook) => ({
-                  id: notebook.id,
-                  name: notebook.name,
-                  kind: "personal",
-                  kitchenId: null,
-                }))}
-              defaultId={state.defaultId}
-              returnPath="/notebooks"
-            />
+            <NewNotebookCard locale={locale} />
           </li>
           {state.notebooks.map((notebook) => (
             <li key={notebook.id}>
