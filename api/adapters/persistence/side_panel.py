@@ -80,6 +80,8 @@ class SqlAlchemySidePanelRepository:
                 .join(NotebookModel, NotebookModel.id == RecipeModel.notebook_id)
                 .where(
                     RecipeModel.author_id == user_id,
+                    # Copies keep their author, so a snapshot would count twice (spec 035 FR-025).
+                    NotebookModel.snapshot_key.is_(None),
                     or_(NotebookModel.kitchen_id.in_(kitchens), NotebookModel.id.in_(notebooks)),
                 )
             )

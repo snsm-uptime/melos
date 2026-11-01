@@ -6,6 +6,7 @@ import { requireAlias } from "@/lib/alias";
 import { getApiInternalUrl } from "@/lib/api";
 import { cartMessages } from "@/lib/i18n/cart";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
+import { notebooksMessages } from "@/lib/i18n/notebooks";
 import { fetchSession } from "@/lib/session";
 import { KitchenCartCountProvider } from "../cartCount";
 import {
@@ -184,6 +185,10 @@ export default async function KitchenDetailPage({
               href: `/kitchens/${encodeURIComponent(kitchenId)}/cart`,
               label: cartMessages[locale].cart,
               locale,
+            }}
+            notebooks={{
+              href: `/kitchens/${encodeURIComponent(kitchenId)}/notebooks`,
+              label: notebooksMessages[locale].openNotebooks,
             }}
           />
           <KitchenNotebooksSection

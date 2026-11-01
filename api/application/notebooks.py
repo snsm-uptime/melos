@@ -1,16 +1,23 @@
 """Notebook reads and writes for people and kitchens (spec 056).
 
-Creation happens in three places, each under a lock: a person's default notebook
-(first use), a kitchen's first notebook (first open or first capture) and a capture
-notebook in a kitchen or outside one. Every answer is built with notebook_view.
+Creation happens in four places, each under a lock: a person's default notebook
+(first use), a kitchen's first notebook (first open or first capture), a capture
+notebook in a kitchen or outside one, and a snapshot (spec 035). Every answer is built
+with notebook_view.
 """
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from uuid import UUID, uuid4
 
-from domain.errors import AliasRequiredError, KitchenArchivedError, NotebookNotFoundError
+from domain.errors import (
+    AliasRequiredError,
+    KitchenArchivedError,
+    NotebookNotFoundError,
+    SnapshotExistsError,
+)
 from domain.notebook import (
     Notebook,
     NotebookAccess,
@@ -31,9 +38,12 @@ from application.ports import (
     NotebookFacts,
     NotebookRepository,
     PreferencesRepository,
+    RecipeRepository,
     TransactionCommitter,
     UserDefaultNotebook,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,6 +59,9 @@ class NotebookView:
     kitchen_is_archived: bool | None
     is_default: bool
     recipe_count: int
+    origin_notebook_name: str | None = None
+    is_snapshot: bool = False
+    is_own_capture_notebook: bool = False
 
 
 def notebook_view(facts: NotebookFacts) -> NotebookView:
@@ -66,6 +79,9 @@ def notebook_view(facts: NotebookFacts) -> NotebookView:
         # A kitchen notebook is never anyone's default (data-model.md "Read model").
         is_default=facts.is_default and facts.notebook.kind == "personal",
         recipe_count=facts.recipe_count,
+        origin_notebook_name=facts.origin_notebook_name,
+        is_snapshot=facts.is_snapshot,
+        is_own_capture_notebook=facts.is_own_capture_notebook,
     )
 
 
@@ -309,7 +325,10 @@ class CaptureNotebook:
 
 
 class ResolveCaptureNotebookService:
-    """The notebook a capture goes into (FR-009 to FR-011). Internal: no route (FR-013).
+    """The notebook a capture goes into (FR-009 to FR-011).
+
+    Also behind POST /notebooks/kitchens/{id}/capture-notebook, which the ui calls for a member
+    with no kitchen notebook of their own (spec 035 research R6).
 
     In a kitchen: the only notebook, the picked one, or a new kitchen notebook.
     Outside a kitchen: the only personal notebook, the picked one, or the default.
@@ -393,3 +412,85 @@ class ResolveCaptureNotebookService:
         if created:
             self._committer.commit()
         return CaptureNotebook(notebook_id=notebook_id, created=created)
+
+
+@dataclass(frozen=True, slots=True)
+class AddNotebookSnapshotCommand:
+    actor_user_id: UUID
+    kitchen_id: UUID
+    source_notebook_id: UUID
+    snapshot_key: UUID
+    confirm_repeat: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class AddedSnapshot:
+    notebook: NotebookView
+    # False when the key was already used, so the existing snapshot is returned.
+    created: bool
+
+
+class AddNotebookSnapshotService:
+    """Add a personal notebook the caller owns to a kitchen as an independent copy (spec 035).
+
+    Runs the checks in the order of contracts/snapshots-api.md. The request's one transaction
+    makes it all or nothing, and the kitchen lock turns a concurrent repeat into a replay.
+    """
+
+    def __init__(
+        self,
+        kitchens: KitchenRepository,
+        notebooks: NotebookRepository,
+        catalog: IngredientCatalog,
+        recipes: RecipeRepository,
+    ) -> None:
+        self._kitchens = kitchens
+        self._notebooks = notebooks
+        self._catalog = catalog
+        self._recipes = recipes
+
+    def execute(self, command: AddNotebookSnapshotCommand) -> AddedSnapshot:
+        grant = AuthorizeKitchenAccessService(self._kitchens).execute(
+            AuthorizeKitchenAccessCommand(
+                acting_user_id=command.actor_user_id,
+                kitchen_id=command.kitchen_id,
+                action="read_kitchen",
+            )
+        )
+        kitchen = self._kitchens.get_kitchen_with_grant(grant, command.kitchen_id)
+        if kitchen.is_archived:
+            raise KitchenArchivedError()
+
+        self._notebooks.lock_kitchen(kitchen.id)
+        replayed = self._notebooks.find_snapshot(kitchen.id, command.snapshot_key)
+        if replayed is not None:
+            logger.info("notebook snapshot outcome=replayed")
+            return AddedSnapshot(self._view(command.actor_user_id, replayed), created=False)
+
+        source = self._notebooks.facts_for(command.actor_user_id, command.source_notebook_id)
+        if source is None or source.notebook.kind != "personal" or source.role != "owner":
+            raise NotebookNotFoundError()
+        if not command.confirm_repeat and self._notebooks.has_snapshot_of(
+            kitchen.id, source.notebook.id
+        ):
+            raise SnapshotExistsError()
+
+        notebook = Notebook(
+            id=uuid4(),
+            name=source.notebook.name,
+            kitchen_id=kitchen.id,
+            source_notebook_id=source.notebook.id,
+            owner_user_id=command.actor_user_id,
+            snapshot_key=command.snapshot_key,
+        )
+        self._notebooks.create(notebook)
+        self._catalog.copy_names(source.notebook.id, notebook.id)
+        copied = self._recipes.copy_all(source.notebook.id, notebook.id)
+        logger.info("notebook snapshot outcome=created recipes=%d", copied)
+        return AddedSnapshot(self._view(command.actor_user_id, notebook.id), created=True)
+
+    def _view(self, user_id: UUID, notebook_id: UUID) -> NotebookView:
+        facts = self._notebooks.facts_for(user_id, notebook_id)
+        if facts is None:
+            raise NotebookNotFoundError()
+        return notebook_view(facts)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from uuid import UUID, uuid4
 
 import pytest
-from adapters.persistence.models import KitchenMembershipModel
+from adapters.persistence.models import KitchenMembershipModel, NotebookModel
 from adapters.persistence.side_panel import SqlAlchemySidePanelRepository
 from application.side_panel import GetSidePanelService
 from fastapi.testclient import TestClient
@@ -185,3 +185,43 @@ def test_a_read_with_no_change_stays_within_four_statements(
     finally:
         event.remove(bind, "before_cursor_execute", record)
     assert len(statements) <= 4
+
+
+def _snapshot(client: TestClient, kitchen_id: str, source_id: str) -> str:
+    response = client.post(
+        f"/notebooks/kitchens/{kitchen_id}/snapshots",
+        json={"source_notebook_id": source_id, "snapshot_key": str(uuid4())},
+    )
+    assert response.status_code == 201, response.text
+    return response.json()["id"]
+
+
+def _recipes_added(client: TestClient) -> int:
+    return client.get("/side-panel").json()["recipes_added"]
+
+
+def test_a_snapshot_does_not_raise_the_recipe_count(client: TestClient) -> None:
+    _register(client, "ana")
+    kitchen_id = _kitchen(client, "Home")
+    personal = client.get("/notebooks/default").json()["id"]
+    _save(client, personal)
+    before = _recipes_added(client)
+
+    _snapshot(client, kitchen_id, personal)
+
+    assert _recipes_added(client) == before == 1
+
+
+def test_a_recipe_later_captured_into_a_snapshot_is_not_counted(
+    client: TestClient, db_session: Session
+) -> None:
+    _register(client, "ana")
+    kitchen_id = _kitchen(client, "Home")
+    personal = client.get("/notebooks/default").json()["id"]
+    snapshot = _snapshot(client, kitchen_id, personal)
+    assert db_session.get(NotebookModel, UUID(snapshot)).snapshot_key is not None
+    before = _recipes_added(client)
+
+    _save(client, snapshot)
+
+    assert _recipes_added(client) == before

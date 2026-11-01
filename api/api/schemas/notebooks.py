@@ -1,4 +1,4 @@
-"""Pydantic DTOs for notebook reads (spec 056, contracts/notebooks-api.md)."""
+"""Pydantic DTOs for notebooks (specs 056 and 035)."""
 
 from __future__ import annotations
 
@@ -20,6 +20,17 @@ class NotebookResponse(BaseModel):
     kitchen_is_archived: bool | None
     is_default: bool
     recipe_count: int
+    origin_notebook_name: str | None
+    is_snapshot: bool
+    is_own_capture_notebook: bool
+
+
+class AddNotebookSnapshotRequest(BaseModel):
+    """Add a personal notebook to a kitchen (spec 035, contracts/snapshots-api.md)."""
+
+    source_notebook_id: UUID
+    snapshot_key: UUID
+    confirm_repeat: bool = False
 
 
 class NotebooksResponse(BaseModel):

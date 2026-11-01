@@ -7,6 +7,7 @@ import {
   ArchiveToggleIcon,
   CartIcon,
   DotsIcon,
+  NotebookIcon,
   StarIcon,
   PencilIcon,
   ShareIcon,
@@ -72,6 +73,8 @@ type Props = {
    * badge on its bottom right corner shows how many recipes are in the cart, in the given language.
    */
   cart?: { href: string; label: string; locale: Locale };
+  /** Every member: a button beside the share button that opens the kitchen's notebooks view. */
+  notebooks?: { href: string; label: string };
   manage?: KitchenManage;
 };
 
@@ -84,7 +87,7 @@ type Action = {
 };
 
 /** Opts kitchen detail into AppShell's title, the cart and share buttons and the kitchen actions. */
-export function KitchenDetailChrome({ title, share, cart, manage }: Props) {
+export function KitchenDetailChrome({ title, share, cart, notebooks, manage }: Props) {
   const { push, refresh } = useRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -100,6 +103,8 @@ export function KitchenDetailChrome({ title, share, cart, manage }: Props) {
   const cartHref = cart?.href;
   const cartLabel = cart?.label;
   const cartLocale = cart?.locale;
+  const notebooksHref = notebooks?.href;
+  const notebooksLabel = notebooks?.label;
   const cartCount = useKitchenCartCount();
 
   const actions = useMemo(() => {
@@ -173,7 +178,7 @@ export function KitchenDetailChrome({ title, share, cart, manage }: Props) {
 
   const trailing = useMemo(
     () =>
-      openLabel || cartHref || actions.length > 0 ? (
+      openLabel || cartHref || notebooksHref || actions.length > 0 ? (
         <>
           {cartHref && cartLabel && cartLocale ? (
             <IconButton
@@ -198,6 +203,15 @@ export function KitchenDetailChrome({ title, share, cart, manage }: Props) {
                   ) : null}
                 </span>
               }
+            />
+          ) : null}
+          {notebooksHref && notebooksLabel ? (
+            <IconButton
+              type="button"
+              variant="ghost"
+              label={notebooksLabel}
+              onClick={() => push(notebooksHref)}
+              icon={<NotebookIcon className="size-6" />}
             />
           ) : null}
           {openLabel ? (
@@ -240,7 +254,18 @@ export function KitchenDetailChrome({ title, share, cart, manage }: Props) {
           ) : null}
         </>
       ) : undefined,
-    [openLabel, cartHref, cartLabel, cartLocale, cartCount, push, actions, kt.menuAria],
+    [
+      openLabel,
+      cartHref,
+      cartLabel,
+      cartLocale,
+      cartCount,
+      notebooksHref,
+      notebooksLabel,
+      push,
+      actions,
+      kt.menuAria,
+    ],
   );
 
   useChromeHeader({

@@ -104,12 +104,14 @@ export function NotebookTabScreen({
           {/* The first cell adds a recipe; the picker preselects the default notebook. */}
           <li>
             <AddRecipeCallToAction
-              candidates={state.notebooks.map((notebook) => ({
-                id: notebook.id,
-                name: notebook.name,
-                kind: "personal",
-                kitchenId: null,
-              }))}
+              candidates={state.notebooks
+                .filter((notebook) => notebook.kind === "personal")
+                .map((notebook) => ({
+                  id: notebook.id,
+                  name: notebook.name,
+                  kind: "personal",
+                  kitchenId: null,
+                }))}
               defaultId={state.defaultId}
               returnPath="/notebooks"
             />

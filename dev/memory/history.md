@@ -41,3 +41,9 @@
 
 - **Finished changes:** S-022 was implemented uncommitted: shared kitchen cart with a server-held draft, single-editor locks for the cart and recipe edit (session-scoped, 5 minutes idle, cascade on lost access) and migration 0007. Its UI clarification added the cart-icon button, toasts above the tab bar and an editing bar on the Cart page only. Browser walks T052 and T064 were still to do.
 - **Project fact:** the Compose test database `melos_test` must exist before the api test overlay runs.
+
+## 301026
+
+- **Finished changes:** S-064 (kitchen side panel) was planned, clarified and built uncommitted on branch `064-kitchen-side-panel`: `users.default_kitchen_id` resolved on read outside `/auth`, a side-panel route and a phone drawer that closes after a choice. Its browser walk was not done, as no browser was available.
+- **Decisions:** the owner approved a principle 9 exception on 2026-10-30 to build S-064 before the open Must stories. On phones, kitchen actions other than cart and invite go in a more menu. S-065 (cauldron loader) was specified and planned: a CSS-only single SVG on one 2.4 s loop replaces every loading state, with no delay. Building it before the Must stories still needed owner approval.
+- **Incident:** a test baseline run under a second Compose project shared the `MELOS_DATA` pgdata with the dev db, and `melos-db-1` then failed with an invalid checkpoint record. A second Compose project must never run with the main `.env`.

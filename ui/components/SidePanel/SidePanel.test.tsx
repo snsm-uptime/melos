@@ -61,6 +61,8 @@ describe("SidePanel", () => {
   let host: HTMLDivElement;
   let root: Root;
   const onDrawerClose = vi.fn();
+  const observers = new Set<() => void>();
+  const layoutSpies: { mockRestore: () => void }[] = [];
 
   function stubKitchens(active = KITCHENS, archived = [kitchen("k9", "Old")]) {
     fetchKitchens.mockImplementation(async (_messages, options) => {
@@ -76,6 +78,19 @@ describe("SidePanel", () => {
     });
   }
 
+  /** Lays the panel out with `available` px for rows of 44px, then reports a resize. */
+  async function layOut(available: number) {
+    layoutSpies.push(
+      vi
+        .spyOn(HTMLElement.prototype, "offsetHeight", "get")
+        .mockImplementation(function (this: HTMLElement) {
+          return this.tagName === "UL" ? this.children.length * 44 : 44;
+        }),
+      vi.spyOn(Element.prototype, "clientHeight", "get").mockReturnValue(available),
+    );
+    await act(async () => observers.forEach((report) => report()));
+  }
+
   const nav = () => host.querySelector("nav") as HTMLElement;
   const link = (label: string) => host.querySelector(`a[aria-label="${label}"]`) as HTMLElement;
   const button = (label: string) =>
@@ -88,6 +103,20 @@ describe("SidePanel", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        report: () => void;
+        constructor(report: () => void) {
+          this.report = report;
+          observers.add(report);
+        }
+        observe() {}
+        disconnect() {
+          observers.delete(this.report);
+        }
+      },
+    );
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     window.localStorage.clear();
     pathname = "/recipes/r1";
@@ -104,6 +133,41 @@ describe("SidePanel", () => {
     act(() => root.unmount());
     host.remove();
     resetMembershipKitchensStore();
+    layoutSpies.splice(0).forEach((spy) => spy.mockRestore());
+  });
+
+  it("keeps only the default on the closed panel when the kitchens overflow", async () => {
+    await render();
+    await layOut(131);
+    expect(link("Mine")).toBeTruthy();
+    expect(link("Apple")).toBeNull();
+    expect(link("zoo")).toBeNull();
+  });
+
+  it("brings every kitchen back once they all fit, without flipping on the shorter list", async () => {
+    await render();
+    await layOut(131);
+    await layOut(131);
+    expect(link("Apple")).toBeNull();
+    await layOut(132);
+    expect(link("Apple")).toBeTruthy();
+    expect(link("zoo")).toBeTruthy();
+  });
+
+  it("keeps every kitchen on the open panel, however little room there is", async () => {
+    window.localStorage.setItem(SIDE_PANEL_KEY, "true");
+    await render();
+    await layOut(131);
+    expect(link("Apple")).toBeTruthy();
+    expect(link("zoo")).toBeTruthy();
+  });
+
+  it("shows no scrollbar on the closed panel, so nothing shifts off centre", async () => {
+    const scroller = () => host.querySelector('[data-side-panel="scroller"]') as HTMLElement;
+    await render();
+    expect(scroller().className).toContain("[scrollbar-width:none]!");
+    await act(async () => button("Open menu").click());
+    expect(scroller().className).not.toContain("[scrollbar-width:none]!");
   });
 
   it("keeps the entry order, with the default first and the others A to Z", async () => {

@@ -232,6 +232,16 @@ class NotebookNotFoundError(DomainError):
         super().__init__(self.MESSAGE)
 
 
+class SnapshotExistsError(DomainError):
+    """Raised when the kitchen already has a snapshot of the notebook (spec 035 FR-008a)."""
+
+    MESSAGE = "This kitchen already has a snapshot of that notebook."
+    CODE = "snapshot_exists"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
 class KitchenArchivedError(DomainError):
     """Raised when a capture is attempted in an archived kitchen (spec 016 FR-033)."""
 

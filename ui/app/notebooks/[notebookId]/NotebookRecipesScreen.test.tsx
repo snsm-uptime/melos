@@ -137,6 +137,36 @@ describe("NotebookRecipesScreen", () => {
     expect(container.textContent).toContain("Add a recipe");
   });
 
+  const emptyPage = { items: [], page: 1, total_pages: 1, total: 0 };
+
+  it("labels a snapshot with the original's name, as text with no link", async () => {
+    stub({
+      notebook: {
+        status: 200,
+        body: { ...notebook, kind: "kitchen", origin_notebook_name: "ana's Notebook" },
+      },
+      recipes: emptyPage,
+    });
+    await render();
+
+    const label = Array.from(container.querySelectorAll("p")).find(
+      (el) => el.textContent === "Copied from ana's Notebook",
+    );
+    expect(label).toBeDefined();
+    expect(label?.querySelector("a")).toBeNull();
+    expect(label?.closest("a")).toBeNull();
+  });
+
+  it("shows no label without an origin name", async () => {
+    stub({
+      notebook: { status: 200, body: { ...notebook, origin_notebook_name: null } },
+      recipes: emptyPage,
+    });
+    await render();
+
+    expect(container.textContent).not.toContain("Copied from");
+  });
+
   it("shows no add-recipe action for an archived kitchen's notebook", async () => {
     stub({
       notebook: {

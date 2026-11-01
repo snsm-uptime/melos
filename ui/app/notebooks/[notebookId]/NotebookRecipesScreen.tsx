@@ -8,6 +8,7 @@ import { RecipeList } from "@/components/RecipeList/RecipeList";
 import { SavedNotice } from "@/components/RecipeDraft/SavedNotice";
 import { listAddress, readListAddress } from "@/lib/listAddress";
 import type { Locale } from "@/lib/i18n/locale";
+import { notebooksMessages } from "@/lib/i18n/notebooks";
 import { recipeListMessages } from "@/lib/i18n/recipeLists";
 import { fetchNotebook, type NotebookResponse } from "@/lib/notebooksClient";
 import { notebookBackPath } from "@/lib/recipeReturnPath";
@@ -84,6 +85,11 @@ export function NotebookRecipesScreen({
       {state.status === "error" ? (
         <p className={styles.copy} role="alert">
           {t.loadError}
+        </p>
+      ) : null}
+      {state.status === "ready" && state.notebook.origin_notebook_name ? (
+        <p className={styles.copy}>
+          {notebooksMessages[locale].originLabel(state.notebook.origin_notebook_name)}
         </p>
       ) : null}
       {state.status === "ready" ? (

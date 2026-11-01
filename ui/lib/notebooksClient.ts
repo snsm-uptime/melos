@@ -1,4 +1,4 @@
-/** Client helpers for notebook reads via same-origin BFF (spec 056 routes). */
+/** Client helpers for notebooks via same-origin BFF (specs 056 and 035). */
 
 export type NotebookResponse = {
   id: string;
@@ -10,6 +10,11 @@ export type NotebookResponse = {
   recipe_count: number;
   kitchen_id: string | null;
   kitchen_is_archived: boolean | null;
+  /** The original's current name on a snapshot; null otherwise or once it is deleted. */
+  origin_notebook_name: string | null;
+  is_snapshot: boolean;
+  /** True on the caller's own kitchen notebook, where captures go by default (spec 035 R6). */
+  is_own_capture_notebook: boolean;
 };
 
 /**
@@ -28,17 +33,24 @@ function isNotebook(data: unknown): data is NotebookResponse {
   return typeof row.id === "string" && typeof row.name === "string";
 }
 
-export async function getJson<T>(
+export function getJson<T>(
   path: string,
   parse: (data: unknown) => T | null,
 ): Promise<NotebookResult<T>> {
+  return requestJson(path, parse, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+}
+
+async function requestJson<T>(
+  path: string,
+  parse: (data: unknown) => T | null,
+  init: RequestInit,
+): Promise<NotebookResult<T>> {
   let response: Response;
   try {
-    response = await fetch(path, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      credentials: "same-origin",
-    });
+    response = await fetch(path, { ...init, credentials: "same-origin" });
   } catch {
     return { ok: false, status: 0, code: null };
   }
@@ -99,4 +111,41 @@ export function fetchKitchenNotebooks(
 /** One notebook the caller may read; 404 `notebook_not_found` otherwise. */
 export function fetchNotebook(notebookId: string): Promise<NotebookResult<NotebookResponse>> {
   return getJson(`/api/notebooks/${encodeURIComponent(notebookId)}`, asNotebook);
+}
+
+export type NotebookSnapshotRequest = {
+  sourceNotebookId: string;
+  snapshotKey: string;
+  confirmRepeat: boolean;
+};
+
+/** Adds a personal notebook to a kitchen; 409 `snapshot_exists` asks for a confirmation. */
+export function addNotebookSnapshot(
+  kitchenId: string,
+  request: NotebookSnapshotRequest,
+): Promise<NotebookResult<NotebookResponse>> {
+  return requestJson(
+    `/api/notebooks/kitchens/${encodeURIComponent(kitchenId)}/snapshots`,
+    asNotebook,
+    {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({
+        source_notebook_id: request.sourceNotebookId,
+        snapshot_key: request.snapshotKey,
+        confirm_repeat: request.confirmRepeat,
+      }),
+    },
+  );
+}
+
+/** The caller's own notebook in a kitchen, created if needed (spec 035 research R6). */
+export function resolveCaptureNotebook(
+  kitchenId: string,
+): Promise<NotebookResult<NotebookResponse>> {
+  return requestJson(
+    `/api/notebooks/kitchens/${encodeURIComponent(kitchenId)}/capture-notebook`,
+    asNotebook,
+    { method: "POST", headers: { Accept: "application/json" } },
+  );
 }

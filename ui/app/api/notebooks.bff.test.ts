@@ -126,6 +126,75 @@ describe("notebooks BFF", () => {
     expect(forwardedCookie()).toBe("melos_session=tok");
   });
 
+  it("POST snapshots forwards cookie and body, and passes the status through", async () => {
+    fetchMock.mockResolvedValue(json({ ...notebook, id: "snap" }, 201));
+    const { POST } = await import("@/app/api/notebooks/kitchens/[kitchenId]/snapshots/route");
+    const body = JSON.stringify({ source_notebook_id: "n1", snapshot_key: "key" });
+
+    const response = await POST(
+      new Request("http://localhost/api/notebooks/kitchens/k1/snapshots", {
+        method: "POST",
+        headers: { cookie: "melos_session=tok" },
+        body,
+      }) as never,
+      { params: Promise.resolve({ kitchenId: "k1" }) },
+    );
+
+    expect(response.status).toBe(201);
+    expect(fetchMock.mock.calls[0][0]).toBe("http://api.test:8000/notebooks/kitchens/k1/snapshots");
+    expect((fetchMock.mock.calls[0][1] as RequestInit).body).toBe(body);
+    expect(forwardedCookie()).toBe("melos_session=tok");
+  });
+
+  it("POST snapshots passes a 409 and its code through", async () => {
+    fetchMock.mockResolvedValue(json({ code: "snapshot_exists" }, 409));
+    const { POST } = await import("@/app/api/notebooks/kitchens/[kitchenId]/snapshots/route");
+
+    const response = await POST(
+      new Request("http://localhost/x", { method: "POST", body: "{}" }) as never,
+      { params: Promise.resolve({ kitchenId: "k1" }) },
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ code: "snapshot_exists" });
+  });
+
+  it("POST capture-notebook forwards the cookie", async () => {
+    fetchMock.mockResolvedValue(json(notebook));
+    const { POST } = await import(
+      "@/app/api/notebooks/kitchens/[kitchenId]/capture-notebook/route"
+    );
+
+    const response = await POST(get("http://localhost/x"), {
+      params: Promise.resolve({ kitchenId: "k1" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "http://api.test:8000/notebooks/kitchens/k1/capture-notebook",
+    );
+    expect((fetchMock.mock.calls[0][1] as RequestInit).method).toBe("POST");
+    expect(forwardedCookie()).toBe("melos_session=tok");
+  });
+
+  it("both new POST routes answer 502 when the api is unreachable", async () => {
+    fetchMock.mockRejectedValue(new Error("down"));
+    const snapshots = await import("@/app/api/notebooks/kitchens/[kitchenId]/snapshots/route");
+    const capture = await import(
+      "@/app/api/notebooks/kitchens/[kitchenId]/capture-notebook/route"
+    );
+    const params = { params: Promise.resolve({ kitchenId: "k1" }) };
+
+    for (const POST of [snapshots.POST, capture.POST]) {
+      const response = await POST(
+        new Request("http://localhost/x", { method: "POST", body: "{}" }) as never,
+        params,
+      );
+      expect(response.status).toBe(502);
+      expect(await response.json()).toMatchObject({ code: "bad_gateway" });
+    }
+  });
+
   it("returns 502 when the api is unreachable", async () => {
     fetchMock.mockRejectedValue(new Error("down"));
     const { GET } = await import("@/app/api/notebooks/default/route");

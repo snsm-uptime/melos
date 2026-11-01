@@ -191,7 +191,7 @@ kitchen deleted → its kitchen notebooks are deleted with it; the personal note
 kitchen(id, name, content_language: en|es, created_at)
 membership(kitchen_id, user_id, role: owner|member, created_at)       pk(kitchen_id, user_id)
 invite(id, kitchen_id, email, token_hash, invited_by, expires_at, accepted_at)
-notebook(id, name, kitchen_id?, source_notebook_id?, created_at)     kitchen_id set: a kitchen notebook, which belongs to that kitchen (several per kitchen); null: a personal notebook. source_notebook_id: the notebook a snapshot came from (FK notebook.id, ON DELETE SET NULL), an origin label only
+notebook(id, name, kitchen_id?, source_notebook_id?, snapshot_key?, created_at)     kitchen_id set: a kitchen notebook, which belongs to that kitchen (several per kitchen); null: a personal notebook. source_notebook_id: the notebook a snapshot came from (FK notebook.id, ON DELETE SET NULL), an origin label only. snapshot_key: set once on a snapshot and never cleared, unique per kitchen; it marks a snapshot for good and makes a repeated add safe (spec 035)
 notebook_membership(notebook_id, user_id, role: owner|member, created_at)   personal notebooks only; pk(notebook_id, user_id); exactly one owner per personal notebook
 notebook_invite(id, notebook_id, email, token_hash, invited_by, expires_at, accepted_at)   personal notebooks only; same rules as invite
 users.default_kitchen_id (nullable, FK kitchens.id, ON DELETE SET NULL)  the kitchen Home opens; resolved on read and stored: the stored kitchen if active and the person belongs to it, else their earliest-created active owned kitchen, else their earliest-joined active kitchen, else null (spec 064)
@@ -307,7 +307,7 @@ The user's input (text, URL or photo) is never lost on error.
 
 ### 1.10 Shared UI components
 
-- **Side panel** (`SidePanel`, spec 064). One left panel replaces the bottom bar on every authenticated page, in this order: avatar, alias with recipe count, Home, other kitchens A to Z, Notebooks, log out. From `md` up it is icons only when closed and icons with labels when open, remembered per device. On phones it is a drawer over the content, opened from the header.
+- **Side panel** (`SidePanel`, spec 064). One left panel replaces the bottom bar on every authenticated page, in this order: avatar, alias with recipe count, Home, other kitchens A to Z, Notebooks, log out. From `md` up it is icons only when closed and icons with labels when open, remembered per device. Closed, it has no scrollbar, and when the kitchens would overflow it shows only the default kitchen. On phones it is a drawer over the content, opened from the header.
 - **Add-recipe call to action** (`AddRecipeCallToAction`). A rounded-corner placeholder rectangle with a plus icon at its centre. Every page that lets a user add a recipe uses it; the first uses are a person's notebook (the Notebook tab in the bottom bar) and a kitchen's Notebook tab (J2). Tapping it opens the add-recipe options dialog: a vertical list separated by dividers, with no confirm or cancel buttons, in this order: URL (disabled, not implemented yet), Picture (disabled, "coming soon", until S-041), Text (opens the text sheet). The option list lives in this component only.
 - Built on the existing `ActionDialog` (its confirm and cancel props become optional) and `Sheet`. The picture sheet, when built (S-041), has an inner dashed border of about 2rem with the text "Upload file or drag and drop".
 
@@ -511,7 +511,8 @@ Every entity has full CRUD in the API. The UI only exposes what the journey need
 | Notebook | ✓ | ✓ | name | personal: owner only; kitchen: any kitchen member | ✓ | ✓ (read) | Personal: one owner, any number of members. Kitchen: belongs to the kitchen, every kitchen member reads and writes it |
 | NotebookMembership | via notebook invite | ✓ | — | leave / remove | ✓ | — | Personal notebooks only. The owner cannot leave |
 | NotebookInvite | notebook owner | notebook owner | resend | revoke | ✓ | — | Reuses the kitchen invite flow |
-| Notebook snapshot (action) | any kitchen member | — | — | — | ✓ | — | Not stored as such: creates a kitchen notebook copied from a personal notebook, labelled with its origin (flow H) |
+| Notebook snapshot (action) | any kitchen member, `POST /notebooks/kitchens/{id}/snapshots` | — | — | — | ✓ | — | Not stored as such: creates a kitchen notebook copied from a personal notebook, labelled with its origin (flow H) |
+| Capture notebook (action) | `POST /notebooks/kitchens/{id}/capture-notebook` | — | — | — | ✓ | — | Not stored as such: returns the member's own kitchen notebook, created if needed, when they submit a capture (spec 035) |
 | Recipe | via draft confirm, a copy or a snapshot | ✓ | those who can write to its notebook | same as update | ✓ | capture (✓), read (✓), update (—), delete (—) | In exactly one notebook. Records its author. Update re-embeds. Copies drift apart |
 | Recipe copy (action) | Copy to notebook | — | — | — | ✓ | — | Not stored: creates a new Recipe in the target notebook (flow G) |
 | Draft | `POST /drafts` | — | — | — | ✓ | ✓ | Not stored; the response holds the draft |

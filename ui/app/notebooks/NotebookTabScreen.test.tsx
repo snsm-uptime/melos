@@ -318,4 +318,40 @@ describe("NotebookTabScreen", () => {
     await flush();
     expect(container.textContent).toContain("No notebooks yet.");
   });
+
+  it("captures only into personal notebooks, so a kitchen notebook adds no picker", async () => {
+    const kitchenNotebook = {
+      ...sharedNotebook,
+      id: "nb-kitchen",
+      name: "Home notebook",
+      kind: "kitchen",
+      access: "kitchen_member",
+      kitchen_id: "k1",
+      kitchen_is_archived: false,
+    };
+    stubBff({
+      "/api/notebooks/default": [{ status: 200, body: defaultNotebook }],
+      "/api/notebooks": [{ status: 200, body: { notebooks: [defaultNotebook, kitchenNotebook] } }],
+    });
+    act(() => {
+      root.render(<NotebookTabScreen locale="en" viewerAlias="ana" />);
+    });
+    await flush();
+
+    const press = (label: string) =>
+      act(() =>
+        (
+          Array.from(document.querySelectorAll("button")).find(
+            (el) => el.getAttribute("aria-label") === label || el.textContent?.trim() === label,
+          ) as HTMLButtonElement
+        ).click(),
+      );
+    press("Add a recipe");
+    press("Text");
+    await flush();
+
+    expect(document.querySelector("textarea")).not.toBeNull();
+    expect(document.querySelector("select")).toBeNull();
+    clearCapture();
+  });
 });

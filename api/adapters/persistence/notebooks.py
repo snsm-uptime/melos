@@ -8,7 +8,7 @@ from uuid import UUID
 from application.ports import NotebookFacts
 from domain.errors import PrincipalNotFoundError
 from domain.notebook import Notebook
-from sqlalchemy import Row, Select, and_, func, or_, select
+from sqlalchemy import Row, Select, and_, exists, func, or_, select
 from sqlalchemy.orm import Session, aliased
 
 from adapters.persistence.models import (
@@ -28,6 +28,7 @@ def _notebook(row: NotebookModel) -> Notebook:
         kitchen_id=row.kitchen_id,
         source_notebook_id=row.source_notebook_id,
         owner_user_id=row.owner_user_id,
+        snapshot_key=row.snapshot_key,
     )
 
 
@@ -41,6 +42,10 @@ _StoredOwner = aliased(UserModel)
 _KitchenOwner = aliased(UserModel)
 # The caller's kitchen membership (access to a kitchen notebook follows it).
 _KitchenMember = aliased(KitchenMembershipModel)
+# The original of a snapshot (its current name is the origin label).
+_Origin = aliased(NotebookModel)
+# The candidates for the caller's own kitchen notebook.
+_OwnNotebook = aliased(NotebookModel)
 
 
 def _facts_query(user_id: UUID) -> Select[Any]:
@@ -56,6 +61,18 @@ def _facts_query(user_id: UUID) -> Select[Any]:
         .correlate(NotebookModel)
         .scalar_subquery()
     )
+    own_capture_id = (
+        select(_OwnNotebook.id)
+        .where(
+            _OwnNotebook.kitchen_id == NotebookModel.kitchen_id,
+            _OwnNotebook.owner_user_id == user_id,
+            _OwnNotebook.snapshot_key.is_(None),
+        )
+        .order_by(_OwnNotebook.created_at, _OwnNotebook.id)
+        .limit(1)
+        .correlate(NotebookModel)
+        .scalar_subquery()
+    )
     return (
         select(
             NotebookModel,
@@ -67,6 +84,10 @@ def _facts_query(user_id: UUID) -> Select[Any]:
             KitchenModel.is_archived,
             func.coalesce(NotebookModel.id == default_id, False).label("is_default"),
             recipe_count.label("recipe_count"),
+            _Origin.name.label("origin_notebook_name"),
+            func.coalesce(NotebookModel.id == own_capture_id, False).label(
+                "is_own_capture_notebook"
+            ),
         )
         .outerjoin(KitchenModel, KitchenModel.id == NotebookModel.kitchen_id)
         .outerjoin(
@@ -93,11 +114,22 @@ def _facts_query(user_id: UUID) -> Select[Any]:
         .outerjoin(_PersonalOwner, _PersonalOwner.id == _OwnerMembership.user_id)
         .outerjoin(_StoredOwner, _StoredOwner.id == NotebookModel.owner_user_id)
         .outerjoin(_KitchenOwner, _KitchenOwner.id == KitchenModel.owner_id)
+        .outerjoin(_Origin, _Origin.id == NotebookModel.source_notebook_id)
     )
 
 
 def _facts(row: Row[Any]) -> NotebookFacts:
-    notebook_row, role, in_kitchen, owner_alias, is_archived, is_default, recipe_count = row
+    (
+        notebook_row,
+        role,
+        in_kitchen,
+        owner_alias,
+        is_archived,
+        is_default,
+        recipe_count,
+        origin_notebook_name,
+        is_own_capture_notebook,
+    ) = row
     return NotebookFacts(
         notebook=_notebook(notebook_row),
         role=role,
@@ -106,6 +138,8 @@ def _facts(row: Row[Any]) -> NotebookFacts:
         kitchen_is_archived=is_archived,
         is_default=bool(is_default),
         recipe_count=recipe_count,
+        origin_notebook_name=origin_notebook_name,
+        is_own_capture_notebook=bool(is_own_capture_notebook),
     )
 
 
@@ -170,13 +204,17 @@ class SqlAlchemyNotebookRepository:
         )
 
     def user_kitchen_notebook(self, user_id: UUID, kitchen_id: UUID) -> UUID | None:
-        """The kitchen notebook created by this user in this kitchen, or None."""
+        """The kitchen notebook created by this user in this kitchen, or None.
+
+        A snapshot records its adder as owner, but it is never their own notebook (spec 035 R2).
+        """
         return self._session.scalar(
             select(NotebookModel.id)
             .where(
                 and_(
                     NotebookModel.kitchen_id == kitchen_id,
                     NotebookModel.owner_user_id == user_id,
+                    NotebookModel.snapshot_key.is_(None),
                 )
             )
             .order_by(NotebookModel.created_at, NotebookModel.id)
@@ -190,6 +228,7 @@ class SqlAlchemyNotebookRepository:
                 kitchen_id=notebook.kitchen_id,
                 source_notebook_id=notebook.source_notebook_id,
                 owner_user_id=notebook.owner_user_id,
+                snapshot_key=notebook.snapshot_key,
             )
         )
         self._session.flush()
@@ -208,6 +247,26 @@ class SqlAlchemyNotebookRepository:
             .where(KitchenModel.id == kitchen_id)
             .with_for_update(key_share=True)
         ).one()
+
+    def find_snapshot(self, kitchen_id: UUID, snapshot_key: UUID) -> UUID | None:
+        return self._session.scalar(
+            select(NotebookModel.id).where(
+                NotebookModel.kitchen_id == kitchen_id,
+                NotebookModel.snapshot_key == snapshot_key,
+            )
+        )
+
+    def has_snapshot_of(self, kitchen_id: UUID, source_notebook_id: UUID) -> bool:
+        return bool(
+            self._session.scalar(
+                select(
+                    exists().where(
+                        NotebookModel.kitchen_id == kitchen_id,
+                        NotebookModel.source_notebook_id == source_notebook_id,
+                    )
+                )
+            )
+        )
 
 
 class SqlAlchemyUserDefaultNotebook:

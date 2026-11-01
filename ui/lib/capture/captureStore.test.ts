@@ -10,6 +10,7 @@ import {
   isDraftEdited,
   markSaved,
   savedReturnPath,
+  closeSheet,
   openSheet,
   setText,
   showDraft,
@@ -159,5 +160,15 @@ describe("savedReturnPath", () => {
         returnPath: "/kitchens/k1",
       }),
     ).toBe("/kitchens/k1");
+  });
+
+  it("opens for the page asking, even when the notebook is the one used last", () => {
+    const notebook = { id: "nb-1", kind: "personal" as const, name: "Mine", kitchenId: null };
+    openSheet({ ...notebook, returnPath: "/notebooks" });
+    closeSheet();
+
+    openSheet({ ...notebook, returnPath: "/notebooks/nb-1" });
+
+    expect(getCaptureState().notebook?.returnPath).toBe("/notebooks/nb-1");
   });
 });

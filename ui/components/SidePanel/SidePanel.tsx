@@ -31,6 +31,7 @@ import { PANEL_SLIDE, panelLayout, PanelLayoutContext } from "./panelLayout";
 import { SidePanelEntry } from "./SidePanelEntry";
 import { SidePanelIdentity } from "./SidePanelIdentity";
 import { SidePanelSettings } from "./SidePanelSettings";
+import { useKitchenRowsOverflow } from "./useKitchenRowsOverflow";
 import { useSidePanelState } from "./useSidePanelState";
 
 /** The left panel (spec 064). Below `md` it is a drawer over the content; the shell opens it. */
@@ -116,6 +117,11 @@ export function SidePanel({
     );
   }, [showArchived, archived, kitchens, defaultKitchenId]);
 
+  // Closed, the panel has no scrollbar room; open keeps every kitchen, as the way to reach them.
+  const { listRef, overflowing } = useKitchenRowsOverflow(listed.length, !wide);
+  // The default sorts first.
+  const shown = overflowing ? listed.slice(0, 1) : listed;
+
   async function onSetDefault(kitchenId: string) {
     const result = await setDefaultKitchen(kitchenId);
     setKitchensError(result ? null : kt.errorGeneric);
@@ -186,7 +192,11 @@ export function SidePanel({
           />
         </div>
 
-        <div className="mt-2 min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2">
+        {/* `!` because the app-wide scrollbar rule is unlayered and beats utilities. */}
+        <div
+          data-side-panel="scroller"
+          className={`relative mt-2 min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 ${wide ? "" : "[scrollbar-width:none]! [&::-webkit-scrollbar]:hidden"}`}
+        >
           <SidePanelIdentity
             recipeCount={panel ? t.recipeCount(panel.recipes_added) : null}
             notebookCount={panel ? t.notebookCount(panel.notebooks) : null}
@@ -240,8 +250,8 @@ export function SidePanel({
               {kt.kitchensArchivedEmpty}
             </p>
           ) : null}
-          <ul className="m-0 flex list-none flex-col gap-1 p-0">
-            {listed.map((kitchen) => (
+          <ul ref={listRef} className="m-0 flex list-none flex-col gap-1 p-0">
+            {shown.map((kitchen) => (
               <li key={kitchen.id} className="relative min-w-0">
                 <SidePanelEntry
                   href={`/kitchens/${encodeURIComponent(kitchen.id)}`}
