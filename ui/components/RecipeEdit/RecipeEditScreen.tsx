@@ -18,6 +18,7 @@ import {
   type RecipeDetail,
 } from "@/lib/recipesClient";
 
+import { CauldronLoader } from "@/components/CauldronLoader";
 import styles from "@/app/notebooks/notebooks.module.scss";
 
 import { RecipeEditForm } from "./RecipeEditForm";
@@ -112,10 +113,8 @@ export function RecipeEditScreen({ recipeId, locale }: { recipeId: string; local
 
   if (state.status === "loading") {
     return (
-      <main className={styles.main}>
-        <p className={styles.copy} role="status">
-          {t.loading}
-        </p>
+      <main className={`${styles.main} flex-1`}>
+        <CauldronLoader label={t.loading} />
       </main>
     );
   }

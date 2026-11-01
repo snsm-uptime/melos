@@ -210,14 +210,6 @@ An arrow pointing up out of a tray line. Currently unused in the UI.
 - Style: Stroke-based
 - Accepts: className, SVG element props
 
-### SpinnerIcon
-
-A faint ring with a quarter arc, for loading states. Consumers add `animate-spin` through className to rotate it.
-
-- ViewBox: `0 0 24 24`
-- Style: Stroke-based, shared stroke width (`ICON_STROKE`)
-- Accepts: className, SVG element props
-
 ### UserIcon
 
 A head and shoulders silhouette outline. Currently unused in the UI.

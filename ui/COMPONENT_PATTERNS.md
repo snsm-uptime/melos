@@ -24,6 +24,15 @@ All custom SVG icons are centralized in `/app/icons/` to improve maintainability
 - Hardcode viewBox dimensions in component markup
 - Use icons without proper accessibility labels on icon-only controls
 
+## Loading states
+
+`components/CauldronLoader/` is the only loading indicator. Do not add a spinner, a pulsing placeholder or a text-only "Loading…" line.
+
+- Render `<CauldronLoader />` where the content will appear. Pass `label` for a more specific screen-reader message (for example `label={t.loadingKitchen}`); the default is "Loading" / "Cargando".
+- Inside a button or an icon action, pass `tone="button"`. For a `BaseButton` (or `PrimaryButton`, `AccentButton`, `GhostButton`) set `loading` and the button does it for you. For a `HeaderAction`, pass `busy` and a `tone="button"` loader as the icon.
+- `tilt` sets the rocking angle (0 to 45 degrees); leave it out for the defaults (set in `components/CauldronLoader/tilt.ts`). `size` is the width in a page and the height in a button.
+- Reduced motion shows a still cauldron; the loader needs no extra handling.
+
 ## Future Component Patterns
 
 As you build more shared components, add sections here for:
@@ -31,7 +40,6 @@ As you build more shared components, add sections here for:
 - Form input patterns
 - Modal/dialog structure
 - Card and list item patterns
-- Loading states and skeletons
 - Error states and validation
 - etc.
 

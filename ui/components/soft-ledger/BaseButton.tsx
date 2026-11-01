@@ -8,6 +8,8 @@ import type {
   Ref,
 } from "react";
 
+import { CauldronLoader } from "@/components/CauldronLoader";
+
 import styles from "./BaseButton.module.scss";
 
 export type ButtonVariant = "primary" | "accent" | "ghost";
@@ -100,7 +102,7 @@ export const BaseButton = forwardRef<
   const content = (
     <>
       {loading ? (
-        <Spinner />
+        <CauldronLoader tone="button" />
       ) : (
         iconLeft
       )}
@@ -142,29 +144,3 @@ export const BaseButton = forwardRef<
     </button>
   );
 });
-
-function Spinner() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      fill="none"
-      className={`${styles.spinner} h-[1em] w-[1em]`}
-    >
-      <circle
-        cx="12"
-        cy="12"
-        r="9"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeOpacity="0.25"
-      />
-      <path
-        d="M21 12a9 9 0 0 0-9-9"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}

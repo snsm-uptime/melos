@@ -63,7 +63,7 @@ let root: Root;
 
 function buttonByText(text: string): HTMLButtonElement {
   return Array.from(document.querySelectorAll("button")).find(
-    (el) => el.textContent?.trim() === text,
+    (el) => (el.getAttribute("aria-label") ?? el.textContent?.trim()) === text,
   ) as HTMLButtonElement;
 }
 

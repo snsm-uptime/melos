@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { BackIcon, SaveIcon, SpinnerIcon, TrashIcon } from "@/app/icons";
+import { BackIcon, SaveIcon, TrashIcon } from "@/app/icons";
+import { CauldronLoader } from "@/components/CauldronLoader";
 import { IconButton } from "@/components/IconButton";
 import {
   fetchVocabulary,
@@ -182,11 +183,12 @@ export function RecipeDraftEditor() {
           <HeaderAction
             onClick={() => void save()}
             disabled={capture.saving || hasErrors(errors)}
+            busy={capture.saving}
             label={capture.saving ? t.saving : t.save}
             tone="accent"
             icon={
               capture.saving ? (
-                <SpinnerIcon className="size-5 animate-spin" />
+                <CauldronLoader tone="button" size="1.25rem" label={t.saving} />
               ) : (
                 <SaveIcon className="size-5" />
               )

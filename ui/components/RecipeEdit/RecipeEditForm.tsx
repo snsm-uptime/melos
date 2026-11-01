@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
-import { BackIcon, CloseIcon, SaveIcon, SpinnerIcon } from "@/app/icons";
+import { BackIcon, CloseIcon, SaveIcon } from "@/app/icons";
+import { CauldronLoader } from "@/components/CauldronLoader";
 import {
   HeaderAction,
   HeaderActions,
@@ -229,11 +230,12 @@ export function RecipeEditForm({
           <HeaderAction
             onClick={() => void save()}
             disabled={saving || hasErrors(errors)}
+            busy={saving}
             label={saving ? t.saving : t.save}
             tone="accent"
             icon={
               saving ? (
-                <SpinnerIcon className="size-5 animate-spin" />
+                <CauldronLoader tone="button" size="1.25rem" label={t.saving} />
               ) : (
                 <SaveIcon className="size-5" />
               )
@@ -403,9 +405,7 @@ export function RecipeEditForm({
       </div>
 
       {checking ? (
-        <p className="m-0 px-4 text-[0.85rem] text-muted" role="status">
-          {t.checkingNames}
-        </p>
+        <CauldronLoader label={t.checkingNames} size="1.25rem" />
       ) : null}
       {messageText ? (
         <div className="flex flex-col items-start gap-2 px-4">

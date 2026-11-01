@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 
 import { chipClassName } from "@/components/Chip";
 import { ActionDialog } from "@/components/ActionDialog";
-import { SpinnerIcon } from "@/app/icons";
+import { CauldronLoader } from "@/components/CauldronLoader";
 
 export type ItemChipSelectorMode = "single" | "multiple";
 
@@ -114,7 +114,7 @@ export function ItemChipSelector({
       >
         {busy ? (
           <div className="flex items-center justify-center py-8">
-            <SpinnerIcon className="w-6 h-6 animate-spin text-accent" />
+            <CauldronLoader />
           </div>
         ) : (
           <div className="flex flex-wrap gap-2">

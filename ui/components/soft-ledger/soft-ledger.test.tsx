@@ -6,6 +6,8 @@ import type { ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AccentButton } from "./AccentButton";
+import { GhostButton } from "./GhostButton";
 import { Hint } from "./Hint";
 import { PrimaryButton } from "./PrimaryButton";
 import { SectionLabel } from "./SectionLabel";
@@ -82,6 +84,36 @@ describe("Soft-Ledger primitives", () => {
     expect(button?.textContent).toBe("Continue");
     expect(button?.className).toContain("rounded-sm");
     expect(button?.className).not.toContain("rounded-full");
+  });
+
+  it.each([
+    ["Primary", PrimaryButton],
+    ["Accent", AccentButton],
+    ["Ghost", GhostButton],
+  ])("a loading %s button shows the cauldron loader and no spinner (spec 065)", (_name, Button) => {
+    act(() => {
+      root.render(<Button loading>Save</Button>);
+    });
+    const button = host.querySelector("button") as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    // The loader's hidden text is part of the button's name; the button itself says it is busy.
+    expect(button.textContent).toBe("LoadingSave");
+    expect(button.querySelector("[role='status']")).toBeNull();
+    expect(button.querySelectorAll("svg").length).toBe(1);
+    const svg = button.querySelector("svg") as SVGSVGElement;
+    expect(svg.getAttribute("aria-hidden")).toBe("true");
+    expect(svg.querySelectorAll("circle").length).toBeGreaterThanOrEqual(2);
+    expect(svg.querySelector("circle[r='9']")).toBeNull();
+    expect(button.innerHTML).not.toContain("base-button-spin");
+  });
+
+  it("a button that is not loading shows no loader", () => {
+    act(() => {
+      root.render(<PrimaryButton>Save</PrimaryButton>);
+    });
+    expect(host.querySelector("svg")).toBeNull();
+    expect(host.querySelector("button")?.getAttribute("aria-busy")).toBeNull();
   });
 
   it("SoftLedgerSelect opens a listbox and chooses an option", () => {
