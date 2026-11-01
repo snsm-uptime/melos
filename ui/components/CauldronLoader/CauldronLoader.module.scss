@@ -1,0 +1,123 @@
+/* Cauldron loader (spec 065). Layout and the still pose live here; the motion is added inside
+   `prefers-reduced-motion: no-preference` below, so a person who reduces motion, or a browser that
+   cannot tell, gets an upright cauldron with its bubbles visible. */
+
+/* Page tone: centres the loader on both axes of its parent. It spans the parent's width and, in a
+   flex parent, grows into the free height (a column) or stretches to it (a row). */
+.stage {
+  display: flex;
+  flex: 1 1 auto;
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  /* Fills a parent that has a set height (a block parent too); ignored when the height is auto. */
+  min-height: 100%;
+  padding: 1rem 0;
+}
+
+.root {
+  display: inline-block;
+  flex: none;
+  line-height: 0;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The cauldron rocks about the base of its feet. The origin is set inline from geometry.ts. */
+.cauldron {
+  transform-box: view-box;
+}
+
+/* Page tone: accent bubbles and drip on a cauldron shaded from the theme. Every colour is a theme
+   token, so a theme change recolours a running loader without restarting its animation. */
+.page {
+  .body {
+    fill: color-mix(in srgb, var(--background) 65%, var(--foreground));
+  }
+  .drip,
+  .bubble {
+    fill: var(--secondary);
+  }
+}
+
+/* Button tone: the cauldron takes the button's text colour and the bubbles and drip a softer mix
+   of it with the button's fill, so both read on every variant (research R6). BaseButton.module.scss
+   sets --loader-ink and --loader-fill per variant. */
+.button {
+  .body {
+    fill: var(--loader-ink, currentColor);
+  }
+  .drip,
+  .bubble {
+    fill: color-mix(
+      in srgb,
+      var(--loader-ink, currentColor) 30%,
+      var(--loader-fill, var(--background))
+    );
+  }
+}
+
+/* One period for the bubbles and the rock, so the whole picture repeats exactly once per period
+   (research R4). Change it here only. Only transform and opacity animate. */
+@media (prefers-reduced-motion: no-preference) {
+  /* Bubbles rise straight up out of the mouth: from behind the rim, fading in, to clear above it,
+     fading out. The two travel distances repeat BUBBLE_TRAVEL in geometry.ts. */
+  @keyframes cauldron-bubble-rise {
+    0% {
+      transform: translateY(14px);
+      opacity: 0;
+    }
+    20% {
+      opacity: 1;
+    }
+    65% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-22px);
+      opacity: 0;
+    }
+  }
+
+  .bubble {
+    animation: cauldron-bubble-rise 3.2s ease-in-out infinite;
+  }
+
+  /* The cauldron rocks -tilt to +tilt and back, easing at both ends so it stops there for an
+     instant (FR-007) and the last frame equals the first (FR-008). A tilt of 0deg leaves it
+     upright while the bubbles keep rising. */
+  @keyframes cauldron-rock {
+    0% {
+      transform: rotate(calc(var(--cauldron-tilt) * -1));
+      animation-timing-function: ease-in-out;
+    }
+    50% {
+      transform: rotate(var(--cauldron-tilt));
+      animation-timing-function: ease-in-out;
+    }
+    100% {
+      transform: rotate(calc(var(--cauldron-tilt) * -1));
+    }
+  }
+
+  .cauldron {
+    animation: cauldron-rock 3.2s infinite;
+  }
+
+  /* Negative delays: each bubble is already mid-rise when the loader mounts (FR-016). */
+  .bubble:nth-child(1) {
+    animation-delay: -0.4s;
+  }
+  .bubble:nth-child(2) {
+    animation-delay: -1.5s;
+  }
+  .bubble:nth-child(3) {
+    animation-delay: -2.6s;
+  }
+}

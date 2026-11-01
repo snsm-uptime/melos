@@ -7,6 +7,7 @@ import { resolveAuthenticatedLanding } from "@/lib/landing";
 import { inviteMessages, type Locale } from "@/lib/i18n/invite";
 import { setLastOpenedKitchen } from "@/app/kitchens/kitchensClient";
 import { acceptInvite } from "../inviteClient";
+import { CauldronLoader } from "@/components/CauldronLoader";
 import { PrimaryButton } from "@/components/soft-ledger/PrimaryButton";
 import styles from "../../signup/signup.module.scss";
 
@@ -111,9 +112,11 @@ export function AcceptInvitePanel({ locale, token, authenticated }: Props) {
     );
   }
 
+  if (pending) return <CauldronLoader label={t.accepting} />;
+
   return (
     <p className={styles.hint} role="status">
-      {pending ? t.accepting : t.acceptSuccess}
+      {t.acceptSuccess}
     </p>
   );
 }

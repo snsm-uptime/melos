@@ -18,6 +18,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/components/PreferencesProvider", () => ({
   usePreferences: () => ({ locale: "en" }),
+  useOptionalPreferences: () => ({ locale: "en" }),
 }));
 
 vi.mock("./kitchensClient", async (original) => ({

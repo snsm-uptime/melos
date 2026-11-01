@@ -82,11 +82,10 @@ function AppShellFrame({ children }: { children: ReactNode }) {
         {showHeader || showPanel ? (
           <header
             data-app-chrome="header"
-            className={`flex shrink-0 items-center gap-2 ${showHeader ? "" : "md:hidden "}${
-              header.progressBar
+            className={`flex shrink-0 items-center gap-2 ${showHeader ? "" : "md:hidden "}${header.progressBar
                 ? "pt-[max(1rem,env(safe-area-inset-top))]"
                 : "pt-[max(0.5rem,env(safe-area-inset-top))]"
-            } pr-[max(var(--page-gutter),env(safe-area-inset-right))] pb-1 ${headerInset}`}
+              } pr-[max(var(--page-gutter),env(safe-area-inset-right))] pb-1 ${headerInset}`}
           >
             {showPanel ? (
               <span className="inline-flex shrink-0 md:hidden">

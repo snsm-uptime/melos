@@ -21,6 +21,7 @@ import type { Locale } from "@/lib/i18n/locale";
 import { cartMessages } from "@/lib/i18n/cart";
 import { shoppingListMessages } from "@/lib/i18n/shoppingList";
 
+import { CauldronLoader } from "@/components/CauldronLoader";
 import styles from "@/app/notebooks/notebooks.module.scss";
 
 import { ShoppingListSection } from "@/components/ShoppingList";
@@ -212,11 +213,7 @@ export function CartScreen({ kitchenId, locale }: { kitchenId: string; locale: L
   useToastDock(bar);
 
   if (state.status === "loading") {
-    return (
-      <p className={styles.copy} role="status">
-        {t.loading}
-      </p>
-    );
+    return <CauldronLoader label={t.loading} />;
   }
   if (state.status === "not_found") {
     return (

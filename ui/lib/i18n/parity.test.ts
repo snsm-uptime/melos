@@ -7,6 +7,7 @@ import { cartMessages } from "./cart";
 import { inviteMessages } from "./invite";
 import { kitchensMessages } from "./kitchens";
 import { landingMessages } from "./landing";
+import { loaderMessages } from "./loader";
 import { notebooksMessages } from "./notebooks";
 import { passwordResetMessages } from "./password-reset";
 import { recipeDetailMessages } from "./recipeDetail";
@@ -29,6 +30,7 @@ const SETS: Record<string, { en: unknown; es: unknown }> = {
   invite: inviteMessages,
   kitchens: kitchensMessages,
   landing: landingMessages,
+  loader: loaderMessages,
   notebooks: notebooksMessages,
   passwordReset: passwordResetMessages,
   recipeDetail: recipeDetailMessages,

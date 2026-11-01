@@ -10,6 +10,7 @@ import { recipeListMessages } from "@/lib/i18n/recipeLists";
 import type { NotebookResult } from "@/lib/notebooksClient";
 import type { RecipeCard as RecipeCardData, RecipePage } from "@/lib/recipesClient";
 
+import { CauldronLoader } from "@/components/CauldronLoader";
 import styles from "@/app/notebooks/notebooks.module.scss";
 
 const FILTER_PAUSE_MS = 300;
@@ -124,11 +125,7 @@ export function RecipeList({
       ) : (
         filter
       )}
-      {state.status === "loading" ? (
-        <p className={styles.copy} role="status">
-          {t.loading}
-        </p>
-      ) : null}
+      {state.status === "loading" ? <CauldronLoader label={t.loading} /> : null}
       {state.status === "not_found" ? (
         <p className={styles.copy} role="alert">
           {scope === "kitchen" ? t.notFoundKitchen : t.notFoundNotebook}

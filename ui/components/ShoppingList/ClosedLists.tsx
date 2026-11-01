@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { CauldronLoader } from "@/components/CauldronLoader";
+
 import type { Locale } from "@/lib/i18n/locale";
 import { shoppingListMessages } from "@/lib/i18n/shoppingList";
 import {
@@ -52,9 +54,7 @@ export function ClosedLists({ kitchenId, locale }: ClosedListsProps) {
       </Link>
       <h1 className="m-0 text-[1.25rem] font-[600] text-foreground">{t.pastLists}</h1>
       {rows === null ? (
-        <p className="m-0 text-[0.9rem] text-muted" role="status">
-          {t.loading}
-        </p>
+        <CauldronLoader label={t.loading} />
       ) : rows === "error" ? (
         <p className="m-0 text-[0.9rem] text-muted" role="alert">
           {t.pastListsLoadError}
@@ -108,9 +108,7 @@ export function ClosedListDetail({ kitchenId, listId, locale }: ClosedListDetail
         {t.backToPastLists}
       </Link>
       {list === null ? (
-        <p className="m-0 text-[0.9rem] text-muted" role="status">
-          {t.loading}
-        </p>
+        <CauldronLoader label={t.loading} />
       ) : list === "error" ? (
         <p className="m-0 text-[0.9rem] text-muted" role="alert">
           {t.pastListsLoadError}

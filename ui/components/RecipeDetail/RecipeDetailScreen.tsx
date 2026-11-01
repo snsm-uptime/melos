@@ -13,6 +13,7 @@ import { recipeDetailMessages } from "@/lib/i18n/recipeDetail";
 import { safeReturnPath } from "@/lib/recipeReturnPath";
 import { fetchRecipe, type RecipeDetail } from "@/lib/recipesClient";
 
+import { CauldronLoader } from "@/components/CauldronLoader";
 import styles from "@/app/notebooks/notebooks.module.scss";
 
 import { DeleteRecipeDialog } from "./DeleteRecipeDialog";
@@ -56,10 +57,8 @@ export function RecipeDetailScreen({ recipeId, locale }: { recipeId: string; loc
 
   if (state.status === "loading") {
     return (
-      <main className={styles.main}>
-        <p className={styles.copy} role="status">
-          {t.loading}
-        </p>
+      <main className={`${styles.main} flex-1`}>
+        <CauldronLoader label={t.loading} />
       </main>
     );
   }

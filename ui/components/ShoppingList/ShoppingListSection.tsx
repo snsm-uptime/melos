@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { CauldronLoader } from "@/components/CauldronLoader";
 import type { Cart } from "@/lib/cartClient";
 import type { Locale } from "@/lib/i18n/locale";
 import { shoppingListMessages } from "@/lib/i18n/shoppingList";
@@ -60,11 +61,7 @@ export function ShoppingListSection({
   }, [kitchenId, attempt, cart]);
 
   if (state.status === "loading") {
-    return (
-      <p className="m-0 px-4 text-[0.9rem] text-muted" role="status">
-        {t.loading}
-      </p>
-    );
+    return <CauldronLoader label={t.loading} />;
   }
   if (state.status === "error") {
     return (

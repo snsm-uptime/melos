@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { SpinnerIcon } from "@/app/icons";
+import { CauldronLoader } from "@/components/CauldronLoader";
 
 const DEFAULT_WRAPPER_CLASS = "relative flex flex-col gap-2";
 const DEFAULT_LIST_CLASS = "list-none m-0 p-0 flex flex-col gap-2";
@@ -71,8 +71,8 @@ export function StackedListPanel<T>({
 
       {loading ? (
         loadingContent ?? (
-          <div className={loadingClassName} role="status" aria-label={loadingLabel}>
-            <SpinnerIcon className="h-5 w-5 animate-spin" />
+          <div className={loadingClassName}>
+            <CauldronLoader label={loadingLabel} />
           </div>
         )
       ) : error ? (

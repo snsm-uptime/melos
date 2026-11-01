@@ -26,14 +26,26 @@ const toneClass: Record<Tone, string> = {
 };
 
 const baseClass =
-  "m-0 inline-flex size-9 flex-shrink-0 cursor-pointer items-center justify-center rounded-[8px] border-0 bg-transparent p-1 leading-none no-underline transition-all duration-150 disabled:cursor-not-allowed disabled:text-muted disabled:opacity-50";
+  "m-0 inline-flex size-9 flex-shrink-0 cursor-pointer items-center justify-center rounded-[8px] border-0 bg-transparent p-1 leading-none no-underline transition-all duration-150";
+
+const disabledClass = "disabled:cursor-not-allowed disabled:text-muted disabled:opacity-50";
+/** A busy action is still disabled, but keeps its colour so the loader inside it stays readable. */
+const busyClass = "disabled:cursor-progress";
 
 type HeaderActionProps = {
   /** The accessible name and tooltip; kept as screen-reader text too. */
   label: string;
   icon: ReactNode;
   tone?: Tone;
-} & ({ href: string } | { onClick: () => void; disabled?: boolean });
+} & (
+  | { href: string }
+  | {
+      onClick: () => void;
+      disabled?: boolean;
+      /** Shows a loader as the icon: keeps the full colour while disabled and says it is busy. */
+      busy?: boolean;
+    }
+);
 
 /** One icon action in `HeaderActions`: a link when given `href`, otherwise a button. */
 export function HeaderAction({
@@ -42,7 +54,8 @@ export function HeaderAction({
   tone = "default",
   ...rest
 }: HeaderActionProps) {
-  const className = `${baseClass} ${toneClass[tone]}`;
+  const busy = "busy" in rest && rest.busy === true;
+  const className = `${baseClass} ${toneClass[tone]} ${busy ? busyClass : disabledClass}`;
   const content = (
     <>
       {icon}
@@ -66,6 +79,7 @@ export function HeaderAction({
       type="button"
       onClick={rest.onClick}
       disabled={rest.disabled}
+      aria-busy={busy || undefined}
       aria-label={label}
       title={label}
       className={className}

@@ -86,7 +86,9 @@ describe("RecipeEditForm", () => {
   const byLabel = (label: string) =>
     Array.from(document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(`[aria-label="${label}"]`));
   const button = (text: string) =>
-    Array.from(document.querySelectorAll("button")).find((b) => b.textContent?.trim() === text);
+    Array.from(document.querySelectorAll("button")).find(
+      (b) => (b.getAttribute("aria-label") ?? b.textContent?.trim()) === text,
+    );
   const link = (text: string) =>
     Array.from(document.querySelectorAll("a")).find((a) => a.textContent?.includes(text));
   const names = () => byLabel("Name").map((input) => input.value);

@@ -13,6 +13,7 @@ import { fetchInvitePreview } from "@/app/invites/inviteClient";
 import { useOptionalPreferences } from "@/components/PreferencesProvider";
 import { attemptSignup, saveLanguagePick } from "./signupClient";
 import { PrimaryButton } from "@/components/soft-ledger/PrimaryButton";
+import { CauldronLoader } from "@/components/CauldronLoader";
 import styles from "./signup.module.scss";
 
 type Props = {
@@ -143,11 +144,7 @@ export function SignupForm({ locale, inviteToken }: Props) {
   }
 
   if (inviteLoading) {
-    return (
-      <p className={styles.hint} role="status">
-        {t.loadingInvite}
-      </p>
-    );
+    return <CauldronLoader label={t.loadingInvite} />;
   }
 
   return (
