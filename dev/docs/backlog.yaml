@@ -379,7 +379,7 @@ stories:
     title: Saved shopping list from the cart and hand-added items, closed with Done (closing_date)
     epic: Cart
     priority: must
-    status: in_progress
+    status: done
     journey: J5
     source: prd.md J5 Saved list, 1.6 (shopping_list); specs/025-finalize-shopping-list
     verification: >
