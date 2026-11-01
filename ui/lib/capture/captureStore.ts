@@ -18,6 +18,12 @@ export type CaptureNotebook = {
   returnPath: string;
 };
 
+/**
+ * The picker's "My own notebook (new)" row in a kitchen. It exists only in the ui: the sheet swaps
+ * it for the real notebook on submit, so it never reaches the capture route (spec 035 R6).
+ */
+export const OWN_NEW_NOTEBOOK_ID = "own-new";
+
 export type CaptureMessage = {
   code: string;
   reason?: string;
@@ -120,8 +126,8 @@ export function isDraftEdited(current: CaptureState): boolean {
 }
 
 export function openSheet(notebook: CaptureNotebook): void {
-  const sameNotebook = state.notebook?.id === notebook.id;
-  update({ notebook: sameNotebook ? state.notebook : notebook, sheetOpen: true });
+  // Always the caller's notebook: each page's sheet opens only for its own returnPath.
+  update({ notebook, sheetOpen: true });
 }
 
 export function closeSheet(): void {

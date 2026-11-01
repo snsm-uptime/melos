@@ -247,4 +247,104 @@ describe("TextCaptureSheet", () => {
     const options = Array.from(document.querySelectorAll("select option")).map((o) => o.textContent);
     expect(options).toEqual(["ana's Notebook", "Family list"]);
   });
+
+  describe("my own notebook (new), spec 035 research R6", () => {
+    const kitchenCandidates = [
+      { id: "own-new", name: "My own notebook (new)", kind: "kitchen" as const, kitchenId: "k1" },
+      { id: "nb-ben", name: "ben's Notebook", kind: "kitchen" as const, kitchenId: "k1" },
+    ];
+    const made = { id: "nb-own", name: "ana's (Home) Notebook", kind: "kitchen", kitchen_id: "k1" };
+
+    function renderKitchen() {
+      openSheet({
+        id: "own-new",
+        kind: "kitchen",
+        name: "My own notebook (new)",
+        kitchenId: "k1",
+        returnPath: "/kitchens/k1",
+      });
+      act(() => {
+        root.render(
+          <TextCaptureSheet open candidates={kitchenCandidates} onDraftReady={() => {}} />,
+        );
+      });
+    }
+
+    function stubRoutes(capture: () => Response, own: () => Response = () => json(200, made)) {
+      const calls: string[] = [];
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (url: string) => {
+          calls.push(url);
+          if (url.endsWith("/capture-notebook")) return own();
+          if (url.endsWith("/captures/text")) return capture();
+          return json(200, { max_text_chars: 5000 });
+        }),
+      );
+      return calls;
+    }
+
+    async function submit() {
+      setValue(document.querySelector("textarea")!, "Onion soup");
+      await act(async () => {
+        submitButton().click();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    }
+
+    it("makes the notebook first and captures into it, never into own-new", async () => {
+      const calls = stubRoutes(() => json(200, okResponse));
+      renderKitchen();
+
+      await submit();
+
+      const made_at = calls.findIndex((url) => url.endsWith("/capture-notebook"));
+      const captured_at = calls.findIndex((url) => url.endsWith("/captures/text"));
+      expect(made_at).toBeGreaterThan(-1);
+      expect(captured_at).toBeGreaterThan(made_at);
+      expect(calls[captured_at]).toBe("/api/notebooks/nb-own/captures/text");
+      expect(calls.join()).not.toContain("own-new/");
+      expect(getCaptureState().notebook?.id).toBe("nb-own");
+    });
+
+    it("keeps the text and shows a message when the notebook can't be made", async () => {
+      const calls = stubRoutes(
+        () => json(200, okResponse),
+        () => json(403, { code: "kitchen_archived" }),
+      );
+      renderKitchen();
+
+      await submit();
+
+      expect(calls.some((url) => url.endsWith("/captures/text"))).toBe(false);
+      expect(getCaptureState().text).toBe("Onion soup");
+      expect(document.querySelector("[role='alert']")).not.toBeNull();
+    });
+
+    it("shows the real notebook in the picker after a failed extraction", async () => {
+      stubRoutes(() => json(422, { code: "ai_invalid_output" }));
+      renderKitchen();
+
+      await submit();
+
+      const select = document.querySelector("select") as HTMLSelectElement;
+      expect(select.value).toBe("nb-own");
+      expect(select.options[0].textContent).toBe("ana's (Home) Notebook");
+    });
+
+    it("sends an explicit pick straight to it and makes no notebook", async () => {
+      const calls = stubRoutes(() => json(200, okResponse));
+      renderKitchen();
+      const select = document.querySelector("select") as HTMLSelectElement;
+      act(() => {
+        select.value = "nb-ben";
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+
+      await submit();
+
+      expect(calls.some((url) => url.endsWith("/capture-notebook"))).toBe(false);
+      expect(calls).toContain("/api/notebooks/nb-ben/captures/text");
+    });
+  });
 });

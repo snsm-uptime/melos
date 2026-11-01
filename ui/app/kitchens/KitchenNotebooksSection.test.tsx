@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ToastProvider, ToastViewport } from "@/components/Toast";
+import { clearCapture } from "@/lib/capture/captureStore";
 
 import { KitchenCartCountProvider, useKitchenCartCount } from "./cartCount";
 import { KitchenNotebooksSection } from "./KitchenNotebooksSection";
@@ -418,6 +419,49 @@ describe("KitchenNotebooksSection", () => {
         "ben is editing the cart",
       );
       expect(cartButton()?.getAttribute("aria-label")).toBe("Add to cart");
+    });
+  });
+
+  describe("capture default (spec 035 FR-017)", () => {
+    const own = { ...homeNotebook, is_own_capture_notebook: true };
+
+    function press(name: string) {
+      const found = Array.from(document.querySelectorAll("button")).find(
+        (el) => el.textContent?.trim() === name || el.getAttribute("aria-label") === name,
+      ) as HTMLButtonElement;
+      act(() => found.click());
+    }
+
+    async function openSheet() {
+      await flush();
+      press("Add recipe");
+      press("Text");
+      await flush();
+    }
+
+    afterEach(() => clearCapture());
+
+    it("preselects the member's own notebook, even when it isn't the first", async () => {
+      stubBff([{ status: 200, body: { notebooks: [secondNotebook, own] } }]);
+      render();
+
+      await openSheet();
+
+      expect(document.querySelector("select")?.value).toBe(own.id);
+    });
+
+    it("offers a new notebook of their own when they have none", async () => {
+      stubBff([{ status: 200, body: { notebooks: [homeNotebook] } }]);
+      render();
+
+      await openSheet();
+
+      const select = document.querySelector("select") as HTMLSelectElement;
+      expect(select.value).toBe("own-new");
+      expect(Array.from(select.options).map((option) => option.textContent)).toEqual([
+        "My own notebook (new)",
+        homeNotebook.name,
+      ]);
     });
   });
 });

@@ -22,7 +22,7 @@ export type CaptureCandidate = {
 type AddRecipeCallToActionProps = {
   /** Notebooks the member may capture into: the picker's choices (spec 016 FR-001a). */
   candidates: CaptureCandidate[];
-  /** Preselected in the picker (the default personal notebook; the kitchen's first notebook). */
+  /** Preselected in the picker (the default personal notebook; the member's own kitchen one). */
   defaultId: string | null;
   /** The page that opened the capture. Back and Discard return here. */
   returnPath: string;

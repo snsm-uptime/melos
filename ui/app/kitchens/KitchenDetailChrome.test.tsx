@@ -385,4 +385,46 @@ describe("KitchenDetailChrome", () => {
       expect(button(t.menuAria)).toBeTruthy();
     });
   });
+
+  describe("notebooks button (spec 035 FR-007a)", () => {
+    const notebooks = { href: "/kitchens/k1/notebooks", label: "Notebooks" };
+
+    function chromeButtons(): HTMLElement[] {
+      return Array.from(document.querySelectorAll<HTMLElement>("button[aria-label]"));
+    }
+
+    it("sits next to the share button and opens the notebooks view", () => {
+      act(() => {
+        root.render(
+          <AppShell>
+            <KitchenCartCountProvider>
+              <KitchenDetailChrome title="Home" share={share} cart={CART} notebooks={notebooks} />
+            </KitchenCartCountProvider>
+          </AppShell>,
+        );
+      });
+
+      const labels = chromeButtons().map((el) => el.getAttribute("aria-label"));
+      const position = labels.indexOf("Notebooks");
+      expect(position).toBeGreaterThan(-1);
+      expect(labels[position + 1]).toBe(share.labels.open);
+
+      act(() => chromeButtons()[position].click());
+      expect(push).toHaveBeenCalledWith("/kitchens/k1/notebooks");
+    });
+
+    it("shows for a member with no share button", () => {
+      act(() => {
+        root.render(
+          <AppShell>
+            <KitchenCartCountProvider>
+              <KitchenDetailChrome title="Home" notebooks={notebooks} />
+            </KitchenCartCountProvider>
+          </AppShell>,
+        );
+      });
+
+      expect(chromeButtons().some((el) => el.getAttribute("aria-label") === "Notebooks")).toBe(true);
+    });
+  });
 });

@@ -106,4 +106,20 @@ describe("AddRecipeCallToAction", () => {
     act(() => button("Text")!.click());
     expect(document.querySelector("select")).toBeNull();
   });
+
+  it("shows the picker for the new-notebook row and one other notebook", () => {
+    const list: CaptureCandidate[] = [
+      { id: "own-new", name: "My own notebook (new)", kind: "kitchen", kitchenId: "k1" },
+      { id: "nb-kitchen", name: "ben's (Home) Notebook", kind: "kitchen", kitchenId: "k1" },
+    ];
+    act(() => {
+      root.render(
+        <AddRecipeCallToAction candidates={list} defaultId="own-new" returnPath="/kitchens/k1" />,
+      );
+    });
+    act(() => button("Add a recipe")!.click());
+    act(() => button("Text")!.click());
+
+    expect(document.querySelector("select")?.value).toBe("own-new");
+  });
 });

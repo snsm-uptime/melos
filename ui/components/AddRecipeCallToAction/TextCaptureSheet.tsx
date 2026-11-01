@@ -12,6 +12,7 @@ import {
   closeSheet,
   failSubmit,
   openSheet,
+  OWN_NEW_NOTEBOOK_ID,
   setText,
   showDraft,
   startSubmit,
@@ -21,6 +22,7 @@ import {
 import { messageForCode } from "@/lib/i18n/capture";
 import { useLocale } from "@/lib/i18n/useLocale";
 import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
+import { resolveCaptureNotebook } from "@/lib/notebooksClient";
 
 import type { CaptureCandidate } from "./AddRecipeCallToAction";
 
@@ -99,7 +101,7 @@ export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCapture
   const disabled = trimmed.length === 0 || tooLong || submitting || notebook === null;
 
   function chooseNotebook(id: string) {
-    const picked = candidates.find((item) => item.id === id);
+    const picked = options.find((item) => item.id === id);
     if (!picked || !notebook) return;
     openSheet({
       id: picked.id,
@@ -113,7 +115,18 @@ export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCapture
   async function submit() {
     if (!notebook || disabled) return;
     startSubmit();
-    const result = await submitCapture(notebook.id, capture.text);
+    let target = notebook;
+    if (notebook.id === OWN_NEW_NOTEBOOK_ID && notebook.kitchenId) {
+      // Made now, before extraction, and kept even if no recipe is saved (spec 035 FR-017).
+      const own = await resolveCaptureNotebook(notebook.kitchenId);
+      if (!own.ok) {
+        failSubmit({ code: own.code ?? "unavailable" });
+        return;
+      }
+      target = { ...notebook, id: own.value.id, name: own.value.name };
+      openSheet(target);
+    }
+    const result = await submitCapture(target.id, capture.text);
     if (!result.ok) {
       if (result.max !== undefined) setMax(result.max);
       failSubmit(result.message);
@@ -122,6 +135,14 @@ export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCapture
     showDraft(toDraftView(result.value), result.value.language);
     onDraftReady();
   }
+
+  // After a failed extraction the "new" row has become the real notebook.
+  const options =
+    notebook && !candidates.some((item) => item.id === notebook.id)
+      ? candidates.map((item) =>
+          item.id === OWN_NEW_NOTEBOOK_ID ? { ...item, id: notebook.id, name: notebook.name } : item,
+        )
+      : candidates;
 
   const message = capture.message
     ? messageForCode(capture.message, locale, max)
@@ -140,7 +161,7 @@ export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCapture
             disabled={submitting}
             onChange={(event) => chooseNotebook(event.target.value)}
           >
-            {candidates.map((item) => (
+            {options.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
               </option>

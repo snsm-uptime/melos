@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-import { AddRecipeCallToAction } from "@/components/AddRecipeCallToAction";
+import { AddRecipeCallToAction, type CaptureCandidate } from "@/components/AddRecipeCallToAction";
 import { useCartIdleToasts } from "@/components/Cart/useCartIdleToasts";
 import { useToast } from "@/components/Toast";
 import { RecipeList } from "@/components/RecipeList/RecipeList";
@@ -15,6 +15,7 @@ import {
   removeDraftItem,
   type Cart,
 } from "@/lib/cartClient";
+import { OWN_NEW_NOTEBOOK_ID } from "@/lib/capture/captureStore";
 import { cartMessages } from "@/lib/i18n/cart";
 import { usePublishKitchenCartCount } from "./cartCount";
 import { listAddress, readListAddress } from "@/lib/listAddress";
@@ -151,6 +152,25 @@ export function KitchenNotebooksSection({
     setAttempt((value) => value + 1);
   }
 
+  // Captures default to the member's own notebook, never to whichever notebook is first. Someone
+  // with none yet is offered a new one, made when they submit (spec 035 FR-017, research R6).
+  const notebooks = state.status === "ready" ? state.notebooks : [];
+  const ownNotebook = notebooks.find((notebook) => notebook.is_own_capture_notebook);
+  const candidates: CaptureCandidate[] = notebooks.map((notebook) => ({
+    id: notebook.id,
+    name: notebook.name,
+    kind: "kitchen",
+    kitchenId,
+  }));
+  if (!ownNotebook) {
+    candidates.unshift({
+      id: OWN_NEW_NOTEBOOK_ID,
+      name: t.ownNotebookNew,
+      kind: "kitchen",
+      kitchenId,
+    });
+  }
+
   return (
     <section className={styles.section}>
       <SavedNotice returnPath={`/kitchens/${kitchenId}`} />
@@ -187,13 +207,8 @@ export function KitchenNotebooksSection({
             state.notebooks.length > 0 && !isArchived ? (
               <AddRecipeCallToAction
                 variant="button"
-                candidates={state.notebooks.map((notebook) => ({
-                  id: notebook.id,
-                  name: notebook.name,
-                  kind: "kitchen",
-                  kitchenId,
-                }))}
-                defaultId={state.notebooks[0]?.id ?? null}
+                candidates={candidates}
+                defaultId={ownNotebook?.id ?? OWN_NEW_NOTEBOOK_ID}
                 returnPath={`/kitchens/${kitchenId}`}
               />
             ) : undefined
