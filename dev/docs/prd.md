@@ -193,7 +193,7 @@ membership(kitchen_id, user_id, role: owner|member, created_at)       pk(kitchen
 invite(id, kitchen_id, email, token_hash, invited_by, expires_at, accepted_at)
 notebook(id, name, kitchen_id?, source_notebook_id?, snapshot_key?, created_at)     kitchen_id set: a kitchen notebook, which belongs to that kitchen (several per kitchen); null: a personal notebook. source_notebook_id: the notebook a snapshot came from (FK notebook.id, ON DELETE SET NULL), an origin label only. snapshot_key: set once on a snapshot and never cleared, unique per kitchen; it marks a snapshot for good and makes a repeated add safe (spec 035)
 notebook_membership(notebook_id, user_id, role: owner|member, created_at)   personal notebooks only; pk(notebook_id, user_id); exactly one owner per personal notebook
-notebook_invite(id, notebook_id, email, token_hash, invited_by, expires_at, accepted_at)   personal notebooks only; same rules as invite
+notebook_invite(id, notebook_id, email, token_hash, invited_by, expires_at, used_at)   personal notebooks only; same rules as invite
 users.default_kitchen_id (nullable, FK kitchens.id, ON DELETE SET NULL)  the kitchen Home opens; resolved on read and stored: the stored kitchen if active and the person belongs to it, else their earliest-created active owned kitchen, else their earliest-joined active kitchen, else null (spec 064)
 users.default_notebook_id (nullable, FK notebook.id, ON DELETE SET NULL)  the person's default personal notebook, named "{alias}'s Notebook"; null until their first visit to it, which creates it silently, and again after the notebook is deleted
 ingredient(id, notebook_id, name, created_at)                         unique(notebook_id, name); a catalog is a set of unique normalized names

@@ -415,9 +415,9 @@ stories:
     title: Share a notebook by email invite (owner invites, member accepts, leaves or is removed; catalogs merge)
     epic: Recipes
     priority: must
-    status: backlog
+    status: in_progress
     journey: J1a
-    source: prd.md 1.5H, 1.6 (notebook_membership, notebook_invite), J1a; redesign 2026-10-23 (personal notebooks only)
+    source: prd.md 1.5H, 1.6 (notebook_membership, notebook_invite), J1a; redesign 2026-10-23 (personal notebooks only); specs/057-notebook-invites
     acceptance: [AC1a.1, AC1a.3]
     notes: >
       Reuses the kitchen invite flow (S-011): token stored hashed, single use, same email rules.
@@ -425,6 +425,10 @@ stories:
       S-018 matcher; the notebook's names win and the rest are added. The owner cannot leave.
       Delete the membership row on leave/remove (no soft delete); spec 022 FR-020b relies on the
       cascade to end edit locks.
+    verification: >
+      Built on branch 057-notebook-invites, not committed. api 1158 passed on a throwaway Postgres
+      with the CI setup, ui 1174 passed, lint and typecheck clean. Browser walk 128 of 128 checks,
+      including step 7 with email verification on. The Compose test command was not run.
 
   - id: S-058
     title: Personal notebook ownership passes to the longest-standing member when the owner's account is deleted
@@ -446,10 +450,12 @@ stories:
     title: Create, rename and delete notebooks (personal by their owner, kitchen by any kitchen member)
     epic: Recipes
     priority: must
-    status: backlog
+    status: in_progress
     journey: J1a
     source: prd.md 1.5H, 1.6 (notebook), J1a, Appendix A (Notebook); gap found by spec 056 on 2026-10-23
     notes: >
+      Started 2026-11-01 on branch 057-notebook-invites: creating a personal notebook (POST /notebooks and
+      the plus tile on the Notebook tab) is built. Rename, delete and kitchen notebooks are not.
       Added 2026-10-23: S-056 makes only the default personal notebook, the kitchen notebook made
       with a kitchen and the capture notebook, and no story covered the rest of PRD J1a. A person
       creates more personal notebooks (they are the owner; the catalog starts from their personal
