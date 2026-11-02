@@ -48,8 +48,8 @@ No item needs clarification.
 | §6 Testing | Pass | All layers are covered. See [quickstart.md](quickstart.md). |
 | §7 Deployment | Pass | One migration, and one SQL line for the owner, documented in the README. |
 | §8 Git Discipline | Pass | The schema change goes through Alembic. |
-| §9 Scope and Schedule | **Open: see below** | S-055 is priority `later`. Must stories are still open, and the v1 deadline is 2026-11-02. |
-| AGENTS.md "Every recipe query checks..." | Exception, see below | The dashboard reads titles across notebooks. |
+| §9 Scope and Schedule | **Exception approved by the owner, 2026-11-02** | S-055 is priority `later`. Must stories are still open, and the v1 deadline is 2026-11-02. See Approvals under Complexity Tracking. |
+| AGENTS.md "Every recipe query checks..." | Exception approved by the owner, 2026-11-02 | The dashboard reads titles across notebooks. See Approvals under Complexity Tracking. |
 
 ### Post-design re-check
 
@@ -139,5 +139,11 @@ dev/docs/prd.md, AGENTS.md, README.md   # texts the spec says must change
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|--------------------------------------|
-| §9: a `later` story built while Must stories are open, one day before the v1 deadline | The owner redirected S-055 on 2026-11-01 and specified it. **There is no written §9 exception on record yet.** The owner must confirm it before `/speckit-implement`, with a scope limit as §Exceptions requires | Deferring it is the rule's default, and it's the owner's call. Planning changes no code, so the plan goes ahead |
-| AGENTS.md and PRD §3: dashboard reads recipe titles and figures across notebooks the admin doesn't belong to | FR-017d asks for it, and the spec records the exception. Scope: the `/admin/recipes` route only. Document it at the top of `application/admin.py` | A dashboard limited to the admin's own notebooks can't show how the app is used. AGENTS.md and PRD text change with this feature, which AGENTS.md says needs explicit approval |
+| §9: a `later` story built while Must stories are open, one day before the v1 deadline | The owner redirected S-055 on 2026-11-01 and specified it. **Exception approved by the owner on 2026-11-02**, see Approvals below | Deferring it is the rule's default, and it's the owner's call. Planning changes no code, so the plan goes ahead |
+| AGENTS.md and PRD §3: dashboard reads recipe titles and figures across notebooks the admin doesn't belong to | FR-017d asks for it, and the spec records the exception. Scope: the `/admin/recipes` route only. Document it at the top of `application/admin.py` | A dashboard limited to the admin's own notebooks can't show how the app is used. AGENTS.md and PRD text change with this feature, which AGENTS.md says needs explicit approval. **Approved by the owner on 2026-11-02**, see Approvals below |
+
+### Approvals
+
+- Approved by: Sebastian Soto M (project owner), on 2026-11-02, in the Claude Code session that produced `tasks.md` ("approved, record both in plan.md").
+- **§9 exception.** Scope: S-055 as specified in `spec.md`, built while Must stories are open. It covers no other `later` story.
+- **AGENTS.md edits.** Scope: task T072 only: the text on the fixed list of units, and the "every recipe query" rule for the `/admin/recipes` route. It covers no other change to AGENTS.md or the constitution.
