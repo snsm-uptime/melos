@@ -39,6 +39,11 @@ export type ChromeHeaderConfig = {
    * scrolls (e.g. a `TopProgressBar`).
    */
   progressBar?: ReactNode | null;
+  /**
+   * Shows the side panel on a route `showsAppChrome` leaves without it. The screen asks, not the
+   * path, so /admin's not-found page stays the same as any other (spec 055).
+   */
+  sidePanel?: boolean;
 };
 
 const emptyHeader: ChromeHeaderConfig = {};
@@ -201,6 +206,7 @@ export function useChromeHeader(config: ChromeHeaderConfig) {
     detailsClassName,
     trailing,
     progressBar,
+    sidePanel,
   } = config;
 
   // A change to this screen's own header updates its entry where it is; it never moves it to
@@ -218,6 +224,7 @@ export function useChromeHeader(config: ChromeHeaderConfig) {
         detailsClassName,
         trailing,
         progressBar,
+        sidePanel,
       },
       route,
     );
@@ -233,6 +240,7 @@ export function useChromeHeader(config: ChromeHeaderConfig) {
     detailsClassName,
     trailing,
     progressBar,
+    sidePanel,
   ]);
 
   // Only unmounting removes the entry.

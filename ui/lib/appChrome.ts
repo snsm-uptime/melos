@@ -7,11 +7,12 @@ export function showsAppChrome(pathname: string): boolean {
   );
 }
 
-/** "notebooks" or `kitchen:{id}`. */
+/** "notebooks", "admin" or `kitchen:{id}`. */
 export type PanelEntry = string;
 
 /** The side panel entry for a page. */
 export function panelEntryFromPath(pathname: string): PanelEntry | undefined {
+  if (pathname === "/admin") return "admin";
   const kitchenId = /^\/kitchens\/([^/]+)/.exec(pathname)?.[1];
   if (kitchenId) return `kitchen:${kitchenId}`;
   // A recipe lives in a notebook, so its detail and edit pages keep Notebooks marked.

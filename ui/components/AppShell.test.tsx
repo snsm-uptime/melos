@@ -155,6 +155,31 @@ describe("AppShell chrome header", () => {
     expect(container.querySelector("nav")).toBeTruthy();
   });
 
+  it("shows the panel where only the screen asks for it, and not without it (spec 055)", async () => {
+    pathname = "/admin";
+    function Dashboard() {
+      useChromeHeader({ title: "Dashboard", sidePanel: true });
+      return <p>dashboard</p>;
+    }
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <Dashboard />
+        </AppShell>,
+      );
+    });
+    expect(container.querySelector("nav")).not.toBeNull();
+
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <p>not found</p>
+        </AppShell>,
+      );
+    });
+    expect(container.querySelector("nav")).toBeNull();
+  });
+
   it("opens the drawer from the header's menu button", async () => {
     pathname = "/notebooks";
     await act(async () => {

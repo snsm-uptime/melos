@@ -42,7 +42,7 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   // Decoupled from showHeader: public screens (e.g. /sign-in) opt into
   // just the header — a way back to "/" — via useChromeHeader, without also
   // gaining the authenticated side panel that showsAppChrome gates.
-  const showPanel = showsAppChrome(pathname);
+  const showPanel = showsAppChrome(pathname) || header.sidePanel === true;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
   // The header sits on the page gutter so it lines up with the content below it. Icon buttons at

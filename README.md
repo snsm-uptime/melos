@@ -230,3 +230,25 @@ not separate the Postgres data; give each checkout its own `MELOS_DATA`.
 
 [The app running, the app facing an edge case, a moment of your work with the AI
 and the testing. Without any key in view.]
+
+# TODO
+1. Fix exception and unit validation
+input: 
+
+```markdown
+sopa negra
+un ramo de culantro
+una cebolla
+una lata de frijoles
+una bolsa de arroz
+
+cortar culantro y cebolla
+mezclar frijoles y arroz, calentar.
+
+agregar culantro y cebolla al gusto
+```
+
+output exeption:
+Add a quantity to culantro. Add a quantity to cebolla. Add a quantity to frijol. Add a quantity to arroz.
+
+expected output: the UI prompts the user to approve the creation of the units for the user. they get normalized and "ramo" "lata" and "bolsa" get added as units to the user

@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-import { BackIcon } from "@/app/icons";
+import { useChromeHeader } from "@/components/ChromeBack";
 import { CauldronLoader } from "@/components/CauldronLoader";
 import { adminMessages } from "@/lib/i18n/admin";
 import type { Locale } from "@/lib/i18n/locale";
@@ -138,6 +137,7 @@ export function AdminDashboard({ locale }: { locale: Locale }) {
   const [section, setSection] = useState<Section>("units");
   const [loaded, setLoaded] = useState<Partial<Record<Section, Loaded>>>({});
   const current = loaded[section];
+  useChromeHeader({ title: t.title, sidePanel: true });
 
   const load = useCallback((target: Section) => {
     void loadSection(target).then((result) => {
@@ -151,18 +151,6 @@ export function AdminDashboard({ locale }: { locale: Locale }) {
 
   return (
     <div className="flex min-w-0 flex-col gap-4 p-4">
-      {/* No side panel here: the shell around /admin would show that the path exists. */}
-      <header className="flex items-center gap-2">
-        <Link
-          href="/notebooks"
-          aria-label={t.back}
-          title={t.back}
-          className="inline-flex shrink-0 items-center justify-center rounded-[8px] p-1 text-muted hover:text-foreground"
-        >
-          <BackIcon className="size-6" />
-        </Link>
-        <h1 className="m-0 text-[1.5rem] font-[550] text-foreground">{t.title}</h1>
-      </header>
       <div role="tablist" aria-label={t.tabsLabel} className="flex flex-wrap gap-2">
         {SECTIONS.map((name) => (
           <button

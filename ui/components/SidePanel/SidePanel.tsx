@@ -218,6 +218,7 @@ export function SidePanel({
                   href="/admin"
                   label={adminMessages[locale].entry}
                   icon={<HashtagIcon className="size-7 shrink-0 p-0.5" />}
+                  current={current === "admin"}
                   onClick={onDrawerClose}
                 />
               </li>

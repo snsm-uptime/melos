@@ -113,13 +113,6 @@ describe("AdminDashboard", () => {
     expect(container.textContent).toContain("tomate");
   });
 
-  it("has a way back into the app", async () => {
-    await render();
-    expect(container.querySelector('a[aria-label="Back to the app"]')?.getAttribute("href")).toBe(
-      "/notebooks",
-    );
-  });
-
   it("does not load a section twice", async () => {
     await render();
     await open("Recipes");

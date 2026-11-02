@@ -81,3 +81,13 @@ describe("showsFloatingLanguageSwitch", () => {
     expect(showsFloatingLanguageSwitch("/home")).toBe(false);
   });
 });
+
+describe("the dashboard (spec 055)", () => {
+  it("leaves the side panel to the screen, so its not-found page is like any other", () => {
+    expect(showsAppChrome("/admin")).toBe(false);
+  });
+
+  it("marks its own entry", () => {
+    expect(panelEntryFromPath("/admin")).toBe("admin");
+  });
+});
