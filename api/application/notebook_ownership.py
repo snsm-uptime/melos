@@ -56,7 +56,7 @@ class PassOwnedNotebooksService:
                 for row in self._notebooks.members_of(notebook_id)
             )
             if heir is None:
-                self._notebooks.delete_personal(notebook_id)
+                self._notebooks.delete(notebook_id)
                 result.deleted.append(notebook_id)
                 logger.info("notebook_deleted_with_owner notebook_id=%s", notebook_id)
                 continue

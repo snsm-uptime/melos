@@ -1,5 +1,6 @@
-"""Notebooks: my notebooks, my default, a kitchen's notebooks and one notebook (spec 056), and
-adding a snapshot and the member's own capture notebook in a kitchen (spec 035).
+"""Notebooks: my notebooks, my default, a kitchen's notebooks and one notebook (spec 056),
+adding a snapshot and the member's own capture notebook in a kitchen (spec 035), and creating,
+renaming and deleting notebooks (spec 059).
 
 Static segments are declared before /{notebook_id} so "default" and "kitchens" are not
 read as ids.
@@ -47,8 +48,12 @@ from application.notebook_members import (
 from application.notebooks import (
     AddNotebookSnapshotCommand,
     AddNotebookSnapshotService,
+    CreateKitchenNotebookCommand,
+    CreateKitchenNotebookService,
     CreateNotebookCommand,
     CreateNotebookService,
+    DeleteNotebookCommand,
+    DeleteNotebookService,
     GetDefaultNotebookCommand,
     GetDefaultNotebookService,
     GetNotebookCommand,
@@ -58,6 +63,8 @@ from application.notebooks import (
     ListMyNotebooksCommand,
     ListMyNotebooksService,
     NotebookView,
+    RenameNotebookCommand,
+    RenameNotebookService,
     ResolveCaptureNotebookCommand,
     ResolveCaptureNotebookService,
 )
@@ -108,6 +115,7 @@ from api.schemas.notebook_invites import (
 from api.schemas.notebooks import (
     AddNotebookSnapshotRequest,
     CreateNotebookRequest,
+    NameNotebookRequest,
     NotebookResponse,
     NotebooksResponse,
 )
@@ -142,6 +150,16 @@ def _kitchen_archived() -> JSONResponse:
     return JSONResponse(
         status_code=status.HTTP_403_FORBIDDEN,
         content={"detail": KitchenArchivedError.MESSAGE, "code": KitchenArchivedError.CODE},
+    )
+
+
+def _invalid_notebook_name() -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": InvalidNotebookNameError.MESSAGE,
+            "code": InvalidNotebookNameError.CODE,
+        },
     )
 
 
@@ -240,13 +258,7 @@ def create_notebook(
     try:
         view = service.execute(CreateNotebookCommand(actor_user_id=user_id, name=body.name))
     except InvalidNotebookNameError:
-        return JSONResponse(
-            status_code=422,
-            content={
-                "detail": InvalidNotebookNameError.MESSAGE,
-                "code": InvalidNotebookNameError.CODE,
-            },
-        )
+        return _invalid_notebook_name()
     return _response(view)
 
 
@@ -284,6 +296,38 @@ def list_kitchen_notebooks(
     except KitchenNotFoundError:
         return _kitchen_not_found()
     return NotebooksResponse(notebooks=[_response(view) for view in views])
+
+
+@router.post(
+    "/kitchens/{kitchen_id}",
+    response_model=NotebookResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_kitchen_notebook(
+    kitchen_id: uuid.UUID,
+    body: NameNotebookRequest,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    db: Session = Depends(get_db),
+) -> NotebookResponse | JSONResponse:
+    service = CreateKitchenNotebookService(
+        SqlAlchemyKitchenRepository(db),
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyIngredientCatalog(db),
+        SqlAlchemyTransactionCommitter(db),
+    )
+    try:
+        view = service.execute(
+            CreateKitchenNotebookCommand(
+                actor_user_id=user_id, kitchen_id=kitchen_id, name=body.name
+            )
+        )
+    except KitchenNotFoundError:
+        return _kitchen_not_found()
+    except KitchenArchivedError:
+        return _kitchen_archived()
+    except InvalidNotebookNameError:
+        return _invalid_notebook_name()
+    return _response(view)
 
 
 @router.post(
@@ -352,9 +396,12 @@ def resolve_capture_notebook(
         return _kitchen_not_found()
     except KitchenArchivedError:
         return _kitchen_archived()
-    view = GetNotebookService(SqlAlchemyNotebookRepository(db)).execute(
-        GetNotebookCommand(actor_user_id=user_id, notebook_id=captured.notebook_id)
-    )
+    try:
+        view = GetNotebookService(SqlAlchemyNotebookRepository(db)).execute(
+            GetNotebookCommand(actor_user_id=user_id, notebook_id=captured.notebook_id)
+        )
+    except NotebookNotFoundError:
+        return _notebook_not_found()
     return _response(view)
 
 
@@ -391,6 +438,47 @@ def get_notebook(
     except NotebookNotFoundError:
         return _notebook_not_found()
     return _response(view)
+
+
+@router.patch("/{notebook_id}", response_model=NotebookResponse)
+def rename_notebook(
+    notebook_id: uuid.UUID,
+    body: NameNotebookRequest,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    db: Session = Depends(get_db),
+) -> NotebookResponse | JSONResponse:
+    service = RenameNotebookService(
+        SqlAlchemyNotebookRepository(db), SqlAlchemyTransactionCommitter(db)
+    )
+    try:
+        view = service.execute(
+            RenameNotebookCommand(actor_user_id=user_id, notebook_id=notebook_id, name=body.name)
+        )
+    except KitchenArchivedError:
+        return _kitchen_archived()
+    except InvalidNotebookNameError:
+        return _invalid_notebook_name()
+    except _SHARING_REFUSALS as exc:
+        return _sharing_refused(exc)
+    return _response(view)
+
+
+@router.delete("/{notebook_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_notebook(
+    notebook_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    db: Session = Depends(get_db),
+) -> Response:
+    service = DeleteNotebookService(
+        SqlAlchemyNotebookRepository(db), SqlAlchemyTransactionCommitter(db)
+    )
+    try:
+        service.execute(DeleteNotebookCommand(actor_user_id=user_id, notebook_id=notebook_id))
+    except KitchenArchivedError:
+        return _kitchen_archived()
+    except _SHARING_REFUSALS as exc:
+        return _sharing_refused(exc)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/{notebook_id}/recipes", response_model=RecipePageResponse)

@@ -13,10 +13,18 @@ import { listAddress, readListAddress } from "@/lib/listAddress";
 import type { Locale } from "@/lib/i18n/locale";
 import { notebooksMessages } from "@/lib/i18n/notebooks";
 import { recipeListMessages } from "@/lib/i18n/recipeLists";
-import { fetchNotebook, type NotebookResponse } from "@/lib/notebooksClient";
+import {
+  canManageNotebook,
+  fetchNotebook,
+  renameNotebook,
+  type NotebookResponse,
+} from "@/lib/notebooksClient";
 import { notebookBackPath } from "@/lib/recipeReturnPath";
 import { fetchNotebookRecipes } from "@/lib/recipesClient";
 
+import { NotebookNameDialog } from "../NotebookNameDialog";
+import { NotebookDeleteDialog } from "./NotebookDeleteDialog";
+import { NotebookOptionsMenu } from "./NotebookOptionsMenu";
 import { NotebookShareDialog } from "./NotebookShareDialog";
 import styles from "../notebooks.module.scss";
 
@@ -42,6 +50,14 @@ export function NotebookRecipesScreen({
   const backHref = notebookBackPath(searchParams.get("from"));
   const [state, setState] = useState<NotebookState>({ status: "loading" });
   const [sharing, setSharing] = useState(false);
+  const [dialog, setDialog] = useState<"rename" | "delete" | null>(null);
+  // A first load has no notebook to read a kitchen from, so it goes back where it came from.
+  const goneHref =
+    state.status !== "ready"
+      ? backHref
+      : state.notebook.kitchen_id
+        ? `/kitchens/${encodeURIComponent(state.notebook.kitchen_id)}/notebooks`
+        : "/notebooks";
 
   useEffect(() => {
     let current = true;
@@ -51,15 +67,15 @@ export function NotebookRecipesScreen({
       else if (result.code === "alias_required") {
         router.replace(`/alias?returnTo=${encodeURIComponent(`/notebooks/${notebookId}`)}`);
       } else if (result.status === 404) {
-        // Access ended or never existed: the person's notebooks are the way back (spec 057).
+        // Access ended or never existed: the list it was opened from is the way back (spec 059).
         setState({ status: "not_found" });
-        router.replace("/notebooks");
+        router.replace(backHref);
       } else setState({ status: "error" });
     });
     return () => {
       current = false;
     };
-  }, [notebookId, router]);
+  }, [backHref, notebookId, router]);
 
   // This list's own address keeps `?from=`, so a recipe opened from here returns to a list
   // whose Back still leads to the kitchen or tab the person came from.
@@ -74,29 +90,41 @@ export function NotebookRecipesScreen({
     async (nextPage: number, nextQ: string) => {
       const result = await fetchNotebookRecipes(notebookId, nextPage, nextQ);
       // A person removed while this list was open: the next page answers 404 (spec 057).
-      if (!result.ok && result.status === 404) router.replace("/notebooks");
+      if (!result.ok && result.status === 404) router.replace(goneHref);
       return result;
     },
-    [notebookId, router],
+    [goneHref, notebookId, router],
   );
 
   const returnPath = `/notebooks/${notebookId}`;
   // Personal notebooks only: a kitchen notebook's people come from the kitchen (spec 057 FR-003).
   const sharedPersonally = state.status === "ready" && state.notebook.kind === "personal";
+  const canManage = state.status === "ready" && canManageNotebook(state.notebook);
   const shareLabel = notebooksMessages[locale].sharingOpen;
   const trailing = useMemo(
     () =>
-      sharedPersonally ? (
-        <IconButton
-          type="button"
-          variant="ghost"
-          label={shareLabel}
-          aria-haspopup="dialog"
-          onClick={() => setSharing(true)}
-          icon={<ShareIcon className="size-6" />}
-        />
+      sharedPersonally || canManage ? (
+        <>
+          {sharedPersonally ? (
+            <IconButton
+              type="button"
+              variant="ghost"
+              label={shareLabel}
+              aria-haspopup="dialog"
+              onClick={() => setSharing(true)}
+              icon={<ShareIcon className="size-6" />}
+            />
+          ) : null}
+          {canManage ? (
+            <NotebookOptionsMenu
+              locale={locale}
+              onRename={() => setDialog("rename")}
+              onDelete={() => setDialog("delete")}
+            />
+          ) : null}
+        </>
       ) : undefined,
-    [shareLabel, sharedPersonally],
+    [canManage, locale, shareLabel, sharedPersonally],
   );
   useChromeHeader({
     backHref,
@@ -154,6 +182,32 @@ export function NotebookRecipesScreen({
           notebookId={notebookId}
           isOwner={state.notebook.access === "owner"}
           locale={locale}
+        />
+      ) : null}
+      {state.status === "ready" && dialog === "rename" ? (
+        <NotebookNameDialog
+          title={notebooksMessages[locale].renameTitle}
+          confirmLabel={notebooksMessages[locale].renameSave}
+          initialName={state.notebook.name}
+          failedMessage={notebooksMessages[locale].renameFailed}
+          locale={locale}
+          submit={(name) => renameNotebook(notebookId, name)}
+          onSaved={(notebook) => {
+            setState({ status: "ready", notebook });
+            setDialog(null);
+          }}
+          onClose={() => setDialog(null)}
+          goneHref={goneHref}
+          returnTo={returnPath}
+        />
+      ) : null}
+      {state.status === "ready" && dialog === "delete" ? (
+        <NotebookDeleteDialog
+          notebookId={notebookId}
+          notebookName={state.notebook.name}
+          goneHref={goneHref}
+          locale={locale}
+          onClose={() => setDialog(null)}
         />
       ) : null}
     </main>

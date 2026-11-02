@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass, field, replace
 from uuid import UUID, uuid4
 
 import pytest
@@ -63,6 +64,9 @@ class FakeNotebookRepo:
     calls: list[str] = field(default_factory=list)
     # The next kitchen_ids_for call returns nothing: another request created one meanwhile.
     hide_next_kitchen_read: bool = False
+    # Run once a lock is held, as a request that got there first would have.
+    on_kitchen_lock: Callable[[UUID], None] | None = None
+    on_notebook_lock: Callable[[UUID], None] | None = None
 
     def get(self, notebook_id: UUID) -> Notebook | None:
         return self.notebooks.get(notebook_id)
@@ -144,6 +148,21 @@ class FakeNotebookRepo:
 
     def lock_kitchen(self, kitchen_id: UUID) -> None:
         self.calls.append("lock_kitchen")
+        if kitchen_id not in self.kitchens.kitchens:
+            raise KitchenNotFoundError()
+        if self.on_kitchen_lock is not None:
+            self.on_kitchen_lock(kitchen_id)
+
+    def lock_notebook(self, notebook_id: UUID) -> None:
+        self.calls.append("lock_notebook")
+        if notebook_id not in self.notebooks:
+            raise NotebookNotFoundError()
+        if self.on_notebook_lock is not None:
+            self.on_notebook_lock(notebook_id)
+
+    def rename(self, notebook_id: UUID, name: str) -> None:
+        self.calls.append("rename")
+        self.notebooks[notebook_id] = replace(self.notebooks[notebook_id], name=name)
 
     def find_snapshot(self, kitchen_id: UUID, snapshot_key: UUID) -> UUID | None:
         self.calls.append("find_snapshot")
@@ -161,6 +180,7 @@ class FakeNotebookRepo:
 
     def delete(self, notebook_id: UUID) -> None:
         """ON DELETE SET NULL on users.default_notebook_id."""
+        self.calls.append("delete")
         del self.notebooks[notebook_id]
         for user_id, default_id in list(self.defaults.items()):
             if default_id == notebook_id:
@@ -548,6 +568,28 @@ def test_kitchen_capture_uses_a_notebook_created_under_the_lock_without_commit()
 
     assert result == CaptureNotebook(notebook_id=racing, created=False)
     assert world.committer.commits == 0
+
+
+def test_a_kitchen_list_leaves_out_a_notebook_deleted_as_it_is_read() -> None:
+    ana = uuid4()
+    world = _world({ana: "ana"})
+    home = _kitchen(world, ana)
+    stays = _kitchen_notebook(world, home, "Stays", ana)
+    goes = _kitchen_notebook(world, home, "Goes", ana)
+    listed = world.notebooks.kitchen_notebooks
+
+    def deleted_after_the_list(kitchen_id: UUID) -> list[Notebook]:
+        rows = listed(kitchen_id)
+        world.notebooks.delete(goes)
+        return rows
+
+    world.notebooks.kitchen_notebooks = deleted_after_the_list  # type: ignore[method-assign]
+
+    views = _list_kitchen(world).execute(
+        ListKitchenNotebooksCommand(actor_user_id=ana, kitchen_id=home)
+    )
+
+    assert [view.id for view in views] == [stays]
 
 
 def test_kitchen_capture_with_user_notebook_uses_it_without_creating() -> None:

@@ -31,6 +31,12 @@ class CreateNotebookRequest(BaseModel):
     name: str
 
 
+class NameNotebookRequest(BaseModel):
+    """A new name, or the name of a new kitchen notebook (spec 059). Its rules are in the domain."""
+
+    name: str
+
+
 class AddNotebookSnapshotRequest(BaseModel):
     """Add a personal notebook to a kitchen (spec 035, contracts/snapshots-api.md)."""
 

@@ -94,6 +94,73 @@ describe("notebooks BFF", () => {
     expect(forwardedCookie()).toBe("melos_session=tok");
   });
 
+  function write(url: string, method: string, body?: unknown) {
+    return new Request(url, {
+      method,
+      headers: { cookie: "melos_session=tok", "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }) as never;
+  }
+
+  it("PATCH /api/notebooks/[notebookId] forwards the name, cookie and status", async () => {
+    fetchMock.mockResolvedValue(json(notebook));
+    const { PATCH } = await import("@/app/api/notebooks/[notebookId]/route");
+
+    const response = await PATCH(
+      write("http://localhost/api/notebooks/n1", "PATCH", { name: "Soups" }),
+      { params: Promise.resolve({ notebookId: "n1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://api.test:8000/notebooks/n1",
+      expect.objectContaining({ method: "PATCH", body: JSON.stringify({ name: "Soups" }) }),
+    );
+    expect(forwardedCookie()).toBe("melos_session=tok");
+  });
+
+  it("PATCH answers 502 when the api cannot be reached", async () => {
+    fetchMock.mockRejectedValue(new TypeError("fetch failed"));
+    const { PATCH } = await import("@/app/api/notebooks/[notebookId]/route");
+
+    const response = await PATCH(
+      write("http://localhost/api/notebooks/n1", "PATCH", { name: "Soups" }),
+      { params: Promise.resolve({ notebookId: "n1" }) },
+    );
+
+    expect(response.status).toBe(502);
+    expect((await response.json()).code).toBe("bad_gateway");
+  });
+
+  it("DELETE /api/notebooks/[notebookId] passes a 204 through with no body", async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+    const { DELETE } = await import("@/app/api/notebooks/[notebookId]/route");
+
+    const response = await DELETE(write("http://localhost/api/notebooks/n1", "DELETE"), {
+      params: Promise.resolve({ notebookId: "n1" }),
+    });
+
+    expect(response.status).toBe(204);
+    expect(await response.text()).toBe("");
+    expect(forwardedCookie()).toBe("melos_session=tok");
+  });
+
+  it("POST /api/notebooks/kitchens/[kitchenId] forwards the name", async () => {
+    fetchMock.mockResolvedValue(json(notebook, 201));
+    const { POST } = await import("@/app/api/notebooks/kitchens/[kitchenId]/route");
+
+    const response = await POST(
+      write("http://localhost/api/notebooks/kitchens/k1", "POST", { name: "Holidays" }),
+      { params: Promise.resolve({ kitchenId: "k1" }) },
+    );
+
+    expect(response.status).toBe(201);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://api.test:8000/notebooks/kitchens/k1",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
   it("GET /api/notebooks/kitchens/[kitchenId] forwards cookie and the list", async () => {
     const body = {
       notebooks: [

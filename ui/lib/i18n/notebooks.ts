@@ -41,6 +41,29 @@ export const notebooksMessages = {
     newNotebookCreate: "Create",
     newNotebookNameRequired: "Enter a name for the notebook.",
     newNotebookFailed: "Could not create the notebook. Try again.",
+    notebookGone: "This notebook no longer exists.",
+    kitchenGone: "This kitchen is no longer available.",
+    notebookArchived: "This kitchen is archived, so its notebooks can't be changed.",
+    optionsLabel: "Notebook options",
+    renameAction: "Rename",
+    renameTitle: "Rename notebook",
+    renameSave: "Save",
+    renameFailed: "Could not rename the notebook. Try again.",
+    deleteAction: "Delete",
+    deleteTitle: (name: string) => `Delete ${name}?`,
+    deleteRecipes: (n: number) =>
+      n === 0
+        ? "It has no recipes. This can't be undone."
+        : n === 1
+          ? "This deletes 1 recipe. This can't be undone."
+          : `This deletes ${n} recipes. This can't be undone.`,
+    deletePeople: (n: number) =>
+      n === 1 ? "1 person will lose access." : `${n} people will lose access.`,
+    deleteDefault: "A new, empty notebook will take its place.",
+    deleteConfirm: "Delete",
+    deleteLoading: "Loading what will be deleted",
+    deleteLoadError: "Could not check what this notebook holds. Try again.",
+    deleteFailed: "Could not delete the notebook. It has not changed. Try again.",
     sharingOpen: "Share this notebook",
     sharingClose: "Close",
     sharingOpenInvites: "Open invites",
@@ -120,6 +143,29 @@ export const notebooksMessages = {
     newNotebookCreate: "Crear",
     newNotebookNameRequired: "Escribe un nombre para el cuaderno.",
     newNotebookFailed: "No se pudo crear el cuaderno. Inténtalo de nuevo.",
+    notebookGone: "Este cuaderno ya no existe.",
+    kitchenGone: "Esta cocina ya no está disponible.",
+    notebookArchived: "Esta cocina está archivada, así que sus cuadernos no se pueden cambiar.",
+    optionsLabel: "Opciones del cuaderno",
+    renameAction: "Cambiar nombre",
+    renameTitle: "Cambiar el nombre del cuaderno",
+    renameSave: "Guardar",
+    renameFailed: "No se pudo cambiar el nombre. Inténtalo de nuevo.",
+    deleteAction: "Eliminar",
+    deleteTitle: (name: string) => `¿Eliminar ${name}?`,
+    deleteRecipes: (n: number) =>
+      n === 0
+        ? "No tiene recetas. Esto no se puede deshacer."
+        : n === 1
+          ? "Esto elimina 1 receta. Esto no se puede deshacer."
+          : `Esto elimina ${n} recetas. Esto no se puede deshacer.`,
+    deletePeople: (n: number) =>
+      n === 1 ? "1 persona perderá el acceso." : `${n} personas perderán el acceso.`,
+    deleteDefault: "Un cuaderno nuevo y vacío tomará su lugar.",
+    deleteConfirm: "Eliminar",
+    deleteLoading: "Cargando lo que se eliminará",
+    deleteLoadError: "No se pudo revisar lo que contiene este cuaderno. Inténtalo de nuevo.",
+    deleteFailed: "No se pudo eliminar el cuaderno. No ha cambiado. Inténtalo de nuevo.",
     sharingOpen: "Compartir este cuaderno",
     sharingClose: "Cerrar",
     sharingOpenInvites: "Invitaciones abiertas",

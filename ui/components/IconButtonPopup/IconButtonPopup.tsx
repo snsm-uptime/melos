@@ -102,9 +102,22 @@ export function IconButtonPopup({
     }
 
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        rootRef.current?.querySelector<HTMLElement>("[aria-haspopup]")?.focus();
+        return;
+      }
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+      const items = Array.from(
+        rootRef.current?.querySelectorAll<HTMLElement>("[role='menuitem']:not(:disabled)") ?? [],
+      );
+      if (items.length === 0) return;
       event.preventDefault();
-      setOpen(false);
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      const at = items.indexOf(document.activeElement as HTMLElement);
+      const from = at === -1 && step === -1 ? 0 : at;
+      items[(from + step + items.length) % items.length].focus();
     }
 
     document.addEventListener("pointerdown", onPointerDown);

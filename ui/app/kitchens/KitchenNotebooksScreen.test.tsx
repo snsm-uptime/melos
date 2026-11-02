@@ -100,6 +100,26 @@ afterEach(() => {
 });
 
 describe("KitchenNotebooksScreen", () => {
+  const newTile = () =>
+    Array.from(document.querySelectorAll("button")).find(
+      (el) => el.textContent === "New notebook" || el.getAttribute("aria-label") === "New notebook",
+    );
+
+  it("offers a new notebook in an active kitchen", async () => {
+    await render();
+
+    expect(newTile()).toBeDefined();
+  });
+
+  it("offers no new notebook in an archived kitchen", async () => {
+    replies = [
+      { status: 200, body: { notebooks: [kitchenNotebook({ kitchen_is_archived: true })] } },
+    ];
+    await render();
+
+    expect(newTile()).toBeUndefined();
+  });
+
   it("shows every notebook as a card linking to its page, empty ones included", async () => {
     replies = [
       {

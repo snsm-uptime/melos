@@ -141,7 +141,10 @@ class NotebookRepository(Protocol):
         ...
 
     def lock_kitchen(self, kitchen_id: UUID) -> None:
-        """Serialize first creations in a kitchen (FOR NO KEY UPDATE on the kitchen row)."""
+        """Serialize first creations in a kitchen (FOR NO KEY UPDATE on the kitchen row).
+
+        Raises KitchenNotFoundError if the kitchen is gone. Reads made after it are current.
+        """
         ...
 
     def find_snapshot(self, kitchen_id: UUID, snapshot_key: UUID) -> UUID | None:
@@ -155,8 +158,12 @@ class NotebookRepository(Protocol):
     def lock_notebook(self, notebook_id: UUID) -> None:
         """Serialize sharing changes on a notebook (FOR NO KEY UPDATE on its row).
 
-        Raises NotebookNotFoundError if the notebook is gone.
+        Raises NotebookNotFoundError if the notebook is gone. Reads made after it are current.
         """
+        ...
+
+    def rename(self, notebook_id: UUID, name: str) -> None:
+        """Store a checked name. Nothing else about the notebook changes."""
         ...
 
     def owned_personal_ids(self, user_id: UUID) -> list[UUID]:
@@ -167,8 +174,11 @@ class NotebookRepository(Protocol):
         """Give a member the owner role. The old owner's row must already be gone."""
         ...
 
-    def delete_personal(self, notebook_id: UUID) -> None:
-        """Delete a personal notebook, what it holds and its captured source text."""
+    def delete(self, notebook_id: UUID) -> None:
+        """Delete a notebook of either kind, what it holds and its captured source text.
+
+        Takes FOR UPDATE on the notebook row first.
+        """
         ...
 
     def members_of(self, notebook_id: UUID) -> list[NotebookMemberRecord]:

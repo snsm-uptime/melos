@@ -99,8 +99,8 @@ class FakeNotebooks:
         assert "owner" not in [r for (n, _), r in self.roles.items() if n == notebook_id]
         self.roles[(notebook_id, user_id)] = "owner"
 
-    def delete_personal(self, notebook_id: UUID) -> None:
-        self.log.append("delete_personal")
+    def delete(self, notebook_id: UUID) -> None:
+        self.log.append("delete")
         del self.notebooks[notebook_id]
         for key in [key for key in self.roles if key[0] == notebook_id]:
             del self.roles[key]

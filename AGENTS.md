@@ -61,7 +61,9 @@ Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
   captures gets their own kitchen notebook created. Each kitchen member has
   their own kitchen notebook in a kitchen, created on their first capture. A
   kitchen made at signup, "My kitchen" ("Mi cocina" in Spanish), starts with
-  none; or as a snapshot. A snapshot is an independent kitchen copy of a
+  none; or empty, named by any member of an active kitchen (spec 059), which
+  counts as that member's own; or as a snapshot. A snapshot is an independent
+  kitchen copy of a
   personal notebook, added by any kitchen member. It keeps only an origin
   label (`source_notebook_id`, cleared if the original is deleted); the two
   never sync.
