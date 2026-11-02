@@ -3,13 +3,10 @@
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { discardCart, startCartEdit } = vi.hoisted(() => ({
-  discardCart: vi.fn(),
-  startCartEdit: vi.fn(),
-}));
-vi.mock("@/lib/cartClient", () => ({ discardCart, startCartEdit }));
+const { startCartEdit } = vi.hoisted(() => ({ startCartEdit: vi.fn() }));
+vi.mock("@/lib/cartClient", () => ({ startCartEdit }));
 
-import { CartEditingBar } from "./CartEditingBar";
+import { CartEditingBar, EDITING_NOTICE_MS } from "./CartEditingBar";
 import { mount } from "./testRoot";
 
 const START = new Date("2026-10-29T12:00:00Z").getTime();
@@ -23,15 +20,12 @@ describe("CartEditingBar", () => {
     vi.setSystemTime(START);
     view = mount();
     onChanged.mockReset();
-    discardCart.mockReset().mockResolvedValue({ ok: true, value: true });
     startCartEdit.mockReset().mockResolvedValue({ ok: true, value: {} });
   });
   afterEach(() => {
     view.unmount();
     vi.useRealTimers();
   });
-
-  const onSave = vi.fn();
 
   function render() {
     view.render(
@@ -40,29 +34,54 @@ describe("CartEditingBar", () => {
         idleExpiresAt={new Date(START + 5 * 60_000).toISOString()}
         locale="en"
         onChanged={onChanged}
-        onSave={onSave}
       />,
     );
   }
 
-  it("says I'm editing and offers Save and Discard, with no link", async () => {
+  const dismiss = () =>
+    view.container.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]');
+
+  it("says I'm editing, with only a dismiss button", () => {
     render();
     const status = view.container.querySelector('[role="status"]');
     expect(status?.textContent).toContain(
       "You're editing the cart. Others can't change it until you save or discard.",
     );
     expect(view.container.querySelector("a")).toBeNull();
-    const save = Array.from(view.container.querySelectorAll("button")).find(
-      (b) => b.textContent === "Save",
+    expect(view.container.querySelectorAll("button")).toHaveLength(1);
+    expect(dismiss()).not.toBeNull();
+  });
+
+  it("closes when dismissed", () => {
+    render();
+    act(() => dismiss()?.click());
+    expect(view.container.textContent).toBe("");
+  });
+
+  it("closes on its own after 30 seconds", () => {
+    render();
+    act(() => vi.advanceTimersByTime(EDITING_NOTICE_MS - 1));
+    expect(view.container.textContent).toContain("You're editing the cart.");
+    act(() => vi.advanceTimersByTime(1));
+    expect(view.container.textContent).toBe("");
+  });
+
+  it("still warns before the idle limit after the notice has closed", () => {
+    render();
+    act(() => dismiss()?.click());
+    act(() => vi.advanceTimersByTime(4 * 60_000));
+    expect(view.container.textContent).toContain(
+      "Your cart changes will be discarded in 1 minute",
     );
-    act(() => save?.click());
-    expect(onSave).toHaveBeenCalled();
-    const discard = Array.from(view.container.querySelectorAll("button")).find(
-      (b) => b.textContent === "Discard",
-    );
-    await act(async () => discard?.click());
-    expect(discardCart).toHaveBeenCalledWith("k1");
-    expect(onChanged).toHaveBeenCalled();
+  });
+
+  it("does not auto-close the warning, but dismissing does", () => {
+    render();
+    act(() => vi.advanceTimersByTime(4 * 60_000));
+    act(() => vi.advanceTimersByTime(EDITING_NOTICE_MS));
+    expect(view.container.textContent).toContain("Keep editing");
+    act(() => dismiss()?.click());
+    expect(view.container.textContent).toBe("");
   });
 
   it("warns a minute before the end, keeps editing, and says when discarded", async () => {

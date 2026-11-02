@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { PencilIcon } from "@/app/icons";
+import { CloseIcon, PencilIcon, SaveIcon, TrashIcon } from "@/app/icons";
+import { ActionDialog } from "@/components/ActionDialog";
 import { useChromeHeader } from "@/components/ChromeBack";
 import { IconButton } from "@/components/IconButton";
 import { useToast, useToastDock } from "@/components/Toast";
@@ -61,6 +62,7 @@ export function CartScreen({ kitchenId, locale }: { kitchenId: string; locale: L
   const [dropped, setDropped] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const queued = useRef<LocalDraft | null>(null);
 
@@ -175,20 +177,51 @@ export function CartScreen({ kitchenId, locale }: { kitchenId: string; locale: L
     actions.current = { edit, save, discard, load };
   });
   const canStartEdit = state.status === "ready" && state.cart.can_edit && !editing;
-  const trailing = useMemo(
-    () =>
-      canStartEdit ? (
-        <IconButton
-          type="button"
-          variant="ghost"
-          label={t.edit}
-          disabled={pending}
-          onClick={() => void actions.current.edit()}
-          icon={<PencilIcon className="size-6" />}
-        />
-      ) : null,
-    [canStartEdit, pending, t.edit],
-  );
+  const nothingToClear = !draft || draft.entries.length === 0;
+  // Edit and Clear share this slot, so starting an edit moves nothing on the page.
+  const trailing = useMemo(() => {
+    if (editing) {
+      return (
+        <>
+          <IconButton
+            type="button"
+            variant="ghost"
+            tone="danger"
+            label={t.clearCart}
+            disabled={pending || nothingToClear}
+            onClick={() => setClearing(true)}
+            icon={<TrashIcon className="size-6" />}
+          />
+          <IconButton
+            type="button"
+            variant="ghost"
+            label={t.save}
+            disabled={pending}
+            onClick={() => void actions.current.save()}
+            icon={<SaveIcon className="size-6" />}
+          />
+          <IconButton
+            type="button"
+            variant="ghost"
+            label={t.discard}
+            disabled={pending}
+            onClick={() => void actions.current.discard()}
+            icon={<CloseIcon className="size-6" />}
+          />
+        </>
+      );
+    }
+    return canStartEdit ? (
+      <IconButton
+        type="button"
+        variant="ghost"
+        label={t.edit}
+        disabled={pending}
+        onClick={() => void actions.current.edit()}
+        icon={<PencilIcon className="size-6" />}
+      />
+    ) : null;
+  }, [canStartEdit, editing, nothingToClear, pending, t.clearCart, t.discard, t.edit, t.save]);
   useChromeHeader({
     backHref: `/kitchens/${encodeURIComponent(kitchenId)}`,
     title: t.cart,
@@ -202,12 +235,9 @@ export function CartScreen({ kitchenId, locale }: { kitchenId: string; locale: L
           idleExpiresAt={idleExpiresAt}
           locale={locale}
           onChanged={() => void actions.current.load()}
-          onSave={() => void actions.current.save()}
-          onDiscard={() => void actions.current.discard()}
-          pending={pending}
         />
       ) : null,
-    [editing, idleExpiresAt, kitchenId, locale, pending],
+    [editing, idleExpiresAt, kitchenId, locale],
   );
   // The editing bar is docked above the tab bar, on this page only (FR-017a).
   useToastDock(bar);
@@ -249,9 +279,21 @@ export function CartScreen({ kitchenId, locale }: { kitchenId: string; locale: L
         kitchenId={kitchenId}
         locale={locale}
         dropped={dropped}
-        pending={pending}
         onDraftChange={change}
       />
+      <ActionDialog
+        open={clearing}
+        title={t.clearConfirmTitle}
+        confirmLabel={t.clearConfirm}
+        cancelLabel={t.cancel}
+        onOpenChange={setClearing}
+        onConfirm={() => {
+          setClearing(false);
+          if (draft) change({ ...draft, entries: [] });
+        }}
+      >
+        <p className="m-0">{t.clearConfirmBody}</p>
+      </ActionDialog>
       <ShoppingListSection
         kitchenId={kitchenId}
         locale={locale}

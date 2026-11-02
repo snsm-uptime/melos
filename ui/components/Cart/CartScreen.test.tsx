@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { act } from "react";
+import { Children, act, type ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const replace = vi.fn();
@@ -58,6 +58,24 @@ function pressEdit() {
   const pencil = chrome.trailing as { props: { onClick: () => void; label: string } };
   expect(pencil.props.label).toBe("Edit");
   act(() => pencil.props.onClick());
+}
+
+type ChromeAction = ReactElement<{
+  onClick: () => void;
+  label: string;
+  disabled?: boolean;
+  tone?: string;
+}>;
+
+/** One icon button at the end of the chrome, by its name. */
+function chromeAction(label: string) {
+  const trailing = chrome.trailing as ReactElement<{ label?: string; children?: unknown }>;
+  const buttons = (
+    trailing.props.label ? [trailing] : Children.toArray(trailing.props.children as never)
+  ) as ChromeAction[];
+  const button = buttons.find((item) => item.props.label === label);
+  if (!button) throw new Error(`no chrome action named ${label}`);
+  return button;
 }
 
 describe("CartScreen", () => {
@@ -178,7 +196,7 @@ describe("CartScreen", () => {
     await flush();
     const before = shopping.fetchShoppingList.mock.calls.length;
 
-    click(view.container, "Discard");
+    act(() => chromeAction("Discard").props.onClick());
     await flush();
 
     expect(shopping.fetchShoppingList.mock.calls.length).toBeGreaterThan(before);
@@ -215,11 +233,61 @@ describe("CartScreen", () => {
     expect(client.putCartDraft).toHaveBeenCalledWith("k1", {
       items: [{ recipe_id: "a", servings: 3 }],
     });
-    click(view.container, "Save");
+    act(() => chromeAction("Save").props.onClick());
     await flush();
     expect(client.saveCart).toHaveBeenCalledWith("k1");
     expect(view.container.textContent).toContain("Servings 3");
     expect(viewport()).toBeNull();
+  });
+
+  it("swaps the pencil for Clear cart, Save and a close button that discards, in that order", async () => {
+    await render();
+    expect(chromeAction("Edit")).toBeTruthy();
+
+    client.fetchCart.mockResolvedValue({ ok: true, value: editing });
+    client.startCartEdit.mockResolvedValue({ ok: true, value: editing });
+    pressEdit();
+    await flush();
+
+    expect(chromeAction("Clear cart").props.tone).toBe("danger");
+    expect(chromeAction("Clear cart").props.disabled).toBe(false);
+    expect(chromeAction("Discard").props.disabled).toBe(false);
+    expect(chromeAction("Save").props.disabled).toBe(false);
+    const order = Children.toArray(
+      (chrome.trailing as ReactElement<{ children: never }>).props.children,
+    ) as ChromeAction[];
+    expect(order.map((button) => button.props.label)).toEqual(["Clear cart", "Save", "Discard"]);
+  });
+
+  it("clears the draft only after the confirmation", async () => {
+    client.fetchCart.mockResolvedValue({ ok: true, value: editing });
+    client.putCartDraft.mockResolvedValue({ ok: true, value: editing });
+    await render();
+
+    act(() => chromeAction("Clear cart").props.onClick());
+    await flush();
+    expect(document.body.textContent).toContain("Remove every recipe from the cart?");
+    expect(client.putCartDraft).not.toHaveBeenCalled();
+
+    const confirm = Array.from(document.body.querySelectorAll("button")).filter(
+      (b) => b.textContent === "Clear",
+    );
+    act(() => confirm[confirm.length - 1].click());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DRAFT_DEBOUNCE_MS);
+    });
+
+    expect(client.putCartDraft).toHaveBeenCalledTimes(1);
+    expect(client.putCartDraft.mock.lastCall?.[1]).toEqual({ items: [] });
+  });
+
+  it("disables Clear cart when the draft is empty", async () => {
+    client.fetchCart.mockResolvedValue({
+      ok: true,
+      value: { ...editing, entries: [], draft: { entries: [], dropped_recipe_ids: [] } },
+    });
+    await render();
+    expect(chromeAction("Clear cart").props.disabled).toBe(true);
   });
 
   it("says the changes were discarded when the lock was lost", async () => {
@@ -227,7 +295,7 @@ describe("CartScreen", () => {
     client.saveCart.mockResolvedValue({ ok: false, status: 409, code: "not_editing" });
     await render();
     client.fetchCart.mockResolvedValue({ ok: true, value: cart({ entries: [entry("a")] }) });
-    click(view.container, "Save");
+    act(() => chromeAction("Save").props.onClick());
     await flush();
     expect(view.container.textContent).toContain("Your cart changes were discarded");
     expect(chrome.trailing).not.toBeNull();

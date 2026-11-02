@@ -10,13 +10,6 @@ function buttons(container: HTMLElement) {
   return Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
 }
 
-function click(container: HTMLElement, label: string) {
-  const button = Array.from(container.querySelectorAll("button")).find(
-    (b) => b.textContent === label,
-  );
-  act(() => button?.click());
-}
-
 describe("CartView", () => {
   let view: ReturnType<typeof mount>;
   const handlers = {
@@ -106,7 +99,7 @@ describe("CartView", () => {
       expect(view.container.querySelector("[data-testid=factor]")?.textContent).toBe("×1.5");
     });
 
-    it("removes an entry; Save and Discard live on the docked bar, not in the view", () => {
+    it("removes an entry; Save and Discard are not in the view", () => {
       render({ cart: mine, draft });
       const remove = view.container.querySelector('button[aria-label="Remove Recipe a"]');
       expect(remove?.textContent).not.toContain("Remove");
@@ -116,15 +109,9 @@ describe("CartView", () => {
       expect(buttons(view.container)).not.toContain("Discard");
     });
 
-    it("clears after confirmation", () => {
+    it("has no clear control of its own, so the list does not shift when editing starts", () => {
       render({ cart: mine, draft });
-      click(view.container, "Clear");
-      expect(document.body.textContent).toContain("Remove every recipe from the cart?");
-      const confirm = Array.from(document.body.querySelectorAll("button")).filter(
-        (b) => b.textContent === "Clear",
-      );
-      act(() => confirm[confirm.length - 1].click());
-      expect(handlers.onDraftChange).toHaveBeenLastCalledWith({ ...draft, entries: [] });
+      expect(buttons(view.container).join()).not.toContain("Clear");
     });
 
     it("shows the dropped-recipes banner", () => {
