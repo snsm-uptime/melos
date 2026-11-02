@@ -43,7 +43,7 @@ export default async function Home() {
             className="fill-accent/10"
           />
         </svg>
-        <div className="mx-auto flex max-w-2xl flex-col items-center gap-4 px-6 py-20 text-center">
+        <div className="mx-auto flex max-w-2xl flex-col items-center gap-4 px-page-gutter py-20 text-center">
           <h1 className="m-0 text-[2.25rem] font-semibold leading-[1.15]">
             Melos
           </h1>
@@ -57,7 +57,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-4xl grid-cols-1 gap-6 px-6 py-14 sm:grid-cols-3">
+      <section className="mx-auto grid max-w-4xl grid-cols-1 gap-6 px-page-gutter py-14 sm:grid-cols-3">
         <FeatureCard
           icon={
             <path d="M4 6h16M4 6l2-2m-2 2 2 2M4 12h16M4 12l2-2m-2 2 2 2M4 18h16M4 18l2-2m-2 2 2 2" />

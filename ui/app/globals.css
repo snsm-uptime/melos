@@ -152,6 +152,14 @@
   --lift-ambient: rgb(0 0 0 / 0.15);
 }
 
+/* Phones get a narrower page gutter so text has more room. Tailwind's md breakpoint is the same
+   line the side panel switches at. */
+@media (width < 48rem) {
+  :root {
+    --page-gutter: 1rem;
+  }
+}
+
 html.light {
   color-scheme: light;
 }

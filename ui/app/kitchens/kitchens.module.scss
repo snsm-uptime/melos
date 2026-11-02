@@ -1,6 +1,6 @@
 .main {
   min-height: 100%;
-  padding: 1rem 1.5rem;
+  padding: 1rem var(--page-gutter);
   font-family: var(--font-ui), system-ui, sans-serif;
 }
 
