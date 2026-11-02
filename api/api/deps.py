@@ -26,6 +26,7 @@ from adapters.persistence.repositories import (
 )
 from adapters.persistence.sessions import SqlAlchemySessionStore
 from adapters.persistence.shopping_lists import SqlAlchemyShoppingListRepository
+from adapters.persistence.units import SqlAlchemyUnitRepository
 from application.carts import (
     AddToDraftService,
     DiscardCartService,
@@ -36,7 +37,13 @@ from application.carts import (
     StartCartEditService,
 )
 from application.notebooks import ResolveCaptureNotebookService
-from application.ports import PasswordHasher, PreferencesRepository, SessionRef, SessionStore
+from application.ports import (
+    PasswordHasher,
+    PreferencesRepository,
+    SessionRef,
+    SessionStore,
+    UnitRepository,
+)
 from application.rate_limit import SlidingWindowRateLimiter, resolve_trusted_client_ip
 from application.recipe_capture import CaptureRecipeText
 from application.recipe_extraction import RecipeExtraction
@@ -167,6 +174,10 @@ def require_session_ref(
             detail="Not authenticated.",
         )
     return ref
+
+
+def get_unit_repository(db: Session = Depends(get_db)) -> UnitRepository:
+    return SqlAlchemyUnitRepository(db)
 
 
 def get_vocabulary_answer(request: Request) -> dict:

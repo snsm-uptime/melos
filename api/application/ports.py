@@ -638,6 +638,18 @@ class IngredientLineReader(Protocol):
         ...
 
 
+class UnitRepository(Protocol):
+    """The unit table (spec 055). A person's other units; the ten defaults live in the domain."""
+
+    def extras_for(self, user_id: UUID) -> list[str]:
+        """Sorted names that are default or reference the person, without the ten."""
+        ...
+
+    def add_user(self, names: Sequence[str], user_id: UUID) -> None:
+        """Add the person to each name's row, creating it when missing. Safe to repeat."""
+        ...
+
+
 class SidePanelRepository(Protocol):
     """Everything the side panel reads about the caller (spec 064)."""
 
