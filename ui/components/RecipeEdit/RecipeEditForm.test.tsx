@@ -337,9 +337,18 @@ describe("RecipeEditForm", () => {
 
   describe("custom units (spec 055)", () => {
     const pickers = () =>
-      Array.from(document.querySelectorAll<HTMLSelectElement>('select[aria-label="Unit"]'));
-    const options = (select: HTMLSelectElement) =>
-      Array.from(select.options).map((option) => option.value);
+      Array.from(document.querySelectorAll<HTMLButtonElement>('button[aria-label="Unit"]'));
+    const unitOf = (picker: HTMLButtonElement) => picker.querySelector("span")?.textContent;
+    const openPicker = (picker: HTMLButtonElement) => act(() => picker.click());
+    const listed = () =>
+      Array.from(document.querySelectorAll<HTMLElement>('[role="option"]'));
+    /** The picker's entries, read with its panel open. */
+    function options(picker: HTMLButtonElement) {
+      openPicker(picker);
+      const labels = listed().map((option) => option.textContent);
+      openPicker(picker);
+      return labels;
+    }
     const questions = () =>
       Array.from(container.querySelectorAll("[data-unit-question]")).map((el) =>
         el.getAttribute("data-unit-question"),
@@ -361,14 +370,8 @@ describe("RecipeEditForm", () => {
     }
 
     async function chooseOther(index = 0) {
-      const picker = pickers()[index];
-      act(() => {
-        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set?.call(
-          picker,
-          "__other__",
-        );
-        picker.dispatchEvent(new Event("change", { bubbles: true }));
-      });
+      openPicker(pickers()[index]);
+      act(() => listed().at(-1)?.click());
     }
 
     async function typeUnit(word: string) {
@@ -382,7 +385,22 @@ describe("RecipeEditForm", () => {
 
     it("offers the person's vocabulary and Other", async () => {
       await renderLoaded();
-      expect(options(pickers()[0])).toEqual(["", ...TEN, "lata", "__other__"]);
+      expect(options(pickers()[0])).toEqual(["—", ...TEN, "lata", "Other…"]);
+    });
+
+    it("carries a search with no match into the typed unit field", async () => {
+      await renderLoaded();
+      openPicker(pickers()[0]);
+      const search = document.querySelector<HTMLInputElement>('[aria-label="Search units"]')!;
+      act(() => setValue(search, "sobres"));
+      expect(listed().map((option) => option.textContent)).toEqual(["Other…"]);
+      expect(document.body.textContent).toContain("No unit found");
+      act(() => {
+        search.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      });
+      expect(
+        document.querySelector<HTMLInputElement>('[aria-label="Your own unit"]')?.value,
+      ).toBe("sobres");
     });
 
     it("shows another member's unit on its own line and asks nothing about it", async () => {
@@ -405,7 +423,7 @@ describe("RecipeEditForm", () => {
       await chooseOther();
       await typeUnit("Sobres");
       expect(questions()).toEqual(["sobre"]);
-      expect(pickers()[0].value).toBe("sobre");
+      expect(unitOf(pickers()[0])).toBe("sobre");
       await act(async () =>
         (container.querySelector('[data-unit-question="sobre"] button') as HTMLButtonElement).click(),
       );
@@ -419,7 +437,7 @@ describe("RecipeEditForm", () => {
       await chooseOther();
       await typeUnit("tazas");
       expect(questions()).toEqual([]);
-      expect(pickers()[0].value).toBe("cup");
+      expect(unitOf(pickers()[0])).toBe("cup");
     });
 
     it("keeps the line flagged when the word can't be a unit", async () => {

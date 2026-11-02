@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { formatQuantity } from "@/lib/recipeLines";
 
 import { Card, CardBody, CardHeader } from "@/components/Card";
+import { SearchableSelect } from "@/components/soft-ledger/SearchableSelect";
 import type { DraftErrors } from "@/lib/capture/draftRules";
 import {
   chooseLineMatch,
@@ -189,37 +190,36 @@ function EditableIngredientLine({
                       onBlur={() => void leaveTypedUnit()}
                     />
                   ) : (
-                  <select
+                  <SearchableSelect
                     aria-label={t.unit}
+                    searchLabel={unitText.search}
+                    noResults={unitText.noMatch}
                     className={amountClassName}
                     value={line.unit ?? ""}
                     disabled={line.vague}
-                    onChange={(event) => {
+                    options={[
+                      { value: "", label: "—" },
+                      ...unitOptions.map((unit) => ({ value: unit, label: unit })),
+                      ...(onCheckUnit
+                        ? [{ value: OTHER_UNIT, label: unitText.other, pinned: true }]
+                        : []),
+                    ]}
+                    onChange={(value, query) => {
                       setCachedAmount(null);
-                      if (event.target.value === OTHER_UNIT) {
+                      if (value === OTHER_UNIT) {
                         // No unit until the word is checked, so Save can't go out without it.
+                        setTypedUnit(query);
                         setTypingUnit(true);
                         onChange({ ...line, unit: null, size: null });
                         return;
                       }
                       onChange({
                         ...line,
-                        unit:
-                          event.target.value === "" ? null : event.target.value,
-                        size: event.target.value === "unit" ? line.size : null,
+                        unit: value === "" ? null : value,
+                        size: value === "unit" ? line.size : null,
                       });
                     }}
-                  >
-                    <option value="">—</option>
-                    {unitOptions.map((unit) => (
-                      <option key={unit} value={unit}>
-                        {unit}
-                      </option>
-                    ))}
-                    {onCheckUnit ? (
-                      <option value={OTHER_UNIT}>{unitText.other}</option>
-                    ) : null}
-                  </select>
+                  />
                   )}
                   {sizeEnabled ? (
                     <select
