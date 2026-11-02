@@ -746,7 +746,7 @@ stories:
     source: prd.md Appendix A (User), Appendix D
     notes: >
       No DELETE /auth/me route exists in the code (checked 2026-10-23), although the PRD says the
-      endpoint exists. Depends on S-058 (ownership passing), which must land first. It must call
+      endpoint exists. Depends on S-058 (ownership passing), which must land first. It must also remove the person from unit references (spec 055 FR-020b) in the same transaction. It must call
       PassOwnedNotebooksService before deleting the user row, in the same transaction, under the
       conditions in specs/058-notebook-ownership-passing/contracts/ownership-rule.md.
 
@@ -767,18 +767,16 @@ stories:
       (S-019) and the categories sent to the chat. Plan and check list: dev/docs/mvp-descope-categories.md.
 
   - id: S-055
-    title: Trial units for unknown ingredient units, promoted to allowed units by repeated use
+    title: Custom units confirmed by each person, and the admin dashboard
     epic: Capture
     priority: later
     status: backlog
-    source: user decision in spec 015 review (unit mapping contradiction, FR-006 vs FR-006a)
+    source: user decision in spec 015 review (unit mapping contradiction, FR-006 vs FR-006a); redirected 2026-11-01
     notes: >
-      S-015 keeps unknown units as invalid output (FR-006a). This story is the deferred alternative.
-      Needs: (1) a lookup from the extractor that returns "unknown unit" without writing anything;
-      (2) a trial_unit table written by a separate job, never by the extraction (FR-011, SC-007);
-      (3) a promotion rule, with "mention" defined (per recipe or per line) and counted by distinct
-      user, not by raw count, so one account cannot promote a unit for everyone; the threshold is
-      more than 3 mentions as proposed; (4) a maintainer review step before a trial unit becomes
-      allowed; (5) Spanish and English forms for each promoted unit; (6) a rule for how a promoted
-      unit scales and displays, since it has no conversion. Check the constitution's privacy rules
-      before any cross-user count is designed.
+      Spec: specs/055-custom-units. A word the AI does not recognize as a unit is offered to the
+      person, and on their yes joins their list at save. One unit table with one row per name:
+      user_references (uuid[] of active accounts), a count computed by the database, is_default.
+      Replaces the earlier trial_unit table and job. Adds users.is_admin (auth change approved by
+      the owner 2026-11-01) and a read-only dashboard of units, ingredients, recipes and users.
+      Promotion to default, at more than 5 distinct people with a maintainer review, is a later
+      story. Before it, unit forms in Spanish and English and plural display stay open.
