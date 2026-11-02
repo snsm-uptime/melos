@@ -204,4 +204,130 @@ describe("notebooks BFF", () => {
     expect(response.status).toBe(502);
     expect((await response.json()).code).toBe("bad_gateway");
   });
+
+  it("POST /api/notebooks forwards the name and the cookie", async () => {
+    fetchMock.mockResolvedValue(json(notebook, 201));
+    const { POST } = await import("@/app/api/notebooks/route");
+
+    const response = await POST(
+      new Request("http://localhost/api/notebooks", {
+        method: "POST",
+        headers: { cookie: "melos_session=tok", "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Postres" }),
+      }) as never,
+    );
+
+    expect(response.status).toBe(201);
+    expect(fetchMock.mock.calls[0][0]).toBe("http://api.test:8000/notebooks");
+    expect((fetchMock.mock.calls[0][1] as RequestInit).body).toBe(
+      JSON.stringify({ name: "Postres" }),
+    );
+    expect(forwardedCookie()).toBe("melos_session=tok");
+  });
+
+  describe("sharing routes (spec 057)", () => {
+    const ctx = { params: Promise.resolve({ notebookId: "n1" }) };
+    const send = (url: string, method: string, body?: unknown) =>
+      new Request(url, {
+        method,
+        headers: { cookie: "melos_session=tok", "Content-Type": "application/json" },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      }) as never;
+
+    it("POST invites forwards the body, the cookie and the answer", async () => {
+      fetchMock.mockResolvedValue(json({ status: "sent" }, 201));
+      const { POST } = await import("@/app/api/notebooks/[notebookId]/invites/route");
+
+      const response = await POST(
+        send("http://localhost/api/notebooks/n1/invites", "POST", { email: "b@x.test" }),
+        ctx,
+      );
+
+      expect(response.status).toBe(201);
+      expect(fetchMock.mock.calls[0][0]).toBe("http://api.test:8000/notebooks/n1/invites");
+      expect((fetchMock.mock.calls[0][1] as RequestInit).body).toBe(
+        JSON.stringify({ email: "b@x.test" }),
+      );
+      expect(forwardedCookie()).toBe("melos_session=tok");
+    });
+
+    it("GET invites passes a refusal through", async () => {
+      fetchMock.mockResolvedValue(json({ code: "notebook_owner_only" }, 403));
+      const { GET } = await import("@/app/api/notebooks/[notebookId]/invites/route");
+      const response = await GET(get("http://localhost/api/notebooks/n1/invites"), ctx);
+      expect(response.status).toBe(403);
+      expect(await response.json()).toEqual({ code: "notebook_owner_only" });
+    });
+
+    it("answers 502 when the api can't be reached", async () => {
+      fetchMock.mockRejectedValue(new Error("down"));
+      const { GET } = await import("@/app/api/notebooks/[notebookId]/members/route");
+      const response = await GET(get("http://localhost/api/notebooks/n1/members"), ctx);
+      expect(response.status).toBe(502);
+      expect((await response.json()).code).toBe("bad_gateway");
+    });
+
+    it("DELETE invite keeps a 204 empty", async () => {
+      fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+      const { DELETE } = await import(
+        "@/app/api/notebooks/[notebookId]/invites/[inviteId]/route"
+      );
+      const response = await DELETE(send("http://localhost/x", "DELETE"), {
+        params: Promise.resolve({ notebookId: "n1", inviteId: "i1" }),
+      });
+      expect(response.status).toBe(204);
+      expect(fetchMock.mock.calls[0][0]).toBe("http://api.test:8000/notebooks/n1/invites/i1");
+    });
+
+    it("POST resend goes to the invite's resend route", async () => {
+      fetchMock.mockResolvedValue(json({ status: "sent" }));
+      const { POST } = await import(
+        "@/app/api/notebooks/[notebookId]/invites/[inviteId]/resend/route"
+      );
+      await POST(send("http://localhost/x", "POST"), {
+        params: Promise.resolve({ notebookId: "n1", inviteId: "i1" }),
+      });
+      expect(fetchMock.mock.calls[0][0]).toBe(
+        "http://api.test:8000/notebooks/n1/invites/i1/resend",
+      );
+    });
+
+    it("DELETE members/me leaves", async () => {
+      fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+      const { DELETE } = await import("@/app/api/notebooks/[notebookId]/members/me/route");
+      const response = await DELETE(send("http://localhost/x", "DELETE"), ctx);
+      expect(response.status).toBe(204);
+      expect(fetchMock.mock.calls[0][0]).toBe("http://api.test:8000/notebooks/n1/members/me");
+    });
+
+    it("DELETE members/[userId] removes", async () => {
+      fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+      const { DELETE } = await import("@/app/api/notebooks/[notebookId]/members/[userId]/route");
+      await DELETE(send("http://localhost/x", "DELETE"), {
+        params: Promise.resolve({ notebookId: "n1", userId: "u2" }),
+      });
+      expect(fetchMock.mock.calls[0][0]).toBe("http://api.test:8000/notebooks/n1/members/u2");
+    });
+
+    it("GET invite preview forwards the token and needs no session", async () => {
+      fetchMock.mockResolvedValue(json({ notebook_name: "Recetas" }));
+      const { GET } = await import("@/app/api/invites/notebook/preview/route");
+      const request = Object.assign(new Request("http://localhost/x"), {
+        nextUrl: new URL("http://localhost/api/invites/notebook/preview?token=a%20b"),
+      });
+      await GET(request as never);
+      expect(fetchMock.mock.calls[0][0]).toBe(
+        "http://api.test:8000/invites/notebook/preview?token=a+b",
+      );
+    });
+
+    it("POST invite accept forwards the token and the cookie", async () => {
+      fetchMock.mockResolvedValue(json({ notebook_id: "n1" }));
+      const { POST } = await import("@/app/api/invites/notebook/accept/route");
+      const response = await POST(send("http://localhost/x", "POST", { token: "t" }));
+      expect(response.status).toBe(200);
+      expect(fetchMock.mock.calls[0][0]).toBe("http://api.test:8000/invites/notebook/accept");
+      expect(forwardedCookie()).toBe("melos_session=tok");
+    });
+  });
 });

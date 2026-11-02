@@ -25,6 +25,12 @@ class NotebookResponse(BaseModel):
     is_own_capture_notebook: bool
 
 
+class CreateNotebookRequest(BaseModel):
+    """A new personal notebook (S-059). The name's rules are in the domain."""
+
+    name: str
+
+
 class AddNotebookSnapshotRequest(BaseModel):
     """Add a personal notebook to a kitchen (spec 035, contracts/snapshots-api.md)."""
 

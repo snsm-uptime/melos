@@ -61,8 +61,10 @@ export function RecipeCard({ recipe, locale, showNotebook = false, from, cart }:
   const t = recipeListMessages[locale];
   const c = cartMessages[locale];
   return (
+    // `isolate` keeps the z-10 of the link and cart control inside the card; they only need to
+    // clear the title link's overlay, and must not paint over the app's open menus.
     <article
-      className={`relative flex min-w-0 items-center gap-[var(--space-3)] rounded-[var(--radius-md)] border border-border ${
+      className={`relative isolate flex min-w-0 items-center gap-[var(--space-3)] rounded-[var(--radius-md)] border border-border ${
         cart?.inCart ? "bg-[var(--card-selected)]" : "bg-surface"
       } p-[var(--space-3)]${
         // The title link's overlay makes the whole card the target; show that it is one.

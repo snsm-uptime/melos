@@ -47,6 +47,11 @@ describe("RecipeCard", () => {
     expect(container.textContent).toContain("7 ingredients");
   });
 
+  it("keeps its raised controls inside the card, under the app's open menus", () => {
+    render();
+    expect((container.querySelector("article") as HTMLElement).className).toContain("isolate");
+  });
+
   it("has no link, button or checkbox", () => {
     render();
     expect(container.querySelector("a, button, input")).toBeNull();

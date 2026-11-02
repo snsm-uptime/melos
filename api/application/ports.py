@@ -97,6 +97,13 @@ class NotebookFacts:
         return self.notebook.snapshot_key is not None
 
 
+@dataclass(frozen=True, slots=True)
+class NotebookMemberRecord:
+    user_id: UUID
+    alias: str | None
+    role: NotebookRole
+
+
 class NotebookRepository(Protocol):
     def get(self, notebook_id: UUID) -> Notebook | None: ...
 
@@ -141,6 +148,78 @@ class NotebookRepository(Protocol):
 
     def has_snapshot_of(self, kitchen_id: UUID, source_notebook_id: UUID) -> bool:
         """Whether the kitchen has a snapshot still labelled as coming from this notebook."""
+        ...
+
+    def lock_notebook(self, notebook_id: UUID) -> None:
+        """Serialize sharing changes on a notebook (FOR NO KEY UPDATE on its row)."""
+        ...
+
+    def members_of(self, notebook_id: UUID) -> list[NotebookMemberRecord]:
+        """The owner, then members by join date."""
+        ...
+
+    def role_of(self, notebook_id: UUID, user_id: UUID) -> NotebookRole | None:
+        """The person's role in a personal notebook, or None when they have no membership."""
+        ...
+
+    def add_member(self, notebook_id: UUID, user_id: UUID) -> None:
+        """Insert a membership with the role of member."""
+        ...
+
+    def delete_membership(self, notebook_id: UUID, user_id: UUID) -> bool:
+        """Delete the membership, ending the person's edit locks; True when a row went."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class NotebookInviteRecord:
+    id: UUID
+    notebook_id: UUID
+    email: str
+    token_hash: str
+    invited_by: UUID | None
+    expires_at: datetime
+    used_at: datetime | None
+
+
+class NotebookInviteRepository(Protocol):
+    def create(
+        self,
+        *,
+        invite_id: UUID,
+        notebook_id: UUID,
+        email: str,
+        token_hash: str,
+        invited_by: UUID,
+        expires_at: datetime,
+    ) -> None: ...
+
+    def delete_open_for_email(self, notebook_id: UUID, email: str) -> None:
+        """End any unused invite for this notebook and email (FR-007)."""
+        ...
+
+    def list_unused(self, notebook_id: UUID) -> list[NotebookInviteRecord]:
+        """Open and expired invites, most recently sent first."""
+        ...
+
+    def get(self, notebook_id: UUID, invite_id: UUID) -> NotebookInviteRecord | None:
+        """The invite, only when it belongs to this notebook."""
+        ...
+
+    def get_by_token_hash(self, token_hash: str) -> NotebookInviteRecord | None: ...
+
+    def rotate(
+        self, invite_id: UUID, *, token_hash: str, invited_by: UUID, expires_at: datetime
+    ) -> None:
+        """Give the same row a new link and a new period, ending the earlier link."""
+        ...
+
+    def delete(self, notebook_id: UUID, invite_id: UUID) -> bool:
+        """Delete an unused invite of this notebook; True when a row went."""
+        ...
+
+    def claim(self, invite_id: UUID, *, used_at: datetime) -> bool:
+        """Mark an unused, unexpired invite as used; False when someone else got there first."""
         ...
 
 

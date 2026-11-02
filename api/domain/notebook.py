@@ -14,10 +14,13 @@ from uuid import UUID
 
 from domain.errors import (
     InvalidNotebookError,
+    InvalidNotebookNameError,
     NotebookChoiceRequiredError,
     NotebookNotFoundError,
 )
 from domain.preferences import name_language
+
+NOTEBOOK_NAME_MAX_LENGTH = 200
 
 NotebookKind = Literal["personal", "kitchen"]
 NotebookRole = Literal["owner", "member"]
@@ -52,6 +55,14 @@ class Notebook:
     @property
     def kind(self) -> NotebookKind:
         return "kitchen" if self.kitchen_id is not None else "personal"
+
+
+def validate_notebook_name(raw: str) -> str:
+    """The trimmed name a person gave a new notebook (S-059)."""
+    name = raw.strip()
+    if not name or len(name) > NOTEBOOK_NAME_MAX_LENGTH:
+        raise InvalidNotebookNameError()
+    return name
 
 
 def default_notebook_name(alias: str, language: str | None) -> str:

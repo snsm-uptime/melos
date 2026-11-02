@@ -26,6 +26,7 @@ from domain.notebook import (
     default_notebook_name,
     kitchen_notebook_name,
     notebook_access,
+    validate_notebook_name,
 )
 
 from application.kitchen_access import (
@@ -236,6 +237,42 @@ class GetDefaultNotebookService:
         if facts is None:
             raise NotebookNotFoundError()
         return notebook_view(facts)
+
+
+@dataclass(frozen=True, slots=True)
+class CreateNotebookCommand:
+    actor_user_id: UUID
+    name: str
+
+
+class CreateNotebookService:
+    """A new personal notebook with no recipes (S-059, creation only).
+
+    The caller owns it and its catalog starts from theirs. Committed here, so the notebook is
+    there when the ui opens it.
+    """
+
+    def __init__(
+        self,
+        notebooks: NotebookRepository,
+        catalog: IngredientCatalog,
+        committer: TransactionCommitter,
+    ) -> None:
+        self._notebooks = notebooks
+        self._catalog = catalog
+        self._committer = committer
+
+    def execute(self, command: CreateNotebookCommand) -> NotebookView:
+        notebook = Notebook(id=uuid4(), name=validate_notebook_name(command.name))
+        self._notebooks.create(notebook)
+        self._catalog.seed_from_person(notebook.id, command.actor_user_id)
+        self._notebooks.add_owner(notebook.id, command.actor_user_id)
+        facts = self._notebooks.facts_for(command.actor_user_id, notebook.id)
+        if facts is None:
+            raise NotebookNotFoundError()
+        view = notebook_view(facts)
+        self._committer.commit()
+        return view
 
 
 @dataclass(frozen=True, slots=True)

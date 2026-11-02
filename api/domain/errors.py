@@ -222,6 +222,16 @@ class InvalidNotebookError(DomainError):
         super().__init__(self.MESSAGE)
 
 
+class InvalidNotebookNameError(DomainError):
+    """Raised when a new notebook's name is blank or too long (S-059)."""
+
+    MESSAGE = "Enter a name for the notebook, up to 200 characters."
+    CODE = "invalid_notebook_name"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
 class NotebookNotFoundError(DomainError):
     """Raised for a missing notebook and for a notebook the caller may not see — same body."""
 
@@ -326,6 +336,66 @@ class InviteEmailMismatchError(DomainError):
 
     MESSAGE = "Use the email address this invite was sent to."
     CODE = "invite_email_mismatch"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class NotebookNotShareableError(DomainError):
+    """Raised on a sharing action on a kitchen notebook (spec 057 FR-003)."""
+
+    MESSAGE = "A kitchen notebook is shared with its kitchen, not by invite."
+    CODE = "notebook_not_shareable"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class NotebookOwnerOnlyError(DomainError):
+    """Raised when a member tries what only the owner may do (spec 057 FR-002)."""
+
+    MESSAGE = "Only the owner of this notebook can do that."
+    CODE = "notebook_owner_only"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class AlreadyInNotebookError(DomainError):
+    """Raised when inviting the owner or a current member (spec 057 FR-004)."""
+
+    MESSAGE = "That person is already in this notebook."
+    CODE = "already_in_notebook"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class NotebookOwnerStaysError(DomainError):
+    """Raised when the owner would leave or be removed (spec 057 FR-025)."""
+
+    MESSAGE = "The owner can't leave this notebook or be removed from it."
+    CODE = "notebook_owner_stays"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class NotebookInviteNotFoundError(DomainError):
+    """Raised when the owner acts on an invite that is not open (spec 057 FR-023)."""
+
+    MESSAGE = "That invite is no longer open."
+    CODE = "notebook_invite_not_found"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class NotebookMemberNotFoundError(DomainError):
+    """Raised when removing someone who is not in the notebook (spec 057)."""
+
+    MESSAGE = "That person is not in this notebook."
+    CODE = "notebook_member_not_found"
 
     def __init__(self) -> None:
         super().__init__(self.MESSAGE)

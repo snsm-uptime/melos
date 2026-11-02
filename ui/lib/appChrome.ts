@@ -33,6 +33,7 @@ const LANGUAGE_SWITCH_PREFIXES = [
   "/reset-password",
   "/verify",
   "/invites/accept",
+  "/invites/notebook",
 ] as const;
 
 /** Signed-out screens that place the switch themselves, inside their own column. */
