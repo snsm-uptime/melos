@@ -770,7 +770,7 @@ stories:
     title: Custom units confirmed by each person, and the admin dashboard
     epic: Capture
     priority: later
-    status: backlog
+    status: done
     source: user decision in spec 015 review (unit mapping contradiction, FR-006 vs FR-006a); redirected 2026-11-01
     notes: >
       Spec: specs/055-custom-units. A word the AI does not recognize as a unit is offered to the

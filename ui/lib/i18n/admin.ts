@@ -4,6 +4,7 @@ export const adminMessages = {
   en: {
     entry: "Dashboard",
     title: "Dashboard",
+    back: "Back to the app",
     tabsLabel: "Dashboard sections",
     tabs: {
       units: "Units",
@@ -53,6 +54,7 @@ export const adminMessages = {
   es: {
     entry: "Panel",
     title: "Panel de uso",
+    back: "Volver a la app",
     tabsLabel: "Secciones del panel",
     tabs: {
       units: "Unidades",

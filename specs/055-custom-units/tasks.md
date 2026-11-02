@@ -164,14 +164,14 @@
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T070 [P] Update `dev/docs/prd.md`: §1.6, §2 J2 and Appendix B (the fixed list of ten units, and the rule that an unknown unit is invalid output), and §3 (no in-app admin, and the recipe title exception)
-- [ ] T071 [P] Add to `README.md` the SQL line that sets the flag, from `contracts/admin-api.md`, as a step for the owner. Do not rewrite anything else in the README
-- [ ] T072 Update `AGENTS.md` where it describes the fixed units and the "every recipe query" rule, only as approved in T001
-- [ ] T073 [P] Set S-055 to its finished status in `dev/docs/backlog.yaml`
-- [ ] T074 Run the automated checks in `quickstart.md`: the Compose test overlay, `cd api && uv run ruff check .`, and `cd ui && npm test && npm run lint && npm run typecheck`
-- [ ] T075 Run `api/tests/fixtures/ai_eval/canned_beans.txt` by hand against the real model. Expected: unit "lata", name "frijoles"
-- [ ] T076 Walk `quickstart.md` steps 1 to 10 in the browser at 360px and 1280px, in both languages, on the isolated stack
-- [ ] T077 Record the finished change in `dev/memory/` with the procedure in `dev/skills/save_to_memory.md`
+- [X] T070 [P] Update `dev/docs/prd.md`: §1.6, §2 J2 and Appendix B (the fixed list of ten units, and the rule that an unknown unit is invalid output), and §3 (no in-app admin, and the recipe title exception)
+- [X] T071 [P] Add to `README.md` the SQL line that sets the flag, from `contracts/admin-api.md`, as a step for the owner. Do not rewrite anything else in the README
+- [X] T072 Update `AGENTS.md` where it describes the fixed units and the "every recipe query" rule, only as approved in T001
+- [X] T073 [P] Set S-055 to its finished status in `dev/docs/backlog.yaml`
+- [X] T074 Run the automated checks in `quickstart.md`: the Compose test overlay, `cd api && uv run ruff check .`, and `cd ui && npm test && npm run lint && npm run typecheck`
+- [X] T075 Run `api/tests/fixtures/ai_eval/canned_beans.txt` by hand against the real model. Expected: unit "lata", name "frijoles"
+- [X] T076 Walk `quickstart.md` steps 1 to 10 in the browser at 360px and 1280px, in both languages, on the isolated stack
+- [X] T077 Record the finished change in `dev/memory/` with the procedure in `dev/skills/save_to_memory.md`
 
 ---
 

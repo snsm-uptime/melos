@@ -204,6 +204,15 @@ With `SEED_DEV_USER=1` (dev only) the API seeds two verified users (owner and
 member) sharing one kitchen, with one recipe from each of them, ready for testing auth,
 kitchen membership and the recipe lists.
 
+**The admin dashboard**
+
+The dashboard at `/admin` opens only for an account with the admin flag. No request can
+set it, so the owner sets it once on the server:
+
+```sql
+UPDATE users SET is_admin = true WHERE email = '<address>';
+```
+
 **Tests and linting**
 
 ```bash

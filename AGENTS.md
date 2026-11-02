@@ -264,7 +264,9 @@ ALWAYS use `uv`. Never use `pip`, `python -m venv` or `requirements.txt`.
   non-member gets `404`.
 - Every recipe query checks that the recipe is in a personal notebook the
   caller owns or is a member of, or in a notebook of a kitchen the caller
-  belongs to. Otherwise `404`.
+  belongs to. Otherwise `404`. One written exception: the admin dashboard's
+  `/admin/recipes` route reads titles and figures across notebooks, never
+  ingredients, steps or conversations (spec 055, `application/admin.py`).
 - Schema changes go through Alembic migrations.
 - Small changes: one per request. When finished, explain what you changed and
   why.

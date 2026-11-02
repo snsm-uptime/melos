@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { BackIcon } from "@/app/icons";
 import { CauldronLoader } from "@/components/CauldronLoader";
 import { adminMessages } from "@/lib/i18n/admin";
 import type { Locale } from "@/lib/i18n/locale";
@@ -113,7 +115,12 @@ function SectionTable({ columns, rows, empty }: { columns: Column[]; rows: Row[]
           {rows.map((row, index) => (
             <tr key={index}>
               {columns.map((column) => (
-                <td key={column.key} className="border-b border-border px-3 py-2 text-foreground">
+                <td
+                  key={column.key}
+                  className={`border-b border-border px-3 py-2 text-foreground ${
+                    column.key === "user_references" ? "" : "whitespace-nowrap"
+                  }`}
+                >
                   {column.show ? column.show(row[column.key]) : String(row[column.key])}
                 </td>
               ))}
@@ -144,7 +151,18 @@ export function AdminDashboard({ locale }: { locale: Locale }) {
 
   return (
     <div className="flex min-w-0 flex-col gap-4 p-4">
-      <h1 className="m-0 text-[1.5rem] font-[550] text-foreground">{t.title}</h1>
+      {/* No side panel here: the shell around /admin would show that the path exists. */}
+      <header className="flex items-center gap-2">
+        <Link
+          href="/notebooks"
+          aria-label={t.back}
+          title={t.back}
+          className="inline-flex shrink-0 items-center justify-center rounded-[8px] p-1 text-muted hover:text-foreground"
+        >
+          <BackIcon className="size-6" />
+        </Link>
+        <h1 className="m-0 text-[1.5rem] font-[550] text-foreground">{t.title}</h1>
+      </header>
       <div role="tablist" aria-label={t.tabsLabel} className="flex flex-wrap gap-2">
         {SECTIONS.map((name) => (
           <button

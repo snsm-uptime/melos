@@ -219,7 +219,7 @@ message(id, conversation_id, role: user|assistant, content, found?, cited_recipe
 ```
 
 **Value sets**
-- `Unit`: `g, kg, oz, lb, ml, l, cup, tbsp, tsp, unit`
+- `Unit`: the defaults `g, kg, oz, lb, ml, l, cup, tbsp, tsp, unit`, plus each person's own units (spec 055). A person's list is every default plus every unit they kept. A recipe line keeps its unit as plain text, so any stored unit works for every reader.
 - `Size`: `small, medium, large`, only when `unit = unit`
 - **Dimension** is derived from the unit, never stored and never chosen by the AI:
   - mass: `kg > lb > oz > g`
@@ -369,7 +369,7 @@ The user signs up, signs in, signs out, resets their password by email and edits
   - Canonical names in the language of the pasted text: singular, lower-case, preparation in its own field. Translation is a later story.
   - Vague amounts (the phrases in Appendix B.1 rule 4) → `vague_note`.
   - "2 large onions" → `quantity 2, unit unit, size large`.
-  - Units are mapped to the allowed set without converting ("tablespoon" → `tbsp`). A unit with no exact match that is one edit away from an allowed spelling (one letter added, removed or changed) and is 5 or more characters long is mapped the same way ("tablespon" → `tbsp`). A unit one edit away from the spellings of more than one allowed unit, or any other unknown unit, is invalid output.
+  - Units are mapped to the allowed set without converting ("tablespoon" → `tbsp`). A unit with no exact match that is one edit away from an allowed spelling (one letter added, removed or changed) and is 5 or more characters long is mapped the same way ("tablespon" → `tbsp`). The same rule also covers the person's own units. A unit one edit away from the spellings of more than one unit is invalid output. Any other measure word that can be a unit opens the draft with a question: on a yes it joins the person's units when the recipe is saved; on a no the line stays flagged until they pick a unit or make the amount vague (spec 055). A word that can't be a unit (only digits or symbols, or over 32 characters) is still invalid output.
   - Servings are taken from the text, or estimated and flagged.
   - Category labels, main ingredients and cuisines are out of the MVP (Appendix E). The draft carries none.
 - **Edge cases:**
@@ -467,7 +467,8 @@ The user signs up, signs in, signs out, resets their password by email and edits
 
 - Roles are per kitchen and per notebook: the same user can be an Owner in one and a Member in another.
 - No user can read another user's conversations, including Owners. A personal notebook is readable only by its owner and members; a kitchen notebook only by the kitchen's members.
-- There is no in-app admin. Operations (backups, logs) happen on the server.
+- An account with `users.is_admin` set, on the server by the owner, gets a read-only dashboard of units, ingredients, recipes and users (spec 055). No request can set the flag. Anyone else gets a not-found answer. Other operations (backups, logs) happen on the server.
+- The dashboard's recipe section shows recipe titles and figures across all notebooks. This is the one exception to a personal notebook being readable only by its owner and members. It never shows ingredients or steps, and nobody reads another person's conversations.
 
 ---
 
@@ -544,7 +545,7 @@ Rules:
    Otherwise set proposed_name. Never add a variety or detail the input doesn't mention.
 4. Vague amounts: put the words in vague_note and leave quantity and unit empty. Vague phrases: English "to taste", "a pinch (of)", "a dash (of)", "a splash (of)", "a drizzle (of)", "some", "a little"; Spanish "al gusto", "un poco (de)", "mucho", "la mitad (de)", "una pizca (de)", "algo de", "unas gotas (de)", "un chorrito (de)". A phrase is vague only when it is the whole amount and no number is given.
 5. Countable items ("2 large onions"): unit="unit", and size (small|medium|large) only if stated. Amounts written as number words are converted to a number and an allowed unit: "a dozen" → 12 unit, "un par" → 2 unit, "una decena" → 10 unit.
-6. Allowed units: g, kg, oz, lb, ml, l, cup, tbsp, tsp, unit. Map spelled-out forms
+6. Default units: g, kg, oz, lb, ml, l, cup, tbsp, tsp, unit. A container or measure word outside them ("lata", "can") is reported as written and never folded into a plain count; the app compares it to the person's own units in code, and stored units are never sent to the model. Map spelled-out forms
    ("tablespoon" and "tablespon" -> tbsp; a one-letter typo is mapped only for units of 5 or more characters). Never convert between units.
 7. base_servings: take it from the input. If missing, estimate it and set servings_estimated=true.
 8. (Not used in the MVP: main ingredients and cuisines, Appendix E.)
