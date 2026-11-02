@@ -746,7 +746,7 @@ stories:
     source: prd.md Appendix A (User), Appendix D
     notes: >
       No DELETE /auth/me route exists in the code (checked 2026-10-23), although the PRD says the
-      endpoint exists. Depends on S-058 (ownership passing), which must land first. It must also remove the person from unit references (spec 055 FR-020b) in the same transaction. It must call
+      endpoint exists. Depends on S-058 (ownership passing), which must land first. It must also call RemoveUserFromUnitsService to remove the person from unit references (spec 055 FR-020b) in the same transaction. It must call
       PassOwnedNotebooksService before deleting the user row, in the same transaction, under the
       conditions in specs/058-notebook-ownership-passing/contracts/ownership-rule.md.
 

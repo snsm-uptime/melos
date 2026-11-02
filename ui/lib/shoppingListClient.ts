@@ -15,7 +15,7 @@ export type ShoppingRecipeRef = {
 
 export type ShoppingLine = {
   name: string;
-  kind: "mass" | "volume" | "count";
+  kind: "mass" | "volume" | "count" | "custom";
   /** Counts only. */
   size: "small" | "medium" | "large" | null;
   amounts: ShoppingAmount[];

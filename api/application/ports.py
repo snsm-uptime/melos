@@ -649,6 +649,11 @@ class UnitRepository(Protocol):
         """Add the person to each name's row, creating it when missing. Safe to repeat."""
         ...
 
+    def remove_user(self, user_id: UUID) -> None:
+        """Take the person off every row, locking in name order. A non-default row left with no
+        references goes. Safe to repeat. Never commits and never touches a recipe line."""
+        ...
+
 
 class SidePanelRepository(Protocol):
     """Everything the side panel reads about the caller (spec 064)."""

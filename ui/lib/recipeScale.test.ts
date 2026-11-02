@@ -74,3 +74,10 @@ describe("scaleFactor and stepServings", () => {
     expect(stepServings(120, -1)).toBe(100);
   });
 });
+
+describe("custom units (spec 055)", () => {
+  it("scales a line with a custom unit and keeps the unit", () => {
+    const lata = { ...line, quantity: 1, unit: "lata", size: null };
+    expect(scaleLine(lata, 6, 4)).toEqual({ ...lata, quantity: 1.5 });
+  });
+});

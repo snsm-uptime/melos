@@ -2,8 +2,17 @@
 
 from __future__ import annotations
 
-from application.units import allowed_for_save, available_units, kept_units_to_add
+from uuid import uuid4
+
+from application.units import (
+    RemoveUserFromUnitsCommand,
+    RemoveUserFromUnitsService,
+    allowed_for_save,
+    available_units,
+    kept_units_to_add,
+)
 from domain.recipe_draft import ALLOWED_UNITS, IngredientLine
+from tests.unit_fakes import FakeUnits
 
 
 def line(unit: str | None) -> IngredientLine:
@@ -37,3 +46,11 @@ def test_a_kept_word_counts_once() -> None:
 
 def test_allowed_for_save_adds_only_offerable_kept_words() -> None:
     assert allowed_for_save(available_units([]), ["Latas", "<b>"]) == (*ALLOWED_UNITS, "lata")
+
+
+def test_removal_asks_the_repository_for_the_person_and_nothing_else() -> None:
+    units = FakeUnits()
+    person = uuid4()
+    RemoveUserFromUnitsService(units).execute(RemoveUserFromUnitsCommand(person))
+    assert units.removed == [person]
+    assert units.added == []

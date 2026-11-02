@@ -35,7 +35,7 @@ from application.notebooks import AddNotebookSnapshotCommand, AddNotebookSnapsho
 from domain.recipe import EditedRecipe
 from domain.recipe_draft import IngredientLine
 from fastapi.testclient import TestClient
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from tests.integration_db import claim_alias, database_url
@@ -276,6 +276,30 @@ def test_every_field_matches_the_original(
     assert set(copies) == {"Linked", "Pasted"}
     assert _content(db_session, copies["Linked"]) == _content(db_session, linked)
     assert _content(db_session, copies["Pasted"]) == _content(db_session, pasted)
+
+
+def test_a_snapshot_keeps_a_custom_unit_and_changes_nobody_s_list(
+    client: TestClient, db_session: Session, ana: tuple[UUID, str]
+) -> None:
+    ana_id, token = ana
+    kitchen = _kitchen(db_session, ana_id)
+    source = _personal(db_session, ana_id)
+    recipe_id = _recipe(db_session, source, ana_id, "Beans")
+    db_session.execute(
+        update(RecipeIngredientModel)
+        .where(RecipeIngredientModel.recipe_id == recipe_id, RecipeIngredientModel.position == 0)
+        .values(unit="lata")
+    )
+    db_session.flush()
+
+    _use(client, token)
+    before = client.get("/recipe-vocabulary").json()["units"]
+    snapshot = _added(client, kitchen, source)
+
+    copy = _recipes_of(db_session, snapshot)[0]
+    assert _content(db_session, copy.id) == _content(db_session, recipe_id)
+    assert "lata" not in before
+    assert client.get("/recipe-vocabulary").json()["units"] == before
 
 
 def test_the_answer_is_the_new_notebook(

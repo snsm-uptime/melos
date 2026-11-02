@@ -23,6 +23,20 @@ _ADD_USER = text(
     """
 )
 
+_REMOVE_USER = text(
+    """
+    UPDATE unit SET user_references = array_remove(user_references, CAST(:user_id AS uuid))
+    WHERE name = ANY (:names)
+    """
+)
+
+_DROP_EMPTY = text(
+    """
+    DELETE FROM unit
+    WHERE name = ANY (:names) AND NOT is_default AND cardinality(user_references) = 0
+    """
+)
+
 
 class SqlAlchemyUnitRepository:
     def __init__(self, session: Session) -> None:
@@ -41,3 +55,15 @@ class SqlAlchemyUnitRepository:
         # Sorted, so two saves that add the same words take the row locks in one order.
         for name in sorted(set(names)):
             self._session.execute(_ADD_USER, {"name": name, "user_id": user_id})
+
+    def remove_user(self, user_id: UUID) -> None:
+        names = self._session.scalars(
+            select(UnitModel.name)
+            .where(UnitModel.user_references.any(user_id))
+            .order_by(UnitModel.name)
+            .with_for_update()
+        ).all()
+        if not names:
+            return
+        self._session.execute(_REMOVE_USER, {"names": list(names), "user_id": user_id})
+        self._session.execute(_DROP_EMPTY, {"names": list(names)})

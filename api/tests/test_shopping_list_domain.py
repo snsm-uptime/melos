@@ -245,8 +245,7 @@ def test_unit_kind_covers_the_ten_allowed_units() -> None:
     assert [unit_kind(u) for u in ("kg", "lb", "oz", "g")] == ["mass"] * 4
     assert [unit_kind(u) for u in ("l", "cup", "tbsp", "tsp", "ml")] == ["volume"] * 5
     assert unit_kind("unit") == "count"
-    with pytest.raises(ValueError):
-        unit_kind("pinch")
+    assert unit_kind("pinch") == "custom"
 
 
 def test_name_sort_key_ignores_accents_and_case() -> None:

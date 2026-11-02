@@ -96,18 +96,18 @@
 
 ### Tests
 
-- [ ] T041 [P] [US3] Add to `api/tests/test_cart_domain.py`: `unit_kind` answers `custom` outside the ten; 1 + 2 lata is `3 lata`; 1.5 lata is `2 lata`; lata and g stay on separate lines with no conversion; two custom units of one ingredient share a line; `custom` sorts after `count`
-- [ ] T042 [P] [US3] Add to `api/tests/test_shopping_list_integration.py`: the shape in `contracts/units-api.md` with `"kind": "custom"`, saved and closed lists keep it, and a hand item with `lata` is still refused (FR-016). Confirm every existing shopping list test passes unchanged (SC-004)
-- [ ] T043 [P] [US3] Add to `api/tests/test_recipe_manage_integration.py`: B updates A's recipe, including reordering its lines, with no refusal and no change to B's list; a new unknown word from B is still refused without `keep_units`
-- [ ] T044 [P] [US3] Add to `api/tests/test_notebook_snapshots_integration.py`: a snapshot keeps `lata` and changes nobody's list
-- [ ] T045 [P] [US3] Add to `ui/lib/shoppingListClient.test.ts`, `ui/lib/recipeScale.test.ts` and `ui/components/RecipeEdit/RecipeEditForm.test.tsx`: a `custom` line prints `3 lata`; a custom unit scales; another member's picker shows their units plus the line's current one, and no question appears for an untouched line
+- [X] T041 [P] [US3] Add to `api/tests/test_cart_domain.py`: `unit_kind` answers `custom` outside the ten; 1 + 2 lata is `3 lata`; 1.5 lata is `2 lata`; lata and g stay on separate lines with no conversion; two custom units of one ingredient share a line; `custom` sorts after `count`
+- [X] T042 [P] [US3] Add to `api/tests/test_shopping_list_integration.py`: the shape in `contracts/units-api.md` with `"kind": "custom"`, saved and closed lists keep it, and a hand item with `lata` is still refused (FR-016). Confirm every existing shopping list test passes unchanged (SC-004)
+- [X] T043 [P] [US3] Add to `api/tests/test_recipe_manage_integration.py`: B updates A's recipe, including reordering its lines, with no refusal and no change to B's list; a new unknown word from B is still refused without `keep_units`
+- [X] T044 [P] [US3] Add to `api/tests/test_notebook_snapshots_integration.py`: a snapshot keeps `lata` and changes nobody's list
+- [X] T045 [P] [US3] Add to `ui/lib/shoppingListClient.test.ts`, `ui/lib/recipeScale.test.ts` and `ui/components/RecipeEdit/RecipeEditForm.test.tsx`: a `custom` line prints `3 lata`; a custom unit scales; another member's picker shows their units plus the line's current one, and no question appears for an untouched line
 
 ### Implementation
 
-- [ ] T046 [US3] In `api/domain/cart.py`, add `custom` to `Kind` and rank it after `count` in `_KIND_RANK`, make `unit_kind` answer it, and in `_measured_lines` group a custom line by name, sum per unit, round each sum up, and sort its units by name (R13). Check `api/domain/shopping_list.py`: `hand_item` must still test `_UNITS` before calling `unit_kind` (R14)
-- [ ] T047 [US3] Add `custom` to the `kind` literal in `api/api/schemas/shopping_list.py`
-- [ ] T048 [US3] Add `custom` to `kind` in `ui/lib/shoppingListClient.ts`, and confirm `formatLine` in `ui/lib/shoppingListText.ts` prints the unit for it
-- [ ] T049 [US3] Verify the read, cart and scale paths don't depend on the fixed list: `api/application/carts.py`, `api/application/notebooks.py` (`AddNotebookSnapshotService`), `ui/lib/recipeScale.ts`, `ui/lib/recipeLines.ts`, `ui/components/RecipeDetail/`. Fix anything that assumes the ten. Reading a recipe must add no query for the person's list (FR-011)
+- [X] T046 [US3] In `api/domain/cart.py`, add `custom` to `Kind` and rank it after `count` in `_KIND_RANK`, make `unit_kind` answer it, and in `_measured_lines` group a custom line by name, sum per unit, round each sum up, and sort its units by name (R13). Check `api/domain/shopping_list.py`: `hand_item` must still test `_UNITS` before calling `unit_kind` (R14)
+- [X] T047 [US3] Add `custom` to the `kind` literal in `api/api/schemas/shopping_list.py`
+- [X] T048 [US3] Add `custom` to `kind` in `ui/lib/shoppingListClient.ts`, and confirm `formatLine` in `ui/lib/shoppingListText.ts` prints the unit for it
+- [X] T049 [US3] Verify the read, cart and scale paths don't depend on the fixed list: `api/application/carts.py`, `api/application/notebooks.py` (`AddNotebookSnapshotService`), `ui/lib/recipeScale.ts`, `ui/lib/recipeLines.ts`, `ui/components/RecipeDetail/`. Fix anything that assumes the ten. Reading a recipe must add no query for the person's list (FR-011)
 
 **Checkpoint**: Stories 1, 2 and 3 pass. This is the first releasable point.
 
@@ -117,9 +117,9 @@
 
 **Purpose**: The rule that S-054 must call. It has no route and nothing a person sees until then.
 
-- [ ] T050 Add tests to `api/tests/test_units_application.py` and `api/tests/test_units_integration.py`: removal drops the count, removes the empty non-default row, keeps a default row, never touches a recipe line, does nothing on a second run, and never commits
-- [ ] T051 Add `RemoveUserFromUnitsCommand(user_id: UUID)` and `RemoveUserFromUnitsService(units: UnitRepository).execute(command) -> None` to `api/application/units.py`, `remove_user` to `UnitRepository` in `api/application/ports.py`, and its implementation to `api/adapters/persistence/units.py`, locking rows in name order (R3, `contracts/units-api.md`)
-- [ ] T052 Add the service name `RemoveUserFromUnitsService` to the S-054 note in `dev/docs/backlog.yaml`, which already requires the removal (spec 055 FR-020b) in the same transaction
+- [X] T050 Add tests to `api/tests/test_units_application.py` and `api/tests/test_units_integration.py`: removal drops the count, removes the empty non-default row, keeps a default row, never touches a recipe line, does nothing on a second run, and never commits
+- [X] T051 Add `RemoveUserFromUnitsCommand(user_id: UUID)` and `RemoveUserFromUnitsService(units: UnitRepository).execute(command) -> None` to `api/application/units.py`, `remove_user` to `UnitRepository` in `api/application/ports.py`, and its implementation to `api/adapters/persistence/units.py`, locking rows in name order (R3, `contracts/units-api.md`)
+- [X] T052 Add the service name `RemoveUserFromUnitsService` to the S-054 note in `dev/docs/backlog.yaml`, which already requires the removal (spec 055 FR-020b) in the same transaction
 
 ---
 

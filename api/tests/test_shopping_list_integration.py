@@ -488,3 +488,89 @@ def test_reading_the_list_never_keeps_the_editors_lock_alive(
     # The editor still holds the lock, so the other member is still refused.
     refused = people.as_("ben").post(_cart(kitchen_id, "/edit"))
     assert refused.status_code == 409 and refused.json()["code"] == "cart_locked"
+
+
+# --- custom units (spec 055) ----------------------------------------------------------------
+
+
+def kept_recipe(client: TestClient, notebook_id: str, title: str, lines: list[dict]) -> str:
+    response = client.post(
+        "/recipes",
+        json={
+            "save_key": str(uuid4()),
+            "notebook_id": notebook_id,
+            "title": title,
+            "base_servings": 4,
+            "ingredient_lines": lines,
+            "steps": ["Cook."],
+            "keep_units": ["lata"],
+        },
+    )
+    assert response.status_code == 201, response.text
+    return response.json()["recipe"]["id"]
+
+
+def test_a_custom_unit_reaches_the_list_for_a_member_who_never_kept_it(
+    client: TestClient, db_session: Session
+) -> None:
+    people, kitchen_id, notebook_id = _home(client, db_session)
+    ana = people.as_("ana")
+    one = kept_recipe(ana, notebook_id, "One", [measured("frijoles", 1, "lata")])
+    two = kept_recipe(ana, notebook_id, "Two", [measured("frijoles", 2, "lata")])
+    grams = recipe(ana, notebook_id, "Grams", [measured("frijoles", 200, "g")])
+
+    ben = people.as_("ben")
+    save_cart(ben, kitchen_id, [one, two, grams], servings=4)
+    body = ben.get(_list(kitchen_id)).json()
+
+    custom = next(line for line in body["lines"] if line["kind"] == "custom")
+    assert custom == {
+        "name": "frijoles",
+        "kind": "custom",
+        "size": None,
+        "amounts": [{"quantity": "3", "unit": "lata"}],
+        "recipes": custom["recipes"],
+    }
+    assert shown(body) == [
+        ("frijoles", None, (("200", "g"),)),
+        ("frijoles", None, (("3", "lata"),)),
+    ]
+    assert "lata" not in ben.get("/recipe-vocabulary").json()["units"]
+
+
+def test_a_scaled_custom_amount_rounds_up(client: TestClient, db_session: Session) -> None:
+    people, kitchen_id, notebook_id = _home(client, db_session)
+    ana = people.as_("ana")
+    one = kept_recipe(ana, notebook_id, "One", [measured("frijoles", 1, "lata")])
+    save_cart(ana, kitchen_id, [one], servings=6)
+    assert shown(ana.get(_list(kitchen_id)).json()) == [("frijoles", None, (("2", "lata"),))]
+
+
+def test_a_saved_and_a_closed_list_keep_a_custom_line(
+    client: TestClient, db_session: Session
+) -> None:
+    people, kitchen_id, notebook_id = _home(client, db_session)
+    ana = people.as_("ana")
+    one = kept_recipe(ana, notebook_id, "One", [measured("frijoles", 1, "lata")])
+    save_cart(ana, kitchen_id, [one], servings=4)
+    before = ana.get(_list(kitchen_id)).json()
+    assert [line["kind"] for line in before["lines"]] == ["custom"]
+    closed = ana.post(
+        f"{_list(kitchen_id)}/done",
+        json={"list_id": before["list_id"], "closing_date": "2026-11-02"},
+    )
+    assert closed.status_code == 200, closed.text
+    assert closed.json()["lines"][0]["amounts"] == [{"quantity": "1", "unit": "lata"}]
+    assert closed.json()["lines"][0]["kind"] == "custom"
+
+
+def test_a_hand_item_with_a_custom_unit_is_still_refused(
+    client: TestClient, db_session: Session
+) -> None:
+    people, kitchen_id, notebook_id = _home(client, db_session)
+    ana = people.as_("ana")
+    kept_recipe(ana, notebook_id, "One", [measured("frijoles", 1, "lata")])
+    response = ana.post(
+        f"{_list(kitchen_id)}/items", json={"name": "frijoles", "quantity": 1, "unit": "lata"}
+    )
+    assert response.status_code == 422
