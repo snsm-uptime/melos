@@ -4,6 +4,8 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { MIN_LOADING_MS } from "@/lib/minimumLoading";
+
 import { AdminDashboard } from "./AdminDashboard";
 
 const SECTIONS: Record<string, unknown> = {
@@ -87,7 +89,7 @@ describe("AdminDashboard", () => {
 
   async function flush() {
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, MIN_LOADING_MS + 20));
     });
   }
 
@@ -111,6 +113,36 @@ describe("AdminDashboard", () => {
     await open("Ingredients");
     expect(urls).toEqual(["/api/admin/units", "/api/admin/ingredients"]);
     expect(container.textContent).toContain("tomate");
+  });
+
+  it("shows the cauldron for the first load of a section, even when the data is there", async () => {
+    await act(async () => {
+      root.render(<AdminDashboard locale="en" />);
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(urls).toEqual(["/api/admin/units"]);
+    expect(container.querySelector("table")).toBeNull();
+    await flush();
+    expect(container.querySelector("table")).not.toBeNull();
+  });
+
+  it("shows a section already loaded at once, with no cauldron", async () => {
+    await render();
+    await open("Recipes");
+    await act(async () => tab("Units").click());
+    expect(container.textContent).toContain("lata");
+    expect(container.querySelector("table")).not.toBeNull();
+  });
+
+  it("asks once when a tab is left and reopened while it loads", async () => {
+    await render();
+    await act(async () => tab("Recipes").click());
+    await act(async () => tab("Users").click());
+    await act(async () => tab("Recipes").click());
+    await flush();
+    expect(urls.filter((url) => url.endsWith("/recipes"))).toHaveLength(1);
   });
 
   it("does not load a section twice", async () => {

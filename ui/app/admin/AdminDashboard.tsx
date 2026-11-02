@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useChromeHeader } from "@/components/ChromeBack";
 import { CauldronLoader } from "@/components/CauldronLoader";
 import { adminMessages } from "@/lib/i18n/admin";
 import type { Locale } from "@/lib/i18n/locale";
+import { withMinimumLoading } from "@/lib/minimumLoading";
 
 const SECTIONS = ["units", "ingredients", "recipes", "users"] as const;
 type Section = (typeof SECTIONS)[number];
@@ -139,18 +140,33 @@ export function AdminDashboard({ locale }: { locale: Locale }) {
   const current = loaded[section];
   useChromeHeader({ title: t.title, sidePanel: true });
 
+  // Going back to a section mid-load must not ask for it twice.
+  const loading = useRef(new Set<Section>());
+
   const load = useCallback((target: Section) => {
-    void loadSection(target).then((result) => {
+    if (loading.current.has(target)) return;
+    loading.current.add(target);
+    void withMinimumLoading(loadSection(target)).then((result) => {
+      loading.current.delete(target);
       setLoaded((before) => ({ ...before, [target]: result }));
     });
   }, []);
+
+  /** Back to the first-load state, so a retry shows the cauldron again. */
+  function retry() {
+    setLoaded((before) => {
+      const next = { ...before };
+      delete next[section];
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (current === undefined) load(section);
   }, [current, load, section]);
 
   return (
-    <div className="flex min-w-0 flex-col gap-4 p-4">
+    <div className="flex min-w-0 flex-1 flex-col gap-4 p-4">
       <div role="tablist" aria-label={t.tabsLabel} className="flex flex-wrap gap-2">
         {SECTIONS.map((name) => (
           <button
@@ -169,8 +185,8 @@ export function AdminDashboard({ locale }: { locale: Locale }) {
           </button>
         ))}
       </div>
-      <div role="tabpanel" className="min-w-0">
-        {current === undefined ? <CauldronLoader label={t.tabs[section]} size="2rem" /> : null}
+      <div role="tabpanel" className="flex min-w-0 flex-1 flex-col">
+        {current === undefined ? <CauldronLoader label={t.tabs[section]} /> : null}
         {current?.state === "ready" ? (
           <SectionTable
             columns={columnsFor(section, t, locale)}
@@ -186,7 +202,7 @@ export function AdminDashboard({ locale }: { locale: Locale }) {
             <button
               type="button"
               className="rounded-[0.75rem] border border-border px-3 py-1 text-foreground"
-              onClick={() => load(section)}
+              onClick={retry}
             >
               {t.retry}
             </button>
