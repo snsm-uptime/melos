@@ -69,6 +69,9 @@ Kind = Literal["mass", "volume", "count", "custom"]
 _KIND_RANK: dict[Kind, int] = {"mass": 0, "volume": 1, "count": 2, "custom": 3}
 
 
+CartAction = Literal["created", "edited", "closed"]
+
+
 def unit_kind(unit: str) -> Kind:
     """mass, volume or count for the ten default units, custom for any other (spec 055 R13).
 
@@ -147,6 +150,16 @@ class YourCallEntry:
 class ShoppingList:
     lines: tuple[MeasuredLine, ...]
     your_call: tuple[YourCallEntry, ...]
+
+
+def cart_save_action(before: Sequence[object], after: Sequence[object]) -> CartAction | None:
+    """What a cart save counts as for the dashboard (spec 055 R18), or None when nothing changed.
+
+    Empty to filled is created. Any other difference is edited, including emptying the cart.
+    """
+    if tuple(before) == tuple(after):
+        return None
+    return "edited" if before else "created"
 
 
 def _size_rank(size: str | None) -> int:

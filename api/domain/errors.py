@@ -513,3 +513,12 @@ class ShoppingDateError(DomainError):
 
     def __init__(self) -> None:
         super().__init__(self.MESSAGE)
+
+
+class AdminNotFoundError(DomainError):
+    """Signed out, or not an admin. Answers exactly like a path that does not exist (FR-018)."""
+
+    MESSAGE = "Not Found"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)

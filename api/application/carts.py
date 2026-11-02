@@ -16,7 +16,14 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from uuid import UUID
 
-from domain.cart import SERVINGS_MAX, check_count, format_factor, idle_expires_at, scale_factor
+from domain.cart import (
+    SERVINGS_MAX,
+    cart_save_action,
+    check_count,
+    format_factor,
+    idle_expires_at,
+    scale_factor,
+)
 from domain.errors import (
     CartLockedError,
     CartValueError,
@@ -28,6 +35,7 @@ from domain.errors import (
 
 from application.kitchens import KitchenRepository
 from application.ports import (
+    CartActivityLog,
     CartDraft,
     CartDraftItem,
     CartRecipeFacts,
@@ -286,12 +294,15 @@ class SaveCartService(_CartUseCase):
         carts: CartRepository,
         locks: EditLockRepository,
         shopping_list: ShoppingListRefresher,
+        *,
+        activity: CartActivityLog,
     ) -> None:
         super().__init__(kitchens, carts, locks)
         self._shopping_list = shopping_list
+        self._activity = activity
 
     def execute(self, ref: SessionRef, kitchen_id: UUID) -> SavedCartResult:
-        self._writable(ref, kitchen_id)
+        before = self._writable(ref, kitchen_id).items
         draft = self._my_draft(ref, kitchen_id)
         facts = self._carts.recipe_facts([i.recipe_id for i in draft.items])
         kept = tuple(
@@ -301,6 +312,9 @@ class SaveCartService(_CartUseCase):
         )
         dropped = tuple(i.recipe_id for i in draft.items if i not in kept)
         added = self._carts.save(kitchen_id, CartDraft(kept), ref.user_id)
+        action = cart_save_action(before, kept)
+        if action is not None:
+            self._activity.record(ref.user_id, action)
         self._shopping_list.refresh(kitchen_id)
         self._locks.release_cart(kitchen_id, ref.session_id)
         logger.info(

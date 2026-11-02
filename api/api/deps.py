@@ -6,6 +6,8 @@ import uuid
 from collections.abc import Iterator
 
 from adapters.llm.gemini_extractor import GeminiRecipeExtractor
+from adapters.persistence.admin import SqlAlchemyAdminReports
+from adapters.persistence.cart_activity import SqlAlchemyCartActivityLog
 from adapters.persistence.carts import SqlAlchemyCartRepository, SqlAlchemyIngredientLineReader
 
 # MVP-OUT: from adapters.llm.vocabulary import load_vocabulary, load_vocabulary_documents
@@ -27,6 +29,7 @@ from adapters.persistence.repositories import (
 from adapters.persistence.sessions import SqlAlchemySessionStore
 from adapters.persistence.shopping_lists import SqlAlchemyShoppingListRepository
 from adapters.persistence.units import SqlAlchemyUnitRepository
+from application.admin import AdminDashboard
 from application.carts import (
     AddToDraftService,
     DiscardCartService,
@@ -178,6 +181,19 @@ def require_session_ref(
 
 def get_unit_repository(db: Session = Depends(get_db)) -> UnitRepository:
     return SqlAlchemyUnitRepository(db)
+
+
+def get_admin_dashboard(db: Session = Depends(get_db)) -> AdminDashboard:
+    return AdminDashboard(SqlAlchemyAdminReports(db))
+
+
+def optional_user_id(
+    request: Request,
+    sessions: SessionStore = Depends(get_session_store),
+    settings: AuthSettings = Depends(get_auth_settings),
+) -> uuid.UUID | None:
+    """The caller, or None: a dashboard route must not answer 401 (spec 055 R16)."""
+    return sessions.resolve_user_id(request.cookies.get(settings.session_cookie_name))
 
 
 def get_vocabulary_answer(request: Request) -> dict:
@@ -344,6 +360,7 @@ def get_save_cart(db: Session = Depends(get_db)) -> SaveCartService:
         SqlAlchemyCartRepository(db),
         SqlAlchemyEditLockRepository(db),
         _shopping_list_sync(db),
+        activity=SqlAlchemyCartActivityLog(db),
     )
 
 
@@ -379,7 +396,13 @@ def get_remove_shopping_item(db: Session = Depends(get_db)) -> RemoveShoppingIte
 
 
 def get_close_shopping_list(db: Session = Depends(get_db)) -> CloseShoppingListService:
-    return _list_change(CloseShoppingListService, db)
+    return CloseShoppingListService(
+        SqlAlchemyKitchenRepository(db),
+        SqlAlchemyCartRepository(db),
+        SqlAlchemyShoppingListRepository(db),
+        _shopping_list_sync(db),
+        activity=SqlAlchemyCartActivityLog(db),
+    )
 
 
 def get_closed_shopping_lists(db: Session = Depends(get_db)) -> ClosedShoppingListsService:

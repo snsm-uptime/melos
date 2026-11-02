@@ -20,6 +20,17 @@ class SidePanelView:
     default_kitchen_id: UUID | None
     recipes_added: int
     notebooks: int
+    # The caller's own flag, set on the server by the owner (spec 055 FR-017a).
+    is_admin: bool = False
+
+
+def _view(repo: SidePanelRepository, user_id: UUID, kitchen_id: UUID | None) -> SidePanelView:
+    return SidePanelView(
+        kitchen_id,
+        repo.count_recipes_added(user_id),
+        repo.count_notebooks(user_id),
+        repo.is_admin(user_id),
+    )
 
 
 class GetSidePanelService:
@@ -31,9 +42,7 @@ class GetSidePanelService:
         resolved = resolve_default_kitchen(stored, self._repo.member_kitchens(user_id))
         if resolved != stored:
             self._repo.set_default_kitchen(user_id, resolved)
-        return SidePanelView(
-            resolved, self._repo.count_recipes_added(user_id), self._repo.count_notebooks(user_id)
-        )
+        return _view(self._repo, user_id, resolved)
 
 
 class SetDefaultKitchenService:
@@ -47,6 +56,4 @@ class SetDefaultKitchenService:
         if kitchen.is_archived:
             raise KitchenArchivedError()
         self._repo.set_default_kitchen(user_id, kitchen_id)
-        return SidePanelView(
-            kitchen_id, self._repo.count_recipes_added(user_id), self._repo.count_notebooks(user_id)
-        )
+        return _view(self._repo, user_id, kitchen_id)

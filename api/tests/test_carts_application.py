@@ -227,6 +227,14 @@ class _NoList:
         pass
 
 
+class FakeActivity:
+    def __init__(self) -> None:
+        self.recorded: list[tuple[UUID, str]] = []
+
+    def record(self, user_id: UUID, action: str) -> None:
+        self.recorded.append((user_id, action))
+
+
 @dataclass
 class Setup:
     world: World
@@ -236,10 +244,17 @@ class Setup:
     notebook: UUID
     ana: SessionRef
     ben: SessionRef
+    activity: FakeActivity = field(default_factory=lambda: FakeActivity())
 
     def svc(self, cls):  # noqa: ANN001, ANN201
         if cls is SaveCartService:
-            return cls(self.world.kitchens, self.carts, self.locks, _NoList())
+            return cls(
+                self.world.kitchens,
+                self.carts,
+                self.locks,
+                _NoList(),
+                activity=self.activity,
+            )
         return cls(self.world.kitchens, self.carts, self.locks)
 
     def get(self, ref: SessionRef):  # noqa: ANN201
@@ -559,3 +574,43 @@ def test_clear_then_save_empties_the_cart() -> None:
     s.start(s.ana)
     s.put(s.ana, [])
     assert s.save(s.ana).view.entries == ()
+
+
+# --- cart activity (spec 055 R18) ------------------------------------------------------------
+
+
+def test_filling_an_empty_cart_is_created_for_that_person_only() -> None:
+    s = _setup()
+    rid = s.carts.add_recipe(s.notebook, "Rice", 4)
+    s.start(s.ana)
+    s.put(s.ana, [(rid, 2)])
+    s.save(s.ana)
+    assert s.activity.recorded == [(s.ana.user_id, "created")]
+
+
+def test_any_later_change_is_edited_and_no_change_records_nothing() -> None:
+    s = _setup()
+    rid = s.carts.add_recipe(s.notebook, "Rice", 4)
+    s.start(s.ana)
+    s.put(s.ana, [(rid, 2)])
+    s.save(s.ana)
+    s.start(s.ben)
+    s.save(s.ben)
+    assert s.activity.recorded == [(s.ana.user_id, "created")]
+    s.start(s.ben)
+    s.put(s.ben, [(rid, 3)])
+    s.save(s.ben)
+    assert s.activity.recorded[-1] == (s.ben.user_id, "edited")
+    s.start(s.ben)
+    s.put(s.ben, [])
+    s.save(s.ben)
+    assert s.activity.recorded[-1] == (s.ben.user_id, "edited")
+
+
+def test_a_discarded_draft_records_nothing() -> None:
+    s = _setup()
+    rid = s.carts.add_recipe(s.notebook, "Rice", 4)
+    s.start(s.ana)
+    s.put(s.ana, [(rid, 2)])
+    s.svc(DiscardCartService).execute(s.ana, s.kitchen)
+    assert s.activity.recorded == []

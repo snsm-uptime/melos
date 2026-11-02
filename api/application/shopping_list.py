@@ -48,6 +48,7 @@ from domain.shopping_list import (
 
 from application.kitchens import KitchenRepository
 from application.ports import (
+    CartActivityLog,
     CartDraft,
     CartDraftItem,
     CartRepository,
@@ -288,7 +289,23 @@ class RemoveShoppingItemService(_ListChange):
 
 
 class CloseShoppingListService(_ListChange):
-    """Done: the member's date, for good, and the saved cart is emptied (FR-009)."""
+    """Done: the member's date, for good, and the saved cart is emptied (FR-009).
+
+    The cart empties through `carts.save`, not SaveCartService, so Done records one `closed` and
+    no `edited` (spec 055 R18).
+    """
+
+    def __init__(
+        self,
+        kitchens: KitchenRepository,
+        carts: CartRepository,
+        lists: ShoppingListRepository,
+        sync: ActiveListSync,
+        *,
+        activity: CartActivityLog,
+    ) -> None:
+        super().__init__(kitchens, carts, lists, sync)
+        self._activity = activity
 
     def execute(
         self,
@@ -307,6 +324,7 @@ class CloseShoppingListService(_ListChange):
         if not self._lists.close(list_id, closes_on):
             raise ShoppingListNotActiveError()
         self._carts.save(kitchen_id, CartDraft(()), ref.user_id)
+        self._activity.record(ref.user_id, "closed")
         closed = self._lists.closed_by_id(kitchen_id, list_id)
         assert closed is not None
         logger.info("shopping list outcome=closed items=%d", len(closed.items))

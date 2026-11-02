@@ -22,6 +22,7 @@ def _response(view: SidePanelView) -> SidePanelResponse:
         default_kitchen_id=view.default_kitchen_id,
         recipes_added=view.recipes_added,
         notebooks=view.notebooks,
+        is_admin=view.is_admin,
     )
 
 

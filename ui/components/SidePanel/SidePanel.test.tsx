@@ -136,6 +136,27 @@ describe("SidePanel", () => {
     layoutSpies.splice(0).forEach((spy) => spy.mockRestore());
   });
 
+  it("shows the dashboard entry only to an admin (spec 055)", async () => {
+    stubKitchens();
+    fetchSidePanel.mockResolvedValue({
+      default_kitchen_id: "k1",
+      recipes_added: 0,
+      notebooks: 0,
+      is_admin: false,
+    });
+    await render();
+    expect(link("Dashboard")).toBeNull();
+
+    fetchSidePanel.mockResolvedValue({
+      default_kitchen_id: "k1",
+      recipes_added: 0,
+      notebooks: 0,
+      is_admin: true,
+    });
+    await act(async () => requestSidePanelRefresh());
+    expect(link("Dashboard").getAttribute("href")).toBe("/admin");
+  });
+
   it("keeps only the default on the closed panel when the kitchens overflow", async () => {
     await render();
     await layOut(131);

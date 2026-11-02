@@ -11,6 +11,7 @@ from domain.cart import (
     ScaledRecipe,
     ShoppingLine,
     build_shopping_list,
+    cart_save_action,
     check_count,
     format_factor,
     idle_expires_at,
@@ -127,3 +128,21 @@ def test_custom_sorts_after_count() -> None:
         [_scaled(_line("frijoles", 1, "lata"), _line("frijoles", 2, "unit"))]
     )
     assert [ln.kind for ln in result.lines] == ["count", "custom"]
+
+
+# --- cart activity (spec 055 R18) ------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("before", "after", "action"),
+    [
+        ((), ("a",), "created"),
+        (("a",), ("a", "b"), "edited"),
+        (("a",), (), "edited"),
+        (("a", "b"), ("b", "a"), "edited"),
+        (("a",), ("a",), None),
+        ((), (), None),
+    ],
+)
+def test_cart_save_action(before: tuple, after: tuple, action: str | None) -> None:
+    assert cart_save_action(before, after) == action

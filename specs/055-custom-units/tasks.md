@@ -131,32 +131,32 @@
 
 ### Tests
 
-- [ ] T053 [P] [US4] Add to `api/tests/test_cart_domain.py`: `cart_save_action(before, after)` gives `created` from empty to filled, `edited` for any other difference including emptying, and nothing for no difference (R18)
-- [ ] T054 [P] [US4] Add to `api/tests/test_carts_application.py` and `api/tests/test_shopping_list_application.py`: Save records one action for the person; Close records one `closed` and no `edited`; other kitchen members get none; discarding a draft records nothing (US4 scenario 7)
-- [ ] T055 [P] [US4] Add to `api/tests/test_side_panel_application.py` and `api/tests/test_side_panel_integration.py`: `is_admin` for the caller only, on GET and on `PUT /side-panel/default-kitchen`, and `/auth/me` does not gain it
-- [ ] T056 [P] [US4] Create `api/tests/test_admin_application.py`: access is refused for a non-admin, with a fake `AdminReportRepository`
-- [ ] T057 [P] [US4] Create `api/tests/test_admin_integration.py`: signed-out and non-admin answers equal an unknown path byte for byte; each section's figures match invented data for US4 scenarios 1, 2, 3 and 7; a catalog name no recipe uses shows 0; a deleted author doesn't count; response keys equal the lists in `contracts/admin-api.md` exactly (FR-019); no email, ingredient, step, conversation, password or token appears
-- [ ] T058 [P] [US4] Create `ui/app/admin/AdminDashboard.test.tsx` and `ui/app/api/admin/admin.bff.test.ts`: a tab loads its section when opened, and the BFF passes the four sections and answers 404 to anything else. Add to `ui/components/SidePanel/SidePanel.test.tsx`: the entry shows only when `is_admin` is true
+- [X] T053 [P] [US4] Add to `api/tests/test_cart_domain.py`: `cart_save_action(before, after)` gives `created` from empty to filled, `edited` for any other difference including emptying, and nothing for no difference (R18)
+- [X] T054 [P] [US4] Add to `api/tests/test_carts_application.py` and `api/tests/test_shopping_list_application.py`: Save records one action for the person; Close records one `closed` and no `edited`; other kitchen members get none; discarding a draft records nothing (US4 scenario 7)
+- [X] T055 [P] [US4] Add to `api/tests/test_side_panel_application.py` and `api/tests/test_side_panel_integration.py`: `is_admin` for the caller only, on GET and on `PUT /side-panel/default-kitchen`, and `/auth/me` does not gain it
+- [X] T056 [P] [US4] Create `api/tests/test_admin_application.py`: access is refused for a non-admin, with a fake `AdminReportRepository`
+- [X] T057 [P] [US4] Create `api/tests/test_admin_integration.py`: signed-out and non-admin answers equal an unknown path byte for byte; each section's figures match invented data for US4 scenarios 1, 2, 3 and 7; a catalog name no recipe uses shows 0; a deleted author doesn't count; response keys equal the lists in `contracts/admin-api.md` exactly (FR-019); no email, ingredient, step, conversation, password or token appears
+- [X] T058 [P] [US4] Create `ui/app/admin/AdminDashboard.test.tsx` and `ui/app/api/admin/admin.bff.test.ts`: a tab loads its section when opened, and the BFF passes the four sections and answers 404 to anything else. Add to `ui/components/SidePanel/SidePanel.test.tsx`: the entry shows only when `is_admin` is true
 
 ### Cart activity
 
-- [ ] T059 [US4] Add `CartAction` (`created`, `edited`, `closed`) and pure `cart_save_action(before, after)` to `api/domain/cart.py`
-- [ ] T060 [US4] Add `CartActivityLog` to `api/application/ports.py` and create `api/adapters/persistence/cart_activity.py`
-- [ ] T061 [US4] In `api/application/carts.py`, `SaveCartService` records the action, using the items it read under the cart lock, in its transaction. In `api/application/shopping_list.py`, `CloseShoppingListService` records `closed`. Wire both in `api/api/deps.py`. No cart behaviour reads this table
+- [X] T059 [US4] Add `CartAction` (`created`, `edited`, `closed`) and pure `cart_save_action(before, after)` to `api/domain/cart.py`
+- [X] T060 [US4] Add `CartActivityLog` to `api/application/ports.py` and create `api/adapters/persistence/cart_activity.py`
+- [X] T061 [US4] In `api/application/carts.py`, `SaveCartService` records the action, using the items it read under the cart lock, in its transaction. In `api/application/shopping_list.py`, `CloseShoppingListService` records `closed`. Wire both in `api/api/deps.py`. No cart behaviour reads this table
 
 ### Admin API
 
-- [ ] T062 [US4] Add `is_admin` to `SidePanelView` in `api/application/side_panel.py`, `api/adapters/persistence/side_panel.py` and `api/api/schemas/side_panel.py`. No route or body writes it (FR-017a, R16)
-- [ ] T063 [US4] Add the admin not-found error to `api/domain/errors.py`, and `AdminReportRepository` to `api/application/ports.py`
-- [ ] T064 [US4] Create `api/application/admin.py`: the access check and the four reads. Put the written exception to the "every recipe query" rule at the top of the file, scoped to the `/admin/recipes` route (plan.md, Complexity Tracking)
-- [ ] T065 [US4] Create `api/adapters/persistence/admin.py` with plain SQL aggregates as in R17: ingredients from `recipe_ingredient` and `ingredient` with `COUNT(DISTINCT recipe_id)` and `COUNT(DISTINCT author_id)`; the people figure from notebook members or kitchen members by kind; open sessions are `expires_at > now()`; the sort orders in the contract
-- [ ] T066 [US4] Create `api/api/schemas/admin.py` and `api/api/routes/admin.py` with the four GET routes, register the router, and answer the identical `404 {"detail":"Not Found"}` to signed-out and non-admin callers (depends on T064, T065)
+- [X] T062 [US4] Add `is_admin` to `SidePanelView` in `api/application/side_panel.py`, `api/adapters/persistence/side_panel.py` and `api/api/schemas/side_panel.py`. No route or body writes it (FR-017a, R16)
+- [X] T063 [US4] Add the admin not-found error to `api/domain/errors.py`, and `AdminReportRepository` to `api/application/ports.py`
+- [X] T064 [US4] Create `api/application/admin.py`: the access check and the four reads. Put the written exception to the "every recipe query" rule at the top of the file, scoped to the `/admin/recipes` route (plan.md, Complexity Tracking)
+- [X] T065 [US4] Create `api/adapters/persistence/admin.py` with plain SQL aggregates as in R17: ingredients from `recipe_ingredient` and `ingredient` with `COUNT(DISTINCT recipe_id)` and `COUNT(DISTINCT author_id)`; the people figure from notebook members or kitchen members by kind; open sessions are `expires_at > now()`; the sort orders in the contract
+- [X] T066 [US4] Create `api/api/schemas/admin.py` and `api/api/routes/admin.py` with the four GET routes, register the router, and answer the identical `404 {"detail":"Not Found"}` to signed-out and non-admin callers (depends on T064, T065)
 
 ### Admin UI
 
-- [ ] T067 [US4] Create `ui/app/api/admin/[section]/route.ts`: pass `units`, `ingredients`, `recipes` and `users` through, and answer 404 to anything else
-- [ ] T068 [US4] Add `is_admin` to `ui/lib/sidePanelClient.ts`, and the admin entry to `ui/components/SidePanel/SidePanel.tsx`, shown only when true
-- [ ] T069 [US4] Create `ui/app/admin/page.tsx`, server-rendered, where a 404 from the api renders the app's not-found page, and `ui/app/admin/AdminDashboard.tsx` with four tabs that each load their section when opened, using `adminMessages`, working at 360px
+- [X] T067 [US4] Create `ui/app/api/admin/[section]/route.ts`: pass `units`, `ingredients`, `recipes` and `users` through, and answer 404 to anything else
+- [X] T068 [US4] Add `is_admin` to `ui/lib/sidePanelClient.ts`, and the admin entry to `ui/components/SidePanel/SidePanel.tsx`, shown only when true
+- [X] T069 [US4] Create `ui/app/admin/page.tsx`, server-rendered, where a 404 from the api renders the app's not-found page, and `ui/app/admin/AdminDashboard.tsx` with four tabs that each load their section when opened, using `adminMessages`, working at 360px
 
 **Checkpoint**: All four stories pass. Figures match the data (SC-006).
 
