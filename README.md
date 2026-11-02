@@ -73,7 +73,8 @@ Tracked in [dev/docs/backlog.yaml](dev/docs/backlog.yaml); the product spec is
 | Shopping list, saved list closed with Done (S-023, S-025) | Built, browser walk open |
 | Kitchen side panel, cauldron loader (S-064, S-065) | Built, browser walk open |
 | Shopping list export as PDF and Markdown (S-024) | Next |
-| Ownership passing, notebook create, rename and delete (S-058, S-059) | Backlog |
+| Notebook ownership passing (S-058) | Built, takes effect with account deletion (S-054) |
+| Notebook create, rename and delete (S-059) | Backlog |
 | Embeddings, conversations, the kitchen assistant (S-019, S-029 to S-031) | Backlog |
 | Capture from a URL, recipe PDF (S-026, S-028) | Backlog |
 | MCP tools with API keys, deployment, AI evaluation set (S-032 to S-034) | Backlog |

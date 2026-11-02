@@ -456,7 +456,11 @@ class AcceptNotebookInviteService:
         )
 
         # A second request waits here, so its claim fails after the first has committed.
-        self._notebooks.lock_notebook(notebook_id)
+        try:
+            self._notebooks.lock_notebook(notebook_id)
+        except NotebookNotFoundError:
+            # Deleted while this request waited; its invites went with it (spec 058).
+            raise InvalidInviteTokenError() from None
         if not self._invites.claim(invite.id, used_at=now):
             if self._notebooks.role_of(notebook_id, user_id) is not None:
                 return AcceptNotebookInviteResult(notebook_id=notebook_id, already_member=True)

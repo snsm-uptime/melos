@@ -434,9 +434,13 @@ stories:
     title: Personal notebook ownership passes to the longest-standing member when the owner's account is deleted
     epic: Recipes
     priority: must
-    status: backlog
+    status: done
     journey: J1a
     source: prd.md 1.5H, J1a edge cases, Appendix A (User); redesign 2026-10-23
+    verification: >
+      Built on 058-notebook-ownership-passing (2026-11-01). api 1201 passed in the Compose overlay
+      with RECIPE_TEXT_MAX_CHARS=5000 and on a throwaway Postgres; ui 1182 passed. The browser walk
+      belongs to S-054, because nothing a person sees can trigger the rule until then.
     notes: >
       Re-scoped 2026-10-23 (final model): kept copies and the system-managed kitchen notebook were
       dropped, because kitchen notebooks belong to the kitchen and leaving a kitchen only ends
@@ -742,7 +746,9 @@ stories:
     source: prd.md Appendix A (User), Appendix D
     notes: >
       No DELETE /auth/me route exists in the code (checked 2026-10-23), although the PRD says the
-      endpoint exists. Depends on S-058 (ownership passing), which must land first.
+      endpoint exists. Depends on S-058 (ownership passing), which must land first. It must call
+      PassOwnedNotebooksService before deleting the user row, in the same transaction, under the
+      conditions in specs/058-notebook-ownership-passing/contracts/ownership-rule.md.
 
   - id: S-061
     title: Main ingredients and cuisines on recipes (controlled lists, scored cuisine, draft chips, edit, filter)

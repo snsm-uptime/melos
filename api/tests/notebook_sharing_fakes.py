@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from application.ports import (
@@ -15,7 +15,10 @@ from application.ports import (
     UserPreferencesRecord,
 )
 from application.signin import AuthUserRecord
+from domain.errors import NotebookNotFoundError
 from domain.notebook import Notebook
+
+EPOCH = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 @dataclass
@@ -26,6 +29,9 @@ class FakeNotebooks:
     roles: dict[tuple[UUID, UUID], str] = field(default_factory=dict)
     aliases: dict[UUID, str | None] = field(default_factory=dict)
     kitchen_people: set[tuple[UUID, UUID]] = field(default_factory=set)
+    locked: list[UUID] = field(default_factory=list)
+    # Runs once the lock is held, as another request that got there first would.
+    on_lock: Callable[[UUID], None] | None = None
 
     def personal(self, owner: UUID, name: str = "ana's Notebook") -> UUID:
         notebook = Notebook(id=uuid4(), name=name)
@@ -58,14 +64,46 @@ class FakeNotebooks:
 
     def lock_notebook(self, notebook_id: UUID) -> None:
         self.log.append("lock")
+        self.locked.append(notebook_id)
+        if notebook_id not in self.notebooks:
+            raise NotebookNotFoundError()
+        if self.on_lock is not None:
+            self.on_lock(notebook_id)
 
     def members_of(self, notebook_id: UUID) -> list[NotebookMemberRecord]:
         rows = [(u, r) for (n, u), r in self.roles.items() if n == notebook_id]
+        joined = {u: EPOCH + timedelta(seconds=i) for i, (u, _) in enumerate(rows)}
         rows.sort(key=lambda row: row[1] != "owner")
         return [
-            NotebookMemberRecord(user_id=u, alias=self.aliases.get(u), role=r)  # type: ignore[arg-type]
+            NotebookMemberRecord(
+                user_id=u,
+                alias=self.aliases.get(u),
+                role=r,  # type: ignore[arg-type]
+                joined_at=joined[u],
+            )
             for u, r in rows
         ]
+
+    def owned_personal_ids(self, user_id: UUID) -> list[UUID]:
+        # Newest first, so a test sees that the service does the sorting.
+        owned = [
+            n
+            for (n, u), r in self.roles.items()
+            if u == user_id and r == "owner" and self.notebooks[n].kitchen_id is None
+        ]
+        return sorted(owned, reverse=True)
+
+    def make_owner(self, notebook_id: UUID, user_id: UUID) -> None:
+        self.log.append("make_owner")
+        # The partial unique index allows one owner per notebook.
+        assert "owner" not in [r for (n, _), r in self.roles.items() if n == notebook_id]
+        self.roles[(notebook_id, user_id)] = "owner"
+
+    def delete_personal(self, notebook_id: UUID) -> None:
+        self.log.append("delete_personal")
+        del self.notebooks[notebook_id]
+        for key in [key for key in self.roles if key[0] == notebook_id]:
+            del self.roles[key]
 
     def role_of(self, notebook_id: UUID, user_id: UUID) -> str | None:
         return self.roles.get((notebook_id, user_id))

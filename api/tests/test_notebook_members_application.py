@@ -74,6 +74,33 @@ def test_member_leaves(notebooks: FakeNotebooks) -> None:
     assert notebooks.role_of(notebooks.personal_id, MEMBER) is None  # type: ignore[attr-defined]
 
 
+def test_member_leaves_under_the_lock(notebooks: FakeNotebooks) -> None:
+    _leave(notebooks, MEMBER)
+    assert notebooks.log == ["lock", "delete_membership"]
+
+
+def test_a_member_who_became_owner_while_waiting_for_the_lock_stays(
+    notebooks: FakeNotebooks,
+) -> None:
+    def promoted(notebook_id) -> None:  # noqa: ANN001
+        del notebooks.roles[(notebook_id, OWNER)]
+        notebooks.roles[(notebook_id, MEMBER)] = "owner"
+
+    notebooks.on_lock = promoted
+    with pytest.raises(NotebookOwnerStaysError):
+        _leave(notebooks, MEMBER)
+    assert notebooks.role_of(notebooks.personal_id, MEMBER) == "owner"  # type: ignore[attr-defined]
+    assert "delete_membership" not in notebooks.log
+
+
+def test_a_member_removed_while_waiting_for_the_lock_gets_not_found(
+    notebooks: FakeNotebooks,
+) -> None:
+    notebooks.on_lock = lambda notebook_id: notebooks.roles.pop((notebook_id, MEMBER))
+    with pytest.raises(NotebookNotFoundError):
+        _leave(notebooks, MEMBER)
+
+
 def test_owner_cannot_leave(notebooks: FakeNotebooks) -> None:
     with pytest.raises(NotebookOwnerStaysError):
         _leave(notebooks, OWNER)

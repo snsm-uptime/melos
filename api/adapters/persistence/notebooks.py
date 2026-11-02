@@ -6,9 +6,9 @@ from typing import Any
 from uuid import UUID
 
 from application.ports import NotebookFacts, NotebookMemberRecord
-from domain.errors import PrincipalNotFoundError
+from domain.errors import NotebookNotFoundError, PrincipalNotFoundError
 from domain.notebook import Notebook, NotebookRole
-from sqlalchemy import Row, Select, and_, case, delete, exists, func, or_, select
+from sqlalchemy import Row, Select, and_, case, delete, exists, func, or_, select, update
 from sqlalchemy.orm import Session, aliased
 
 from adapters.persistence.models import (
@@ -17,6 +17,7 @@ from adapters.persistence.models import (
     NotebookMembershipModel,
     NotebookModel,
     RecipeModel,
+    SourceModel,
     UserModel,
 )
 
@@ -270,11 +271,33 @@ class SqlAlchemyNotebookRepository:
 
     def lock_notebook(self, notebook_id: UUID) -> None:
         # Same strength as lock_kitchen: recipe saves take FOR KEY SHARE and are not blocked.
-        self._session.execute(
+        locked = self._session.execute(
             select(NotebookModel.id)
             .where(NotebookModel.id == notebook_id)
             .with_for_update(key_share=True)
-        ).one()
+        ).one_or_none()
+        if locked is None:
+            raise NotebookNotFoundError()
+
+    def delete_personal(self, notebook_id: UUID) -> None:
+        source_ids = [
+            source_id
+            for source_id in self._session.scalars(
+                select(RecipeModel.source_id).where(RecipeModel.notebook_id == notebook_id)
+            )
+            if source_id is not None
+        ]
+        self._session.execute(delete(NotebookModel).where(NotebookModel.id == notebook_id))
+        if not source_ids:
+            return
+        # Recipes point at sources, so no cascade reaches them, and the account deletion would
+        # otherwise leave the person's captured text behind with no owner (research R5).
+        self._session.execute(
+            delete(SourceModel).where(
+                SourceModel.id.in_(source_ids),
+                ~exists().where(RecipeModel.source_id == SourceModel.id),
+            )
+        )
 
     def members_of(self, notebook_id: UUID) -> list[NotebookMemberRecord]:
         rows = self._session.execute(
@@ -282,6 +305,7 @@ class SqlAlchemyNotebookRepository:
                 NotebookMembershipModel.user_id,
                 UserModel.alias,
                 NotebookMembershipModel.role,
+                NotebookMembershipModel.created_at,
             )
             .join(UserModel, UserModel.id == NotebookMembershipModel.user_id)
             .where(NotebookMembershipModel.notebook_id == notebook_id)
@@ -292,9 +316,38 @@ class SqlAlchemyNotebookRepository:
             )
         ).all()
         return [
-            NotebookMemberRecord(user_id=row.user_id, alias=row.alias, role=row.role)
+            NotebookMemberRecord(
+                user_id=row.user_id, alias=row.alias, role=row.role, joined_at=row.created_at
+            )
             for row in rows
         ]
+
+    def owned_personal_ids(self, user_id: UUID) -> list[UUID]:
+        return list(
+            self._session.scalars(
+                select(NotebookModel.id)
+                .join(
+                    NotebookMembershipModel,
+                    NotebookMembershipModel.notebook_id == NotebookModel.id,
+                )
+                .where(
+                    NotebookMembershipModel.user_id == user_id,
+                    NotebookMembershipModel.role == "owner",
+                    NotebookModel.kitchen_id.is_(None),
+                )
+            )
+        )
+
+    def make_owner(self, notebook_id: UUID, user_id: UUID) -> None:
+        # Only the role: created_at stays, and so does the key the person's edit locks point at.
+        self._session.execute(
+            update(NotebookMembershipModel)
+            .where(
+                NotebookMembershipModel.notebook_id == notebook_id,
+                NotebookMembershipModel.user_id == user_id,
+            )
+            .values(role="owner")
+        )
 
     def role_of(self, notebook_id: UUID, user_id: UUID) -> NotebookRole | None:
         return self._session.scalar(
