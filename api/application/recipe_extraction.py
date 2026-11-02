@@ -110,9 +110,7 @@ class _InFlight:
     error: BaseException | None = None
 
 
-def _flight_key(
-    text: str, ingredient_names: Sequence[str], available_units: Sequence[str]
-) -> str:
+def _flight_key(text: str, ingredient_names: Sequence[str], available_units: Sequence[str]) -> str:
     """Only calls judged by the same lists may share a result (spec 055 R5)."""
     parts = json.dumps([text, sorted(ingredient_names), sorted(available_units)])
     return hashlib.sha256(parts.encode("utf-8")).hexdigest()

@@ -92,9 +92,7 @@ def test_one_custom_unit_adds_up() -> None:
 
 
 def test_a_custom_sum_rounds_up_to_a_whole_number() -> None:
-    result = build_shopping_list(
-        [_scaled(_line("frijoles", 1, "lata"), factor=Fraction(3, 2))]
-    )
+    result = build_shopping_list([_scaled(_line("frijoles", 1, "lata"), factor=Fraction(3, 2))])
     assert _amounts(result) == [("frijoles", "custom", (("2", "lata"),))]
 
 

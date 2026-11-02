@@ -126,8 +126,7 @@ def test_reference_count_follows_the_list(conn: Connection) -> None:
         {"people": people},
     )
     assert (
-        conn.execute(text("SELECT reference_count FROM unit WHERE name = 'lata'")).scalar_one()
-        == 2
+        conn.execute(text("SELECT reference_count FROM unit WHERE name = 'lata'")).scalar_one() == 2
     )
 
 

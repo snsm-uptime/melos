@@ -473,9 +473,7 @@ def _kept_setup() -> tuple[World, FakeRecipes, FakeCatalog, FakeUnits, UUID]:
 
 def test_a_kept_word_on_update_joins_the_person_s_list() -> None:
     world, recipes, catalog, units, recipe_id = _kept_setup()
-    command = _update(
-        recipes, recipe_id, BEN, lines=(_line(unit="lata"),), keep_units=("lata",)
-    )
+    command = _update(recipes, recipe_id, BEN, lines=(_line(unit="lata"),), keep_units=("lata",))
     _update_service(world, recipes, catalog, units).execute(command)
     assert units.added == [(["lata"], BEN)]
 
