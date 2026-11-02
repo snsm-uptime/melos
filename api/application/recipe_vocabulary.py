@@ -6,9 +6,17 @@ cuisine lists are out of the MVP (S-061); their code is commented out under MVP-
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import Any, Literal
 
-from domain.recipe_draft import ALLOWED_UNITS, SIZES
+from domain.recipe_draft import (
+    ALLOWED_UNITS,
+    SIZES,
+    InvalidDraftError,
+    custom_unit_name,
+    lookup_unit,
+)
 
 # MVP-OUT: also imported Mapping, MAX_CUISINES and MAX_MAIN_INGREDIENTS
 
@@ -55,6 +63,29 @@ from domain.recipe_draft import ALLOWED_UNITS, SIZES
 #         ],
 #         "cuisines": listed,
 #     }
+
+
+@dataclass(frozen=True, slots=True)
+class UnitCheck:
+    outcome: Literal["known", "new", "not_a_unit"]
+    unit: str | None
+
+
+def check_unit_word(word: str, available: Sequence[str]) -> UnitCheck:
+    """A word typed by hand: `known` gives the unit for the line, `new` needs the question (R12)."""
+    try:
+        known = lookup_unit(word, available)
+    except InvalidDraftError:
+        return UnitCheck("not_a_unit", None)
+    if known is not None:
+        return UnitCheck("known", known)
+    name = custom_unit_name(word)
+    return UnitCheck("new", name) if name else UnitCheck("not_a_unit", None)
+
+
+def vocabulary_for_person(answer: dict[str, Any], available: Sequence[str]) -> dict[str, Any]:
+    """The shared answer with the caller's units (spec 055). Never cached across people."""
+    return {**answer, "units": list(available)}
 
 
 def vocabulary_answer(*, max_text_chars: int) -> dict[str, Any]:

@@ -205,7 +205,9 @@ def _commit_then_refuse_downgrade(migrated: Engine, write) -> None:
             connection.execute(text("DELETE FROM recipe WHERE title = 'Beans'"))
             connection.execute(text("DELETE FROM notebook WHERE name = 'Test notebook'"))
             connection.execute(text("DELETE FROM kitchens WHERE name = 'K'"))
-            connection.execute(text("DELETE FROM users WHERE email ~ '^[0-9a-f-]{36}@example[.]com$'"))
+            connection.execute(
+                text("DELETE FROM users WHERE email ~ '^[0-9a-f-]{36}@example[.]com$'")
+            )
     assert inspect(migrated).has_table("unit")
 
 

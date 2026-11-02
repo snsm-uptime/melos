@@ -215,6 +215,7 @@ def get_capture_recipe_text(
         SqlAlchemyNotebookRepository(db),
         SqlAlchemyIngredientCatalog(db),
         extraction,
+        units=SqlAlchemyUnitRepository(db),
         max_chars=load_recipe_text_max_chars(),
         timeout_s=settings.text_timeout_s,
     )
@@ -235,6 +236,7 @@ def get_save_recipe_draft(db: Session = Depends(get_db)) -> SaveRecipeDraft:
             catalog,
             SqlAlchemyTransactionCommitter(db),
         ),
+        units=SqlAlchemyUnitRepository(db),
         max_text_chars=load_recipe_text_max_chars(),
     )
 
@@ -262,6 +264,7 @@ def get_update_recipe(db: Session = Depends(get_db)) -> UpdateRecipeService:
         SqlAlchemyNotebookRepository(db),
         SqlAlchemyIngredientCatalog(db),
         SqlAlchemyEditLockRepository(db),
+        units=SqlAlchemyUnitRepository(db),
     )
 
 

@@ -8,6 +8,7 @@ in-progress call between concurrent identical texts. Nothing is stored.
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import threading
 from collections.abc import Sequence
@@ -109,6 +110,14 @@ class _InFlight:
     error: BaseException | None = None
 
 
+def _flight_key(
+    text: str, ingredient_names: Sequence[str], available_units: Sequence[str]
+) -> str:
+    """Only calls judged by the same lists may share a result (spec 055 R5)."""
+    parts = json.dumps([text, sorted(ingredient_names), sorted(available_units)])
+    return hashlib.sha256(parts.encode("utf-8")).hexdigest()
+
+
 class RecipeExtraction:
     """Use case: text in, one checked ExtractionResult out."""
 
@@ -123,6 +132,7 @@ class RecipeExtraction:
         text: str,
         ingredient_names: Sequence[str],
         timeout_s: float,
+        available_units: Sequence[str] = (),
     ) -> ExtractionResult:
         trimmed = text.strip()
         if not trimmed:
@@ -130,7 +140,7 @@ class RecipeExtraction:
         if len(trimmed) > MAX_TEXT_CHARS:
             raise RecipeTextRefusedError(RecipeTextRefusedError.TOO_LONG)
 
-        key = hashlib.sha256(trimmed.encode("utf-8")).hexdigest()
+        key = _flight_key(trimmed, ingredient_names, available_units)
         with self._lock:
             flight = self._in_flight.get(key)
             owner = flight is None
@@ -146,7 +156,7 @@ class RecipeExtraction:
             return flight.result
 
         try:
-            flight.result = self._evaluate(trimmed, ingredient_names, timeout_s)
+            flight.result = self._evaluate(trimmed, ingredient_names, timeout_s, available_units)
         except BaseException as exc:
             flight.error = exc
             raise
@@ -161,12 +171,14 @@ class RecipeExtraction:
         trimmed: str,
         ingredient_names: Sequence[str],
         timeout_s: float,
+        available_units: Sequence[str],
     ) -> ExtractionResult:
+        # The units stay here: they are compared in code and never reach the model (spec 055 R4).
         result = self._extractor.extract(trimmed, ingredient_names, timeout_s)
         if not isinstance(result, Draft):
             return result
         try:
-            recipe = check_draft(result.recipe, ingredient_names)
+            recipe = check_draft(result.recipe, ingredient_names, available_units)
         except DraftProblems as exc:
             # Names and kinds only, never the ingredient name or title (constitution §4).
             logger.warning(

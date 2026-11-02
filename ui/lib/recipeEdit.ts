@@ -14,6 +14,10 @@ export type EditState = {
   servingsEstimated: boolean;
   lines: LineView[];
   steps: StepView[];
+  /** Words the person said yes to, sent on update (spec 055). */
+  keptUnits: string[];
+  /** Words the person said no to on this screen. Never remembered (FR-006). */
+  declinedUnits: string[];
 };
 
 let counter = 0;
@@ -41,6 +45,8 @@ export function toEditState(recipe: RecipeDetail): EditState {
       match: { kind: "matched", entry: line.name },
     })),
     steps: recipe.steps.map((text) => ({ key: nextKey("edit-step"), text })),
+    keptUnits: [],
+    declinedUnits: [],
   };
 }
 
@@ -60,6 +66,7 @@ export function toUpdateBody(state: EditState, version: string): RecipeUpdateBod
       note: line.note,
     })),
     steps: state.steps.map((step) => step.text),
+    keep_units: state.keptUnits,
   };
 }
 

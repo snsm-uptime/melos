@@ -440,7 +440,8 @@ def test_custom_unit_name_is_trimmed_lower_case_and_singular(raw: str, expected:
 
 @pytest.mark.parametrize(
     "raw",
-    ["", "   ", "x" * 33, "123", "!!", "1/2", "lata;", "<b>", "grande", "large", "pizca", "al gusto"],
+    ["", "   ", "x" * 33, "123", "!!", "1/2", "lata;", "<b>"]
+    + ["grande", "large", "pizca", "al gusto"],
 )
 def test_custom_unit_name_refuses_what_cannot_be_offered(raw: str) -> None:
     assert custom_unit_name(raw) is None

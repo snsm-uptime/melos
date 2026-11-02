@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { formatQuantity } from "@/lib/recipeLines";
 
@@ -12,8 +12,11 @@ import {
   type LineView,
 } from "@/lib/capture/captureStore";
 import type { NameChange } from "@/lib/capture/nameChanges";
+import { customUnitMessages } from "@/lib/i18n/customUnits";
 import type { Locale } from "@/lib/i18n/locale";
 import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
+import { useLocale } from "@/lib/i18n/useLocale";
+import type { RecipeResult, UnitCheck } from "@/lib/recipesClient";
 
 import { NameChangeNotice } from "./NameChangeNotice";
 import { RowControls } from "./RowControls";
@@ -23,8 +26,11 @@ type EditableIngredientLineProps = {
   index: number;
   count: number;
   errors: NonNullable<DraftErrors["lines"][number]>;
+  /** The person's units. The line's current unit is added when it is not one of them. */
   units: string[];
   sizes: string[];
+  /** Checks a word typed under "Other…"; without it the picker has no such entry (spec 055 R15). */
+  onCheckUnit?: (word: string) => Promise<RecipeResult<UnitCheck>>;
   /** The notebook's catalog entries, for the match control (spec 018 FR-005). */
   catalog: string[];
   /** This line's name change, shown as a row above the card (spec 018 FR-003). */
@@ -43,6 +49,9 @@ const fieldClassName =
 
 const headingClassName = "text-[1.05rem] font-semibold";
 
+/** The picker value that swaps in the text field. Not a unit name. */
+const OTHER_UNIT = "__other__";
+
 const amountClassName = `${fieldClassName} ${headingClassName} shrink-0 text-accent`;
 
 const labelClassName = "m-0 w-24 shrink-0 text-[0.8rem] font-medium text-muted";
@@ -60,6 +69,7 @@ function EditableIngredientLine({
   errors,
   units,
   sizes,
+  onCheckUnit,
   catalog,
   change,
   onUndoChange,
@@ -69,6 +79,8 @@ function EditableIngredientLine({
   locale,
 }: EditableIngredientLineProps) {
   const t = useCaptureMessages(locale);
+  const providerLocale = useLocale();
+  const unitText = customUnitMessages[locale ?? providerLocale];
   const sizeEnabled = line.unit === "unit";
   const matchedEntry = line.match.kind === "matched" ? line.match.entry : null;
   const id = useId();
@@ -84,6 +96,44 @@ function EditableIngredientLine({
     unit: string | null;
     size: string | null;
   } | null>(null);
+
+  const [typingUnit, setTypingUnit] = useState(false);
+  const [typedUnit, setTypedUnit] = useState("");
+  const [unitProblem, setUnitProblem] = useState<"notAUnit" | "checkFailed" | null>(null);
+  const unitOptions =
+    line.unit && !units.includes(line.unit) ? [...units, line.unit] : units;
+  // The check is awaited, so it must apply to the line as it is by then.
+  const latestLine = useRef(line);
+  useEffect(() => {
+    latestLine.current = line;
+  }, [line]);
+
+  /** A word typed under "Other…", checked when the field is left (spec 055 R15). */
+  async function leaveTypedUnit() {
+    const word = typedUnit.trim();
+    if (!word || !onCheckUnit) {
+      setTypingUnit(false);
+      return;
+    }
+    const result = await onCheckUnit(word);
+    if (!result.ok) {
+      setUnitProblem("checkFailed");
+      return;
+    }
+    if (result.value.outcome === "not_a_unit") {
+      setUnitProblem("notAUnit");
+      return;
+    }
+    const unit = result.value.unit;
+    setUnitProblem(null);
+    setTypedUnit("");
+    setTypingUnit(false);
+    onChange({
+      ...latestLine.current,
+      unit,
+      size: unit === "unit" ? latestLine.current.size : null,
+    });
+  }
 
   return (
     <li className="flex min-w-0 flex-col gap-[var(--space-2)]">
@@ -125,6 +175,20 @@ function EditableIngredientLine({
                       });
                     }}
                   />
+                  {typingUnit ? (
+                    <input
+                      aria-label={unitText.otherLabel}
+                      autoFocus
+                      maxLength={200}
+                      className={`${amountClassName} w-24`}
+                      value={typedUnit}
+                      onChange={(event) => {
+                        setUnitProblem(null);
+                        setTypedUnit(event.target.value);
+                      }}
+                      onBlur={() => void leaveTypedUnit()}
+                    />
+                  ) : (
                   <select
                     aria-label={t.unit}
                     className={amountClassName}
@@ -132,6 +196,12 @@ function EditableIngredientLine({
                     disabled={line.vague}
                     onChange={(event) => {
                       setCachedAmount(null);
+                      if (event.target.value === OTHER_UNIT) {
+                        // No unit until the word is checked, so Save can't go out without it.
+                        setTypingUnit(true);
+                        onChange({ ...line, unit: null, size: null });
+                        return;
+                      }
                       onChange({
                         ...line,
                         unit:
@@ -141,12 +211,16 @@ function EditableIngredientLine({
                     }}
                   >
                     <option value="">—</option>
-                    {units.map((unit) => (
+                    {unitOptions.map((unit) => (
                       <option key={unit} value={unit}>
                         {unit}
                       </option>
                     ))}
+                    {onCheckUnit ? (
+                      <option value={OTHER_UNIT}>{unitText.other}</option>
+                    ) : null}
                   </select>
+                  )}
                   {sizeEnabled ? (
                     <select
                       aria-label={t.size}
@@ -282,6 +356,11 @@ function EditableIngredientLine({
                   {t.errors[code]}
                 </p>
               ))}
+              {unitProblem ? (
+                <p role="alert" className="m-0 text-[0.8rem] text-owe">
+                  {unitText[unitProblem]}
+                </p>
+              ) : null}
             </CardBody>
           </div>
           <RowControls

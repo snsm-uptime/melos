@@ -2,23 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from uuid import UUID
-
 from application.units import allowed_for_save, available_units, kept_units_to_add
 from domain.recipe_draft import ALLOWED_UNITS, IngredientLine
-
-
-class FakeUnits:
-    def __init__(self, extras: Sequence[str] = ()) -> None:
-        self.extras = list(extras)
-        self.added: list[tuple[list[str], UUID]] = []
-
-    def extras_for(self, user_id: UUID) -> list[str]:
-        return list(self.extras)
-
-    def add_user(self, names: Sequence[str], user_id: UUID) -> None:
-        self.added.append((list(names), user_id))
 
 
 def line(unit: str | None) -> IngredientLine:

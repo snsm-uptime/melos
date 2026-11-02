@@ -7,7 +7,7 @@ replaced by FakeRecipeExtractor through the dependency override, so no test need
 from __future__ import annotations
 
 from dataclasses import replace
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from adapters.llm.fake_extractor import FakeRecipeExtractor
@@ -429,3 +429,67 @@ def test_line_problem_refusals_carry_no_assistant_text(
     assert response.json()["detail"] == ""
     assert "Onion soup" not in response.text
     assert "Simmer" not in response.text
+
+
+# --- custom units (spec 055) ----------------------------------------------------------------
+
+
+def _lata_recipe(unit: str = "latas") -> DraftRecipe:
+    return DraftRecipe(
+        title="Beans",
+        base_servings=4,
+        servings_estimated=False,
+        ingredient_lines=(IngredientLine("frijoles", False, 2.0, unit),),
+        steps=("Open the cans.",),
+    )
+
+
+def _save_kept(client: TestClient, notebook_id: str) -> None:
+    response = client.post(
+        "/recipes",
+        json={
+            "save_key": str(uuid4()),
+            "notebook_id": notebook_id,
+            "source_text": "2 latas de frijoles",
+            "title": "Beans",
+            "base_servings": 4,
+            "ingredient_lines": [{"name": "frijoles", "quantity": 2, "unit": "lata"}],
+            "steps": ["Open the cans."],
+            "keep_units": ["lata"],
+        },
+    )
+    assert response.status_code == 201, response.text
+
+
+def test_capture_save_and_capture_again_asks_once_and_only_the_person_who_kept_it(
+    client: TestClient, script: FakeRecipeExtractor
+) -> None:
+    _register(client, "keeper_units@example.com")
+    notebook_id = _personal_notebook(client)
+    _set_result(script, Draft(recipe=_lata_recipe()))
+
+    first = _capture(client, notebook_id).json()["draft"]
+    assert first["unknown_units"] == [{"word": "lata", "lines": [0]}]
+    assert first["ingredient_lines"][0]["unit"] == "lata"
+
+    _save_kept(client, notebook_id)
+    again = _capture(client, notebook_id, "4 latas de frijoles").json()["draft"]
+    assert again["unknown_units"] == []
+    assert again["ingredient_lines"][0]["unit"] == "lata"
+
+    _register_other = "other_units@example.com"
+    client.post("/auth/sign-out")
+    _register(client, _register_other)
+    other = _capture(client, _personal_notebook(client), "6 latas de frijoles").json()["draft"]
+    assert other["unknown_units"] == [{"word": "lata", "lines": [0]}]
+
+
+def test_a_word_that_cannot_be_offered_keeps_the_refusal(
+    client: TestClient, script: FakeRecipeExtractor
+) -> None:
+    _register(client, "odd_units@example.com")
+    notebook_id = _personal_notebook(client)
+    _set_result(script, Draft(recipe=_lata_recipe("!!!")))
+    response = _capture(client, notebook_id)
+    assert response.status_code == 422
+    assert response.json()["code"] == "ingredient_line_problem"

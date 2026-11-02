@@ -32,6 +32,7 @@ class SaveRecipeBody(BaseModel):
     # The same limits as the use case (spec FR-019); the use case also checks them.
     ingredient_lines: list[SaveIngredientLine] = Field(max_length=MAX_LINES + 1)
     steps: list[str] = Field(max_length=MAX_STEPS + 1)
+    keep_units: list[str] = Field(default_factory=list, max_length=MAX_LINES + 1)
 
 
 class UpdateRecipeBody(BaseModel):
@@ -47,6 +48,7 @@ class UpdateRecipeBody(BaseModel):
     servings_estimated: bool = False
     ingredient_lines: list[SaveIngredientLine] = Field(max_length=MAX_LINES + 1)
     steps: list[str] = Field(max_length=MAX_STEPS + 1)
+    keep_units: list[str] = Field(default_factory=list, max_length=MAX_LINES + 1)
 
 
 class NameMatchesBody(BaseModel):

@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from application.ports import PreferencesRepository
+from application.ports import PreferencesRepository, UnitRepository
 from application.recipe_capture import (
     CapturedDraft,
     CaptureOutcome,
@@ -28,6 +28,8 @@ from application.recipe_extraction import (
     NotRecipeReason,
     Unavailable,
 )
+from application.recipe_vocabulary import check_unit_word, vocabulary_for_person
+from application.units import available_units
 from domain.errors import KitchenArchivedError, NotebookNotFoundError
 from domain.ingredient_catalog import LineMatch
 from domain.preferences import effective_language
@@ -38,10 +40,11 @@ from fastapi.responses import JSONResponse
 from api.deps import (
     get_capture_recipe_text,
     get_preferences_repository,
+    get_unit_repository,
     get_vocabulary_answer,
     require_user_alias,
 )
-from api.schemas.recipe_capture import CaptureTextBody
+from api.schemas.recipe_capture import CaptureTextBody, UnitCheckBody
 from api.settings import load_recipe_text_max_chars
 
 # MVP-OUT: the draft no longer uses `domain.labels.pick_label` (category chip labels)
@@ -118,6 +121,10 @@ def _draft_body(captured: CapturedDraft) -> dict[str, Any]:
                     "match": _match_body(matches[index]),
                 }
                 for index, line in enumerate(recipe.ingredient_lines)
+            ],
+            "unknown_units": [
+                {"word": unknown.word, "lines": list(unknown.lines)}
+                for unknown in recipe.unknown_units
             ],
             "steps": list(recipe.steps),
         },
@@ -250,5 +257,18 @@ def capture_recipe_text(
 def recipe_vocabulary(
     request: Request,
     user_id: uuid.UUID = Depends(require_user_alias),
+    units: UnitRepository = Depends(get_unit_repository),
 ) -> dict[str, Any]:
-    return get_vocabulary_answer(request)
+    available = available_units(units.extras_for(user_id))
+    return vocabulary_for_person(get_vocabulary_answer(request), available)
+
+
+@router.post("/recipe-vocabulary/unit-check")
+def recipe_unit_check(
+    body: UnitCheckBody,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    units: UnitRepository = Depends(get_unit_repository),
+) -> dict[str, str | None]:
+    """Whether a typed word is a unit the caller has. Stores nothing (spec 055 R12)."""
+    answer = check_unit_word(body.word, available_units(units.extras_for(user_id)))
+    return {"outcome": answer.outcome, "unit": answer.unit}

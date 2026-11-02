@@ -52,37 +52,37 @@
 
 ### Tests
 
-- [ ] T016 [P] [US1] Add to `api/tests/test_recipe_extraction_application.py`: two accounts paste the same text at once and each gets a draft judged by their own units (R5); `unknown_units` is returned for an unknown word
-- [ ] T017 [P] [US1] Add to `api/tests/test_prompt_templates.py` or `api/tests/test_prompt_characterization.py`: no stored unit appears in what is sent to the model (R4, FR-021)
-- [ ] T018 [P] [US1] Add to `api/tests/test_recipe_save_application.py`: a kept word used by a line joins the list; a kept word no line uses, or one already covered, is ignored; a refused save and a replayed save add nothing; an unknown word not in `keep_units` is `unit_not_recognized` and stores nothing (`contracts/units-api.md`)
-- [ ] T019 [P] [US2] Add to `api/tests/test_recipe_manage_application.py`: `keep_units` on update behaves as in T018
-- [ ] T020 [P] [US2] Create `api/tests/test_recipe_vocabulary_integration.py`: `GET /recipe-vocabulary` is per person, in R20 order; `POST /recipe-vocabulary/unit-check` answers `known`, `new` and `not_a_unit` as in the contract, stores nothing, and refuses a word over 200 characters
-- [ ] T021 [P] [US1] Add to `api/tests/test_recipe_capture_integration.py` and `api/tests/test_recipe_save_integration.py`: the full capture, accept and save route flow with a fake extractor, and account isolation (US2 scenario 4)
-- [ ] T022 [P] [US1] Add to `ui/lib/capture/draftRules.test.ts`: `checkDraft` takes the allowed units as an argument and flags a line outside them, and a word asked about is listed once
-- [ ] T023 [P] [US1] Add to `ui/components/RecipeDraft/RecipeDraftEditor.test.tsx` and `ui/lib/capture/saveClient.test.ts`: the question shows once per word, accept clears the flag and sends `keep_units`, decline keeps the flag and blocks Save, discard sends nothing, and two words are answered apart (US1 scenarios 1 to 6)
-- [ ] T024 [P] [US2] Add to `ui/components/RecipeEdit/RecipeEditForm.test.tsx`: the picker shows the vocabulary, "Other…" swaps in a text field, leaving it calls `unit-check`, `new` asks, `known` writes the mapped unit, and `not_a_unit` stays flagged
+- [X] T016 [P] [US1] Add to `api/tests/test_recipe_extraction_application.py`: two accounts paste the same text at once and each gets a draft judged by their own units (R5); `unknown_units` is returned for an unknown word
+- [X] T017 [P] [US1] Add to `api/tests/test_prompt_templates.py` or `api/tests/test_prompt_characterization.py`: no stored unit appears in what is sent to the model (R4, FR-021)
+- [X] T018 [P] [US1] Add to `api/tests/test_recipe_save_application.py`: a kept word used by a line joins the list; a kept word no line uses, or one already covered, is ignored; a refused save and a replayed save add nothing; an unknown word not in `keep_units` is `unit_not_recognized` and stores nothing (`contracts/units-api.md`)
+- [X] T019 [P] [US2] Add to `api/tests/test_recipe_manage_application.py`: `keep_units` on update behaves as in T018
+- [X] T020 [P] [US2] Create `api/tests/test_recipe_vocabulary_integration.py`: `GET /recipe-vocabulary` is per person, in R20 order; `POST /recipe-vocabulary/unit-check` answers `known`, `new` and `not_a_unit` as in the contract, stores nothing, and refuses a word over 200 characters
+- [X] T021 [P] [US1] Add to `api/tests/test_recipe_capture_integration.py` and `api/tests/test_recipe_save_integration.py`: the full capture, accept and save route flow with a fake extractor, and account isolation (US2 scenario 4)
+- [X] T022 [P] [US1] Add to `ui/lib/capture/draftRules.test.ts`: `checkDraft` takes the allowed units as an argument and flags a line outside them, and a word asked about is listed once
+- [X] T023 [P] [US1] Add to `ui/components/RecipeDraft/RecipeDraftEditor.test.tsx` and `ui/lib/capture/saveClient.test.ts`: the question shows once per word, accept clears the flag and sends `keep_units`, decline keeps the flag and blocks Save, discard sends nothing, and two words are answered apart (US1 scenarios 1 to 6)
+- [X] T024 [P] [US2] Add to `ui/components/RecipeEdit/RecipeEditForm.test.tsx`: the picker shows the vocabulary, "Other…" swaps in a text field, leaving it calls `unit-check`, `new` asks, `known` writes the mapped unit, and `not_a_unit` stays flagged
 
 ### API
 
-- [ ] T025 [US1] Add one rule to `api/adapters/llm/prompts/recipe_extraction_system.md`: a container or measure word is reported as written and never folded into a plain count (FR-002). Update `api/tests/fixtures/prompts/recipe_extraction_system.golden.txt`, and add `api/tests/fixtures/ai_eval/canned_beans.txt` with invented text. The `RecipeExtractor` port does not change
-- [ ] T026 [US1] In `api/application/recipe_extraction.py`, hash the text, the catalog names and the available units together for the in-flight key, and pass the units to `check_draft` (R5)
-- [ ] T027 [US1] In `api/application/recipe_capture.py`, read the caller's units through `UnitRepository` and pass them to extraction, for pasted text and web pages (FR-009)
-- [ ] T028 [US1] Add `unknown_units` to the draft response in `api/api/schemas/recipes.py` and `api/api/routes/recipe_capture.py`, in the shape `{ "word": "lata", "lines": [0, 3] }`
-- [ ] T029 [US1] In `api/application/recipe_save.py`, take `keep_units`, allow `available ∪ kept` in `check_edited_draft`, and call `add_user` after the write in the same transaction, beside `add_names` (R10, FR-005)
-- [ ] T030 [US2] In `api/application/recipe_manage.py`, do the same for update, and also allow every unit on the stored recipe (R11)
-- [ ] T031 [US1] Add `keep_units: list[str]`, default `[]`, at most one entry per allowed line count, to both bodies in `api/api/schemas/recipes.py` and pass it through `api/api/routes/recipes.py`
-- [ ] T032 [US2] In `api/application/recipe_vocabulary.py`, return `available_units` for the caller, and add a pure unit check answering `known`, `new` or `not_a_unit`, using `lookup_unit` and `custom_unit_name` (R12)
-- [ ] T033 [US2] Add `POST /recipe-vocabulary/unit-check` to the vocabulary route in `api/api/routes/`, with a body of at most 200 characters
+- [X] T025 [US1] Add one rule to `api/adapters/llm/prompts/recipe_extraction_system.md`: a container or measure word is reported as written and never folded into a plain count (FR-002). Update `api/tests/fixtures/prompts/recipe_extraction_system.golden.txt`, and add `api/tests/fixtures/ai_eval/canned_beans.txt` with invented text. The `RecipeExtractor` port does not change
+- [X] T026 [US1] In `api/application/recipe_extraction.py`, hash the text, the catalog names and the available units together for the in-flight key, and pass the units to `check_draft` (R5)
+- [X] T027 [US1] In `api/application/recipe_capture.py`, read the caller's units through `UnitRepository` and pass them to extraction, for pasted text and web pages (FR-009)
+- [X] T028 [US1] Add `unknown_units` to the draft response in `api/api/schemas/recipes.py` and `api/api/routes/recipe_capture.py`, in the shape `{ "word": "lata", "lines": [0, 3] }`
+- [X] T029 [US1] In `api/application/recipe_save.py`, take `keep_units`, allow `available ∪ kept` in `check_edited_draft`, and call `add_user` after the write in the same transaction, beside `add_names` (R10, FR-005)
+- [X] T030 [US2] In `api/application/recipe_manage.py`, do the same for update, and also allow every unit on the stored recipe (R11)
+- [X] T031 [US1] Add `keep_units: list[str]`, default `[]`, at most one entry per allowed line count, to both bodies in `api/api/schemas/recipes.py` and pass it through `api/api/routes/recipes.py`
+- [X] T032 [US2] In `api/application/recipe_vocabulary.py`, return `available_units` for the caller, and add a pure unit check answering `known`, `new` or `not_a_unit`, using `lookup_unit` and `custom_unit_name` (R12)
+- [X] T033 [US2] Add `POST /recipe-vocabulary/unit-check` to the vocabulary route in `api/api/routes/`, with a body of at most 200 characters
 
 ### UI
 
-- [ ] T034 [US1] In `ui/lib/capture/draftRules.ts`, make `checkDraft` take the allowed units as an argument, and add a pure `pendingUnitQuestions(lines, allowed, keptUnits, declinedUnits)`: a word is asked about while a line uses it and it's in none of the three lists (data-model.md). Remove `ALLOWED_UNITS` from the `RecipeEditForm` path, and update every `checkDraft` caller
-- [ ] T035 [US1] In `ui/lib/capture/captureStore.ts`, carry `keptUnits` and `declinedUnits` on the draft, seeded empty, cleared on discard, and never persisted as a refusal (FR-006). In `ui/lib/capture/captureClient.ts`, read `unknown_units`. In `ui/lib/capture/saveClient.ts`, send `keep_units` from `buildSaveBody`
-- [ ] T036 [US1] Create `ui/components/RecipeDraft/UnknownUnitQuestion.tsx` and export it from `ui/components/RecipeDraft/index.ts`: one question per word, using `customUnitMessages`, works at 360px, and shows the word as stored in both languages
-- [ ] T037 [US1] Show `UnknownUnitQuestion` above the lines in `ui/components/RecipeDraft/RecipeDraftEditor.tsx`
-- [ ] T038 [US2] In `ui/components/RecipeDraft/IngredientLineRow.tsx`, the `<select>` lists the available units, plus the line's current unit if missing, plus "Other…", which swaps in a text field. Leaving the field calls `unit-check` (R15)
-- [ ] T039 [US2] Add a `unit-check` handler in `ui/app/api/recipe-vocabulary/`, and a client for it in `ui/lib/recipesClient.ts`
-- [ ] T040 [US2] In `ui/components/RecipeEdit/RecipeEditForm.tsx` and `ui/lib/recipeEdit.ts`, load the vocabulary, carry `keptUnits` and `declinedUnits`, show `UnknownUnitQuestion`, and send `keep_units` on update
+- [X] T034 [US1] In `ui/lib/capture/draftRules.ts`, make `checkDraft` take the allowed units as an argument, and add a pure `pendingUnitQuestions(lines, allowed, keptUnits, declinedUnits)`: a word is asked about while a line uses it and it's in none of the three lists (data-model.md). Remove `ALLOWED_UNITS` from the `RecipeEditForm` path, and update every `checkDraft` caller
+- [X] T035 [US1] In `ui/lib/capture/captureStore.ts`, carry `keptUnits` and `declinedUnits` on the draft, seeded empty, cleared on discard, and never persisted as a refusal (FR-006). In `ui/lib/capture/captureClient.ts`, read `unknown_units`. In `ui/lib/capture/saveClient.ts`, send `keep_units` from `buildSaveBody`
+- [X] T036 [US1] Create `ui/components/RecipeDraft/UnknownUnitQuestion.tsx` and export it from `ui/components/RecipeDraft/index.ts`: one question per word, using `customUnitMessages`, works at 360px, and shows the word as stored in both languages
+- [X] T037 [US1] Show `UnknownUnitQuestion` above the lines in `ui/components/RecipeDraft/RecipeDraftEditor.tsx`
+- [X] T038 [US2] In `ui/components/RecipeDraft/IngredientLineRow.tsx`, the `<select>` lists the available units, plus the line's current unit if missing, plus "Other…", which swaps in a text field. Leaving the field calls `unit-check` (R15)
+- [X] T039 [US2] Add a `unit-check` handler in `ui/app/api/recipe-vocabulary/`, and a client for it in `ui/lib/recipesClient.ts`
+- [X] T040 [US2] In `ui/components/RecipeEdit/RecipeEditForm.tsx` and `ui/lib/recipeEdit.ts`, load the vocabulary, carry `keptUnits` and `declinedUnits`, show `UnknownUnitQuestion`, and send `keep_units` on update
 
 **Checkpoint**: The Independent Test passes. Stories 1 and 2 are complete, but do not release until Phase 4 is done: without it a saved `lata` drops off a shopping list and blocks other members' edits (plan.md, Build order).
 

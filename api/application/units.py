@@ -43,7 +43,5 @@ def kept_units_to_add(
     """Kept words a saved line uses, leaving out what the person already has (R10)."""
     used = {line.unit for line in saved_lines}
     return tuple(
-        word
-        for word in _offerable(keep_units)
-        if word in used and not _covered(word, available)
+        word for word in _offerable(keep_units) if word in used and not _covered(word, available)
     )

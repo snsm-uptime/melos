@@ -7,6 +7,7 @@ the stand-in (FR-010, SC-001, SC-007).
 
 from __future__ import annotations
 
+import inspect
 import logging
 import threading
 import time
@@ -24,10 +25,17 @@ from application.recipe_extraction import (
     NotARecipe,
     NotRecipeReason,
     RecipeExtraction,
+    RecipeExtractor,
     RecipeTextRefusedError,
     Unavailable,
 )
-from domain.recipe_draft import DraftRecipe, IngredientLine, LineProblem, LineProblemKind
+from domain.recipe_draft import (
+    DraftRecipe,
+    IngredientLine,
+    LineProblem,
+    LineProblemKind,
+    UnknownUnit,
+)
 
 # MVP-OUT: VOCABULARY = load_vocabulary() (main ingredient and cuisine lists, S-061)
 ACCEPTANCE_TEXT = "Onion soup\n\n- a pinch of salt\n- 2 large onions\n\n1. Simmer with the salt."
@@ -366,3 +374,70 @@ def test_in_flight_entry_is_removed_when_the_call_ends() -> None:
     service.extract(ACCEPTANCE_TEXT, [], 10.0)
 
     assert service._in_flight == {}
+
+
+# --- custom units (spec 055) ----------------------------------------------------------------
+
+
+def _lata_draft() -> DraftRecipe:
+    return DraftRecipe(
+        title="Beans",
+        base_servings=4,
+        servings_estimated=False,
+        ingredient_lines=(IngredientLine("frijoles", False, 2.0, "latas"),),
+        steps=("Open the cans.",),
+    )
+
+
+def test_an_unknown_word_opens_a_draft_that_reports_it() -> None:
+    service, _ = use_case(Draft(recipe=_lata_draft()))
+    result = service.extract("2 latas de frijoles", [], 10.0)
+    assert isinstance(result, Draft)
+    assert result.recipe.ingredient_lines[0].unit == "lata"
+    assert result.recipe.unknown_units == (UnknownUnit("lata", (0,)),)
+
+
+class _TwoAtOnce:
+    """Holds each call until two are inside, so a shared flight times out the barrier."""
+
+    def __init__(self) -> None:
+        self.barrier = threading.Barrier(2, timeout=5)
+
+    def extract(self, text, ingredient_names, timeout_s):
+        self.barrier.wait()
+        return Draft(recipe=_lata_draft())
+
+
+def test_two_accounts_pasting_one_text_at_once_are_judged_by_their_own_units() -> None:
+    service = RecipeExtraction(_TwoAtOnce())
+    results: dict[str, object] = {}
+
+    def call(person: str, units: tuple[str, ...]) -> None:
+        results[person] = service.extract("2 latas de frijoles", [], 10.0, units)
+
+    threads = [
+        threading.Thread(target=call, args=("keeps", ("lata",))),
+        threading.Thread(target=call, args=("asks", ())),
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=10)
+
+    assert results["keeps"].recipe.unknown_units == ()
+    assert results["asks"].recipe.unknown_units == (UnknownUnit("lata", (0,)),)
+
+
+def test_the_port_gets_no_stored_unit() -> None:
+    service, fake = use_case(Draft(recipe=_lata_draft()))
+    service.extract("2 latas de frijoles", ["frijoles"], 10.0, ("sobre-secreto",))
+    assert "sobre-secreto" not in repr(fake.calls)
+
+
+def test_the_port_signature_has_no_units() -> None:
+    assert list(inspect.signature(RecipeExtractor.extract).parameters) == [
+        "self",
+        "text",
+        "ingredient_names",
+        "timeout_s",
+    ]

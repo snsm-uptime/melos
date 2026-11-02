@@ -105,6 +105,7 @@ describe("one recipe (spec 027)", () => {
     servings_estimated: false,
     ingredient_lines: detail.ingredient_lines,
     steps: detail.steps,
+    keep_units: [],
   };
 
   afterEach(() => vi.unstubAllGlobals());

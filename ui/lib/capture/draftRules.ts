@@ -1,6 +1,7 @@
 /**
  * Draft checks shown next to each field while the member edits (spec 016 FR-013).
- * They mirror the api's check_draft rules. Pure: no I/O.
+ * They mirror the api's check_draft rules. Pure: no I/O. The caller passes the units allowed
+ * here, because they depend on the person and, on an edit, on the stored recipe (spec 055 R15).
  */
 
 export const ALLOWED_UNITS = ["g", "kg", "oz", "lb", "ml", "l", "cup", "tbsp", "tsp", "unit"] as const;
@@ -35,7 +36,10 @@ export type DraftErrors = {
   lines: Record<number, ("amountAndUnit" | "vagueHasAmount" | "vagueNeedsNote" | "sizeOnlyForUnit" | "sizeInvalid")[]>;
 };
 
-export function lineErrors(line: LineInput): DraftErrors["lines"][number] {
+export function lineErrors(
+  line: LineInput,
+  allowedUnits: readonly string[],
+): DraftErrors["lines"][number] {
   const errors: NonNullable<DraftErrors["lines"][number]> = [];
   if (line.vague) {
     if (line.quantity !== null || line.unit !== null) errors.push("vagueHasAmount");
@@ -48,7 +52,7 @@ export function lineErrors(line: LineInput): DraftErrors["lines"][number] {
       Number.isFinite(line.quantity) &&
       line.quantity > 0 &&
       line.unit !== null &&
-      (ALLOWED_UNITS as readonly string[]).includes(line.unit);
+      allowedUnits.includes(line.unit);
     if (!measured) errors.push("amountAndUnit");
   }
   if (line.size !== null) {
@@ -58,7 +62,7 @@ export function lineErrors(line: LineInput): DraftErrors["lines"][number] {
   return errors;
 }
 
-export function checkDraft(draft: DraftInput): DraftErrors {
+export function checkDraft(draft: DraftInput, allowedUnits: readonly string[]): DraftErrors {
   const errors: DraftErrors = { lines: {} };
   const title = draft.title.trim();
   if (title.length === 0) errors.title = "titleRequired";
@@ -69,12 +73,39 @@ export function checkDraft(draft: DraftInput): DraftErrors {
   }
 
   draft.lines.forEach((line, index) => {
-    const found = lineErrors(line);
+    const found = lineErrors(line, allowedUnits);
     if (found.length > 0) errors.lines[index] = found;
   });
 
   if (!draft.steps.some((step) => step.text.trim().length > 0)) errors.steps = "stepsRequired";
   return errors;
+}
+
+/**
+ * The words to ask about (spec 055): used by a line and neither allowed nor answered. Derived, so
+ * a question goes away once no line uses its word.
+ */
+export function pendingUnitQuestions(
+  lines: readonly LineInput[],
+  allowedUnits: readonly string[],
+  keptUnits: readonly string[],
+  declinedUnits: readonly string[],
+): string[] {
+  const answered = new Set([...allowedUnits, ...keptUnits, ...declinedUnits]);
+  const words = lines.flatMap((line) =>
+    !line.vague && line.unit && !answered.has(line.unit) ? [line.unit] : [],
+  );
+  return [...new Set(words)];
+}
+
+/** Choosing a word again asks about it again: a no is not remembered (FR-006). */
+export function withoutRechosenUnit(
+  declinedUnits: readonly string[],
+  previousUnit: string | null,
+  nextUnit: string | null,
+): string[] {
+  if (previousUnit === nextUnit) return [...declinedUnits];
+  return declinedUnits.filter((word) => word !== nextUnit);
 }
 
 export function hasErrors(errors: DraftErrors): boolean {

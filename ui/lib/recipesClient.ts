@@ -133,6 +133,13 @@ export type RecipeUpdateBody = {
   servings_estimated: boolean;
   ingredient_lines: RecipeLine[];
   steps: string[];
+  keep_units: string[];
+};
+
+/** The answer to a word typed by hand (spec 055, contracts/units-api.md). */
+export type UnitCheck = {
+  outcome: "known" | "new" | "not_a_unit";
+  unit: string | null;
 };
 
 function asDetail(data: unknown): RecipeDetail | null {
@@ -237,6 +244,17 @@ export function matchRecipeNames(
   names: string[],
 ): Promise<RecipeResult<NameMatch[]>> {
   return send("POST", `/api/recipes/${encodeURIComponent(id)}/name-matches`, { names }, asMatches);
+}
+
+function asUnitCheck(data: unknown): UnitCheck | null {
+  const outcome = (data as { outcome?: unknown } | null)?.outcome;
+  return outcome === "known" || outcome === "new" || outcome === "not_a_unit"
+    ? (data as UnitCheck)
+    : null;
+}
+
+export function checkUnitWord(word: string): Promise<RecipeResult<UnitCheck>> {
+  return send("POST", "/api/recipe-vocabulary/unit-check", { word }, asUnitCheck);
 }
 
 export function updateRecipe(
