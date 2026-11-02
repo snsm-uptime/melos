@@ -80,7 +80,7 @@ function asNotebook(data: unknown): NotebookResponse | null {
   return isNotebook(data) ? data : null;
 }
 
-function asNotebookList(data: unknown): NotebookResponse[] | null {
+export function asNotebookList(data: unknown): NotebookResponse[] | null {
   if (!data || typeof data !== "object") return null;
   const rows = (data as { notebooks?: unknown }).notebooks;
   if (!Array.isArray(rows)) return null;

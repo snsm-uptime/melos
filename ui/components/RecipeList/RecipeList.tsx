@@ -32,13 +32,15 @@ type RecipeListProps = {
   onChange: (page: number, q: string) => void;
   load: (page: number, q: string) => Promise<NotebookResult<RecipePage>>;
   /**
-   * Capture choices for the add-recipe action, shown as the first card (or under the empty
-   * text); omit to show none (archived kitchen).
+   * Capture choices for the add-recipe action, shown as the first card (or as a square under
+   * the empty text); omit to show none (archived kitchen).
    */
   addCandidates?: CaptureCandidate[];
   returnPath: string;
   /** Sits beside the filter (e.g. the add-recipe button). */
   filterAction?: ReactNode;
+  /** Takes the filter action's place when the list is empty and the filter is gone. */
+  emptyAction?: ReactNode;
   /**
    * "columns" is the notebook layout (one column, two from 640px); "wrap" lays the cards in a
    * row that wraps with the window width.
@@ -59,6 +61,7 @@ export function RecipeList({
   addCandidates,
   returnPath,
   filterAction,
+  emptyAction,
   layout = "columns",
   cardCart,
 }: RecipeListProps) {
@@ -97,6 +100,20 @@ export function RecipeList({
 
   const filtering = q.trim().length > 0;
   const emptyText = scope === "kitchen" ? t.emptyKitchen : t.emptyNotebook;
+  const empty = !filtering && state.status === "ready" && state.page.items.length === 0;
+  // Also hidden until the first answer, so an empty list never flashes the filter. Later loads
+  // keep it, because the person may be typing in it.
+  const showFilter = !empty && (filtering || answer !== null);
+  const addAction =
+    addCandidates && addCandidates.length > 0 ? (
+      <AddRecipeCallToAction
+        candidates={addCandidates}
+        defaultId={addCandidates[0]?.id ?? null}
+        returnPath={returnPath}
+      />
+    ) : (
+      emptyAction
+    );
 
   function clearFilter() {
     setTyped(null);
@@ -116,8 +133,8 @@ export function RecipeList({
   );
 
   return (
-    <div className={styles.section}>
-      {filterAction ? (
+    <div className={`${styles.section} flex-1`}>
+      {!showFilter ? null : filterAction ? (
         <div className="flex min-w-0 items-stretch gap-[var(--space-2)]">
           <div className="min-w-0 flex-1">{filter}</div>
           {filterAction}
@@ -150,16 +167,10 @@ export function RecipeList({
             </button>
           </div>
         ) : (
-          <>
-            <p className={styles.copy}>{emptyText}</p>
-            {addCandidates && addCandidates.length > 0 ? (
-              <AddRecipeCallToAction
-                candidates={addCandidates}
-                defaultId={addCandidates[0]?.id ?? null}
-                returnPath={returnPath}
-              />
-            ) : null}
-          </>
+          <div className="flex flex-1 flex-col items-center justify-center gap-[var(--space-3)]">
+            <p className={`${styles.copy} text-center`}>{emptyText}</p>
+            {addAction ? <div className="size-24">{addAction}</div> : null}
+          </div>
         )
       ) : null}
       {state.status === "ready" && state.page.items.length > 0 ? (

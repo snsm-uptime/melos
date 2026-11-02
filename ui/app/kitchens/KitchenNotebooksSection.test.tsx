@@ -120,6 +120,32 @@ describe("KitchenNotebooksSection", () => {
     vi.unstubAllGlobals();
   });
 
+  /** The filter and its add button only show once a list has recipes. */
+  function withRecipe() {
+    fetchKitchenRecipes.mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        value: {
+          items: [
+            {
+              id: "r1",
+              title: "Lentil soup",
+              author_alias: "ana",
+              ingredient_count: 2,
+              notebook_id: homeNotebook.id,
+              notebook_name: homeNotebook.name,
+              created_at: "2026-10-27T12:00:00Z",
+            },
+          ],
+          page: 1,
+          page_size: 12,
+          total: 1,
+          total_pages: 1,
+        },
+      }),
+    );
+  }
+
   function render(isArchived = false) {
     act(() => {
       root.render(
@@ -165,21 +191,23 @@ describe("KitchenNotebooksSection", () => {
   });
 
   it("shows no notebook cards, and one Add recipe button beside the filter", async () => {
+    withRecipe();
     stubBff([{ status: 200, body: { notebooks: [homeNotebook, secondNotebook] } }]);
 
     render();
     await flush();
 
-    expect(container.querySelector("h3")).toBeNull();
     expect(container.textContent).not.toContain("Owned by");
-    expect(container.querySelector("a")).toBeNull();
-    const buttons = Array.from(container.querySelectorAll("button"));
-    expect(buttons.map((el) => el.textContent)).toEqual(["Add recipe"]);
+    const buttons = Array.from(container.querySelectorAll("button")).filter(
+      (el) => el.textContent === "Add recipe",
+    );
+    expect(buttons).toHaveLength(1);
     const filter = container.querySelector("input[type=search]") as HTMLInputElement;
     expect(filter.parentElement?.parentElement).toBe(buttons[0].parentElement);
   });
 
   it("lists the kitchen's recipes, read from the address", async () => {
+    withRecipe();
     stubBff([{ status: 200, body: { notebooks: [homeNotebook] } }]);
 
     render();
@@ -190,13 +218,16 @@ describe("KitchenNotebooksSection", () => {
   });
 
   it("renders no add-recipe action in an archived kitchen, and still lists its recipes", async () => {
+    withRecipe();
     stubBff([{ status: 200, body: { notebooks: [{ ...homeNotebook, kitchen_is_archived: true }] } }]);
 
     render(true);
     await flush();
 
     expect(container.querySelector("input[type=search]")).not.toBeNull();
-    expect(container.querySelectorAll("button").length).toBe(0);
+    expect(container.textContent).toContain("Lentil soup");
+    expect(container.textContent).not.toContain("Add recipe");
+    expect(container.querySelector('button[aria-label="Add a recipe"]')).toBeNull();
   });
 
   it("redirects to the alias step on 403 alias_required and shows no cards", async () => {
@@ -211,6 +242,7 @@ describe("KitchenNotebooksSection", () => {
   });
 
   it("shows the loading error with retry on other failures, and retry reloads", async () => {
+    withRecipe();
     const fetchMock = stubBff([
       { status: 500, body: { detail: "boom" } },
       { status: 200, body: { notebooks: [homeNotebook] } },
@@ -442,6 +474,7 @@ describe("KitchenNotebooksSection", () => {
     afterEach(() => clearCapture());
 
     it("preselects the member's own notebook, even when it isn't the first", async () => {
+      withRecipe();
       stubBff([{ status: 200, body: { notebooks: [secondNotebook, own] } }]);
       render();
 
@@ -451,6 +484,7 @@ describe("KitchenNotebooksSection", () => {
     });
 
     it("offers a new notebook of their own when they have none", async () => {
+      withRecipe();
       stubBff([{ status: 200, body: { notebooks: [homeNotebook] } }]);
       render();
 

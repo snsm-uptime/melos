@@ -194,6 +194,36 @@ describe("RecipeList", () => {
     expect(container.textContent).toContain("Add a recipe");
   });
 
+  it("hides the filter for an empty notebook, even while it loads", async () => {
+    let finish: (value: NotebookResult<RecipePage>) => void = () => {};
+    await render(() => new Promise((resolve) => (finish = resolve)));
+    expect(container.querySelector("input[type=search]")).toBeNull();
+
+    await act(async () => finish(page([])));
+    expect(container.textContent).toContain("No recipes in this notebook yet.");
+    expect(container.querySelector("input[type=search]")).toBeNull();
+  });
+
+  it("keeps the filter for a list with recipes and for a search with no match", async () => {
+    await render(async () => page(["Soup"]));
+    expect(container.querySelector("input[type=search]")).not.toBeNull();
+
+    await render(async () => page([]), { q: "zzz" });
+    expect(container.querySelector("input[type=search]")).not.toBeNull();
+  });
+
+  it("swaps the filter and its action for the empty action in an empty kitchen", async () => {
+    await render(async () => page([]), {
+      scope: "kitchen",
+      filterAction: <button type="button">Beside the filter</button>,
+      emptyAction: <button type="button">Plus square</button>,
+    });
+    expect(container.querySelector("input[type=search]")).toBeNull();
+    expect(container.textContent).toContain("No recipes in this kitchen yet.");
+    expect(container.textContent).toContain("Plus square");
+    expect(container.textContent).not.toContain("Beside the filter");
+  });
+
   it("puts add-recipe in the first cell before the cards when candidates are given", async () => {
     await render(async () => page(["Soup"]));
     expect(container.textContent).not.toContain("Add a recipe");

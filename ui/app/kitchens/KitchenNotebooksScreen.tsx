@@ -82,7 +82,7 @@ export function KitchenNotebooksScreen({
   const from = encodeURIComponent(`${kitchenPath}/notebooks`);
 
   return (
-    <section className={styles.section}>
+    <section className={`${styles.section} flex-1`}>
       {state.status === "loading" ? <CauldronLoader label={t.loading} /> : null}
       {state.status === "not_found" ? (
         <p className={styles.copy} role="alert">

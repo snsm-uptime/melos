@@ -45,7 +45,8 @@ type SectionState =
 
 /**
  * A kitchen's recipes from all its notebooks: the filter with the add-recipe button beside it,
- * then the cards, each linking to its notebook. The notebooks are read for the capture picker.
+ * then the cards, each linking to its notebook; an empty kitchen shows the plus square instead.
+ * The notebooks are read for the capture picker.
  */
 export function KitchenNotebooksSection({
   kitchenId,
@@ -171,8 +172,15 @@ export function KitchenNotebooksSection({
     });
   }
 
+  const canAdd = notebooks.length > 0 && !isArchived;
+  const addProps = {
+    candidates,
+    defaultId: ownNotebook?.id ?? OWN_NEW_NOTEBOOK_ID,
+    returnPath: `/kitchens/${kitchenId}`,
+  };
+
   return (
-    <section className={styles.section}>
+    <section className={`${styles.section} flex-1`}>
       <SavedNotice returnPath={`/kitchens/${kitchenId}`} />
       {state.status === "not_found" ? (
         <p className={styles.copy} role="alert">
@@ -203,16 +211,8 @@ export function KitchenNotebooksSection({
           returnPath={`/kitchens/${kitchenId}`}
           layout="wrap"
           cardCart={cardCart}
-          filterAction={
-            state.notebooks.length > 0 && !isArchived ? (
-              <AddRecipeCallToAction
-                variant="button"
-                candidates={candidates}
-                defaultId={ownNotebook?.id ?? OWN_NEW_NOTEBOOK_ID}
-                returnPath={`/kitchens/${kitchenId}`}
-              />
-            ) : undefined
-          }
+          filterAction={canAdd ? <AddRecipeCallToAction variant="button" {...addProps} /> : undefined}
+          emptyAction={canAdd ? <AddRecipeCallToAction {...addProps} /> : undefined}
         />
       ) : null}
     </section>

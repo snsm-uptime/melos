@@ -31,7 +31,7 @@ function isCard(row: unknown): row is RecipeCard {
   );
 }
 
-function asPage(data: unknown): RecipePage | null {
+export function asPage(data: unknown): RecipePage | null {
   if (!data || typeof data !== "object") return null;
   const page = data as Partial<Record<keyof RecipePage, unknown>>;
   if (

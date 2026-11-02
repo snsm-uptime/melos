@@ -4,9 +4,13 @@ import { redirect } from "next/navigation";
 
 import { requireAlias } from "@/lib/alias";
 import { getApiInternalUrl } from "@/lib/api";
+import { asCart, type Cart } from "@/lib/cartClient";
 import { cartMessages } from "@/lib/i18n/cart";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
 import { notebooksMessages } from "@/lib/i18n/notebooks";
+import { readListAddress } from "@/lib/listAddress";
+import { asNotebookList, type NotebookResponse } from "@/lib/notebooksClient";
+import { asPage, type RecipePage } from "@/lib/recipesClient";
 import { fetchSession } from "@/lib/session";
 import { KitchenCartCountProvider } from "../cartCount";
 import {
@@ -55,12 +59,29 @@ export function asMembers(data: unknown): KitchenMember[] {
   return out;
 }
 
+/** Null on any failure: the section then reads it itself and shows its own error and retry. */
+async function readOptional<T>(
+  path: string,
+  init: RequestInit,
+  parse: (data: unknown) => T | null,
+): Promise<T | null> {
+  try {
+    const response = await fetch(`${getApiInternalUrl()}${path}`, init);
+    return response.ok ? parse(await response.json()) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function KitchenDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ kitchenId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { kitchenId } = await params;
+  const query = await searchParams;
   const session = await fetchSession();
   if (!session) {
     redirect(`/sign-in?returnTo=/kitchens/${encodeURIComponent(kitchenId)}`);
@@ -83,6 +104,9 @@ export default async function KitchenDetailPage({
   let members: KitchenMember[] = [];
   let membersLoadError = false;
   let defaultKitchenId: string | null = null;
+  let notebooks: NotebookResponse[] | null = null;
+  let recipes: RecipePage | null = null;
+  let cart: Cart | null = null;
   let notFound = false;
   let loadError = false;
   try {
@@ -96,11 +120,24 @@ export default async function KitchenDetailPage({
     if (response.status === 404) {
       notFound = true;
     } else if (response.ok) {
-      const [detailData, membersRes, panelRes] = await Promise.all([
+      const path = `/kitchens/${encodeURIComponent(kitchenId)}`;
+      const { page, q } = readListAddress({
+        get: (name) => (typeof query[name] === "string" ? query[name] : null),
+      });
+      const recipeQuery = new URLSearchParams({ page: String(page) });
+      if (q.trim()) recipeQuery.set("q", q);
+      // Read everything the section shows here, so the route's loader is the only wait.
+      const [detailData, membersRes, panelRes, notebooksData, recipesData, cartData] = await Promise.all([
         response.json() as Promise<DetailPayload>,
         fetch(`${getApiInternalUrl()}/kitchens/${encodeURIComponent(kitchenId)}/members`, requestInit),
         fetch(`${getApiInternalUrl()}/side-panel`, requestInit),
+        readOptional(`/notebooks${path}`, requestInit, asNotebookList),
+        readOptional(`/notebooks${path}/recipes?${recipeQuery}`, requestInit, asPage),
+        readOptional(`${path}/cart`, requestInit, asCart),
       ]);
+      notebooks = notebooksData;
+      recipes = recipesData;
+      cart = cartData;
       detail = detailData;
       if (panelRes.ok) {
         const panel = (await panelRes.json()) as { default_kitchen_id?: string | null };
@@ -165,7 +202,7 @@ export default async function KitchenDetailPage({
   };
 
   return (
-    <main className={styles.detailMain}>
+    <main className={`${styles.detailMain} flex-1`}>
       {notFound || !showKitchenDetail ? (
         <>
           <KitchenDetailChrome title={notFound ? t.detailNotFound : t.loadError} />
@@ -195,6 +232,9 @@ export default async function KitchenDetailPage({
             kitchenId={kitchenId}
             isArchived={Boolean(detail?.is_archived)}
             locale={locale}
+            initialNotebooks={notebooks ?? undefined}
+            initialRecipes={recipes ?? undefined}
+            initialCart={cart ?? undefined}
           />
         </KitchenCartCountProvider>
       )}

@@ -98,6 +98,14 @@ describe("NotebookTabScreen", () => {
     });
   }
 
+  it("shows the cauldron while the notebooks load", () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+
+    render();
+
+    expect(container.querySelector("[role=status]")).not.toBeNull();
+  });
+
   it("puts the title in the shared header, not in the page body", async () => {
     stubBff({
       "/api/notebooks/default": [{ status: 200, body: defaultNotebook }],

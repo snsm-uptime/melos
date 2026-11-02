@@ -18,7 +18,7 @@ export default async function KitchenNotebooksPage({
   const locale = await getServerLocale();
 
   return (
-    <main className={styles.detailMain}>
+    <main className={`${styles.detailMain} flex-1`}>
       <KitchenNotebooksScreen kitchenId={kitchenId} locale={locale} viewerAlias={me.alias} />
     </main>
   );

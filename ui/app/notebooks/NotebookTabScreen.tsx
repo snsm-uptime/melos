@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { CauldronLoader } from "@/components/CauldronLoader";
 import { useChromeHeader } from "@/components/ChromeBack";
 import { NotebookCard } from "@/components/NotebookCard/NotebookCard";
 import { SavedNotice } from "@/components/RecipeDraft/SavedNotice";
@@ -84,8 +85,9 @@ export function NotebookTabScreen({
   }
 
   return (
-    <main className={styles.tabMain}>
+    <main className={`${styles.tabMain} flex-1`}>
       <SavedNotice returnPath="/notebooks" />
+      {state.status === "loading" ? <CauldronLoader label={t.loading} /> : null}
       {state.status === "error" ? (
         <div className={styles.state}>
           <p className={styles.copy} role="alert">

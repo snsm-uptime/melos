@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ShareIcon } from "@/app/icons";
+import { CauldronLoader } from "@/components/CauldronLoader";
 import { useChromeHeader } from "@/components/ChromeBack";
 import { IconButton } from "@/components/IconButton";
 import { RecipeList } from "@/components/RecipeList/RecipeList";
@@ -105,8 +106,9 @@ export function NotebookRecipesScreen({
   const archived = state.status === "ready" && state.notebook.kitchen_is_archived === true;
 
   return (
-    <main className={styles.main}>
+    <main className={`${styles.main} flex-1`}>
       <SavedNotice returnPath={returnPath} />
+      {state.status === "loading" ? <CauldronLoader label={t.loading} /> : null}
       {state.status === "not_found" ? (
         <p className={styles.copy} role="alert">
           {t.notFoundNotebook}

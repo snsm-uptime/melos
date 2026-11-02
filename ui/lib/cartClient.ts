@@ -51,7 +51,7 @@ export type CartFailure = {
 
 export type CartResult<T> = { ok: true; value: T } | CartFailure;
 
-function asCart(data: unknown): Cart | null {
+export function asCart(data: unknown): Cart | null {
   if (!data || typeof data !== "object") return null;
   const cart = data as Partial<Record<keyof Cart, unknown>>;
   if (
