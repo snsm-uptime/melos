@@ -206,6 +206,27 @@ describe("KitchenNotebooksSection", () => {
     expect(filter.parentElement?.parentElement).toBe(buttons[0].parentElement);
   });
 
+  it("paints the server's reads at once: an empty kitchen has the plus square and no filter", () => {
+    stubBff([{ status: 200, body: { notebooks: [homeNotebook] } }]);
+
+    act(() => {
+      root.render(
+        <KitchenNotebooksSection
+          kitchenId={kitchenId}
+          isArchived={false}
+          locale="en"
+          initialNotebooks={[homeNotebook] as never}
+          initialRecipes={{ items: [], page: 1, page_size: 12, total: 0, total_pages: 1 }}
+        />,
+      );
+    });
+
+    expect(container.querySelector("input[type=search]")).toBeNull();
+    expect(container.querySelector("[role=status]")).toBeNull();
+    expect(container.textContent).toContain("No recipes in this kitchen yet.");
+    expect(container.querySelector('button[aria-label="Add a recipe"]')).not.toBeNull();
+  });
+
   it("lists the kitchen's recipes, read from the address", async () => {
     withRecipe();
     stubBff([{ status: 200, body: { notebooks: [homeNotebook] } }]);

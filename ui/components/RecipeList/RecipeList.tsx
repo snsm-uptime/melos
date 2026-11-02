@@ -48,6 +48,8 @@ type RecipeListProps = {
   layout?: "columns" | "wrap";
   /** The cart checkbox of a card (kitchen lists, spec 022); omit for none. */
   cardCart?: (recipe: RecipeCardData) => CardCart | undefined;
+  /** The page the server already read for `page` and `q`: shown at once, then refreshed. */
+  initialPage?: RecipePage;
 };
 
 /** Cards in numbered pages with a text filter (spec 021 FR-003 to FR-009). */
@@ -64,12 +66,15 @@ export function RecipeList({
   emptyAction,
   layout = "columns",
   cardCart,
+  initialPage,
 }: RecipeListProps) {
   const t = recipeListMessages[locale];
   const [attempt, setAttempt] = useState(0);
   // The answer to one request. Loading is derived: no answer yet for the current request.
   const requestKey = `${page}|${q}|${attempt}`;
-  const [answer, setAnswer] = useState<{ key: string; state: ListState } | null>(null);
+  const [answer, setAnswer] = useState<{ key: string; state: ListState } | null>(
+    initialPage ? { key: requestKey, state: { status: "ready", page: initialPage } } : null,
+  );
   // Text typed since the address last matched; it is dropped when the address changes (Back).
   const [typed, setTyped] = useState<{ from: string; text: string } | null>(null);
   const text = typed && typed.from === q ? typed.text : q;
@@ -142,7 +147,12 @@ export function RecipeList({
       ) : (
         filter
       )}
-      {state.status === "loading" ? <CauldronLoader label={t.loading} /> : null}
+      {/* The wrapper is the height left under the filter, so the loader's full height fits in it. */}
+      {state.status === "loading" ? (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <CauldronLoader label={t.loading} />
+        </div>
+      ) : null}
       {state.status === "not_found" ? (
         <p className={styles.copy} role="alert">
           {scope === "kitchen" ? t.notFoundKitchen : t.notFoundNotebook}

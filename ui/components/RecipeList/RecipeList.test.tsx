@@ -84,6 +84,22 @@ describe("RecipeList", () => {
     await flush();
   }
 
+  it("shows a page the server read without a loader, and still refreshes it", async () => {
+    const seeded = page(["From the server"]);
+    if (!seeded.ok) throw new Error("page() is always ok");
+    let finish: (value: NotebookResult<RecipePage>) => void = () => {};
+    const load = vi.fn(() => new Promise<NotebookResult<RecipePage>>((resolve) => (finish = resolve)));
+
+    await render(load, { initialPage: seeded.value });
+    expect(container.textContent).toContain("From the server");
+    expect(container.querySelector("[role=status]")).toBeNull();
+    expect(load).toHaveBeenCalledTimes(1);
+
+    await act(async () => finish(page(["Fresh"])));
+    expect(container.textContent).toContain("Fresh");
+    expect(container.textContent).not.toContain("From the server");
+  });
+
   it("puts the filter action beside the filter, and wraps the cards in the wrap layout", async () => {
     await render(async () => page(["Lentil soup"]), {
       filterAction: <button type="button">Add recipe</button>,

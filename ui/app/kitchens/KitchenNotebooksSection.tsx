@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { AddRecipeCallToAction, type CaptureCandidate } from "@/components/AddRecipeCallToAction";
+import { CauldronLoader } from "@/components/CauldronLoader";
 import { useCartIdleToasts } from "@/components/Cart/useCartIdleToasts";
 import { useToast } from "@/components/Toast";
 import { RecipeList } from "@/components/RecipeList/RecipeList";
@@ -26,7 +27,7 @@ import {
   type NotebookError,
   type NotebookResponse,
 } from "@/lib/notebooksClient";
-import { fetchKitchenRecipes } from "@/lib/recipesClient";
+import { fetchKitchenRecipes, type RecipePage } from "@/lib/recipesClient";
 
 import styles from "../notebooks/notebooks.module.scss";
 
@@ -35,6 +36,14 @@ type KitchenNotebooksSectionProps = {
   /** An archived kitchen shows no add-recipe action (spec 016 FR-033). */
   isArchived: boolean;
   locale: Locale;
+  /**
+   * What the server read while the route's loader was up, so the first paint is the finished list
+   * with no second loader. Each is omitted if its read failed. The reads below still run: they
+   * refresh this data, which a Back navigation restores from the router cache as it was.
+   */
+  initialNotebooks?: NotebookResponse[];
+  initialRecipes?: RecipePage;
+  initialCart?: Cart;
 };
 
 type SectionState =
@@ -52,16 +61,21 @@ export function KitchenNotebooksSection({
   kitchenId,
   isArchived,
   locale,
+  initialNotebooks,
+  initialRecipes,
+  initialCart,
 }: KitchenNotebooksSectionProps) {
   const t = notebooksMessages[locale];
   const router = useRouter();
   const pathname = usePathname();
   const { page, q } = readListAddress(useSearchParams());
   const [attempt, setAttempt] = useState(0);
-  const [state, setState] = useState<SectionState>({ status: "loading" });
+  const [state, setState] = useState<SectionState>(
+    initialNotebooks ? { status: "ready", notebooks: initialNotebooks } : { status: "loading" },
+  );
   const c = cartMessages[locale];
   // The cart is read once for the card checkboxes and the editing bar (spec 022 R12).
-  const [cart, setCart] = useState<Cart | null>(null);
+  const [cart, setCart] = useState<Cart | null>(initialCart ?? null);
   const [cartAttempt, setCartAttempt] = useState(0);
   const loadCart = useCallback(() => setCartAttempt((n) => n + 1), []);
 
@@ -182,6 +196,7 @@ export function KitchenNotebooksSection({
   return (
     <section className={`${styles.section} flex-1`}>
       <SavedNotice returnPath={`/kitchens/${kitchenId}`} />
+      {state.status === "loading" ? <CauldronLoader label={t.loading} /> : null}
       {state.status === "not_found" ? (
         <p className={styles.copy} role="alert">
           {t.detailNotFound}
@@ -211,6 +226,7 @@ export function KitchenNotebooksSection({
           returnPath={`/kitchens/${kitchenId}`}
           layout="wrap"
           cardCart={cardCart}
+          initialPage={initialRecipes}
           filterAction={canAdd ? <AddRecipeCallToAction variant="button" {...addProps} /> : undefined}
           emptyAction={canAdd ? <AddRecipeCallToAction {...addProps} /> : undefined}
         />
