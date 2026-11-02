@@ -51,8 +51,8 @@ export const adminMessages = {
     },
   },
   es: {
-    entry: "Panel",
-    title: "Panel de uso",
+    entry: "Panel de control",
+    title: "Panel de control",
     tabsLabel: "Secciones del panel",
     tabs: {
       units: "Unidades",
