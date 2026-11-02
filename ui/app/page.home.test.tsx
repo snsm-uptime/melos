@@ -40,6 +40,17 @@ describe("Home page", () => {
     vi.resetModules();
   });
 
+  it("puts the decorative cauldron before the app name", async () => {
+    fetchSession.mockResolvedValue(null);
+    const { default: Home } = await import("./page");
+
+    const markup = renderToStaticMarkup(await Home());
+
+    const heading = markup.slice(markup.indexOf("<h1"), markup.indexOf("</h1>"));
+    expect(heading).toContain('aria-hidden="true"');
+    expect(heading.indexOf("<svg")).toBeLessThan(heading.indexOf("Melos"));
+  });
+
   it("shows product intro copy and sign-up/sign-in CTAs when signed out", async () => {
     fetchSession.mockResolvedValue(null);
     const { default: Home } = await import("./page");

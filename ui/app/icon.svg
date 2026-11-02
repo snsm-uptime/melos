@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="26 13 88 88">
+  <style>.pot{fill:#49433b}.ink{fill:#707db5}@media (prefers-color-scheme:dark){.pot{fill:#cfc9bd}.ink{fill:#8893c3}}</style>
+  <path class="pot" d="M44 46C34 52 36 78 50 81L90 81C104 78 106 52 96 46Z"/>
+  <path class="pot" d="M41 50C34.3724 50 29 55.3724 29 62C29 68.6276 34.3724 74 41 74L41 69C37.1339 69 34 65.8661 34 62C34 58.1339 37.1339 55 41 55Z"/>
+  <path class="pot" d="M99 50C105.6276 50 111 55.3724 111 62C111 68.6276 105.6276 74 99 74L99 69C102.8661 69 106 65.8661 106 62C106 58.1339 102.8661 55 99 55Z"/>
+  <path class="pot" d="M51 80L60 80L58 88L53 88Z"/>
+  <path class="pot" d="M89 80L80 80L82 88L87 88Z"/>
+  <path class="ink" d="M39 40L101 40L101 48L39 48Z"/>
+  <path class="ink" d="M78 48L86 48L86 62C86 68 78 68 78 62Z"/>
+  <circle class="ink" cx="56" cy="30" r="5"/>
+  <circle class="ink" cx="73" cy="28" r="3"/>
+  <circle class="ink" cx="85" cy="31" r="4"/>
+</svg>

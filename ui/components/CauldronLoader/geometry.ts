@@ -14,6 +14,18 @@ export const VIEWBOX = { width: 140, height: 118 } as const;
 export const VIEWBOX_ATTR = `0 0 ${VIEWBOX.width} ${VIEWBOX.height}`;
 export const ASPECT_RATIO = `${VIEWBOX.width} / ${VIEWBOX.height}`;
 
+/** A square crop around the still drawing, for the logo and the browser icon (app/icon.svg). */
+export const MARK_VIEWBOX_ATTR = "26 13 88 88";
+
+/**
+ * How much of its theme colour each part of the logo keeps, in percent; the rest is the page
+ * background, so a lower number is softer. app/icon.svg can't read the theme and holds the
+ * resulting colours: after changing these, update it and favicon.ico (app/icon.test.ts fails
+ * until the colours match, and prints the values).
+ */
+export const MARK_POT_STRENGTH = 85;
+export const MARK_INK_STRENGTH = 75;
+
 /** The cauldron rocks about this point: the base of the feet, horizontally centred. */
 export const PIVOT = { x: 70, y: 88 } as const;
 

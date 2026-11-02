@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { CauldronMark } from "@/components/CauldronLoader";
 import { RedirectIfAuthenticated } from "@/components/RedirectIfAuthenticated";
 import { GhostButton } from "@/components/soft-ledger/GhostButton";
 import { requireAlias } from "@/lib/alias";
@@ -44,7 +45,8 @@ export default async function Home() {
           />
         </svg>
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-4 px-page-gutter py-20 text-center">
-          <h1 className="m-0 text-[2.25rem] font-semibold leading-[1.15]">
+          <h1 className="m-0 flex items-center gap-2 text-[2.25rem] font-semibold leading-[1.15]">
+            <CauldronMark className="size-[1.25em] shrink-0" />
             Melos
           </h1>
           <p className="m-0 max-w-lg text-muted leading-[1.5]">
