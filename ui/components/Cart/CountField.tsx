@@ -63,7 +63,7 @@ export function CountField({ label, value, onChange, locale, disabled }: CountFi
           <span
             id={`${id}-error`}
             role="alert"
-            className="absolute left-0 top-0 whitespace-nowrap text-[0.8rem] text-owe"
+            className="absolute left-0 top-0 whitespace-nowrap text-[0.8rem] text-error"
           >
             {t.countError}
           </span>

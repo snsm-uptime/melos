@@ -322,7 +322,7 @@ export function KitchenDetailChrome({ title, share, cart, pastLists, notebooks, 
   }
 
   const errorLine = dialogError ? (
-    <p className="m-0 mt-2 text-owe text-[0.85rem]" role="alert">
+    <p className="m-0 mt-2 text-error text-[0.85rem]" role="alert">
       {dialogError}
     </p>
   ) : null;

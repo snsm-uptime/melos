@@ -69,7 +69,7 @@
 
 /* tone="danger": a removing action hovers in the app's red (e.g. Remove from cart). */
 .ghost.danger:not(:disabled):hover {
-  color: var(--owe) !important;
+  color: var(--error) !important;
 }
 
 /* `data-active` only, deliberately excluded from `:hover` above: a stronger,

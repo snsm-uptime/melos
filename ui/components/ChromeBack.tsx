@@ -28,7 +28,7 @@ export type ChromeHeaderConfig = {
   /** Short inline content next to the title (e.g. a status word or a count) — not for large/interactive elements. */
   details?: ReactNode;
   /**
-   * Overrides the `details` chip's border/text color classes (e.g. `"border-owe text-owe"`
+   * Overrides the `details` chip's border/text color classes (e.g. `"border-error text-error"`
    * for an over-budget state) — full Tailwind classes, not limited to the fixed Chip tones.
    */
   detailsClassName?: string;

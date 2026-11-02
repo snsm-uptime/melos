@@ -55,7 +55,7 @@ export function SidePanelIdentity({
             <button
               type="button"
               aria-label={t.photoRemove}
-              className={`${photoActionClass} -top-1.5 -right-1.5 text-owe`}
+              className={`${photoActionClass} -top-1.5 -right-1.5 text-error`}
               disabled={photo.pending}
               onClick={() => void photo.save(null)}
             >
@@ -80,7 +80,7 @@ export function SidePanelIdentity({
           <p className="m-0 text-[0.8rem] text-muted">{notebookCount}</p>
         ) : null}
         {photo.error ? (
-          <p className="m-0 mt-1 text-[0.8rem] text-owe">{photo.error}</p>
+          <p className="m-0 mt-1 text-[0.8rem] text-error">{photo.error}</p>
         ) : null}
       </div>
       <AvatarCropSheet

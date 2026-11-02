@@ -196,7 +196,7 @@ export function AdminDashboard({ locale }: { locale: Locale }) {
         ) : null}
         {current?.state === "failed" ? (
           <div className="flex flex-col items-start gap-2">
-            <p role="alert" className="m-0 text-[0.9rem] text-owe">
+            <p role="alert" className="m-0 text-[0.9rem] text-error">
               {t.loadFailed}
             </p>
             <button

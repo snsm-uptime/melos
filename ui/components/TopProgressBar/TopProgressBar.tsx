@@ -5,7 +5,7 @@ import { Tooltip } from "@/components/Tooltip";
 type CommonProps = {
   /** 0-100+, or `null` when there's nothing to compute a ratio from. Fill width clamps to 100. */
   ratio: number | null;
-  /** Severity class supplied by the caller (e.g. `bg-owed`/`bg-warn`/`bg-owe`/`bg-muted`) — this component stays severity-agnostic. */
+  /** Severity class supplied by the caller (e.g. `bg-owed`/`bg-warn`/`bg-error`/`bg-muted`) — this component stays severity-agnostic. */
   colorClassName: string;
   /** Accessible name for the bar itself, independent of the tooltip/labels. */
   ariaLabel: string;

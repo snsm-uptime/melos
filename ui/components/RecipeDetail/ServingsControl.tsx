@@ -97,7 +97,7 @@ export function ServingsControl({ value, onChange, locale }: ServingsControlProp
         </button>
       </div>
       {invalid ? (
-        <span role="alert" className="text-[0.8rem] text-owe">
+        <span role="alert" className="text-[0.8rem] text-error">
           {t.servingsHint}
         </span>
       ) : null}

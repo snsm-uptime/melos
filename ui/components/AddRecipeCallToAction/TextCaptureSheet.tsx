@@ -185,7 +185,7 @@ export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCapture
         <p className="m-0 text-[0.8rem] text-muted">{t.counterNear(text.length, max)}</p>
       ) : null}
       {message ? (
-        <p role="alert" className="m-0 text-[0.9rem] text-owe">
+        <p role="alert" className="m-0 text-[0.9rem] text-error">
           {message}
         </p>
       ) : null}

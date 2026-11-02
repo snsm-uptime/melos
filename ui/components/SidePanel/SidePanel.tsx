@@ -253,7 +253,7 @@ export function SidePanel({
             />
           </div>
           {kitchensError ? (
-            <p className={`m-0 px-2 text-[0.8rem] text-owe ${openOnlyClass}`} role="alert">
+            <p className={`m-0 px-2 text-[0.8rem] text-error ${openOnlyClass}`} role="alert">
               {kitchensError}
             </p>
           ) : null}

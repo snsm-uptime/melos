@@ -135,7 +135,7 @@ export function AddNotebookSnapshot({ kitchenId, locale, onAdded }: AddNotebookS
             <p className="m-0 text-[0.9rem] text-muted">{t.snapshotAudience}</p>
             {choice.status === "loading" ? <CauldronLoader label={t.snapshotLoading} /> : null}
             {choice.status === "error" ? (
-              <p className="m-0 text-owe text-[0.9rem]" role="alert">
+              <p className="m-0 text-error text-[0.9rem]" role="alert">
                 {t.loadError}
               </p>
             ) : null}
@@ -163,7 +163,7 @@ export function AddNotebookSnapshot({ kitchenId, locale, onAdded }: AddNotebookS
             ) : null}
             {pending ? <p className="m-0 text-[0.9rem] text-muted">{t.snapshotAdding}</p> : null}
             {message ? (
-              <p className="m-0 text-owe text-[0.9rem]" role="alert">
+              <p className="m-0 text-error text-[0.9rem]" role="alert">
                 {message}
               </p>
             ) : null}

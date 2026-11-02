@@ -81,7 +81,7 @@ export function NewKitchenRow({
         />
       </form>
       {error ? (
-        <p className="m-0 px-2 text-[0.8rem] text-owe" role="alert">
+        <p className="m-0 px-2 text-[0.8rem] text-error" role="alert">
           {error}
         </p>
       ) : null}

@@ -61,7 +61,7 @@ describe("TopProgressBar", () => {
       root.render(
         <TopProgressBar
           ratio={140}
-          colorClassName="bg-owe"
+          colorClassName="bg-error"
           tooltipLabel="$140.00 / $100.00"
           ariaLabel="Over cap"
         />,

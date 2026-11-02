@@ -8,7 +8,7 @@ const focusRing =
   "cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
 export function chipTriggerClassName(tone: ChipTone): string {
-  const hover = tone === "warning" ? "hover:bg-owe/10" : "hover:border-muted";
+  const hover = tone === "warning" ? "hover:bg-error/10" : "hover:border-muted";
   return `${chipClassName[tone]} ${focusRing} ${hover}`;
 }
 

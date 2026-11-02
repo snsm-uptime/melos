@@ -37,12 +37,12 @@
 }
 
 .itemDanger:not(:disabled) {
-  color: var(--owe);
+  color: var(--error);
 }
 
 .itemDanger:hover:not(:disabled),
 .itemDanger:focus-visible:not(:disabled) {
-  background: color-mix(in srgb, var(--owe) 10%, var(--surface));
+  background: color-mix(in srgb, var(--error) 10%, var(--surface));
 }
 
 .itemLayout {

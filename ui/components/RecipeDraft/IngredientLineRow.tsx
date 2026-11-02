@@ -351,13 +351,13 @@ function EditableIngredientLine({
                 <p
                   key={code}
                   role="alert"
-                  className="m-0 text-[0.8rem] text-owe"
+                  className="m-0 text-[0.8rem] text-error"
                 >
                   {t.errors[code]}
                 </p>
               ))}
               {unitProblem ? (
-                <p role="alert" className="m-0 text-[0.8rem] text-owe">
+                <p role="alert" className="m-0 text-[0.8rem] text-error">
                   {unitText[unitProblem]}
                 </p>
               ) : null}

@@ -78,7 +78,7 @@ export function SidePanelSettings({
                   { value: "dark", label: t.dark, icon: <MoonIcon /> },
                 ]}
               />
-              {error ? <p className="m-0 text-[0.8rem] text-owe">{error}</p> : null}
+              {error ? <p className="m-0 text-[0.8rem] text-error">{error}</p> : null}
             </section>
             <section className="flex flex-col gap-2">
               <h2 className={headingClass}>{t.language}</h2>

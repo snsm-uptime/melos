@@ -50,7 +50,7 @@ export function CreateKitchenDialog({
         onChange={(event) => setName(event.target.value)}
       />
       {error ? (
-        <p className="m-0 mt-2 text-owe text-[0.85rem]" role="alert">
+        <p className="m-0 mt-2 text-error text-[0.85rem]" role="alert">
           {error}
         </p>
       ) : null}

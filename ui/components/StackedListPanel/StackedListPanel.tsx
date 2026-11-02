@@ -6,7 +6,7 @@ const DEFAULT_LIST_CLASS = "list-none m-0 p-0 flex flex-col gap-2";
 const DEFAULT_ITEM_CLASS =
   "py-[0.6rem] px-[0.85rem] rounded-[8px] border border-border bg-surface";
 const DEFAULT_LOADING_CLASS = "flex justify-center py-2 text-muted";
-const DEFAULT_ERROR_CLASS = "text-owe text-[0.9rem]";
+const DEFAULT_ERROR_CLASS = "text-error text-[0.9rem]";
 const DEFAULT_EMPTY_CLASS = "text-muted text-[0.85rem]";
 
 export type StackedListPanelProps<T> = {

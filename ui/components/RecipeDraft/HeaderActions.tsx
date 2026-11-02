@@ -21,7 +21,7 @@ type Tone = "default" | "danger" | "accent";
 
 const toneClass: Record<Tone, string> = {
   default: "text-muted hover:text-foreground",
-  danger: "text-muted hover:text-owe",
+  danger: "text-muted hover:text-error",
   accent: "text-accent hover:text-foreground",
 };
 

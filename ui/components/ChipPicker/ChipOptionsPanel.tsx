@@ -59,7 +59,7 @@ export function ChipOptionsPanel({
             aria-label={option.ariaLabel ?? (typeof option.label === "string" ? option.label : undefined)}
             onClick={() => onSelect(option.value)}
             className={`${chipClassName[option.tone ?? "muted"]} ${focusRing} ${
-              option.tone === "warning" ? "hover:bg-owe/10" : "hover:border-muted"
+              option.tone === "warning" ? "hover:bg-error/10" : "hover:border-muted"
             } disabled:cursor-not-allowed disabled:opacity-60`}
           >
             {option.label}
@@ -67,7 +67,7 @@ export function ChipOptionsPanel({
         ))}
         <div aria-live="polite">
           {error ? (
-            <p className="m-0 w-full text-[0.85rem] text-owe" role="alert">
+            <p className="m-0 w-full text-[0.85rem] text-error" role="alert">
               {error}
             </p>
           ) : null}

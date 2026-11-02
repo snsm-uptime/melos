@@ -19,7 +19,7 @@ export const chipBaseClassName =
 const chipToneColorClassName: Record<ChipTone, string> = {
   muted: "border-border text-muted",
   accent: "border-accent text-accent",
-  warning: "border-owe text-owe",
+  warning: "border-error text-error",
 };
 
 /** Full chip classes (shape + tone color), for callers building their own chip-styled elements. */

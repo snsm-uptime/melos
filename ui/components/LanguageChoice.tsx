@@ -69,7 +69,7 @@ export function LanguageChoice() {
         })}
       </div>
       {failed ? (
-        <p role="alert" className="m-0 text-[0.85rem] text-owe">
+        <p role="alert" className="m-0 text-[0.85rem] text-error">
           {t.saveLanguageFailed}
         </p>
       ) : null}

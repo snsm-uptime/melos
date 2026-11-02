@@ -64,7 +64,7 @@ export function DeleteRecipeDialog({
     >
       <p className="m-0 text-foreground">{t.deleteBody}</p>
       {problem ? (
-        <p className="mt-3 text-owe" role="alert">
+        <p className="mt-3 text-error" role="alert">
           {problem}
         </p>
       ) : null}

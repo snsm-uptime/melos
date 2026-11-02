@@ -205,7 +205,7 @@ export function RecipeDraftEditor() {
             {notebook.name}
           </h4>
           {errors.title ? (
-            <span role="alert" className="px-1 text-[0.8rem] text-owe">
+            <span role="alert" className="px-1 text-[0.8rem] text-error">
               {t.errors[errors.title]}
             </span>
           ) : null}
@@ -289,7 +289,7 @@ export function RecipeDraftEditor() {
                 />
               </label>
               {errors.servings ? (
-                <span role="alert" className="text-[0.8rem] text-owe">
+                <span role="alert" className="text-[0.8rem] text-error">
                   {t.errors[errors.servings]}
                 </span>
               ) : null}
@@ -376,7 +376,7 @@ export function RecipeDraftEditor() {
               ))}
             </ol>
             {errors.steps ? (
-              <span role="alert" className="text-[0.8rem] text-owe">
+              <span role="alert" className="text-[0.8rem] text-error">
                 {t.errors[errors.steps]}
               </span>
             ) : null}
@@ -394,7 +394,7 @@ export function RecipeDraftEditor() {
       </div>
 
       {capture.message ? (
-        <p role="alert" className="px-4 text-[0.9rem] text-owe">
+        <p role="alert" className="px-4 text-[0.9rem] text-error">
           {messageForCode(capture.message, locale)}
         </p>
       ) : null}

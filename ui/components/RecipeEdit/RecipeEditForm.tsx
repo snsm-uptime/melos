@@ -269,7 +269,7 @@ export function RecipeEditForm({
             {recipe.notebook.name}
           </h4>
           {errors.title ? (
-            <span role="alert" className="px-1 text-[0.8rem] text-owe">
+            <span role="alert" className="px-1 text-[0.8rem] text-error">
               {c.errors[errors.title]}
             </span>
           ) : null}
@@ -322,7 +322,7 @@ export function RecipeEditForm({
                 />
               </label>
               {errors.servings ? (
-                <span role="alert" className="text-[0.8rem] text-owe">
+                <span role="alert" className="text-[0.8rem] text-error">
                   {c.errors[errors.servings]}
                 </span>
               ) : null}
@@ -430,7 +430,7 @@ export function RecipeEditForm({
               ))}
             </ol>
             {errors.steps ? (
-              <span role="alert" className="text-[0.8rem] text-owe">
+              <span role="alert" className="text-[0.8rem] text-error">
                 {c.errors[errors.steps]}
               </span>
             ) : null}
@@ -456,7 +456,7 @@ export function RecipeEditForm({
       ) : null}
       {messageText ? (
         <div className="flex flex-col items-start gap-2 px-4">
-          <p className="m-0 text-[0.9rem] text-owe" role="alert">
+          <p className="m-0 text-[0.9rem] text-error" role="alert">
             {messageText}
           </p>
           {message?.kind === "changed" ? (
