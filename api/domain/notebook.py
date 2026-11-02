@@ -8,7 +8,9 @@ catalog point at the notebook id, never at the owner.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
@@ -25,6 +27,26 @@ NOTEBOOK_NAME_MAX_LENGTH = 200
 NotebookKind = Literal["personal", "kitchen"]
 NotebookRole = Literal["owner", "member"]
 NotebookAccess = Literal["owner", "member", "kitchen_member"]
+
+
+@dataclass(frozen=True, slots=True)
+class JoinedMember:
+    """A person's place in a personal notebook, as far as inheriting it goes."""
+
+    user_id: UUID
+    role: NotebookRole
+    joined_at: datetime
+
+
+def longest_standing(members: Iterable[JoinedMember]) -> UUID | None:
+    """Who inherits a personal notebook: the earliest to join, or None if nobody is a member.
+
+    The owner never counts. Two people can join at the same moment, so the id settles a tie.
+    """
+    return min(
+        ((member.joined_at, member.user_id) for member in members if member.role != "owner"),
+        default=(None, None),
+    )[1]
 
 
 @dataclass(frozen=True, slots=True)

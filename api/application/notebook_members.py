@@ -9,7 +9,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from uuid import UUID
 
-from domain.errors import NotebookMemberNotFoundError, NotebookOwnerStaysError
+from domain.errors import (
+    NotebookMemberNotFoundError,
+    NotebookNotFoundError,
+    NotebookOwnerStaysError,
+)
 from domain.notebook import NotebookRole
 from domain.notebook_invite import assert_can_manage_sharing, assert_shareable
 
@@ -68,6 +72,14 @@ class LeaveNotebookService:
         assert_shareable(notebook.kind)
         if access == "owner":
             raise NotebookOwnerStaysError()
+        # Read again under the lock: this person may have inherited the notebook meanwhile
+        # (spec 058), and leaving would then take away its only owner.
+        self._notebooks.lock_notebook(notebook.id)
+        role = self._notebooks.role_of(notebook.id, command.actor_user_id)
+        if role == "owner":
+            raise NotebookOwnerStaysError()
+        if role is None:
+            raise NotebookNotFoundError()
         self._notebooks.delete_membership(notebook.id, command.actor_user_id)
 
 

@@ -485,6 +485,18 @@ def test_lost_claim_without_a_membership_is_invalid(world: World) -> None:
 # --- The owner's list, resend and cancel (User Story 5) ------------------------------------
 
 
+def test_accept_answers_as_an_invalid_link_when_the_notebook_was_just_deleted(world: World) -> None:
+    ben = world.people.add("ben@example.test", alias="ben")
+    world.send()
+    del world.notebooks.notebooks[world.notebook]
+
+    with pytest.raises(InvalidInviteTokenError):
+        world.accept(world.sent_token(), ben)
+
+    assert world.committer.commits == 0
+    assert "add_member" not in world.log
+
+
 def _list(world: World, actor: UUID):
     return ListNotebookInvitesService(world.notebooks, world.invites).execute(
         ListNotebookInvitesCommand(actor_user_id=actor, notebook_id=world.notebook)

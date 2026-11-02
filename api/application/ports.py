@@ -102,6 +102,7 @@ class NotebookMemberRecord:
     user_id: UUID
     alias: str | None
     role: NotebookRole
+    joined_at: datetime
 
 
 class NotebookRepository(Protocol):
@@ -151,7 +152,22 @@ class NotebookRepository(Protocol):
         ...
 
     def lock_notebook(self, notebook_id: UUID) -> None:
-        """Serialize sharing changes on a notebook (FOR NO KEY UPDATE on its row)."""
+        """Serialize sharing changes on a notebook (FOR NO KEY UPDATE on its row).
+
+        Raises NotebookNotFoundError if the notebook is gone.
+        """
+        ...
+
+    def owned_personal_ids(self, user_id: UUID) -> list[UUID]:
+        """Personal notebooks this person owns, and not those they are only a member of."""
+        ...
+
+    def make_owner(self, notebook_id: UUID, user_id: UUID) -> None:
+        """Give a member the owner role. The old owner's row must already be gone."""
+        ...
+
+    def delete_personal(self, notebook_id: UUID) -> None:
+        """Delete a personal notebook, what it holds and its captured source text."""
         ...
 
     def members_of(self, notebook_id: UUID) -> list[NotebookMemberRecord]:
