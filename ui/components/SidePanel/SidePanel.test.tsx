@@ -262,6 +262,22 @@ describe("SidePanel", () => {
     expect(link("Mine").getAttribute("aria-current")).toBe("page");
   });
 
+  it("badges only the current kitchen and drops the pointer on its own page", async () => {
+    pathname = "/kitchens/k1";
+    await render();
+    expect(link("Mine").querySelector(".rounded-full")).not.toBeNull();
+    expect(link("Mine").className).toContain("!cursor-default");
+    expect(link("zoo").querySelector(".rounded-full")).toBeNull();
+    expect(link("zoo").className).not.toContain("!cursor-default");
+  });
+
+  it("keeps the pointer on the current kitchen from a page below it", async () => {
+    pathname = "/kitchens/k1/cart";
+    await render();
+    expect(link("Mine").querySelector(".rounded-full")).not.toBeNull();
+    expect(link("Mine").className).not.toContain("!cursor-default");
+  });
+
   it("refetches on a page change and on request", async () => {
     await render();
     expect(fetchSidePanel).toHaveBeenCalledTimes(1);

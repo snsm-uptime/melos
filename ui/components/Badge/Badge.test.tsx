@@ -46,6 +46,15 @@ describe("Badge", () => {
     expect(badge().textContent).toBe("99");
   });
 
+  it("is an empty, decorative circle without a count", () => {
+    view.render(<Badge size="sm" />);
+    const dot = view.container.firstElementChild as HTMLElement;
+    expect(dot.textContent).toBe("");
+    expect(dot.getAttribute("aria-hidden")).toBe("true");
+    expect(dot.getAttribute("role")).toBeNull();
+    expect(dot.className).toContain("rounded-full");
+  });
+
   it("adds a caller's class", () => {
     view.render(<Badge count={1} label="1 recipe" className="ml-2" />);
     expect(badge().className).toContain("ml-2");

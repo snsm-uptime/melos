@@ -24,8 +24,11 @@ recipes and plan meals together.
 Melos is organized around **kitchens** and **notebooks**. A kitchen is a shared
 space where members plan meals and shop together. Recipes live in notebooks:
 
-- A **personal notebook** belongs to one owner; others join it by email invite.
-  It is private and never shown in a kitchen.
+- A **personal notebook** belongs to one owner, who invites others by email.
+  Members add, edit and delete its recipes, and can leave or be removed at any
+  time; what they added stays. When someone joins, their ingredient names merge
+  into the notebook's catalog and the notebook's names win. It is private and
+  never shown in a kitchen.
 - A **kitchen notebook** belongs to a kitchen; every member reads and writes it
   while they belong to the kitchen. A personal notebook reaches a kitchen only
   as a **snapshot**, an independent copy.
@@ -39,14 +42,17 @@ The flow:
    matching ingredient names to the notebook's catalog ("onions" → "onion").
 3. Save the draft into a notebook; browse, filter, edit and delete recipes, and
    scale a recipe's servings on its detail page.
-4. Add recipes to the kitchen's cart with a number of people and meals;
-   ingredients are scaled and consolidated into a shopping list.
-5. Export the list as PDF or Markdown and finalize it as a snapshot.
+4. Add recipes to the kitchen's cart and set the servings of each; ingredients
+   are scaled and consolidated into a shopping list, and you can add items by
+   hand.
+5. Close the list with Done: it is saved with the date and the cart is emptied.
+   Export as PDF or Markdown comes later.
 6. Chat with your kitchen: questions answered from your own recipes (with
    citations) and from past shopping lists.
 
 The interface is in Spanish by default, with English or Spanish chosen in the
-account.
+account. A left side panel, a drawer on phones, lists your kitchens, marks the
+default one and holds log out.
 
 ## Progress
 
@@ -62,8 +68,12 @@ Tracked in [dev/docs/backlog.yaml](dev/docs/backlog.yaml); the product spec is
 | Save a draft, recipe lists, detail, edit and delete (S-020, S-021, S-027) | Done |
 | Servings scaling on the recipe detail (S-062) | Done |
 | Spanish as the default language, every screen translated (S-063) | Done |
-| Cart, shopping list, export and finalize (S-022 to S-025) | Next |
-| Notebook snapshots, invites, ownership passing, notebook CRUD (S-035, S-057, S-058, S-059) | Backlog |
+| Notebook snapshots and notebook invites with members (S-035, S-057) | Done |
+| Cart by servings (S-022) | Done |
+| Shopping list, saved list closed with Done (S-023, S-025) | Built, browser walk open |
+| Kitchen side panel, cauldron loader (S-064, S-065) | Built, browser walk open |
+| Shopping list export as PDF and Markdown (S-024) | Next |
+| Ownership passing, notebook create, rename and delete (S-058, S-059) | Backlog |
 | Embeddings, conversations, the kitchen assistant (S-019, S-029 to S-031) | Backlog |
 | Capture from a URL, recipe PDF (S-026, S-028) | Backlog |
 | MCP tools with API keys, deployment, AI evaluation set (S-032 to S-034) | Backlog |
@@ -95,7 +105,7 @@ proven auth, architecture, tooling and deployment patterns
 |---|---|---|
 | **Reused as-is** | Hexagonal `api/` layout, `ui/` shell, `scripts/` compose helpers, CI workflow, Dockerfiles, auth layer (sessions, argon2, password reset, email verification, rate limiting) | Auth layer is not modified without explicit approval |
 | **Adapted** | Docker Compose (`pgvector/pgvector:pg16`, new `mcp` service), env prefix `FH_` → `MELOS_`, data dir `~/melos`, list → kitchen, UI in Spanish (default) and English, chosen in the account | Config changes go through `.env` and `api/settings.py`, never per-file renames |
-| **New** | Gemini integration, notebooks, recipe capture, cart/shopping list, conversations, embeddings, PDF export, MCP service | |
+| **New** | Gemini integration, notebooks with snapshots and invites, recipe capture, cart/shopping list, conversations, embeddings, PDF export, MCP service | |
 | **Not reused** | All finance domain code (cards, statements, budgets, FX, bank adapters) and finance seed credentials | |
 
 **Stack:** Python 3.12 + `uv`, FastAPI, SQLAlchemy + Alembic, PostgreSQL 16 +
@@ -167,7 +177,7 @@ Prerequisites: Docker, `uv`, Node.js / npm.
 # 1. Configure secrets (never commit .env)
 cp .env.example .env
 #    fill in POSTGRES_PASSWORD, SESSION_SECRET, GEMINI_API_KEY, SMTP_*
-#    SMTP is required for email verification, password reset, and kitchen invites.
+#    SMTP is required for email verification, password reset, and kitchen and notebook invites.
 #    Use a real provider (e.g., Gmail app password) — misconfigured SMTP returns 503
 #    on the sending request and is logged. For dev: SMTP_HOST, SMTP_USER, SMTP_PASSWORD,
 #    SMTP_FROM (RFC5322 format like "Melos <noreply@example.com>"), SMTP_STARTTLS=true
@@ -202,7 +212,9 @@ cd ui && npm run lint && npm run typecheck && npm test
 
 Parallel work: `./scripts/worktree/worktree-add.sh <slug> <branch>` gives each
 worktree its own Compose stack (`MELOS_COMPOSE_NAME`, `API_HOST_PORT`,
-`UI_HOST_PORT`).
+`UI_HOST_PORT`). `compose-up.sh` refuses to start while another Compose project
+is using this checkout's data directory, because a different project name does
+not separate the Postgres data; give each checkout its own `MELOS_DATA`.
 
 ## Screenshots
 

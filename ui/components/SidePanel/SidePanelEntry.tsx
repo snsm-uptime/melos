@@ -12,6 +12,7 @@ export function SidePanelEntry({
   icon,
   href,
   current = false,
+  atTarget = false,
   disabled = false,
   expanded,
   id,
@@ -23,6 +24,8 @@ export function SidePanelEntry({
   icon: ReactNode;
   href?: string;
   current?: boolean;
+  /** Already on the page `href` opens, so the row shows no pointer. */
+  atTarget?: boolean;
   disabled?: boolean;
   expanded?: boolean;
   id?: string;
@@ -45,7 +48,7 @@ export function SidePanelEntry({
           href={href}
           aria-label={label}
           aria-current={current ? "page" : undefined}
-          className={`${panelEntryClass} ${current ? "!text-foreground font-semibold" : ""}`}
+          className={`${panelEntryClass} ${current ? "!text-foreground font-semibold" : ""} ${atTarget ? "!cursor-default" : ""}`}
           onClick={onClick}
         >
           {content}

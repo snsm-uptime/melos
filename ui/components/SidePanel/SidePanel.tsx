@@ -3,13 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import {
-  ArchiveToggleIcon,
-  LogOutIcon,
-  MenuIcon,
-  NotebookIcon,
-  PlusIcon,
-} from "@/app/icons";
+import { ArchiveToggleIcon, LogOutIcon, MenuIcon, NotebookIcon, PlusIcon } from "@/app/icons";
 import { fetchKitchens, type KitchenItem } from "@/app/kitchens/kitchensClient";
 import { useMembershipKitchens } from "@/app/kitchens/membershipKitchensStore";
 import { IconButton } from "@/components/IconButton";
@@ -61,10 +55,7 @@ export function SidePanel({
   const { wide, openOnlyClass } = layout;
 
   const reload = useCallback(async () => {
-    const [kitchensResult, panelResult] = await Promise.all([
-      fetchKitchens(kt),
-      fetchSidePanel(),
-    ]);
+    const [kitchensResult, panelResult] = await Promise.all([fetchKitchens(kt), fetchSidePanel()]);
     setKitchensError(kitchensResult.ok ? null : kitchensResult.error);
     setPanel(panelResult);
   }, [kt]);
@@ -119,8 +110,10 @@ export function SidePanel({
 
   // Closed, the panel has no scrollbar room; open keeps every kitchen, as the way to reach them.
   const { listRef, overflowing } = useKitchenRowsOverflow(listed.length, !wide);
-  // The default sorts first.
-  const shown = overflowing ? listed.slice(0, 1) : listed;
+  // The default sorts first; the current kitchen stays so the closed panel still marks it.
+  const shown = overflowing
+    ? listed.filter((kitchen, index) => index === 0 || current === `kitchen:${kitchen.id}`)
+    : listed;
 
   async function onSetDefault(kitchenId: string) {
     const result = await setDefaultKitchen(kitchenId);
@@ -251,26 +244,31 @@ export function SidePanel({
             </p>
           ) : null}
           <ul ref={listRef} className="m-0 flex list-none flex-col gap-1 p-0">
-            {shown.map((kitchen) => (
-              <li key={kitchen.id} className="relative min-w-0">
-                <SidePanelEntry
-                  href={`/kitchens/${encodeURIComponent(kitchen.id)}`}
-                  label={kitchen.name}
-                  icon={<KitchenIcon id={kitchen.id} name={kitchen.name} />}
-                  current={current === `kitchen:${kitchen.id}`}
-                  reserveTrailing={!showArchived}
-                  onClick={onDrawerClose}
-                />
-                {showArchived ? null : (
-                  <KitchenStar
-                    isDefault={kitchen.id === defaultKitchenId}
-                    defaultLabel={t.defaultKitchen}
-                    setLabel={t.setDefault}
-                    onSet={() => void onSetDefault(kitchen.id)}
+            {shown.map((kitchen) => {
+              const href = `/kitchens/${encodeURIComponent(kitchen.id)}`;
+              const isCurrent = current === `kitchen:${kitchen.id}`;
+              return (
+                <li key={kitchen.id} className="relative min-w-0">
+                  <SidePanelEntry
+                    href={href}
+                    label={kitchen.name}
+                    icon={<KitchenIcon id={kitchen.id} name={kitchen.name} current={isCurrent} />}
+                    current={isCurrent}
+                    atTarget={pathname === href}
+                    reserveTrailing={!showArchived}
+                    onClick={onDrawerClose}
                   />
-                )}
-              </li>
-            ))}
+                  {showArchived ? null : (
+                    <KitchenStar
+                      isDefault={kitchen.id === defaultKitchenId}
+                      defaultLabel={t.defaultKitchen}
+                      setLabel={t.setDefault}
+                      onSet={() => void onSetDefault(kitchen.id)}
+                    />
+                  )}
+                </li>
+              );
+            })}
             {creating ? (
               <NewKitchenRow
                 locale={locale}
