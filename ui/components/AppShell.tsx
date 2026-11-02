@@ -117,9 +117,17 @@ function AppShellFrame({ children }: { children: ReactNode }) {
                 header.leading
               ) : null}
             </div>
-            <div className="flex min-w-0 flex-1 items-center justify-start gap-2 self-center">
+            <div
+              className={`flex min-w-0 flex-1 items-center justify-start gap-2 self-center ${
+                header.titleAside ? "flex-wrap md:flex-nowrap" : ""
+              }`}
+            >
               {header.title ? (
-                <h1 className="m-0 min-w-0 truncate text-[1.5rem] font-[550] leading-normal text-foreground">
+                <h1
+                  className={`m-0 min-w-0 truncate text-[1.5rem] font-[550] leading-normal text-foreground ${
+                    header.titleAside ? "shrink-0" : ""
+                  }`}
+                >
                   {header.title}
                 </h1>
               ) : null}
@@ -127,6 +135,9 @@ function AppShellFrame({ children }: { children: ReactNode }) {
                 <Chip className={header.detailsClassName}>
                   <span className="shrink-0 text-[0.85rem] text-muted">{header.details}</span>
                 </Chip>
+              ) : null}
+              {header.titleAside ? (
+                <div className="min-w-0 flex-1 basis-full overflow-x-auto md:basis-0">{header.titleAside}</div>
               ) : null}
             </div>
             {header.trailing ? (

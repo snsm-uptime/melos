@@ -32,6 +32,8 @@ export type ChromeHeaderConfig = {
    * for an over-budget state) — full Tailwind classes, not limited to the fixed Chip tones.
    */
   detailsClassName?: string;
+  /** Controls right after the title (e.g. tabs); on a phone, a row below it that scrolls sideways. */
+  titleAside?: ReactNode;
   trailing?: ReactNode;
   /**
    * Optional full-width strip rendered edge-to-edge above the header row,
@@ -204,6 +206,7 @@ export function useChromeHeader(config: ChromeHeaderConfig) {
     title,
     details,
     detailsClassName,
+    titleAside,
     trailing,
     progressBar,
     sidePanel,
@@ -222,6 +225,7 @@ export function useChromeHeader(config: ChromeHeaderConfig) {
         title,
         details,
         detailsClassName,
+        titleAside,
         trailing,
         progressBar,
         sidePanel,
@@ -238,6 +242,7 @@ export function useChromeHeader(config: ChromeHeaderConfig) {
     title,
     details,
     detailsClassName,
+    titleAside,
     trailing,
     progressBar,
     sidePanel,

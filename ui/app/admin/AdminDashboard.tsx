@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
+import { CheckIcon, CloseIcon } from "@/app/icons";
 import { useChromeHeader } from "@/components/ChromeBack";
 import { CauldronLoader } from "@/components/CauldronLoader";
 import { adminMessages } from "@/lib/i18n/admin";
@@ -15,7 +16,7 @@ type Row = Record<string, unknown>;
 type Loaded = { state: "ready"; rows: Row[] } | { state: "failed" };
 type Messages = (typeof adminMessages)[Locale];
 
-type Column = { key: string; label: string; show?: (value: unknown) => string };
+type Column = { key: string; label: string; show?: (value: unknown) => ReactNode };
 
 function columnsFor(section: Section, t: Messages, locale: Locale): Column[] {
   const date = (value: unknown) =>
@@ -26,7 +27,19 @@ function columnsFor(section: Section, t: Messages, locale: Locale): Column[] {
       return [
         { key: "name", label: c.name },
         { key: "reference_count", label: c.referenceCount },
-        { key: "is_default", label: c.isDefault, show: (v) => (v ? t.yes : t.no) },
+        {
+          key: "is_default",
+          label: c.isDefault,
+          show: (v) => (
+            <span
+              role="img"
+              aria-label={v ? t.yes : t.no}
+              className={`inline-flex align-middle ${v ? "text-accent" : "text-error"}`}
+            >
+              {v ? <CheckIcon /> : <CloseIcon />}
+            </span>
+          ),
+        },
         { key: "created_at", label: c.createdAt, show: date },
         {
           key: "user_references",
@@ -138,7 +151,30 @@ export function AdminDashboard({ locale }: { locale: Locale }) {
   const [section, setSection] = useState<Section>("units");
   const [loaded, setLoaded] = useState<Partial<Record<Section, Loaded>>>({});
   const current = loaded[section];
-  useChromeHeader({ title: t.title, sidePanel: true });
+  useChromeHeader({
+    title: t.title,
+    sidePanel: true,
+    titleAside: (
+      <div role="tablist" aria-label={t.tabsLabel} className="flex w-max gap-2">
+        {SECTIONS.map((name) => (
+          <button
+            key={name}
+            type="button"
+            role="tab"
+            aria-selected={name === section}
+            className={`min-h-10 rounded-[0.75rem] border px-3 py-1 text-[0.9rem] whitespace-nowrap ${
+              name === section
+                ? "border-accent text-foreground"
+                : "border-border text-muted hover:text-foreground"
+            }`}
+            onClick={() => setSection(name)}
+          >
+            {t.tabs[name]}
+          </button>
+        ))}
+      </div>
+    ),
+  });
 
   // Going back to a section mid-load must not ask for it twice.
   const loading = useRef(new Set<Section>());
@@ -167,24 +203,6 @@ export function AdminDashboard({ locale }: { locale: Locale }) {
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4 p-4">
-      <div role="tablist" aria-label={t.tabsLabel} className="flex flex-wrap gap-2">
-        {SECTIONS.map((name) => (
-          <button
-            key={name}
-            type="button"
-            role="tab"
-            aria-selected={name === section}
-            className={`min-h-10 rounded-[0.75rem] border px-3 py-1 text-[0.9rem] ${
-              name === section
-                ? "border-accent text-foreground"
-                : "border-border text-muted hover:text-foreground"
-            }`}
-            onClick={() => setSection(name)}
-          >
-            {t.tabs[name]}
-          </button>
-        ))}
-      </div>
       <div role="tabpanel" className="flex min-w-0 flex-1 flex-col">
         {current === undefined ? <CauldronLoader label={t.tabs[section]} /> : null}
         {current?.state === "ready" ? (

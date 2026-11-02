@@ -9,6 +9,7 @@ Centralized location for all custom SVG icon components used throughout the UI. 
 | `SaveIcon` | Persist/save actions | Document with save indicator |
 | `SendIcon` | Submit/send actions | Arrow/send shape |
 | `CloseIcon` | Close/dismiss buttons | X shape |
+| `CheckIcon` | A yes in a table cell | Check mark, pairs with `CloseIcon` for no |
 | `PlusIcon` | Add/create actions | Plus sign |
 | `CartIcon` | Open the kitchen's cart | Empty cart, same shape as `CartPlusIcon` |
 | `CartPlusIcon` | Add/remove a recipe from the cart | `inCart` turns the + into × |
@@ -44,6 +45,14 @@ An arrow/send indicator. Used for submit/send actions (e.g., invitations).
 ### CloseIcon
 
 An X shape for closing/dismissing. Used on close buttons in modals and overlays.
+
+- ViewBox: `0 0 24 24`
+- Style: Stroke-based
+- Accepts: className, SVG element props
+
+### CheckIcon
+
+A check mark. Used for a yes in a table cell, such as the admin units' Default column, with `CloseIcon` for a no.
 
 - ViewBox: `0 0 24 24`
 - Style: Stroke-based

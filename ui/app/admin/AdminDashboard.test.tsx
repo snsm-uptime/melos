@@ -4,9 +4,26 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ChromeBackProvider, useChromeHeaderState } from "@/components/ChromeBack";
 import { MIN_LOADING_MS } from "@/lib/minimumLoading";
 
 import { AdminDashboard } from "./AdminDashboard";
+
+vi.mock("next/navigation", () => ({ usePathname: () => "/admin" }));
+
+/** The part of AppShell's header that holds the tabs. */
+function Tabs() {
+  return <>{useChromeHeaderState().titleAside}</>;
+}
+
+function Screen({ locale }: { locale: "en" | "es" }) {
+  return (
+    <ChromeBackProvider>
+      <Tabs />
+      <AdminDashboard locale={locale} />
+    </ChromeBackProvider>
+  );
+}
 
 const SECTIONS: Record<string, unknown> = {
   units: {
@@ -17,6 +34,13 @@ const SECTIONS: Record<string, unknown> = {
         reference_count: 2,
         is_default: false,
         created_at: "2026-11-01T22:00:00Z",
+      },
+      {
+        name: "cup",
+        user_references: [],
+        reference_count: 9,
+        is_default: true,
+        created_at: "2026-10-01T22:00:00Z",
       },
     ],
   },
@@ -82,7 +106,7 @@ describe("AdminDashboard", () => {
 
   async function render(locale: "en" | "es" = "en") {
     await act(async () => {
-      root.render(<AdminDashboard locale={locale} />);
+      root.render(<Screen locale={locale} />);
     });
     await flush();
   }
@@ -115,9 +139,19 @@ describe("AdminDashboard", () => {
     expect(container.textContent).toContain("tomate");
   });
 
+  it("marks a default unit with a check and any other with an x, named for screen readers", async () => {
+    await render();
+    const marks = Array.from(container.querySelectorAll('td [role="img"]'));
+    expect(marks.map((mark) => mark.getAttribute("aria-label"))).toEqual(["No", "Yes"]);
+    expect(marks.every((mark) => mark.querySelector("svg") && mark.textContent === "")).toBe(true);
+    expect(marks[0].querySelector("path")?.getAttribute("d")).not.toBe(
+      marks[1].querySelector("path")?.getAttribute("d"),
+    );
+  });
+
   it("shows the cauldron for the first load of a section, even when the data is there", async () => {
     await act(async () => {
-      root.render(<AdminDashboard locale="en" />);
+      root.render(<Screen locale="en" />);
     });
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
