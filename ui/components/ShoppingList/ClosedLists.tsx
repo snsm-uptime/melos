@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { CauldronLoader } from "@/components/CauldronLoader";
+import { useChromeHeader } from "@/components/ChromeBack";
 
 import type { Locale } from "@/lib/i18n/locale";
 import { shoppingListMessages } from "@/lib/i18n/shoppingList";
@@ -37,6 +38,8 @@ export function ClosedLists({ kitchenId, locale }: ClosedListsProps) {
   const [rows, setRows] = useState<ClosedListSummary[] | null | "error">(null);
   const base = `/kitchens/${encodeURIComponent(kitchenId)}`;
 
+  useChromeHeader({ backHref: base, title: t.pastLists });
+
   useEffect(() => {
     let current = true;
     void fetchClosedLists(kitchenId).then((result) => {
@@ -49,10 +52,6 @@ export function ClosedLists({ kitchenId, locale }: ClosedListsProps) {
 
   return (
     <section className="flex flex-col gap-3 px-4">
-      <Link href={`${base}/cart`} className={BACK}>
-        {t.backToCart}
-      </Link>
-      <h1 className="m-0 text-[1.25rem] font-[600] text-foreground">{t.pastLists}</h1>
       {rows === null ? (
         <CauldronLoader label={t.loading} />
       ) : rows === "error" ? (

@@ -386,6 +386,37 @@ describe("KitchenDetailChrome", () => {
     });
   });
 
+  it("puts the past lists button right after the cart button and opens past lists (spec 025 FR-010)", async () => {
+    const pastLists = { href: "/kitchens/k1/shopping-lists", label: "Past lists" };
+    const notebooks = { href: "/kitchens/k1/notebooks", label: "Notebooks" };
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <KitchenDetailChrome
+            title="Household"
+            share={share}
+            cart={CART}
+            pastLists={pastLists}
+            notebooks={notebooks}
+          />
+        </AppShell>,
+      );
+    });
+
+    const buttons = Array.from(container.querySelectorAll("header button"));
+    expect(buttons.map((b) => b.getAttribute("aria-label"))).toEqual([
+      "Open menu",
+      "Cart",
+      "Past lists",
+      "Notebooks",
+      t.mobileInviteAria,
+    ]);
+    await act(async () => {
+      (buttons[2] as HTMLButtonElement).click();
+    });
+    expect(push).toHaveBeenCalledWith("/kitchens/k1/shopping-lists");
+  });
+
   describe("notebooks button (spec 035 FR-007a)", () => {
     const notebooks = { href: "/kitchens/k1/notebooks", label: "Notebooks" };
 

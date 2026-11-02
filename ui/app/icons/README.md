@@ -12,6 +12,7 @@ Centralized location for all custom SVG icon components used throughout the UI. 
 | `PlusIcon` | Add/create actions | Plus sign |
 | `CartIcon` | Open the kitchen's cart | Empty cart, same shape as `CartPlusIcon` |
 | `CartPlusIcon` | Add/remove a recipe from the cart | `inCart` turns the + into × |
+| `HistoryIcon` | Open the kitchen's past lists | Clock inside a counterclockwise arrow |
 | `BookmarkIcon` | The default notebook | Outline bookmark |
 | `DotsIcon` | Menu triggers | Vertical dots, 16×16 viewBox |
 | `ShareIcon` | Invite/share actions | Connected circles |
@@ -63,6 +64,14 @@ A shopping cart with a "+" in the basket. Used to add a recipe to the kitchen ca
 - ViewBox: `0 0 24 24`
 - Style: Stroke-based
 - Accepts: className, `inCart`, SVG element props
+
+### HistoryIcon
+
+A clock circled by a counterclockwise arrow. Used for the kitchen chrome's button that opens past lists (spec 025).
+
+- ViewBox: `0 0 24 24`
+- Style: Stroke-based, shared stroke width (`ICON_STROKE`)
+- Accepts: className, SVG element props
 
 ### PlusIcon
 

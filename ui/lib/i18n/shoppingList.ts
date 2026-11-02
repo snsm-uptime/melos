@@ -34,7 +34,6 @@ export const shoppingListMessages = {
     pastListsEmpty: "No closed lists yet.",
     pastListsLoadError: "Could not load past lists. Try again.",
     closedOn: (date: string) => `Closed on ${date}`,
-    backToCart: "Back to the cart",
     backToPastLists: "Back to past lists",
   },
   es: {
@@ -70,7 +69,6 @@ export const shoppingListMessages = {
     pastListsEmpty: "Aún no hay listas cerradas.",
     pastListsLoadError: "No se pudieron cargar las listas anteriores. Inténtalo de nuevo.",
     closedOn: (date: string) => `Cerrada el ${date}`,
-    backToCart: "Volver al carrito",
     backToPastLists: "Volver a las listas anteriores",
   },
 } as const;

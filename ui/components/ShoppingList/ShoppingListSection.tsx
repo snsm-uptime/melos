@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { CauldronLoader } from "@/components/CauldronLoader";
@@ -92,7 +91,6 @@ export function ShoppingListSection({
     draft: t.statusDraft,
   }[list.status];
   const hasCartLines = list.lines.length > 0 || list.your_call.length > 0;
-  const closedListsHref = `/kitchens/${encodeURIComponent(kitchenId)}/shopping-lists`;
 
   return (
     <section className="flex flex-col gap-3 px-4">
@@ -134,12 +132,6 @@ export function ShoppingListSection({
           }}
         />
       ) : null}
-      <Link
-        href={closedListsHref}
-        className="inline-flex min-h-11 items-center self-start text-[0.9rem] text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-      >
-        {t.pastLists}
-      </Link>
     </section>
   );
 }

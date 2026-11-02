@@ -6,6 +6,7 @@ export { PlusIcon } from "./PlusIcon";
 export { BookmarkIcon } from "./BookmarkIcon";
 export { CartIcon } from "./CartIcon";
 export { CartPlusIcon } from "./CartPlusIcon";
+export { HistoryIcon } from "./HistoryIcon";
 export { DotsIcon } from "./DotsIcon";
 export { ShareIcon } from "./ShareIcon";
 export { PieChartIcon } from "./PieChartIcon";

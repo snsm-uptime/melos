@@ -8,6 +8,7 @@ import { asCart, type Cart } from "@/lib/cartClient";
 import { cartMessages } from "@/lib/i18n/cart";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
 import { notebooksMessages } from "@/lib/i18n/notebooks";
+import { shoppingListMessages } from "@/lib/i18n/shoppingList";
 import { readListAddress } from "@/lib/listAddress";
 import { asNotebookList, type NotebookResponse } from "@/lib/notebooksClient";
 import { asPage, type RecipePage } from "@/lib/recipesClient";
@@ -222,6 +223,10 @@ export default async function KitchenDetailPage({
               href: `/kitchens/${encodeURIComponent(kitchenId)}/cart`,
               label: cartMessages[locale].cart,
               locale,
+            }}
+            pastLists={{
+              href: `/kitchens/${encodeURIComponent(kitchenId)}/shopping-lists`,
+              label: shoppingListMessages[locale].pastLists,
             }}
             notebooks={{
               href: `/kitchens/${encodeURIComponent(kitchenId)}/notebooks`,

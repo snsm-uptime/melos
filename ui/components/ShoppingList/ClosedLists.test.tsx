@@ -3,10 +3,12 @@
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { client } = vi.hoisted(() => ({
+const { client, useChromeHeader } = vi.hoisted(() => ({
   client: { fetchClosedLists: vi.fn(), fetchClosedList: vi.fn() },
+  useChromeHeader: vi.fn(),
 }));
 vi.mock("@/lib/shoppingListClient", () => client);
+vi.mock("@/components/ChromeBack", () => ({ useChromeHeader }));
 
 import { mount } from "@/components/Cart/testRoot";
 
@@ -44,6 +46,16 @@ describe("closed lists", () => {
     expect(view.container.textContent).toContain("Closed on October 30, 2026");
     expect(view.container.textContent).toContain("Rice, Bread");
     expect(view.container.querySelector('a[href="/kitchens/k1/shopping-lists/l1"]')).not.toBeNull();
+  });
+
+  it("titles the chrome and goes back to the kitchen from it, with no link or heading on the page", async () => {
+    client.fetchClosedLists.mockResolvedValue({ ok: true, value: [] });
+    view.render(<ClosedLists kitchenId="k1" locale="en" />);
+    await settle();
+
+    expect(useChromeHeader).toHaveBeenCalledWith({ backHref: "/kitchens/k1", title: "Past lists" });
+    expect(view.container.querySelector('a[href="/kitchens/k1"]')).toBeNull();
+    expect(view.container.querySelector("h1")).toBeNull();
   });
 
   it("says so when there are none, and on an error", async () => {

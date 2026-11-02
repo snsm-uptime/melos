@@ -7,6 +7,7 @@ import {
   ArchiveToggleIcon,
   CartIcon,
   DotsIcon,
+  HistoryIcon,
   NotebookIcon,
   StarIcon,
   PencilIcon,
@@ -73,6 +74,8 @@ type Props = {
    * badge on its bottom right corner shows how many recipes are in the cart, in the given language.
    */
   cart?: { href: string; label: string; locale: Locale };
+  /** Every member: a button beside the cart button that opens the kitchen's past lists. */
+  pastLists?: { href: string; label: string };
   /** Every member: a button beside the share button that opens the kitchen's notebooks view. */
   notebooks?: { href: string; label: string };
   manage?: KitchenManage;
@@ -87,7 +90,7 @@ type Action = {
 };
 
 /** Opts kitchen detail into AppShell's title, the cart and share buttons and the kitchen actions. */
-export function KitchenDetailChrome({ title, share, cart, notebooks, manage }: Props) {
+export function KitchenDetailChrome({ title, share, cart, pastLists, notebooks, manage }: Props) {
   const { push, refresh } = useRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -103,6 +106,8 @@ export function KitchenDetailChrome({ title, share, cart, notebooks, manage }: P
   const cartHref = cart?.href;
   const cartLabel = cart?.label;
   const cartLocale = cart?.locale;
+  const pastListsHref = pastLists?.href;
+  const pastListsLabel = pastLists?.label;
   const notebooksHref = notebooks?.href;
   const notebooksLabel = notebooks?.label;
   const cartCount = useKitchenCartCount();
@@ -178,7 +183,7 @@ export function KitchenDetailChrome({ title, share, cart, notebooks, manage }: P
 
   const trailing = useMemo(
     () =>
-      openLabel || cartHref || notebooksHref || actions.length > 0 ? (
+      openLabel || cartHref || pastListsHref || notebooksHref || actions.length > 0 ? (
         <>
           {cartHref && cartLabel && cartLocale ? (
             <IconButton
@@ -203,6 +208,15 @@ export function KitchenDetailChrome({ title, share, cart, notebooks, manage }: P
                   ) : null}
                 </span>
               }
+            />
+          ) : null}
+          {pastListsHref && pastListsLabel ? (
+            <IconButton
+              type="button"
+              variant="ghost"
+              label={pastListsLabel}
+              onClick={() => push(pastListsHref)}
+              icon={<HistoryIcon className="size-6" />}
             />
           ) : null}
           {notebooksHref && notebooksLabel ? (
@@ -260,6 +274,8 @@ export function KitchenDetailChrome({ title, share, cart, notebooks, manage }: P
       cartLabel,
       cartLocale,
       cartCount,
+      pastListsHref,
+      pastListsLabel,
       notebooksHref,
       notebooksLabel,
       push,

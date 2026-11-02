@@ -115,7 +115,7 @@ A member opens the kitchen's closed lists, newest first, and opens one.
 - **FR-007**: Done (Listo) MUST ask for confirmation, then set the closing date to the current day. It MUST be disabled for a list with no items, and shown only when a stored list exists (hidden while the list is live).
 - **FR-008**: A closed list MUST be read only, MUST NOT be reopened and MUST NOT change when recipes, notebooks, the cart or memberships change.
 - **FR-009**: Done MUST empty the saved cart in the same step as closing the list, and the member who pressed it MUST see a toast saying the cart was closed.
-- **FR-010**: The Cart page MUST show the active list when there is one, and otherwise the S-023 live list. Members MUST be able to open closed lists, newest first.
+- **FR-010**: The Cart page MUST show the active list when there is one, and otherwise the S-023 live list. Members MUST be able to open closed lists, newest first, from a past lists icon button beside the cart button in the kitchen page's chrome (changed 2026-11-01); the Cart page has no link to them.
 - **FR-011**: People outside the kitchen MUST get a not-found answer for its lists; all changes MUST be refused in an archived kitchen.
 - **FR-012**: All new text MUST exist in English and Spanish, and all new controls MUST work by keyboard at phone and desktop width.
 
