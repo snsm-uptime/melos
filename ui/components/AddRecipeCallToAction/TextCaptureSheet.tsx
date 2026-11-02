@@ -40,6 +40,9 @@ function nextKey(): string {
 export function toDraftView(response: CaptureDraftResponse): DraftView {
   const draft = response.draft;
   return {
+    unknownUnits: (draft.unknown_units ?? []).map((unknown) => unknown.word),
+    keptUnits: [],
+    declinedUnits: [],
     title: draft.title,
     baseServings: draft.base_servings,
     servingsEstimated: draft.servings_estimated,

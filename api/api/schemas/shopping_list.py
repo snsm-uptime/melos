@@ -30,7 +30,7 @@ class RecipeRefResponse(BaseModel):
 
 class ShoppingLineResponse(BaseModel):
     name: str
-    kind: Literal["mass", "volume", "count"]
+    kind: Literal["mass", "volume", "count", "custom"]
     size: Literal["small", "medium", "large"] | None
     amounts: list[AmountResponse]
     recipes: list[RecipeRefResponse]

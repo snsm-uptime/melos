@@ -15,6 +15,18 @@ function line(over: Partial<ShoppingLine>): ShoppingLine {
 }
 
 describe("formatLine", () => {
+  it("prints the unit of a custom line (spec 055)", () => {
+    expect(
+      formatLine({
+        name: "frijoles",
+        kind: "custom",
+        size: null,
+        amounts: [{ quantity: "3", unit: "lata" }],
+        recipes: [],
+      }),
+    ).toBe("frijoles — 3 lata");
+  });
+
   it("joins the units of one kind with +, largest first as the api sends them", () => {
     expect(
       formatLine(

@@ -117,6 +117,79 @@ describe("RecipeDraftEditor", () => {
     expect(container.querySelector("input[type='number']")).not.toBeNull();
   });
 
+  describe("custom units (spec 055)", () => {
+    const line = draft.lines[0];
+    const lata = { ...line, key: "l2", name: "frijoles", unit: "lata", size: null };
+    const bote = { ...line, key: "l3", name: "crema", unit: "bote", size: null };
+
+    async function open(lines = [lata, { ...lata, key: "l4", name: "maiz" }]) {
+      showDraft({ ...draft, lines, unknownUnits: ["lata", "bote"] }, "en");
+      await act(async () => {
+        root.render(<RecipeDraftEditor />);
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    }
+
+    const questions = () =>
+      Array.from(container.querySelectorAll("[data-unit-question]")).map(
+        (el) => el.getAttribute("data-unit-question"),
+      );
+    const answer = (word: string, text: string) =>
+      Array.from(
+        container.querySelectorAll(`[data-unit-question="${word}"] button`),
+      ).find((el) => el.textContent === text) as HTMLButtonElement;
+    const saveButton = () => buttonByText("Save recipe");
+
+    it("asks once per word, and blocks Save until it is answered", async () => {
+      await open();
+      expect(questions()).toEqual(["lata"]);
+      expect(container.textContent).toContain('Use "lata" as a unit from now on?');
+      expect(saveButton().disabled).toBe(true);
+    });
+
+    it("clears the flag and keeps the word on yes", async () => {
+      await open();
+      await act(async () => answer("lata", "Yes").click());
+      expect(questions()).toEqual([]);
+      expect(saveButton().disabled).toBe(false);
+      expect(getCaptureState().draft?.keptUnits).toEqual(["lata"]);
+    });
+
+    it("keeps the flag and blocks Save on no, and does not keep the word", async () => {
+      await open();
+      await act(async () => answer("lata", "No").click());
+      expect(questions()).toEqual([]);
+      expect(saveButton().disabled).toBe(true);
+      expect(getCaptureState().draft?.keptUnits ?? []).toEqual([]);
+      expect(getCaptureState().draft?.declinedUnits).toEqual(["lata"]);
+    });
+
+    it("answers two words apart", async () => {
+      await open([lata, bote]);
+      expect(questions()).toEqual(["lata", "bote"]);
+      await act(async () => answer("lata", "Yes").click());
+      await act(async () => answer("bote", "No").click());
+      expect(getCaptureState().draft?.keptUnits).toEqual(["lata"]);
+      expect(getCaptureState().draft?.declinedUnits).toEqual(["bote"]);
+    });
+
+    it("asks nothing about the person's own unit", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          new Response(JSON.stringify({ ...vocabulary, units: [...vocabulary.units, "lata"] })),
+        ),
+      );
+      showDraft({ ...draft, lines: [lata], unknownUnits: [] }, "en");
+      await act(async () => {
+        root.render(<RecipeDraftEditor />);
+      });
+      expect(questions()).toEqual([]);
+    });
+  });
+
   describe("Save (spec 020)", () => {
     function stubFetch(save: () => Promise<Response> | Response) {
       const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {

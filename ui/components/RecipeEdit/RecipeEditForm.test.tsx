@@ -18,6 +18,13 @@ type Call = { url: string; method: string; body: unknown };
 let calls: Call[];
 let replies: { match: Reply[]; put: Reply[] };
 let release: (() => void) | null;
+const TEN = ["g", "kg", "oz", "lb", "ml", "l", "cup", "tbsp", "tsp", "unit"];
+let myUnits: string[];
+const unitChecks: Record<string, { outcome: string; unit: string | null }> = {
+  Sobres: { outcome: "new", unit: "sobre" },
+  tazas: { outcome: "known", unit: "cup" },
+  "!!": { outcome: "not_a_unit", unit: null },
+};
 
 function stubFetch() {
   calls = [];
@@ -27,6 +34,13 @@ function stubFetch() {
       const method = init?.method ?? "GET";
       calls.push({ url, method, body: init?.body ? JSON.parse(String(init.body)) : undefined });
       if (release) await new Promise<void>((resolve) => (release = resolve));
+      if (url === "/api/recipe-vocabulary") {
+        return new Response(JSON.stringify({ units: myUnits, sizes: [], max_text_chars: 10000 }));
+      }
+      if (url === "/api/recipe-vocabulary/unit-check") {
+        const word = (JSON.parse(String(init?.body)) as { word: string }).word;
+        return new Response(JSON.stringify(unitChecks[word]));
+      }
       const queue = url.endsWith("/name-matches") ? replies.match : replies.put;
       const reply = queue.length > 1 ? (queue.shift() as Reply) : queue[0];
       return new Response(JSON.stringify(reply.body ?? {}), { status: reply.status });
@@ -59,6 +73,7 @@ describe("RecipeEditForm", () => {
     push.mockReset();
     onReload.mockReset();
     release = null;
+    myUnits = [...TEN, "lata"];
     replies = { match: [{ status: 200, body: { matches: [] } }], put: [{ status: 200, body: recipe }] };
     stubFetch();
   });
@@ -318,5 +333,102 @@ describe("RecipeEditForm", () => {
     });
     expect(click.defaultPrevented).toBe(true);
     expect(document.body.textContent).toContain("Leave without saving?");
+  });
+
+  describe("custom units (spec 055)", () => {
+    const pickers = () =>
+      Array.from(document.querySelectorAll<HTMLSelectElement>('select[aria-label="Unit"]'));
+    const options = (select: HTMLSelectElement) =>
+      Array.from(select.options).map((option) => option.value);
+    const questions = () =>
+      Array.from(container.querySelectorAll("[data-unit-question]")).map((el) =>
+        el.getAttribute("data-unit-question"),
+      );
+
+    async function renderLoaded(detail = recipe) {
+      act(() => {
+        root.render(
+          <RecipeEditForm
+            recipe={detail}
+            locale="en"
+            detailHref="/recipes/r1"
+            listHref="/notebooks/nb1"
+            onReload={onReload}
+          />,
+        );
+      });
+      await flush();
+    }
+
+    async function chooseOther(index = 0) {
+      const picker = pickers()[index];
+      act(() => {
+        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set?.call(
+          picker,
+          "__other__",
+        );
+        picker.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    }
+
+    async function typeUnit(word: string) {
+      const field = document.querySelector<HTMLInputElement>('[aria-label="Your own unit"]')!;
+      act(() => setValue(field, word));
+      await act(async () => {
+        field.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+      });
+      await flush();
+    }
+
+    it("offers the person's vocabulary and Other", async () => {
+      await renderLoaded();
+      expect(options(pickers()[0])).toEqual(["", ...TEN, "lata", "__other__"]);
+    });
+
+    it("shows another member's unit on its own line and asks nothing about it", async () => {
+      myUnits = [...TEN];
+      const shared = recipeFixture({
+        ingredient_lines: [
+          { name: "frijoles", vague: false, quantity: 1, unit: "bote", size: null, preparation: null, note: null },
+          { name: "rice", vague: false, quantity: 1, unit: "cup", size: null, preparation: null, note: null },
+        ],
+      });
+      await renderLoaded(shared);
+      expect(options(pickers()[0])).toContain("bote");
+      expect(options(pickers()[1])).not.toContain("bote");
+      expect(questions()).toEqual([]);
+      expect(button("Save")?.hasAttribute("disabled")).toBe(false);
+    });
+
+    it("asks about a new typed word and sends it on Save", async () => {
+      await renderLoaded();
+      await chooseOther();
+      await typeUnit("Sobres");
+      expect(questions()).toEqual(["sobre"]);
+      expect(pickers()[0].value).toBe("sobre");
+      await act(async () =>
+        (container.querySelector('[data-unit-question="sobre"] button') as HTMLButtonElement).click(),
+      );
+      await save();
+      const put = calls.find((call) => call.method === "PUT");
+      expect((put?.body as { keep_units: string[] }).keep_units).toEqual(["sobre"]);
+    });
+
+    it("writes the mapped unit for a known word, with no question", async () => {
+      await renderLoaded();
+      await chooseOther();
+      await typeUnit("tazas");
+      expect(questions()).toEqual([]);
+      expect(pickers()[0].value).toBe("cup");
+    });
+
+    it("keeps the line flagged when the word can't be a unit", async () => {
+      await renderLoaded();
+      await chooseOther();
+      await typeUnit("!!");
+      expect(questions()).toEqual([]);
+      expect(container.textContent).toContain("That can't be used as a unit.");
+      expect(button("Save")?.hasAttribute("disabled")).toBe(true);
+    });
   });
 });

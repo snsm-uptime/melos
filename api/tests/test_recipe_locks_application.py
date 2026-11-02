@@ -19,6 +19,7 @@ from domain.errors import NotEditingError, RecipeLockedError, RecipeReadOnlyErro
 from tests.test_carts_application import FakeCartRepo, FakeLocks
 from tests.test_notebooks_application import _join, _kitchen, _kitchen_notebook
 from tests.test_recipe_manage_application import ANA, BEN, CAT, _setup, _update
+from tests.unit_fakes import FakeUnits
 
 
 def _world():  # noqa: ANN202
@@ -46,7 +47,7 @@ def test_one_holder_and_save_releases() -> None:
     seen = get.execute(GetRecipeCommand(BEN, recipe_id, ben))
     assert seen.editor is not None and not seen.editor.is_me
 
-    update = UpdateRecipeService(recipes, world.notebooks, catalog, locks)
+    update = UpdateRecipeService(recipes, world.notebooks, catalog, locks, units=FakeUnits())
     with pytest.raises(RecipeLockedError):
         update.execute(_update(recipes, recipe_id, BEN, session_id=ben.session_id))
     with pytest.raises(RecipeLockedError):
@@ -60,7 +61,7 @@ def test_one_holder_and_save_releases() -> None:
 
 def test_update_without_lock_is_not_editing() -> None:
     world, recipes, catalog, locks, _, recipe_id = _world()
-    update = UpdateRecipeService(recipes, world.notebooks, catalog, locks)
+    update = UpdateRecipeService(recipes, world.notebooks, catalog, locks, units=FakeUnits())
     with pytest.raises(NotEditingError):
         update.execute(_update(recipes, recipe_id, ANA, session_id=uuid4()))
     assert recipes.writes == []
@@ -73,7 +74,7 @@ def test_dead_session_idle_and_lost_write_free_the_lock() -> None:
     acquire.execute(ana, recipe_id)
     locks.dead_sessions.add(ana.session_id)
     acquire.execute(ben, recipe_id)
-    UpdateRecipeService(recipes, world.notebooks, catalog, locks).execute(
+    UpdateRecipeService(recipes, world.notebooks, catalog, locks, units=FakeUnits()).execute(
         _update(recipes, recipe_id, BEN, session_id=ben.session_id)
     )
 
@@ -87,7 +88,7 @@ def test_dead_session_idle_and_lost_write_free_the_lock() -> None:
     locks.clock.advance(timedelta(minutes=1))
     acquire.execute(ben, recipe_id)
     with pytest.raises(RecipeLockedError):
-        UpdateRecipeService(recipes, world.notebooks, catalog, locks).execute(
+        UpdateRecipeService(recipes, world.notebooks, catalog, locks, units=FakeUnits()).execute(
             _update(recipes, recipe_id, ANA, session_id=ana2.session_id)
         )
 

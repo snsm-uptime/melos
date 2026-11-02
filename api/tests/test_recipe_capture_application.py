@@ -29,6 +29,7 @@ from application.recipe_extraction import (
 from domain.errors import KitchenArchivedError, NotebookNotFoundError
 from domain.notebook import Notebook
 from domain.recipe_draft import DraftRecipe, IngredientLine
+from tests.unit_fakes import FakeUnits
 
 # MVP-OUT: VOCABULARY = load_vocabulary() (main ingredient and cuisine lists, S-061)
 MAX_CHARS = 50
@@ -108,10 +109,12 @@ class Harness:
         self.notebooks = FakeNotebooks()
         self.catalog = FakeCatalog()
         self.extraction = RecipeExtraction(self.extractor)
+        self.units = FakeUnits()
         self.capture = CaptureRecipeText(
             self.notebooks,
             self.catalog,
             self.extraction,
+            units=self.units,
             max_chars=MAX_CHARS,
             timeout_s=10.0,
         )

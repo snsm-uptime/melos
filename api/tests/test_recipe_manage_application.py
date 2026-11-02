@@ -21,7 +21,12 @@ from application.recipe_manage import (
 )
 from domain.errors import RecipeChangedError, RecipeNotFoundError, RecipeReadOnlyError
 from domain.recipe import EditedRecipe
-from domain.recipe_draft import DraftProblems, IngredientLine, InvalidDraftError
+from domain.recipe_draft import (
+    DraftProblems,
+    IngredientLine,
+    InvalidDraftError,
+    LineProblemKind,
+)
 from tests.test_notebooks_application import (
     World,
     _join,
@@ -30,6 +35,7 @@ from tests.test_notebooks_application import (
     _personal,
     _world,
 )
+from tests.unit_fakes import FakeUnits
 
 START = datetime(2026, 10, 28, 12, 0, tzinfo=UTC)
 
@@ -268,9 +274,9 @@ def test_name_matches_need_write_access() -> None:
 
 
 def _update_service(
-    world: World, recipes: FakeRecipes, catalog: FakeCatalog
+    world: World, recipes: FakeRecipes, catalog: FakeCatalog, units: FakeUnits | None = None
 ) -> UpdateRecipeService:
-    return UpdateRecipeService(recipes, world.notebooks, catalog)
+    return UpdateRecipeService(recipes, world.notebooks, catalog, units=units or FakeUnits())
 
 
 def test_edit_changes_content_and_keeps_order_and_author() -> None:
@@ -452,3 +458,49 @@ def test_second_delete_is_not_found() -> None:
     service.execute(DeleteRecipeCommand(ANA, recipe_id))
     with pytest.raises(RecipeNotFoundError):
         service.execute(DeleteRecipeCommand(ANA, recipe_id))
+
+
+# --- keep_units on update (spec 055 R10, R11) -----------------------------------------------
+
+
+def _kept_setup() -> tuple[World, FakeRecipes, FakeCatalog, FakeUnits, UUID]:
+    world, recipes, catalog = _setup()
+    kitchen = _kitchen(world, ANA)
+    _join(world, kitchen, BEN)
+    shared = _kitchen_notebook(world, kitchen, "Home notebook", ANA)
+    return world, recipes, catalog, FakeUnits(), recipes.put(shared)
+
+
+def test_a_kept_word_on_update_joins_the_person_s_list() -> None:
+    world, recipes, catalog, units, recipe_id = _kept_setup()
+    command = _update(recipes, recipe_id, BEN, lines=(_line(unit="lata"),), keep_units=("lata",))
+    _update_service(world, recipes, catalog, units).execute(command)
+    assert units.added == [(["lata"], BEN)]
+
+
+def test_a_new_word_on_update_needs_a_yes() -> None:
+    world, recipes, catalog, units, recipe_id = _kept_setup()
+    command = _update(recipes, recipe_id, BEN, lines=(_line(unit="lata"),))
+    with pytest.raises(DraftProblems) as caught:
+        _update_service(world, recipes, catalog, units).execute(command)
+    assert caught.value.line_problems[0].kind is LineProblemKind.UNIT_NOT_RECOGNIZED
+    assert units.added == []
+
+
+def test_a_kept_word_no_line_uses_is_ignored_on_update() -> None:
+    world, recipes, catalog, units, recipe_id = _kept_setup()
+    command = _update(recipes, recipe_id, BEN, keep_units=("lata",))
+    _update_service(world, recipes, catalog, units).execute(command)
+    assert units.added == []
+
+
+def test_a_unit_already_on_the_recipe_stays_for_a_member_without_it() -> None:
+    world, recipes, catalog, units, recipe_id = _kept_setup()
+    first = _update(recipes, recipe_id, ANA, lines=(_line(unit="lata"),), keep_units=("lata",))
+    _update_service(world, recipes, catalog, units).execute(first)
+    units.added.clear()
+
+    second = _update(recipes, recipe_id, BEN, title="Renamed", lines=(_line(unit="lata"),))
+    result = _update_service(world, recipes, catalog, units).execute(second)
+    assert result.view.detail.lines[0].unit == "lata"
+    assert units.added == []

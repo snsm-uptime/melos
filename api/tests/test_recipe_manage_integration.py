@@ -787,3 +787,63 @@ def test_lost_access_deletes_the_recipe_lock(client: TestClient, db_session: Ses
     db_session.delete(membership)
     db_session.flush()
     assert _lock_rows(db_session, personal) == 0
+
+
+# --- custom units on a shared recipe (spec 055 US3) ------------------------------------------
+
+
+def _shared_lata_recipe(client: TestClient, db: Session) -> tuple[str, str]:
+    """Ana keeps "lata" on a kitchen recipe; Ben joins and never kept it."""
+    _register(client, "ana_lata@example.com")
+    kitchen_id, notebook_id = _kitchen(client)
+    recipe_id = _save(
+        client,
+        notebook_id,
+        ingredient_lines=[
+            {"name": "frijoles", "quantity": 1, "unit": "lata"},
+            {"name": "rice", "quantity": 1, "unit": "cup"},
+        ],
+        keep_units=["lata"],
+    )
+    client.post("/auth/sign-out")
+    _join_kitchen(db, kitchen_id, _register(client, "ben_lata@example.com"))
+    return recipe_id, kitchen_id
+
+
+def test_another_member_edits_and_reorders_with_no_refusal_and_no_change_to_their_list(
+    client: TestClient, db_session: Session
+) -> None:
+    recipe_id, _ = _shared_lata_recipe(client, db_session)
+    before = client.get("/recipe-vocabulary").json()["units"]
+    original = client.get(f"/recipes/{recipe_id}").json()
+    assert original["ingredient_lines"][0]["unit"] == "lata"
+
+    moved = list(reversed(original["ingredient_lines"]))
+    response = _put(
+        client, recipe_id, json=_edit_body(original, title="Renamed", ingredient_lines=moved)
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["ingredient_lines"][1]["unit"] == "lata"
+    assert client.get("/recipe-vocabulary").json()["units"] == before
+
+
+def test_a_new_word_from_that_member_still_needs_a_yes(
+    client: TestClient, db_session: Session
+) -> None:
+    recipe_id, _ = _shared_lata_recipe(client, db_session)
+    original = client.get(f"/recipes/{recipe_id}").json()
+    lines = [dict(line) for line in original["ingredient_lines"]]
+    lines[1]["unit"] = "bote"
+
+    refused = _put(client, recipe_id, json=_edit_body(original, ingredient_lines=lines))
+    assert refused.status_code == 422
+    assert refused.json()["line_problems"][0]["kind"] == "unit_not_recognized"
+
+    kept = _put(
+        client,
+        recipe_id,
+        json=_edit_body(original, ingredient_lines=lines, keep_units=["bote"]),
+    )
+    assert kept.status_code == 200, kept.text
+    assert client.get("/recipe-vocabulary").json()["units"][-1] == "bote"

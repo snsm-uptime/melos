@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import Protocol
 from uuid import UUID
 
+from domain.cart import CartAction
 from domain.default_kitchen import MemberKitchen
 from domain.notebook import Notebook, NotebookRole
 from domain.recipe import EditedRecipe, NewRecipe
@@ -638,6 +639,83 @@ class IngredientLineReader(Protocol):
         ...
 
 
+class UnitRepository(Protocol):
+    """The unit table (spec 055). A person's other units; the ten defaults live in the domain."""
+
+    def extras_for(self, user_id: UUID) -> list[str]:
+        """Sorted names that are default or reference the person, without the ten."""
+        ...
+
+    def add_user(self, names: Sequence[str], user_id: UUID) -> None:
+        """Add the person to each name's row, creating it when missing. Safe to repeat."""
+        ...
+
+    def remove_user(self, user_id: UUID) -> None:
+        """Take the person off every row, locking in name order. A non-default row left with no
+        references goes. Safe to repeat. Never commits and never touches a recipe line."""
+        ...
+
+
+class CartActivityLog(Protocol):
+    """Who did what to a cart, for the dashboard only. No cart rule reads it (spec 055 R18)."""
+
+    def record(self, user_id: UUID, action: CartAction) -> None: ...
+
+
+@dataclass(frozen=True, slots=True)
+class AdminUnitRow:
+    name: str
+    user_references: tuple[UUID, ...]
+    reference_count: int
+    is_default: bool
+    created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class AdminIngredientRow:
+    name: str
+    recipes: int
+    people: int
+
+
+@dataclass(frozen=True, slots=True)
+class AdminRecipeRow:
+    id: UUID
+    title: str
+    cart_adds: int
+    notebook_name: str
+    notebook_kind: str
+    people_with_access: int
+
+
+@dataclass(frozen=True, slots=True)
+class AdminUserRow:
+    id: UUID
+    alias: str | None
+    open_sessions: int
+    newest_session_at: datetime | None
+    recipes_authored: int
+    latest_recipe_at: datetime | None
+    carts_created: int
+    carts_edited: int
+    carts_closed: int
+    latest_cart_action_at: datetime | None
+
+
+class AdminReportRepository(Protocol):
+    """Read-only figures across every account (spec 055 R17). Holds no recipe content."""
+
+    def is_admin(self, user_id: UUID) -> bool: ...
+
+    def units(self) -> Sequence[AdminUnitRow]: ...
+
+    def ingredients(self) -> Sequence[AdminIngredientRow]: ...
+
+    def recipes(self) -> Sequence[AdminRecipeRow]: ...
+
+    def users(self) -> Sequence[AdminUserRow]: ...
+
+
 class SidePanelRepository(Protocol):
     """Everything the side panel reads about the caller (spec 064)."""
 
@@ -650,3 +728,5 @@ class SidePanelRepository(Protocol):
     def count_recipes_added(self, user_id: UUID) -> int: ...
 
     def count_notebooks(self, user_id: UUID) -> int: ...
+
+    def is_admin(self, user_id: UUID) -> bool: ...

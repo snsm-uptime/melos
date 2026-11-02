@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { BackIcon, CloseIcon, SaveIcon } from "@/app/icons";
 import { CauldronLoader } from "@/components/CauldronLoader";
@@ -11,14 +11,17 @@ import {
   HeaderActions,
 } from "@/components/RecipeDraft/HeaderActions";
 import { IngredientLineRow } from "@/components/RecipeDraft/IngredientLineRow";
+import { UnknownUnitQuestion } from "@/components/RecipeDraft/UnknownUnitQuestion";
 import { AddItemCard } from "@/components/Card";
 import { StepCard } from "@/components/RecipeDraft/StepCard";
-import { chooseLineMatch } from "@/lib/capture/captureStore";
+import { fetchVocabulary } from "@/lib/capture/captureClient";
+import { chooseLineMatch, type LineView } from "@/lib/capture/captureStore";
 import {
-  ALLOWED_UNITS,
   checkDraft,
   hasErrors,
+  pendingUnitQuestions,
   SIZES,
+  withoutRechosenUnit,
 } from "@/lib/capture/draftRules";
 import { captureMessagesFor } from "@/lib/i18n/capture";
 import type { Locale } from "@/lib/i18n/locale";
@@ -38,6 +41,7 @@ import {
   type EditState,
 } from "@/lib/recipeEdit";
 import {
+  checkUnitWord,
   matchRecipeNames,
   updateRecipe,
   type RecipeDetail,
@@ -95,18 +99,40 @@ export function RecipeEditForm({
   const [checking, setChecking] = useState(false);
   const [saved, setSaved] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
+  const [myUnits, setMyUnits] = useState<string[]>([]);
+  useEffect(() => {
+    let current = true;
+    void fetchVocabulary().then((value) => {
+      if (current && value?.units) setMyUnits(value.units);
+    });
+    return () => {
+      current = false;
+    };
+  }, []);
 
   function commit(next: EditState) {
     stateRef.current = next;
     setState(next);
   }
 
-  const errors = checkDraft({
-    title: state.title,
-    baseServings: state.baseServings,
-    lines: state.lines,
-    steps: state.steps,
-  });
+  // A unit already on the recipe stays allowed for any member, on any line (spec 055 R11).
+  const storedUnits = recipe.ingredient_lines.flatMap((line) => (line.unit ? [line.unit] : []));
+  const allowedUnits = [...myUnits, ...storedUnits];
+  const errors = checkDraft(
+    {
+      title: state.title,
+      baseServings: state.baseServings,
+      lines: state.lines,
+      steps: state.steps,
+    },
+    [...allowedUnits, ...state.keptUnits],
+  );
+  const unitQuestions = pendingUnitQuestions(
+    state.lines,
+    allowedUnits,
+    state.keptUnits,
+    state.declinedUnits,
+  );
   const changesByLine = new Map(
     nameChanges(state.lines).map((change) => [change.line, change]),
   );
@@ -132,6 +158,28 @@ export function RecipeEditForm({
     ).length;
     if (changed > 0) commit({ ...stateRef.current, lines: next });
     return changed;
+  }
+
+  function answerUnit(word: string, keep: boolean) {
+    commit(
+      keep
+        ? { ...state, keptUnits: [...state.keptUnits, word] }
+        : { ...state, declinedUnits: [...state.declinedUnits, word] },
+    );
+  }
+
+  function changeLine(index: number, next: LineView) {
+    commit({
+      ...stateRef.current,
+      lines: stateRef.current.lines.map((item, i) =>
+        i === index ? applyLineChange(item, next) : item,
+      ),
+      declinedUnits: withoutRechosenUnit(
+        stateRef.current.declinedUnits,
+        stateRef.current.lines[index].unit,
+        next.unit,
+      ),
+    });
   }
 
   async function save() {
@@ -281,6 +329,11 @@ export function RecipeEditForm({
             </div>
           </div>
           <div className="flex flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
+            <UnknownUnitQuestion
+              words={unitQuestions}
+              onAnswer={answerUnit}
+              locale={locale}
+            />
             {/* Leaving a name field checks the names typed so far (focusout bubbles to the list). */}
             <ul
               className="m-0 flex list-none flex-col gap-2 p-0"
@@ -301,8 +354,9 @@ export function RecipeEditForm({
                   index={index}
                   count={state.lines.length}
                   errors={errors.lines[index] ?? []}
-                  units={[...ALLOWED_UNITS]}
+                  units={[...myUnits, ...state.keptUnits]}
                   sizes={[...SIZES]}
+                  onCheckUnit={checkUnitWord}
                   catalog={catalogOf(state.lines)}
                   change={changesByLine.get(index)}
                   onUndoChange={(at) =>
@@ -313,14 +367,7 @@ export function RecipeEditForm({
                       ),
                     })
                   }
-                  onChange={(next) =>
-                    commit({
-                      ...state,
-                      lines: state.lines.map((item, i) =>
-                        i === index ? applyLineChange(item, next) : item,
-                      ),
-                    })
-                  }
+                  onChange={(next) => changeLine(index, next)}
                   onRemove={() =>
                     commit({
                       ...state,

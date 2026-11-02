@@ -65,19 +65,26 @@ VOLUME_UNITS = ("l", "cup", "tbsp", "tsp", "ml")
 COUNT_UNIT = "unit"
 SIZE_ORDER = ("large", "medium", "small")
 
-Kind = Literal["mass", "volume", "count"]
-_KIND_RANK: dict[Kind, int] = {"mass": 0, "volume": 1, "count": 2}
+Kind = Literal["mass", "volume", "count", "custom"]
+_KIND_RANK: dict[Kind, int] = {"mass": 0, "volume": 1, "count": 2, "custom": 3}
+
+
+CartAction = Literal["created", "edited", "closed"]
 
 
 def unit_kind(unit: str) -> Kind:
-    """mass, volume or count for one of the ten allowed units, else ValueError."""
+    """mass, volume or count for the ten default units, custom for any other (spec 055 R13).
+
+    A custom unit has no mass or volume. It adds up and rounds up like a count, and never
+    converts into another unit.
+    """
     if unit in MASS_UNITS:
         return "mass"
     if unit in VOLUME_UNITS:
         return "volume"
     if unit == COUNT_UNIT:
         return "count"
-    raise ValueError(f"unknown unit: {unit}")
+    return "custom"
 
 
 def name_sort_key(name: str) -> tuple[str, str]:
@@ -145,12 +152,25 @@ class ShoppingList:
     your_call: tuple[YourCallEntry, ...]
 
 
+def cart_save_action(before: Sequence[object], after: Sequence[object]) -> CartAction | None:
+    """What a cart save counts as for the dashboard (spec 055 R18), or None when nothing changed.
+
+    Empty to filled is created. Any other difference is edited, including emptying the cart.
+    """
+    if tuple(before) == tuple(after):
+        return None
+    return "edited" if before else "created"
+
+
 def _size_rank(size: str | None) -> int:
     return SIZE_ORDER.index(size) if size in SIZE_ORDER else len(SIZE_ORDER)
 
 
 def _measured_lines(recipes: Sequence[ScaledRecipe]) -> tuple[MeasuredLine, ...]:
-    """Scale, group by (name, kind) and for counts also size, sum per unit, then round counts up."""
+    """Scale, group by (name, kind) and for counts also size, sum per unit, then round up.
+
+    Counts and custom units round up, each sum on its own.
+    """
     totals: dict[tuple[str, Kind, str | None], dict[str, Fraction]] = {}
     sources: dict[tuple[str, Kind, str | None], dict[UUID, RecipeRef]] = {}
     for recipe in recipes:
@@ -158,11 +178,7 @@ def _measured_lines(recipes: Sequence[ScaledRecipe]) -> tuple[MeasuredLine, ...]
         for ln in recipe.lines:
             if ln.vague_note is not None or ln.quantity is None or ln.unit is None:
                 continue
-            try:
-                kind = unit_kind(ln.unit)
-            except ValueError:
-                # The table check allows ten units only; never guess a kind for another.
-                continue
+            kind = unit_kind(ln.unit)
             key = (ln.name, kind, ln.size if kind == "count" else None)
             per_unit = totals.setdefault(key, {})
             per_unit[ln.unit] = per_unit.get(ln.unit, Fraction(0)) + ln.quantity * recipe.factor
@@ -173,6 +189,11 @@ def _measured_lines(recipes: Sequence[ScaledRecipe]) -> tuple[MeasuredLine, ...]
         name, kind, size = key
         if kind == "count":
             amounts = (Amount(str(math.ceil(per_unit[COUNT_UNIT])), COUNT_UNIT),)
+        elif kind == "custom":
+            amounts = tuple(
+                Amount(str(math.ceil(per_unit[unit])), unit)
+                for unit in sorted(per_unit, key=name_sort_key)
+            )
         else:
             order = MASS_UNITS if kind == "mass" else VOLUME_UNITS
             amounts = tuple(Amount(format_factor(per_unit[u]), u) for u in order if u in per_unit)

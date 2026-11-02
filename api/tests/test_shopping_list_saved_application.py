@@ -31,6 +31,14 @@ class Saved(Fixture):
         self.sync = ActiveListSync(self.s.carts, self.lines, self.lists)  # type: ignore[arg-type]
 
     def change(self, cls):  # noqa: ANN001, ANN201
+        if cls is CloseShoppingListService:
+            return cls(
+                self.s.world.kitchens,
+                self.s.carts,
+                self.lists,
+                self.sync,
+                activity=self.s.activity,
+            )
         return cls(self.s.world.kitchens, self.s.carts, self.lists, self.sync)
 
     def add(self, name: str = "soap", **amount: str) -> None:
@@ -228,3 +236,10 @@ def test_closed_lists_and_their_access() -> None:
     assert service.get(f.s.ana, f.s.kitchen, closed.saved.id).missing_recipe_ids == {f.rid}
     with pytest.raises(ShoppingListNotFoundError):
         service.get(f.s.ana, f.s.kitchen, uuid4())
+
+
+def test_done_records_one_closed_and_no_edited_for_that_person() -> None:
+    f = Saved()
+    f.rice()
+    f.done()
+    assert f.s.activity.recorded == [(f.s.ana.user_id, "closed")]

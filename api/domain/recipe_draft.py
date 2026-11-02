@@ -21,6 +21,12 @@ from domain.ingredient_catalog import LineMatch, NameChange, match_line, same_sp
 ALLOWED_UNITS = ("g", "kg", "oz", "lb", "ml", "l", "cup", "tbsp", "tsp", "unit")
 SIZES = ("small", "medium", "large")
 DEFAULT_SERVINGS = 4
+MAX_CUSTOM_UNIT_CHARS = 32
+# Never offered as a unit (spec 055 FR-008): sizes and vague phrases, English and Spanish.
+_NEVER_UNITS = frozenset(
+    (*SIZES, "grande", "mediano", "mediana", "pequeño", "pequeña")
+    + ("pizca", "pinch", "al gusto", "a gusto", "to taste")
+)
 MAX_TITLE_CHARS = 200
 # MVP-OUT: main ingredients and cuisines are out of the MVP (S-061); restore from here
 # MAX_MAIN_INGREDIENTS = 2
@@ -128,6 +134,14 @@ class IngredientLine:
 
 
 @dataclass(frozen=True, slots=True)
+class UnknownUnit:
+    """A measure word outside the person's units, normalized, and the lines using it (spec 055)."""
+
+    word: str
+    lines: tuple[int, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class DraftRecipe:
     """A draft as the adapter reads it (raw) and as the domain returns it (checked).
 
@@ -146,6 +160,8 @@ class DraftRecipe:
     steps: tuple[str, ...]
     matches: tuple[LineMatch, ...] = ()
     changes: tuple[NameChange, ...] = ()
+    # Empty in the raw value and after an edit check.
+    unknown_units: tuple[UnknownUnit, ...] = ()
 
 
 # ── units ───────────────────────────────────────────────────────────────────
@@ -186,12 +202,45 @@ def _within_one_edit(a: str, b: str) -> bool:
     return short[i:] == long_[i + 1 :]
 
 
-def lookup_unit(raw: str) -> str | None:
-    """Map a service unit to its allowed unit, or None when it is unknown (FR-006a).
+def _singular_word(word: str) -> str:
+    if word.endswith(("ches", "shes", "xes", "zes", "sses")):
+        return word[:-2]
+    if len(word) > 3 and word.endswith("s") and not word.endswith(("ss", "us", "is")):
+        return word[:-1]
+    return word
 
-    A unit one edit away from a table spelling is matched when it is 5 or more
-    characters long. One edit away from the spellings of more than one allowed
-    unit is invalid output.
+
+def custom_unit_name(raw: str | None) -> str | None:
+    """A word's stored form: trimmed, lower-case, singular. None when it can't be a unit (R8).
+
+    One rule for the model's word and a typed one, so a word can't get two spellings. Accents are
+    kept for display and ignored when comparing.
+    """
+    words = unicodedata.normalize("NFC", raw or "").lower().split()
+    name = " ".join(_singular_word(word) for word in words)
+    if not name or len(name) > MAX_CUSTOM_UNIT_CHARS or name in _NEVER_UNITS:
+        return None
+    if not all(ch.isalpha() or ch.isdecimal() or ch in " -'" for ch in name):
+        return None
+    return name if any(ch.isalpha() for ch in name) else None
+
+
+def _near_units(keys: Iterable[str], spellings: dict[str, str]) -> set[str]:
+    return {
+        unit
+        for key in keys
+        if len(key) >= 5
+        for spelling, unit in spellings.items()
+        if _within_one_edit(key, spelling)
+    }
+
+
+def lookup_unit(raw: str, extra: Iterable[str] = ()) -> str | None:
+    """Map a service unit to a unit the person has, or None when it is unknown (FR-006a, R9).
+
+    Default spellings win, then an exact match in `extra`, the person's other units, ignoring
+    accents and plurals. Only then, a unit one edit away from either is matched when it is 5 or
+    more characters long. One edit away from more than one unit is invalid output.
     """
     key = _unit_key(raw)
     if not key:
@@ -199,9 +248,16 @@ def lookup_unit(raw: str) -> str | None:
     index = _unit_index()
     if key in index:
         return index[key]
-    if len(key) < 5:
-        return None
-    near = {unit for spelling, unit in index.items() if _within_one_edit(key, spelling)}
+    name = custom_unit_name(raw)
+    singular = _unit_key(name) if name else key
+    if singular in index:
+        return index[singular]
+    stored = {_unit_key(unit): unit for unit in extra}
+    if singular in stored:
+        return stored[singular]
+    if key in stored:
+        return stored[key]
+    near = _near_units({key, singular}, {**stored, **index})
     if len(near) > 1:
         raise InvalidDraftError("ambiguous unit")
     return near.pop() if near else None
@@ -493,7 +549,7 @@ def _check_name(raw: str) -> str:
     return name
 
 
-def _check_line(line: IngredientLine) -> IngredientLine:
+def _check_line(line: IngredientLine, units: Iterable[str] = ()) -> IngredientLine:
     name = _check_name(line.name)
     note = line.note.strip() or None if line.note else None
     preparation = line.preparation.strip() or None if line.preparation else None
@@ -504,7 +560,7 @@ def _check_line(line: IngredientLine) -> IngredientLine:
 
     if line.quantity is None or not math.isfinite(line.quantity) or line.quantity <= 0:
         raise InvalidDraftError("quantity")
-    unit = lookup_unit(line.unit or "")
+    unit = lookup_unit(line.unit or "", units)
     if unit is None:
         raise InvalidDraftError(f"{line.name} unit: {line.unit} quantity: {line.quantity}")
     size = _clean_size(line.size) if unit == "unit" else None
@@ -528,7 +584,7 @@ def _missing_parts(title: str, steps: Sequence[str]) -> tuple[str, ...]:
     return tuple(missing)
 
 
-def _line_problems(line: IngredientLine) -> tuple[LineProblem, ...]:
+def _line_problems(line: IngredientLine, units: Iterable[str] = ()) -> tuple[LineProblem, ...]:
     """Named problems with a non-vague line's amount and unit (FR-003).
 
     A line with an empty name, or a unit that is ambiguous (InvalidDraftError), gives
@@ -544,7 +600,7 @@ def _line_problems(line: IngredientLine) -> tuple[LineProblem, ...]:
         problems.append(LineProblem(name, LineProblemKind.UNIT_MISSING))
     else:
         try:
-            if lookup_unit(line.unit) is None:
+            if lookup_unit(line.unit, units) is None:
                 problems.append(LineProblem(name, LineProblemKind.UNIT_NOT_RECOGNIZED))
         except InvalidDraftError:
             pass
@@ -593,22 +649,51 @@ def _match_lines(
     return tuple(lines), tuple(matches), tuple(changes)
 
 
-def check_edited_draft(draft: DraftRecipe) -> DraftRecipe:
+def _offerable_word(line: IngredientLine, units: Sequence[str]) -> str | None:
+    """The normalized word when the line's unit is unknown and can be offered as a new unit."""
+    if line.vague or not (line.unit or "").strip():
+        return None
+    try:
+        if lookup_unit(line.unit or "", units) is not None:
+            return None
+    except InvalidDraftError:
+        return None
+    return custom_unit_name(line.unit)
+
+
+def _ask_about_units(
+    raw_lines: Sequence[IngredientLine], units: Sequence[str]
+) -> tuple[tuple[IngredientLine, ...], tuple[UnknownUnit, ...]]:
+    """Keep each line with an offerable word, written normalized, and list the words (R7)."""
+    lines: list[IngredientLine] = []
+    found: dict[str, list[int]] = {}
+    for index, line in enumerate(raw_lines):
+        word = _offerable_word(line, units)
+        if word is not None:
+            found.setdefault(word, []).append(index)
+            line = replace(line, unit=word)
+        lines.append(line)
+    return tuple(lines), tuple(UnknownUnit(word, tuple(at)) for word, at in found.items())
+
+
+def check_edited_draft(draft: DraftRecipe, allowed_units: Iterable[str] = ()) -> DraftRecipe:
     """Check a draft the member edited, for Save (spec 020 FR-005).
 
     The same title, steps, servings and line rules as `check_draft`, and the same errors
     (DraftProblems for what the member can fix, InvalidDraftError otherwise), but no
-    catalog matching: the names are the ones the member confirmed.
+    catalog matching: the names are the ones the member confirmed. A unit outside the defaults
+    and `allowed_units` is `unit_not_recognized` (spec 055 FR-007).
     """
+    allowed = tuple(allowed_units)
     missing = _missing_parts(draft.title, draft.steps)
     line_problems = tuple[LineProblem, ...](
-        problem for line in draft.ingredient_lines for problem in _line_problems(line)
+        problem for line in draft.ingredient_lines for problem in _line_problems(line, allowed)
     )
     if missing or line_problems:
         raise DraftProblems(missing=missing, line_problems=line_problems)
 
     servings, estimated = _check_servings(draft.base_servings)
-    lines = tuple(_check_line(line) for line in draft.ingredient_lines)
+    lines = tuple(_check_line(line, allowed) for line in draft.ingredient_lines)
     if any(line.vague and not line.note for line in lines):
         raise InvalidDraftError("vague note")
     return DraftRecipe(
@@ -624,6 +709,7 @@ def check_draft(
     draft: DraftRecipe,
     catalog_names: Iterable[str],
     # MVP-OUT: vocabulary: Vocabulary,
+    available_units: Iterable[str] = (),
 ) -> DraftRecipe:
     """Apply the FR-006 to FR-006c rules to a draft from the service.
 
@@ -632,11 +718,17 @@ def check_draft(
     can fix the draft: a missing title or steps, or a line with no usable quantity or
     unit. Those named problems are all collected in one pass. Any other broken rule
     raises InvalidDraftError, and the whole draft is then invalid output.
+
+    A word outside the defaults and `available_units` that can be offered as a unit keeps its
+    line and is listed in `unknown_units`, so the draft can ask about it (spec 055 R7).
     """
     catalog = tuple[str, ...](n.strip() for n in catalog_names if n and n.strip())
+    available = tuple(available_units)
+    raw_lines, unknown_units = _ask_about_units(draft.ingredient_lines, available)
+    units = (*available, *(unknown.word for unknown in unknown_units))
     missing = _missing_parts(draft.title, draft.steps)
     line_problems = tuple[LineProblem, ...](
-        problem for line in draft.ingredient_lines for problem in _line_problems(line)
+        problem for line in raw_lines for problem in _line_problems(line, units)
     )
     if missing or line_problems:
         raise DraftProblems(missing=missing, line_problems=line_problems)
@@ -644,8 +736,8 @@ def check_draft(
     title = _check_title(draft.title)
     steps = _check_steps(draft.steps)
     servings, estimated = _check_servings(draft.base_servings)
-    checked = tuple(_check_line(line) for line in draft.ingredient_lines)
-    lines, matches, changes = _match_lines(draft.ingredient_lines, checked, catalog)
+    checked = tuple(_check_line(line, units) for line in raw_lines)
+    lines, matches, changes = _match_lines(raw_lines, checked, catalog)
     return DraftRecipe(
         title=title,
         base_servings=servings,
@@ -656,4 +748,5 @@ def check_draft(
         steps=steps,
         matches=matches,
         changes=changes,
+        unknown_units=unknown_units,
     )

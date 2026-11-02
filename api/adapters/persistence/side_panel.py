@@ -54,6 +54,9 @@ class SqlAlchemySidePanelRepository:
             update(UserModel).where(UserModel.id == user_id).values(default_kitchen_id=kitchen_id)
         )
 
+    def is_admin(self, user_id: uuid.UUID) -> bool:
+        return bool(self._db.scalar(select(UserModel.is_admin).where(UserModel.id == user_id)))
+
     def count_notebooks(self, user_id: uuid.UUID) -> int:
         """The personal notebooks the Notebooks page lists."""
         return (

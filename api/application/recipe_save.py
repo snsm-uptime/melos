@@ -6,7 +6,8 @@ Order of checks, so that a refused save stores nothing (research R4):
 3. the notebook exists, the caller may see it, and its kitchen is not archived (FR-012);
    with only a kitchen given, the capture-notebook step picks or creates one (FR-011);
 4. the edited draft passes the recipe rules again (FR-005);
-5. the catalog is read, names are resolved, and the recipe and the new names are stored.
+5. the catalog is read, names are resolved, and the recipe, the new names and the kept units
+   are stored in one transaction.
 
 Nothing is logged but the outcome and the counts (constitution §4).
 """
@@ -33,8 +34,10 @@ from application.ports import (
     NotebookRepository,
     RecipeRepository,
     StoredRecipe,
+    UnitRepository,
 )
 from application.recipe_capture import TextTooLongError
+from application.units import allowed_for_save, available_units, kept_units_to_add
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +55,8 @@ class SaveRecipeCommand:
     # Exactly one of these is set (research R6).
     notebook_id: UUID | None = None
     kitchen_id: UUID | None = None
+    # Words the person said yes to; those a saved line uses join their list (spec 055 R10).
+    keep_units: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,12 +76,14 @@ class SaveRecipeDraft:
         recipes: RecipeRepository,
         capture_notebook: ResolveCaptureNotebookService,
         *,
+        units: UnitRepository,
         max_text_chars: int,
     ) -> None:
         self._notebooks = notebooks
         self._catalog = catalog
         self._recipes = recipes
         self._capture_notebook = capture_notebook
+        self._units = units
         self._max_text_chars = max_text_chars
 
     def execute(self, command: SaveRecipeCommand) -> SavedRecipe:
@@ -96,6 +103,7 @@ class SaveRecipeDraft:
         if view.kitchen_is_archived:
             raise KitchenArchivedError()
 
+        available = available_units(self._units.extras_for(command.actor_user_id))
         checked = check_edited_draft(
             DraftRecipe(
                 title=command.title,
@@ -103,7 +111,8 @@ class SaveRecipeDraft:
                 servings_estimated=command.servings_estimated,
                 ingredient_lines=command.lines,
                 steps=command.steps,
-            )
+            ),
+            allowed_for_save(available, command.keep_units),
         )
         lines, new_names = resolve_line_names(
             checked.ingredient_lines, self._catalog.names_for_notebook(view.id)
@@ -128,6 +137,9 @@ class SaveRecipeDraft:
             assert winner is not None
             return self._replay(command, winner)
         self._catalog.add_names(view.id, new_names)
+        kept = kept_units_to_add(command.keep_units, lines, available)
+        if kept:
+            self._units.add_user(kept, command.actor_user_id)
         logger.info(
             "recipe save outcome=created lines=%d steps=%d new_names=%d",
             len(lines),

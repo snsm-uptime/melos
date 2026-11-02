@@ -3,13 +3,21 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { ArchiveToggleIcon, LogOutIcon, MenuIcon, NotebookIcon, PlusIcon } from "@/app/icons";
+import {
+  ArchiveToggleIcon,
+  HashtagIcon,
+  LogOutIcon,
+  MenuIcon,
+  NotebookIcon,
+  PlusIcon,
+} from "@/app/icons";
 import { fetchKitchens, type KitchenItem } from "@/app/kitchens/kitchensClient";
 import { useMembershipKitchens } from "@/app/kitchens/membershipKitchensStore";
 import { IconButton } from "@/components/IconButton";
 import { usePreferences } from "@/components/PreferencesProvider";
 import { panelEntryFromPath } from "@/lib/appChrome";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
+import { adminMessages } from "@/lib/i18n/admin";
 import { sidePanelMessages } from "@/lib/i18n/sidePanel";
 import {
   fetchSidePanel,
@@ -204,6 +212,16 @@ export function SidePanel({
                 onClick={onDrawerClose}
               />
             </li>
+            {panel?.is_admin ? (
+              <li className="min-w-0">
+                <SidePanelEntry
+                  href="/admin"
+                  label={adminMessages[locale].entry}
+                  icon={<HashtagIcon className="size-7 shrink-0 p-0.5" />}
+                  onClick={onDrawerClose}
+                />
+              </li>
+            ) : null}
           </ul>
           <div className="relative mt-3 flex min-h-11 items-center">
             <span

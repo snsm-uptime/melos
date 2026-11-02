@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { accountMessages } from "./account";
+import { adminMessages } from "./admin";
 import { aliasMessages } from "./alias";
 import { captureText } from "./capture";
 import { cartMessages } from "./cart";
+import { customUnitMessages } from "./customUnits";
 import { inviteMessages, notebookInviteMessages } from "./invite";
 import { kitchensMessages } from "./kitchens";
 import { landingMessages } from "./landing";
@@ -24,9 +26,11 @@ import { verifyMessages } from "./verify";
  */
 const SETS: Record<string, { en: unknown; es: unknown }> = {
   account: accountMessages,
+  admin: adminMessages,
   alias: aliasMessages,
   capture: captureText,
   cart: cartMessages,
+  customUnits: customUnitMessages,
   invite: inviteMessages,
   kitchens: kitchensMessages,
   landing: landingMessages,
@@ -50,10 +54,15 @@ const SETS: Record<string, { en: unknown; es: unknown }> = {
 const SAME_ON_PURPOSE = new Set<string>([
   "account.en", // the language "English", written in English in both languages
   "account.es", // the language "Español", written in Spanish in both languages
+  "admin.no", // "No" is the same word in Spanish
+  "admin.none", // the dash shown for an empty value
+  "admin.kinds.personal", // "Personal" is the same word in Spanish
+  "admin.columns.users.alias", // "Alias" is the same word in Spanish
   "account.photoCropZoom", // "Zoom" is the word used in Spanish too
   "alias.photoCropZoom", // "Zoom", as above
   "alias.label", // "Alias" is the same word in Spanish
   "capture.optionUrl", // "URL"
+  "customUnits.no", // "No" is the same word in Spanish
 ]);
 
 function paths(value: unknown, prefix = ""): { path: string; leaf: unknown }[] {

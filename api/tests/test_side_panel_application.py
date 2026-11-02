@@ -23,6 +23,7 @@ class FakeRepo:
         self.kitchens = kitchens
         self.stored = stored
         self.writes: list[UUID | None] = []
+        self.admin = False
 
     def stored_default_kitchen(self, user_id: UUID) -> UUID | None:
         return self.stored
@@ -39,6 +40,9 @@ class FakeRepo:
 
     def count_recipes_added(self, user_id: UUID) -> int:
         return 5
+
+    def is_admin(self, user_id: UUID) -> bool:
+        return self.admin
 
 
 def test_read_stores_a_resolved_kitchen_that_differs() -> None:
@@ -96,3 +100,11 @@ def test_set_rejects_an_archived_kitchen() -> None:
     with pytest.raises(KitchenArchivedError):
         SetDefaultKitchenService(repo).execute(USER, archived.id)
     assert repo.writes == []
+
+
+def test_the_admin_flag_comes_with_a_read_and_a_default_kitchen_change() -> None:
+    first = kitchen(1)
+    repo = FakeRepo([first], first.id)
+    repo.admin = True
+    assert GetSidePanelService(repo).execute(USER).is_admin is True
+    assert SetDefaultKitchenService(repo).execute(USER, first.id).is_admin is True

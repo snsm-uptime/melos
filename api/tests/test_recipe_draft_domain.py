@@ -10,8 +10,11 @@ from domain.recipe_draft import (
     InvalidDraftError,
     LineProblem,
     LineProblemKind,
+    UnknownUnit,
     check_draft,
+    check_edited_draft,
     clean_display_name,
+    custom_unit_name,
     lookup_unit,
 )
 
@@ -110,9 +113,9 @@ def test_non_vague_line_needs_a_unit() -> None:
         check(draft(lines=(line(unit=""),)), CATALOG)
 
 
-def test_non_vague_line_with_unknown_unit_is_a_named_problem() -> None:
-    with pytest.raises(DraftProblems):
-        check(draft(lines=(line(unit="quart"),)), CATALOG)
+def test_non_vague_line_with_an_unknown_unit_that_can_be_offered_is_asked_about() -> None:
+    checked = check(draft(lines=(line(unit="quart"),)), CATALOG)
+    assert checked.unknown_units == (UnknownUnit("quart", (0,)),)
 
 
 def test_vague_line_has_no_quantity_and_no_unit() -> None:
@@ -370,8 +373,8 @@ def test_no_unit_is_unit_missing() -> None:
     assert problems.line_problems == (LineProblem("flour", LineProblemKind.UNIT_MISSING),)
 
 
-def test_unknown_unit_is_unit_not_recognized() -> None:
-    problems = problems_of(draft(lines=(line(unit="widgets"),)))
+def test_unknown_unit_that_cannot_be_offered_is_unit_not_recognized() -> None:
+    problems = problems_of(draft(lines=(line(unit="<widgets>"),)))
     assert problems.line_problems == (LineProblem("flour", LineProblemKind.UNIT_NOT_RECOGNIZED),)
 
 
@@ -407,3 +410,138 @@ def test_missing_servings_with_no_named_problem_is_still_invalid_draft() -> None
 def test_servings_below_one_with_a_named_problem_is_draft_problems() -> None:
     with pytest.raises(DraftProblems):
         check(draft(base_servings=0, title=""), CATALOG)
+
+
+# ── custom units (spec 055) ─────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("latas", "lata"),
+        ("botes", "bote"),
+        ("paquetes", "paquete"),
+        ("sobres", "sobre"),
+        ("cans", "can"),
+        ("jars", "jar"),
+        ("slices", "slice"),
+        ("bunches", "bunch"),
+        ("Latas ", "lata"),
+        ("lata", "lata"),
+        ("  Latas   Grandes ", "lata grande"),
+        ("glass", "glass"),
+        ("cactus", "cactus"),
+        ("tés", "tés"),
+    ],
+)
+def test_custom_unit_name_is_trimmed_lower_case_and_singular(raw: str, expected: str) -> None:
+    assert custom_unit_name(raw) == expected
+
+
+@pytest.mark.parametrize(
+    "raw",
+    ["", "   ", "x" * 33, "123", "!!", "1/2", "lata;", "<b>"]
+    + ["grande", "large", "pizca", "al gusto"],
+)
+def test_custom_unit_name_refuses_what_cannot_be_offered(raw: str) -> None:
+    assert custom_unit_name(raw) is None
+
+
+@pytest.mark.parametrize("raw", ["media-lata", "lata 2", "o'clock"])
+def test_custom_unit_name_keeps_hyphens_digits_and_apostrophes(raw: str) -> None:
+    assert custom_unit_name(raw) == raw
+
+
+def test_default_spellings_win_over_a_stored_unit() -> None:
+    assert lookup_unit("tazas", ["taza"]) == "cup"
+
+
+def test_lookup_finds_a_stored_unit_ignoring_accents_and_plural() -> None:
+    assert lookup_unit("Latas", ["lata"]) == "lata"
+    assert lookup_unit("cucharón", ["cucharon"]) == "cucharon"
+    assert lookup_unit("cucharon", ["cucharón"]) == "cucharón"
+
+
+def test_a_stored_unit_one_letter_from_a_default_stays_itself() -> None:
+    assert lookup_unit("libro", ["libro"]) == "libro"
+
+
+def test_near_miss_covers_stored_units() -> None:
+    assert lookup_unit("latta", ["lata"]) == "lata"
+    assert lookup_unit("bolsaa", ["bolsa"]) == "bolsa"
+
+
+def test_a_word_near_two_units_is_invalid_output() -> None:
+    with pytest.raises(InvalidDraftError):
+        lookup_unit("bolso", ["bolsa", "bolsi"])
+
+
+def test_a_plural_of_a_default_spelling_is_covered() -> None:
+    assert lookup_unit("boxes") == "unit"
+
+
+LATA = line(name="frijoles", unit="lata", quantity=1.0)
+
+
+def test_unknown_word_keeps_its_line_and_is_reported() -> None:
+    checked = check_draft(draft(lines=(LATA,)), CATALOG)
+    assert checked.ingredient_lines[0].unit == "lata"
+    assert checked.ingredient_lines[0].quantity == 1.0
+    assert checked.unknown_units == (UnknownUnit("lata", (0,)),)
+
+
+def test_one_word_in_two_spellings_is_one_entry_with_all_its_lines() -> None:
+    lines = (
+        LATA,
+        line(name="maiz", unit="latas", quantity=2.0),
+        line(name="sal", unit="g"),
+        line(name="atun", unit="Lata"),
+        line(name="crema", unit="latas"),
+    )
+    checked = check_draft(draft(lines=lines), CATALOG)
+    assert checked.unknown_units == (UnknownUnit("lata", (0, 1, 3, 4)),)
+    assert {checked.ingredient_lines[i].unit for i in (0, 1, 3, 4)} == {"lata"}
+
+
+def test_two_words_get_two_entries() -> None:
+    lines = (LATA, line(name="crema", unit="bote"))
+    checked = check_draft(draft(lines=lines), CATALOG)
+    assert checked.unknown_units == (UnknownUnit("lata", (0,)), UnknownUnit("bote", (1,)))
+
+
+def test_a_person_s_own_unit_asks_nothing() -> None:
+    lines = (line(name="atun", unit="latas", quantity=2.0),)
+    checked = check_draft(draft(lines=lines), CATALOG, available_units=["lata"])
+    assert checked.ingredient_lines[0].unit == "lata"
+    assert checked.unknown_units == ()
+
+
+def test_a_size_is_kept_only_on_the_count_unit() -> None:
+    lines = (line(name="frijoles", unit="lata", size="large"),)
+    checked = check_draft(draft(lines=lines), CATALOG)
+    assert checked.ingredient_lines[0].size is None
+
+
+def test_a_covered_word_never_asks() -> None:
+    lines = (line(unit="tazas"), line(name="huevo", unit="pieza"), line(name="sal", unit="unit"))
+    assert check_draft(draft(lines=lines), CATALOG).unknown_units == ()
+
+
+def test_a_size_given_as_a_unit_never_asks() -> None:
+    with pytest.raises(DraftProblems) as caught:
+        check_draft(draft(lines=(line(unit="grande"),)), CATALOG)
+    assert caught.value.line_problems[0].kind is LineProblemKind.UNIT_NOT_RECOGNIZED
+
+
+def test_an_edited_draft_refuses_a_unit_outside_the_allowed_ones() -> None:
+    with pytest.raises(DraftProblems) as caught:
+        check_edited_draft(draft(lines=(LATA,)))
+    assert caught.value.line_problems == (
+        LineProblem("frijoles", LineProblemKind.UNIT_NOT_RECOGNIZED),
+    )
+
+
+def test_an_edited_draft_takes_an_allowed_unit_and_has_no_questions() -> None:
+    checked = check_edited_draft(draft(lines=(LATA,)), allowed_units=["lata"])
+    assert checked.ingredient_lines[0].unit == "lata"
+    assert checked.unknown_units == ()

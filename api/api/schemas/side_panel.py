@@ -11,6 +11,7 @@ class SidePanelResponse(BaseModel):
     default_kitchen_id: UUID | None
     recipes_added: int
     notebooks: int
+    is_admin: bool
 
 
 class SetDefaultKitchenBody(BaseModel):

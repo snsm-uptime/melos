@@ -4,7 +4,7 @@ Order of checks, so that refused input costs no read and no assistant call:
 1. the trimmed text is empty or over the configured limit (FR-002);
 2. the notebook exists and the caller may see it (membership first, FR-022);
 3. a kitchen notebook's kitchen is not archived (FR-033);
-4. the notebook's catalog is read, then the S-015 use case runs once.
+4. the notebook's catalog and the caller's units are read, then the S-015 use case runs once.
 
 Nothing is stored (FR-019). The log keeps the text length and the outcome, never the text
 (constitution §4).
@@ -20,13 +20,14 @@ from domain.errors import KitchenArchivedError, NotebookNotFoundError
 from domain.recipe_draft import DraftRecipe
 
 from application.notebooks import NotebookView, notebook_view
-from application.ports import IngredientCatalog, NotebookRepository
+from application.ports import IngredientCatalog, NotebookRepository, UnitRepository
 from application.recipe_extraction import (
     Draft,
     ExtractionResult,
     RecipeExtraction,
     RecipeTextRefusedError,
 )
+from application.units import available_units
 
 logger = logging.getLogger(__name__)
 
@@ -80,12 +81,14 @@ class CaptureRecipeText:
         catalog: IngredientCatalog,
         extraction: RecipeExtraction,
         *,
+        units: UnitRepository,
         max_chars: int,
         timeout_s: float,
     ) -> None:
         self._notebooks = notebooks
         self._catalog = catalog
         self._extraction = extraction
+        self._units = units
         self._max_chars = max_chars
         self._timeout_s = timeout_s
 
@@ -104,7 +107,8 @@ class CaptureRecipeText:
             raise KitchenArchivedError()
 
         names = self._catalog.names_for_notebook(command.notebook_id)
-        result = self._extraction.extract(text, names, self._timeout_s)
+        units = available_units(self._units.extras_for(command.actor_user_id))
+        result = self._extraction.extract(text, names, self._timeout_s, units)
         logger.info(
             "recipe capture outcome=%s chars=%d",
             type(result).__name__,

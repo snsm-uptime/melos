@@ -63,6 +63,12 @@ export type DraftView = {
   steps: StepView[];
   /** The capture notebook's catalog entries, for the match control (spec 018 FR-005). */
   catalog: string[];
+  /** The words the api found outside the person's units (spec 055). */
+  unknownUnits?: string[];
+  /** Words the person said yes to, sent at Save. Gone with the draft (FR-005). */
+  keptUnits?: string[];
+  /** Words the person said no to on this draft. Never remembered (FR-006). */
+  declinedUnits?: string[];
 };
 
 /** The match-control value that means "new ingredient". Not a catalog entry name. */

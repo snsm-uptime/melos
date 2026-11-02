@@ -42,7 +42,9 @@ Recipe fields (only when outcome is "recipe"):
     "un par" is 2, "una decena" is 10).
   - unit: the unit word as written in the text, in the pasted text's language,
     for example "tablespoon", "cucharada", "gram". Use "unit" for a counted
-    item with no unit. Do not convert units.
+    item with no unit. Do not convert units. A container or measure word such as
+    "lata", "bote", "can" or "jar" is a unit word: report it as written and keep
+    the ingredient as name. Never fold it into a counted item with unit "unit".
   - size: "small", "medium" or "large", only for a counted item (unit "unit").
     Otherwise leave it out.
   - note: optional short text, for example the vague phrase.

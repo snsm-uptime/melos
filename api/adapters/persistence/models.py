@@ -8,6 +8,7 @@ from datetime import date, datetime
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Computed,
     Date,
     DateTime,
     ForeignKey,
@@ -21,7 +22,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from adapters.persistence.base import Base
@@ -57,6 +58,8 @@ class UserModel(Base):
         ForeignKey("notebook.id", ondelete="SET NULL", use_alter=True),
         nullable=True,
     )
+    # Set on the server by the owner; no route or body writes it (spec 055 FR-017a).
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -345,7 +348,27 @@ class IngredientModel(Base):
     )
 
 
-UNITS_SQL = "('g', 'kg', 'oz', 'lb', 'ml', 'l', 'cup', 'tbsp', 'tsp', 'unit')"
+class UnitModel(Base):
+    """One row per unit name (spec 055). Recipe lines hold plain text, so nothing points here."""
+
+    __tablename__ = "unit"
+    __table_args__ = (
+        CheckConstraint("name = lower(btrim(name))", name="ck_unit_name_normalized"),
+        CheckConstraint("char_length(name) BETWEEN 1 AND 32", name="ck_unit_name_length"),
+    )
+
+    name: Mapped[str] = mapped_column(Text, primary_key=True)
+    # Active accounts that kept the unit. adapters.persistence.units is the only writer (R2).
+    user_references: Mapped[list[uuid.UUID]] = mapped_column(
+        ARRAY(UUID(as_uuid=True)), nullable=False, server_default=text("'{}'")
+    )
+    reference_count: Mapped[int] = mapped_column(
+        Integer, Computed("cardinality(user_references)", persisted=True), nullable=False
+    )
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class SourceModel(Base):
@@ -423,7 +446,9 @@ class RecipeIngredientModel(Base):
     __table_args__ = (
         UniqueConstraint("recipe_id", "position", name="uq_recipe_ingredient_position"),
         CheckConstraint("quantity IS NULL OR quantity > 0", name="ck_recipe_ingredient_quantity"),
-        CheckConstraint(f"unit IS NULL OR unit IN {UNITS_SQL}", name="ck_recipe_ingredient_unit"),
+        CheckConstraint(
+            "unit IS NULL OR btrim(unit) <> ''", name="ck_recipe_ingredient_unit_not_blank"
+        ),
         CheckConstraint(
             "size IS NULL OR (size IN ('small', 'medium', 'large') AND unit = 'unit')",
             name="ck_recipe_ingredient_size",
@@ -546,7 +571,7 @@ class ShoppingListItemModel(Base):
             "section IN ('measured', 'your_call')", name="ck_shopping_list_item_section"
         ),
         CheckConstraint(
-            "kind IS NULL OR kind IN ('mass', 'volume', 'count')",
+            "kind IS NULL OR kind IN ('mass', 'volume', 'count', 'custom')",
             name="ck_shopping_list_item_kind",
         ),
         Index("ix_shopping_list_item_list", "shopping_list_id", "origin", "position"),
@@ -565,6 +590,28 @@ class ShoppingListItemModel(Base):
     notes: Mapped[list] = mapped_column(JSONB, nullable=False)
     recipes: Mapped[list] = mapped_column(JSONB, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class CartActivityModel(Base):
+    """One cart action by one person, for the dashboard only; no cart rule reads it (spec 055)."""
+
+    __tablename__ = "cart_activity"
+    __table_args__ = (
+        CheckConstraint(
+            "action IN ('created', 'edited', 'closed')", name="ck_cart_activity_action"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    action: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class CartEditLockModel(Base):

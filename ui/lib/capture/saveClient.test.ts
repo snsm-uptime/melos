@@ -70,6 +70,15 @@ function stubFetch(response: Response | Error) {
 }
 
 describe("buildSaveBody", () => {
+  it("sends the words the person said yes to, and never the declined ones", () => {
+    const base = state();
+    const body = buildSaveBody({
+      ...base,
+      draft: { ...base.draft!, keptUnits: ["lata"], declinedUnits: ["bote"] },
+    });
+    expect(body?.keep_units).toEqual(["lata"]);
+  });
+
   it("sends the edited values, the trimmed text and the key, and no match flags", () => {
     expect(buildSaveBody(state())).toEqual({
       save_key: "key-1",
@@ -99,6 +108,7 @@ describe("buildSaveBody", () => {
         },
       ],
       steps: ["Simmer."],
+      keep_units: [],
     });
   });
 

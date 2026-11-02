@@ -368,3 +368,39 @@ def test_adding_the_same_catalog_name_twice_leaves_one_row(client: TestClient, d
     catalog.add_names(notebook_id, ["leek"])
     catalog.add_names(notebook_id, [])
     assert _catalog(db_session, str(notebook_id)) == ["leek", "leek-2"]
+
+
+# --- keep_units (spec 055) ------------------------------------------------------------------
+
+
+def _lata_lines() -> list[dict]:
+    return [{"name": "frijoles", "quantity": 1, "unit": "lata"}]
+
+
+def test_a_kept_unit_is_stored_in_the_save_and_reaches_the_vocabulary(client: TestClient) -> None:
+    _register(client, "save_kept@example.com")
+    response = client.post(
+        "/recipes",
+        json=_body(_personal_notebook(client), ingredient_lines=_lata_lines(), keep_units=["lata"]),
+    )
+    assert response.status_code == 201, response.text
+    assert client.get("/recipe-vocabulary").json()["units"][-1] == "lata"
+
+
+def test_an_unknown_unit_with_no_yes_is_refused_and_stores_nothing(
+    client: TestClient, db_session: Session
+) -> None:
+    _register(client, "save_refused@example.com")
+    notebook_id = _personal_notebook(client)
+    before = _counts(db_session)
+    response = client.post("/recipes", json=_body(notebook_id, ingredient_lines=_lata_lines()))
+    assert response.status_code == 422
+    assert response.json()["line_problems"][0]["kind"] == "unit_not_recognized"
+    assert _counts(db_session) == before
+    assert "lata" not in client.get("/recipe-vocabulary").json()["units"]
+
+
+def test_too_many_kept_words_are_refused(client: TestClient) -> None:
+    _register(client, "save_many@example.com")
+    body = _body(_personal_notebook(client), keep_units=["lata"] * 1000)
+    assert client.post("/recipes", json=body).status_code == 422

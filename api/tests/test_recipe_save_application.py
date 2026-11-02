@@ -17,7 +17,13 @@ from domain.errors import (
 )
 from domain.notebook import Notebook
 from domain.recipe import NewRecipe
-from domain.recipe_draft import DraftProblems, IngredientLine, InvalidDraftError
+from domain.recipe_draft import (
+    DraftProblems,
+    IngredientLine,
+    InvalidDraftError,
+    LineProblemKind,
+)
+from tests.unit_fakes import FakeUnits
 
 MAX_TEXT = 200
 
@@ -117,11 +123,13 @@ class Harness:
         self.catalog = FakeCatalog()
         self.recipes = FakeRecipes()
         self.capture_notebook = FakeCaptureNotebook()
+        self.units = FakeUnits()
         self.save = SaveRecipeDraft(
             self.notebooks,
             self.catalog,
             self.recipes,
             self.capture_notebook,  # type: ignore[arg-type]
+            units=self.units,
             max_text_chars=MAX_TEXT,
         )
 
@@ -339,3 +347,73 @@ def test_the_log_never_holds_the_title_or_names(caplog: pytest.LogCaptureFixture
         h.run(nid, title="Secret soup")
     text = caplog.text
     assert "Secret soup" not in text and "onion" not in text
+
+
+# --- keep_units (spec 055 R10) --------------------------------------------------------------
+
+LATA = IngredientLine("frijoles", False, 1.0, "lata")
+
+
+def test_a_kept_word_a_line_uses_joins_the_person_s_list() -> None:
+    h = Harness()
+    fact, nid = personal()
+    h.add(fact)
+    h.run(nid, lines=(LATA,), keep_units=("lata",))
+    assert h.recipes.stored[0].lines[0].unit == "lata"
+    assert h.units.added == [(["lata"], h.user_id)]
+
+
+def test_a_kept_word_no_line_uses_is_ignored() -> None:
+    h = Harness()
+    fact, nid = personal()
+    h.add(fact)
+    h.run(nid, keep_units=("lata",))
+    assert h.units.added == []
+
+
+def test_a_kept_word_already_covered_is_ignored() -> None:
+    h = Harness()
+    h.units.default_extras = ["lata"]
+    fact, nid = personal()
+    h.add(fact)
+    h.run(nid, lines=(LATA,), keep_units=("lata",))
+    assert h.units.added == []
+
+
+def test_a_person_s_own_unit_saves_with_no_keep() -> None:
+    h = Harness()
+    h.units.default_extras = ["lata"]
+    fact, nid = personal()
+    h.add(fact)
+    h.run(nid, lines=(LATA,))
+    assert len(h.recipes.stored) == 1 and h.units.added == []
+
+
+def test_an_unknown_word_not_kept_is_refused_and_stores_nothing() -> None:
+    h = Harness()
+    fact, nid = personal()
+    h.add(fact)
+    with pytest.raises(DraftProblems) as caught:
+        h.run(nid, lines=(LATA,))
+    assert caught.value.line_problems[0].kind is LineProblemKind.UNIT_NOT_RECOGNIZED
+    assert h.recipes.stored == [] and h.units.added == []
+
+
+def test_a_refused_save_adds_no_unit() -> None:
+    h = Harness()
+    fact, nid = personal()
+    h.add(fact)
+    with pytest.raises(DraftProblems):
+        h.run(nid, title=" ", lines=(LATA,), keep_units=("lata",))
+    assert h.units.added == []
+
+
+def test_a_replayed_save_adds_no_unit() -> None:
+    h = Harness()
+    fact, nid = personal()
+    h.add(fact)
+    key = uuid4()
+    h.run(nid, save_key=key, lines=(LATA,), keep_units=("lata",))
+    h.units.added.clear()
+    saved = h.run(nid, save_key=key, lines=(LATA,), keep_units=("lata",))
+    assert saved.created is False and h.units.added == []

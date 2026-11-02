@@ -9,7 +9,7 @@ from adapters.persistence.models import KitchenMembershipModel, NotebookModel
 from adapters.persistence.side_panel import SqlAlchemySidePanelRepository
 from application.side_panel import GetSidePanelService
 from fastapi.testclient import TestClient
-from sqlalchemy import event
+from sqlalchemy import event, text
 from sqlalchemy.orm import Session
 from tests.integration_db import claim_alias, database_url
 
@@ -93,7 +93,12 @@ def test_default_starts_on_the_sign_up_kitchen_even_for_an_invitee(
     _use(client, ina_token)
     response = client.get("/side-panel")
     assert response.status_code == 200, response.text
-    assert response.json() == {"default_kitchen_id": signup, "recipes_added": 0, "notebooks": 0}
+    assert response.json() == {
+        "default_kitchen_id": signup,
+        "recipes_added": 0,
+        "notebooks": 0,
+        "is_admin": False,
+    }
 
 
 def test_set_default_and_its_refusals(client: TestClient) -> None:
@@ -184,7 +189,7 @@ def test_a_read_with_no_change_stays_within_four_statements(
         GetSidePanelService(SqlAlchemySidePanelRepository(db_session)).execute(user_id)
     finally:
         event.remove(bind, "before_cursor_execute", record)
-    assert len(statements) <= 4
+    assert len(statements) <= 5
 
 
 def _snapshot(client: TestClient, kitchen_id: str, source_id: str) -> str:
@@ -225,3 +230,21 @@ def test_a_recipe_later_captured_into_a_snapshot_is_not_counted(
     _save(client, snapshot)
 
     assert _recipes_added(client) == before
+
+
+def test_is_admin_is_for_the_caller_only_and_not_in_auth_me(
+    client: TestClient, db_session: Session
+) -> None:
+    admin_id, admin_token = _register(client, "root_panel")
+    db_session.execute(text("UPDATE users SET is_admin = true WHERE id = :u"), {"u": admin_id})
+    _, other_token = _register(client, "other_panel")
+
+    assert client.get("/side-panel").json()["is_admin"] is False
+    _use(client, admin_token)
+    assert client.get("/side-panel").json()["is_admin"] is True
+    kitchen_id = _kitchen(client, "Admin home")
+    changed = client.put("/side-panel/default-kitchen", json={"kitchen_id": kitchen_id})
+    assert changed.json()["is_admin"] is True
+    assert "is_admin" not in client.get("/auth/me").json()
+    _use(client, other_token)
+    assert client.get("/side-panel").json()["is_admin"] is False

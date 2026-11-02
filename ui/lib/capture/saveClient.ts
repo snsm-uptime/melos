@@ -25,6 +25,7 @@ export function buildSaveBody(capture: CaptureState): Record<string, unknown> | 
       note: line.note,
     })),
     steps: draft.steps.map((step) => step.text),
+    keep_units: draft.keptUnits ?? [],
   };
 }
 

@@ -4,6 +4,8 @@ export type SidePanelData = {
   default_kitchen_id: string | null;
   recipes_added: number;
   notebooks: number;
+  /** The caller's own flag: it only decides whether the entry shows (spec 055 R16). */
+  is_admin: boolean;
 };
 
 const listeners = new Set<() => void>();
@@ -29,6 +31,7 @@ async function parse(response: Response): Promise<SidePanelData | null> {
       default_kitchen_id: data.default_kitchen_id ?? null,
       recipes_added: data.recipes_added,
       notebooks: data.notebooks,
+      is_admin: data.is_admin === true,
     };
   } catch {
     return null;

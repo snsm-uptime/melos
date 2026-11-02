@@ -117,7 +117,7 @@ def _insert_line(engine: Engine, recipe: str, **values: object) -> None:
     "values",
     [
         {"quantity": 0},
-        {"unit": "pint"},
+        {"unit": "   "},
         {"unit": "cup", "size": "large"},
         {"size": "huge"},
         {"vague": "a pinch"},

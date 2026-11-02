@@ -150,6 +150,7 @@ def save_recipe(
             for line in body.ingredient_lines
         ),
         steps=tuple(body.steps),
+        keep_units=tuple(body.keep_units),
     )
     try:
         saved = save.execute(command)
@@ -311,6 +312,7 @@ def update_recipe(
             for line in body.ingredient_lines
         ),
         steps=tuple(body.steps),
+        keep_units=tuple(body.keep_units),
     )
     try:
         updated: UpdatedRecipe = service.execute(command)

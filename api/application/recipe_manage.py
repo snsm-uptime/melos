@@ -38,8 +38,10 @@ from application.ports import (
     RecipeDetail,
     RecipeRepository,
     SessionRef,
+    UnitRepository,
 )
 from application.recipe_locks import recipe_editor, refuse_if_locked_by_other, require_recipe_lock
+from application.units import allowed_for_save, available_units, kept_units_to_add
 
 logger = logging.getLogger(__name__)
 
@@ -158,6 +160,8 @@ class UpdateRecipeCommand:
     steps: tuple[str, ...]
     # The editor's session must hold the recipe lock (spec 022 FR-022); None skips the check.
     session_id: UUID | None = None
+    # Words the person said yes to; those a saved line uses join their list (spec 055 R10).
+    keep_units: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -184,11 +188,14 @@ class UpdateRecipeService:
         notebooks: NotebookRepository,
         catalog: IngredientCatalog,
         locks: EditLockRepository | None = None,
+        *,
+        units: UnitRepository,
     ) -> None:
         self._recipes = recipes
         self._notebooks = notebooks
         self._catalog = catalog
         self._locks = locks
+        self._units = units
 
     def execute(self, command: UpdateRecipeCommand) -> UpdatedRecipe:
         if len(command.lines) > MAX_LINES or len(command.steps) > MAX_STEPS:
@@ -201,6 +208,9 @@ class UpdateRecipeService:
         # An edit needs at least one ingredient line (spec 027 FR-008); the first save does not
         # check this, so the edit adds it to the parts the member is told about.
         no_lines = not command.lines
+        available = available_units(self._units.extras_for(command.actor_user_id))
+        # Lines have no ids, so "already on the line" is judged on the recipe (spec 055 R11).
+        stored_units = tuple(line.unit for line in current.detail.lines if line.unit)
         try:
             checked = check_edited_draft(
                 DraftRecipe(
@@ -209,7 +219,8 @@ class UpdateRecipeService:
                     servings_estimated=command.servings_estimated,
                     ingredient_lines=command.lines,
                     steps=command.steps,
-                )
+                ),
+                (*allowed_for_save(available, command.keep_units), *stored_units),
             )
         except DraftProblems as exc:
             missing = exc.missing + (("ingredients",) if no_lines else ())
@@ -232,6 +243,9 @@ class UpdateRecipeService:
             ),
         )
         self._catalog.add_names(current.notebook.id, new_names)
+        kept = kept_units_to_add(command.keep_units, lines, available)
+        if kept:
+            self._units.add_user(kept, command.actor_user_id)
         if self._locks is not None and command.session_id is not None:
             self._locks.release_recipe(command.recipe_id, command.session_id)
         logger.info(

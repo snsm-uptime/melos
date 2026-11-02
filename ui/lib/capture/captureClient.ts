@@ -26,6 +26,7 @@ export type CaptureDraftResponse = {
       match: { kind: "matched" | "new"; entry: string | null };
     }[];
     steps: string[];
+    unknown_units?: { word: string; lines: number[] }[];
   };
 };
 

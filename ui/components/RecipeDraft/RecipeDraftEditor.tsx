@@ -11,8 +11,11 @@ import {
   type VocabularyResponse,
 } from "@/lib/capture/captureClient";
 import {
+  ALLOWED_UNITS,
   checkDraft,
   hasErrors,
+  pendingUnitQuestions,
+  withoutRechosenUnit,
   type DraftInput,
 } from "@/lib/capture/draftRules";
 import { submitSave } from "@/lib/capture/saveClient";
@@ -35,12 +38,14 @@ import { nameChanges } from "@/lib/capture/nameChanges";
 import { messageForCode } from "@/lib/i18n/capture";
 import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
 import { useLocale } from "@/lib/i18n/useLocale";
+import { checkUnitWord } from "@/lib/recipesClient";
 
 // MVP-OUT: import { CategoryChips } from "./CategoryChips";
 import { HeaderAction, HeaderActions } from "./HeaderActions";
 import { IngredientLineRow } from "./IngredientLineRow";
 import { AddItemCard } from "@/components/Card";
 import { StepCard } from "./StepCard";
+import { UnknownUnitQuestion } from "./UnknownUnitQuestion";
 
 // MVP-OUT: const MAX_MAIN = 2;
 // MVP-OUT: const MAX_CUISINES = 2;
@@ -90,7 +95,23 @@ export function RecipeDraftEditor() {
     // MVP-OUT: mainIngredientCount: draft.mainIngredients.length,
     // MVP-OUT: cuisineCount: draft.cuisines.length,
   };
-  const errors = checkDraft(input);
+  const keptUnits = draft.keptUnits ?? [];
+  const declinedUnits = draft.declinedUnits ?? [];
+  // Until the person's units load, the api's answer says which of the draft's words are theirs.
+  const askedUnits = draft.unknownUnits ?? [];
+  const availableUnits = vocabulary?.units ?? [
+    ...ALLOWED_UNITS,
+    ...draft.lines.flatMap((line) =>
+      line.unit && !askedUnits.includes(line.unit) ? [line.unit] : [],
+    ),
+  ];
+  const errors = checkDraft(input, [...availableUnits, ...keptUnits]);
+  const unitQuestions = pendingUnitQuestions(
+    draft.lines,
+    availableUnits,
+    keptUnits,
+    declinedUnits,
+  );
   const changesByLine = new Map(
     nameChanges(draft.lines).map((change) => [change.line, change]),
   );
@@ -102,7 +123,17 @@ export function RecipeDraftEditor() {
   function updateLine(index: number, next: LineView) {
     update({
       lines: draft!.lines.map((line, i) => (i === index ? next : line)),
+      declinedUnits: withoutRechosenUnit(
+        declinedUnits,
+        draft!.lines[index].unit,
+        next.unit,
+      ),
     });
+  }
+
+  function answerUnit(word: string, keep: boolean) {
+    if (keep) update({ keptUnits: [...keptUnits, word] });
+    else update({ declinedUnits: [...declinedUnits, word] });
   }
 
   function moveItem<T>(items: T[], index: number, direction: -1 | 1): T[] {
@@ -113,7 +144,7 @@ export function RecipeDraftEditor() {
     return next;
   }
 
-  const units = vocabulary?.units ?? [];
+  const units = [...(vocabulary?.units ?? []), ...keptUnits];
   const sizes = vocabulary?.sizes ?? [];
   // MVP-OUT: const tagLabel = (tag: string) => {
   // MVP-OUT:   const match = vocabulary?.cuisines.find((item) => item.id === tag);
@@ -265,6 +296,7 @@ export function RecipeDraftEditor() {
             </div>
           </div>
           <div className="flex flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
+            <UnknownUnitQuestion words={unitQuestions} onAnswer={answerUnit} />
             <ul className="m-0 flex list-none flex-col gap-2 p-0">
               {draft.lines.map((line, index) => (
                 <IngredientLineRow
@@ -275,6 +307,7 @@ export function RecipeDraftEditor() {
                   errors={errors.lines[index] ?? []}
                   units={units}
                   sizes={sizes}
+                  onCheckUnit={checkUnitWord}
                   catalog={draft.catalog}
                   change={changesByLine.get(index)}
                   onUndoChange={undoChange}
