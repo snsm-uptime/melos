@@ -25,9 +25,12 @@ uv run ruff check . && uv run ruff format --check .
 Final check, from the repository root:
 
 ```bash
-docker compose exec db createdb -U "$POSTGRES_USER" "${TEST_POSTGRES_DB:-melos_test}"  # first time only
-docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api
+docker compose exec -T db sh -c 'createdb -U "$POSTGRES_USER" "${TEST_POSTGRES_DB:-melos_test}"'  # first time only
+docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --no-deps --build \
+  -e RECIPE_TEXT_MAX_CHARS=5000 api
 ```
+
+`--no-deps` leaves a running dev `db` alone. `RECIPE_TEXT_MAX_CHARS=5000` is there because two capture tests pin the default, and this checkout's environment sets another value. `--build` retags `melos-api`.
 
 ## What must be shown
 
