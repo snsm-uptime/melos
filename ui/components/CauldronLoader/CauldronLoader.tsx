@@ -24,7 +24,10 @@ export type CauldronLoaderProps = {
   tone?: "page" | "button";
   /** Degrees each way. 0 to 45, sign ignored; anything else takes the tone's default. */
   tilt?: number;
-  /** CSS length. Page tone: the width. Button tone: the height, so a button never grows. */
+  /**
+   * CSS length. Page tone: the width, by default half the container up to 10rem. Button tone: the
+   * height, so a button never grows.
+   */
   size?: string;
   /** Screen-reader text, for a message more specific than "Loading". */
   label?: string;
@@ -53,7 +56,9 @@ export function CauldronLoader({
   const style: CSSProperties & Record<"--cauldron-tilt", string> = {
     "--cauldron-tilt": `${degrees}deg`,
     aspectRatio: ASPECT_RATIO,
-    ...(isButton ? { height: size ?? "1.2em" } : { width: size ?? "3rem" }),
+    ...(isButton
+      ? { height: size ?? "1.2em" }
+      : { width: size ?? "50%", maxWidth: size ? undefined : "10rem" }),
   };
 
   // In a button the children are presentational, so a nested status would not be announced; the

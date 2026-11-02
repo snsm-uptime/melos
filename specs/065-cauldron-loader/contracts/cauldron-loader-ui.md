@@ -8,7 +8,7 @@
 |---|---|---|---|
 | `tone` | `"page" \| "button"` | `"page"` | Colour set and tilt default (see [data-model.md](../data-model.md)). |
 | `tilt` | `number` | by tone: 25 page, 10 button | Degrees each way. Resolved by `resolveTilt` (0 to 45, sign ignored, non-number takes the tone default). |
-| `size` | CSS length | `3rem` page, `1.2em` button | Page tone: the width, height follows the drawing. Button tone: the **height**, width follows the drawing, so a button never grows. |
+| `size` | CSS length | `50%` capped at `10rem` page, `1.2em` button | Page tone: the width, height follows the drawing; the cap applies only to the default. Button tone: the **height**, width follows the drawing, so a button never grows. |
 | `label` | `string` | "Loading" / "Cargando" | Screen-reader text, for a more specific message. |
 | `className` | `string` | none | Placement only (margin, alignment). |
 
@@ -18,7 +18,7 @@ No click, focus or keyboard behaviour. No children.
 
 ```text
 <!-- page tone -->
-<span role="status" aria-live="polite" class="root" style="--cauldron-tilt: 25deg; width: 3rem">
+<span role="status" aria-live="polite" class="root" style="--cauldron-tilt: 25deg; width: 50%; max-width: 10rem">
   <svg aria-hidden="true" focusable="false" viewBox="…">
     <g class="bubbles">   two or more circles, different radii, no ids
     <g class="cauldron">  body, rim, two handles, two feet, drip

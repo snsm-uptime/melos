@@ -30,7 +30,7 @@ All custom SVG icons are centralized in `/app/icons/` to improve maintainability
 
 - Render `<CauldronLoader />` where the content will appear. Pass `label` for a more specific screen-reader message (for example `label={t.loadingKitchen}`); the default is "Loading" / "Cargando".
 - Inside a button or an icon action, pass `tone="button"`. For a `BaseButton` (or `PrimaryButton`, `AccentButton`, `GhostButton`) set `loading` and the button does it for you. For a `HeaderAction`, pass `busy` and a `tone="button"` loader as the icon.
-- `tilt` sets the rocking angle (0 to 45 degrees); leave it out for the defaults (set in `components/CauldronLoader/tilt.ts`). `size` is the width in a page and the height in a button.
+- `tilt` sets the rocking angle (0 to 45 degrees); leave it out for the defaults (set in `components/CauldronLoader/tilt.ts`). `size` is the width in a page (by default 50% of the container, at most 10rem) and the height in a button.
 - Reduced motion shows a still cauldron; the loader needs no extra handling.
 
 ## Future Component Patterns

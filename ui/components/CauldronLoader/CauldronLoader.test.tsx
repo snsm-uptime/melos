@@ -42,7 +42,8 @@ describe("CauldronLoader markup", () => {
 
   it("sets the width in page tone and the height in button tone, never both", () => {
     view.render(<CauldronLoader />);
-    expect(root().style.width).toBe("3rem");
+    expect(root().style.width).toBe("50%");
+    expect(root().style.maxWidth).toBe("10rem");
     expect(root().style.height).toBe("");
 
     view.render(<CauldronLoader tone="button" />);
@@ -53,6 +54,7 @@ describe("CauldronLoader markup", () => {
   it("takes a size in the dimension of its tone", () => {
     view.render(<CauldronLoader size="2rem" />);
     expect(root().style.width).toBe("2rem");
+    expect(root().style.maxWidth).toBe("");
 
     view.render(<CauldronLoader tone="button" size="1.25rem" />);
     expect(root().style.height).toBe("1.25rem");
