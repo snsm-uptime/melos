@@ -2,7 +2,7 @@
 # Services: db | api | ui | mcp (AD-2). Volumes outside the repo (AD-3 / NFR-9).
 # Requires a local `.env` (copy from `.env.example`) — no silent secret defaults.
 
-# MELOS_COMPOSE_NAME / API_HOST_PORT / UI_HOST_PORT / MCP_HOST_PORT let parallel Cursor worktrees
+# MELOS_COMPOSE_NAME / API_HOST_PORT / UI_HOST_PORT / MCP_HOST_PORT let parallel worktrees
 # run isolated Compose stacks without port or container-name clashes.
 # Defaults preserve the single-checkout local workflow.
 name: ${MELOS_COMPOSE_NAME:-melos}

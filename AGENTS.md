@@ -136,7 +136,7 @@ Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
 ├── .env.example               # Every variable, no real values
 ├── .env                       # Local secrets; NEVER committed
 ├── docker-compose.yml         # db | api | ui
-├── docker-compose.{dev,prod,test,worktree,worktree-lite}.yml
+├── docker-compose.{dev,prod,test,worktree}.yml
 ├── scripts/                   # compose-*.sh and worktree/* helpers
 ├── .github/workflows/ci.yml
 ├── api/
@@ -197,8 +197,9 @@ Prerequisites: Docker with Compose v2, `uv`, Node/`npm`.
 
   UI at <http://localhost:3000>, API at <http://localhost:8000>, MCP at <http://localhost:9000>. Health:
   `/health` on both. There is no reverse proxy in development.
-- Parallel work in a git worktree: `./scripts/worktree/worktree-add.sh <slug>
-  <branch>`, then the bootstrap script it prints (see `scripts/worktree/README.md`).
+- Parallel work uses Claude Code worktrees: `claude -n <story> -w <story>-<name>`.
+  A `SessionStart` hook sets each one up, and `scripts/worktree/worktree-done.sh`
+  removes it (see `scripts/worktree/README.md`).
 
 ### Python (api/) — uv only
 
@@ -228,8 +229,8 @@ ALWAYS use `uv`. Never use `pip`, `python -m venv` or `requirements.txt`.
 
 ## How to check that it works
 
-- **api, in Compose (canonical):**
-  `docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api`
+- **api, in Compose (canonical):** `./scripts/compose-test.sh`, which creates the
+  test database if it is missing
 - **api, on the host:** `cd api && uv run pytest -q` (needs a reachable
   Postgres; see the README) and `uv run ruff check .`
 - **ui:** `cd ui && npm test && npm run lint && npm run typecheck`

@@ -55,4 +55,4 @@ Seen during the walk, and unexplained: in two of the five runs a `PATCH /auth/me
 ## Found, not changed
 
 - `api/scripts/seed_dev_user.py` fails at startup in a fresh stack: `SaveRecipeDraft` needs a `units` argument it does not pass. The entrypoint logs it and carries on.
-- `worktree-bootstrap.sh` is unsafe for a worktree under `.claude/worktrees/`: see Setup.
+- `worktree-bootstrap.sh` was unsafe for a worktree under `.claude/worktrees/`: see Setup. It has since been replaced by `scripts/worktree/ensure.sh`.
