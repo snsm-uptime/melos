@@ -454,7 +454,7 @@ stories:
     title: Create, rename and delete notebooks (personal by their owner, kitchen by any kitchen member)
     epic: Recipes
     priority: must
-    status: in_progress
+    status: done
     journey: J1a
     source: prd.md 1.5H, 1.6 (notebook), J1a, Appendix A (Notebook); gap found by spec 056 on 2026-10-23; specs/059-notebook-management
     notes: >
