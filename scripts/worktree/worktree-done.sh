@@ -31,10 +31,18 @@ if [[ -n "$(git -C "$WORKTREE" status --porcelain)" ]]; then
   exit 1
 fi
 
+# Every refusal comes before anything is stopped or deleted.
+if git -C "$PRIMARY" worktree list --porcelain |
+  awk -v path="worktree $WORKTREE" 'BEGIN { RS = "" } index($0, path "\n") == 1 && /\nlocked/ { found = 1 } END { exit !found }'; then
+  echo "error: $WORKTREE is locked by a running Claude session. Exit it first." >&2
+  exit 1
+fi
+
 BRANCH="$(git -C "$WORKTREE" rev-parse --abbrev-ref HEAD)"
 
 if [[ -f "$WORKTREE/.env" ]]; then
   compose_require_docker
+  compose_require_env "$WORKTREE"
   DATA="$(compose_data_root "$WORKTREE")"
   echo "==> Stopping the stack"
   COMPOSE_ROOT="$WORKTREE" bash "$SCRIPT_DIR/../compose-down.sh" --wipe
