@@ -60,6 +60,20 @@ compose_require_env() {
     echo "refusing to run: without .env, Compose would use the default project name and may hit the wrong stack." >&2
     return 1
   fi
+  # A worktree holding the primary's .env resolves to the primary's project and data.
+  if compose_is_linked_worktree "$root" && ! compose_is_worktree_env "$root/.env"; then
+    echo "error: $root is a worktree, but its .env has no worktree settings." >&2
+    echo "refusing to run: Compose would act on the primary checkout's stack." >&2
+    echo "fix it from the worktree: rm .env && bash scripts/worktree/ensure.sh" >&2
+    return 1
+  fi
+}
+
+compose_is_linked_worktree() {
+  local root="$1" git_dir common_dir
+  git_dir="$(git -C "$root" rev-parse --path-format=absolute --git-dir 2>/dev/null)" || return 1
+  common_dir="$(git -C "$root" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || return 1
+  [[ "$git_dir" != "$common_dir" ]]
 }
 
 compose_require_files() {
