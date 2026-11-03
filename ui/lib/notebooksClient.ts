@@ -109,6 +109,28 @@ export function createNotebook(name: string): Promise<NotebookResult<NotebookRes
   });
 }
 
+/** A new, empty notebook in a kitchen, recorded as the caller's own (spec 059). */
+export function createKitchenNotebook(
+  kitchenId: string,
+  name: string,
+): Promise<NotebookResult<NotebookResponse>> {
+  return requestJson(`/api/notebooks/kitchens/${encodeURIComponent(kitchenId)}`, asNotebook, {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+}
+
+/** Mirrors the api's rule, to decide what to show. The api remains the rule (spec 059 R5). */
+export function canManageNotebook(
+  notebook: Pick<NotebookResponse, "access" | "kitchen_is_archived">,
+): boolean {
+  return (
+    notebook.access === "owner" ||
+    (notebook.access === "kitchen_member" && notebook.kitchen_is_archived === false)
+  );
+}
+
 /** The notebooks of one kitchen, for a member of it. */
 export function fetchKitchenNotebooks(
   kitchenId: string,
@@ -254,6 +276,23 @@ export function cancelNotebookInvite(
   inviteId: string,
 ): Promise<NotebookResult<null>> {
   return requestEmpty(`${notebookPath(notebookId)}/invites/${encodeURIComponent(inviteId)}`);
+}
+
+/** Gives a notebook a new name (spec 059). */
+export function renameNotebook(
+  notebookId: string,
+  name: string,
+): Promise<NotebookResult<NotebookResponse>> {
+  return requestJson(notebookPath(notebookId), asNotebook, {
+    method: "PATCH",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+}
+
+/** Deletes a notebook and what it holds (spec 059). */
+export function deleteNotebook(notebookId: string): Promise<NotebookResult<null>> {
+  return requestEmpty(notebookPath(notebookId));
 }
 
 export function leaveNotebook(notebookId: string): Promise<NotebookResult<null>> {

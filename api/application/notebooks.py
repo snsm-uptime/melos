@@ -15,6 +15,7 @@ from uuid import UUID, uuid4
 from domain.errors import (
     AliasRequiredError,
     KitchenArchivedError,
+    KitchenNotFoundError,
     NotebookNotFoundError,
     SnapshotExistsError,
 )
@@ -22,6 +23,7 @@ from domain.notebook import (
     Notebook,
     NotebookAccess,
     NotebookKind,
+    assert_can_manage,
     choose_capture_notebook,
     default_notebook_name,
     kitchen_notebook_name,
@@ -36,6 +38,7 @@ from application.kitchen_access import (
 from application.kitchens import KitchenRecord, KitchenRepository
 from application.ports import (
     IngredientCatalog,
+    KitchenAccessGrant,
     NotebookFacts,
     NotebookRepository,
     PreferencesRepository,
@@ -140,7 +143,11 @@ def ensure_kitchen_notebook(
     if existing:
         return existing[0], False
     return _create_kitchen_notebook(
-        kitchen, actor_user_id, alias, language, notebooks=notebooks, catalog=catalog
+        kitchen,
+        actor_user_id,
+        kitchen_notebook_name(alias, kitchen.name, language),
+        notebooks=notebooks,
+        catalog=catalog,
     ), True
 
 
@@ -162,22 +169,52 @@ def ensure_member_kitchen_notebook(
     if existing is not None:
         return existing, False
     return _create_kitchen_notebook(
-        kitchen, actor_user_id, alias, language, notebooks=notebooks, catalog=catalog
+        kitchen,
+        actor_user_id,
+        kitchen_notebook_name(alias, kitchen.name, language),
+        notebooks=notebooks,
+        catalog=catalog,
     ), True
+
+
+def _locked_to_manage(
+    notebooks: NotebookRepository, actor_user_id: UUID, notebook_id: UUID
+) -> NotebookFacts:
+    """The facts of a notebook the caller may rename or delete, with its locks held (research R2).
+
+    An outsider takes no lock. A kitchen notebook locks the kitchen first, the order the snapshot
+    path takes, so the archived check below is exact. Access is read again under the locks, since
+    it may have ended while the request waited.
+    """
+    facts = notebooks.facts_for(actor_user_id, notebook_id)
+    if facts is None:
+        raise NotebookNotFoundError()
+    notebook_view(facts)
+    if facts.notebook.kitchen_id is not None:
+        try:
+            notebooks.lock_kitchen(facts.notebook.kitchen_id)
+        except KitchenNotFoundError:
+            # The notebook went with its kitchen.
+            raise NotebookNotFoundError() from None
+    notebooks.lock_notebook(notebook_id)
+    facts = notebooks.facts_for(actor_user_id, notebook_id)
+    if facts is None:
+        raise NotebookNotFoundError()
+    assert_can_manage(notebook_view(facts).access, facts.kitchen_is_archived)
+    return facts
 
 
 def _create_kitchen_notebook(
     kitchen: KitchenRecord,
     actor_user_id: UUID,
-    alias: str,
-    language: str | None,
+    name: str,
     *,
     notebooks: NotebookRepository,
     catalog: IngredientCatalog,
 ) -> UUID:
     notebook = Notebook(
         id=uuid4(),
-        name=kitchen_notebook_name(alias, kitchen.name, language),
+        name=name,
         kitchen_id=kitchen.id,
         owner_user_id=actor_user_id,
     )
@@ -276,6 +313,114 @@ class CreateNotebookService:
 
 
 @dataclass(frozen=True, slots=True)
+class CreateKitchenNotebookCommand:
+    actor_user_id: UUID
+    kitchen_id: UUID
+    name: str
+
+
+class CreateKitchenNotebookService:
+    """A new, empty kitchen notebook, recorded as the caller's own (spec 059 research R11).
+
+    Access comes first, so a non-member learns nothing from a bad name. The archived check is
+    read under the kitchen lock, which conflicts with archiving.
+    """
+
+    def __init__(
+        self,
+        kitchens: KitchenRepository,
+        notebooks: NotebookRepository,
+        catalog: IngredientCatalog,
+        committer: TransactionCommitter,
+    ) -> None:
+        self._kitchens = kitchens
+        self._notebooks = notebooks
+        self._catalog = catalog
+        self._committer = committer
+
+    def execute(self, command: CreateKitchenNotebookCommand) -> NotebookView:
+        self._authorize(command)
+        self._notebooks.lock_kitchen(command.kitchen_id)
+        grant = self._authorize(command)
+        kitchen = self._kitchens.get_kitchen_with_grant(grant, command.kitchen_id)
+        if kitchen.is_archived:
+            raise KitchenArchivedError()
+        notebook_id = _create_kitchen_notebook(
+            kitchen,
+            command.actor_user_id,
+            validate_notebook_name(command.name),
+            notebooks=self._notebooks,
+            catalog=self._catalog,
+        )
+        facts = self._notebooks.facts_for(command.actor_user_id, notebook_id)
+        if facts is None:
+            raise NotebookNotFoundError()
+        view = notebook_view(facts)
+        self._committer.commit()
+        return view
+
+    def _authorize(self, command: CreateKitchenNotebookCommand) -> KitchenAccessGrant:
+        return AuthorizeKitchenAccessService(self._kitchens).execute(
+            AuthorizeKitchenAccessCommand(
+                acting_user_id=command.actor_user_id,
+                kitchen_id=command.kitchen_id,
+                action="read_kitchen",
+            )
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class RenameNotebookCommand:
+    actor_user_id: UUID
+    notebook_id: UUID
+    name: str
+
+
+class RenameNotebookService:
+    """Give a notebook a new name (spec 059 FR-001 to FR-004).
+
+    Saving the name it already has changes nothing and is not validated: a generated name can
+    be over the limit, and the person did not type it (research R6).
+    """
+
+    def __init__(self, notebooks: NotebookRepository, committer: TransactionCommitter) -> None:
+        self._notebooks = notebooks
+        self._committer = committer
+
+    def execute(self, command: RenameNotebookCommand) -> NotebookView:
+        facts = _locked_to_manage(self._notebooks, command.actor_user_id, command.notebook_id)
+        if command.name.strip() == facts.notebook.name:
+            return notebook_view(facts)
+        self._notebooks.rename(command.notebook_id, validate_notebook_name(command.name))
+        renamed = self._notebooks.facts_for(command.actor_user_id, command.notebook_id)
+        if renamed is None:
+            raise NotebookNotFoundError()
+        view = notebook_view(renamed)
+        self._committer.commit()
+        return view
+
+
+@dataclass(frozen=True, slots=True)
+class DeleteNotebookCommand:
+    actor_user_id: UUID
+    notebook_id: UUID
+
+
+class DeleteNotebookService:
+    """Delete a notebook and what it holds, as one step (spec 059 FR-005 to FR-010)."""
+
+    def __init__(self, notebooks: NotebookRepository, committer: TransactionCommitter) -> None:
+        self._notebooks = notebooks
+        self._committer = committer
+
+    def execute(self, command: DeleteNotebookCommand) -> None:
+        _locked_to_manage(self._notebooks, command.actor_user_id, command.notebook_id)
+        self._notebooks.delete(command.notebook_id)
+        self._committer.commit()
+        logger.info("notebook_deleted notebook_id=%s", command.notebook_id)
+
+
+@dataclass(frozen=True, slots=True)
 class GetNotebookCommand:
     actor_user_id: UUID
     notebook_id: UUID
@@ -342,9 +487,9 @@ class ListKitchenNotebooksService:
         views = []
         for notebook in self._notebooks.kitchen_notebooks(kitchen.id):
             facts = self._notebooks.facts_for(command.actor_user_id, notebook.id)
-            if facts is None:
-                raise NotebookNotFoundError()
-            views.append(notebook_view(facts))
+            # None: deleted since the list was read (spec 059 FR-019).
+            if facts is not None:
+                views.append(notebook_view(facts))
         return views
 
 
@@ -504,9 +649,11 @@ class AddNotebookSnapshotService:
             logger.info("notebook snapshot outcome=replayed")
             return AddedSnapshot(self._view(command.actor_user_id, replayed), created=False)
 
-        source = self._notebooks.facts_for(command.actor_user_id, command.source_notebook_id)
-        if source is None or source.notebook.kind != "personal" or source.role != "owner":
-            raise NotebookNotFoundError()
+        self._owned_source(command)
+        # Held to the end, so a deletion of the original waits for the copy or is seen here
+        # (spec 059 research R3). The owner may have changed while this waited.
+        self._notebooks.lock_notebook(command.source_notebook_id)
+        source = self._owned_source(command)
         if not command.confirm_repeat and self._notebooks.has_snapshot_of(
             kitchen.id, source.notebook.id
         ):
@@ -525,6 +672,12 @@ class AddNotebookSnapshotService:
         copied = self._recipes.copy_all(source.notebook.id, notebook.id)
         logger.info("notebook snapshot outcome=created recipes=%d", copied)
         return AddedSnapshot(self._view(command.actor_user_id, notebook.id), created=True)
+
+    def _owned_source(self, command: AddNotebookSnapshotCommand) -> NotebookFacts:
+        source = self._notebooks.facts_for(command.actor_user_id, command.source_notebook_id)
+        if source is None or source.notebook.kind != "personal" or source.role != "owner":
+            raise NotebookNotFoundError()
+        return source
 
     def _view(self, user_id: UUID, notebook_id: UUID) -> NotebookView:
         facts = self._notebooks.facts_for(user_id, notebook_id)

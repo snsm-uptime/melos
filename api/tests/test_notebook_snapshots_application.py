@@ -150,6 +150,47 @@ def test_check_4_only_a_personal_notebook_the_caller_owns_is_accepted(
     assert _kitchen_rows(world, kitchen) == []
 
 
+def test_check_4_runs_again_under_the_source_lock(world: World) -> None:
+    kitchen = _kitchen(world, ANA)
+    source = _personal(world, ANA, "ana's Notebook")
+
+    _add(world, kitchen, source)
+
+    calls = world.notebooks.calls
+    assert calls.index("lock_kitchen") < calls.index("lock_notebook")
+    assert calls.index("lock_notebook") < calls.index("has_snapshot_of")
+
+
+def test_check_4_an_original_deleted_while_waiting_is_not_found(world: World) -> None:
+    kitchen = _kitchen(world, ANA)
+    source = _personal(world, ANA, "ana's Notebook")
+
+    def deleted_first(notebook_id: UUID) -> None:
+        del world.notebooks.notebooks[notebook_id]
+
+    world.notebooks.on_notebook_lock = deleted_first
+
+    with pytest.raises(NotebookNotFoundError):
+        _add(world, kitchen, source)
+
+    assert _kitchen_rows(world, kitchen) == []
+
+
+def test_check_4_an_original_no_longer_owned_once_locked_is_not_found(world: World) -> None:
+    kitchen = _kitchen(world, ANA)
+    source = _personal(world, ANA, "ana's Notebook")
+
+    def passed_on(notebook_id: UUID) -> None:
+        world.notebooks.roles[(notebook_id, ANA)] = "member"
+
+    world.notebooks.on_notebook_lock = passed_on
+
+    with pytest.raises(NotebookNotFoundError):
+        _add(world, kitchen, source)
+
+    assert _kitchen_rows(world, kitchen) == []
+
+
 def test_check_5_a_repeat_needs_a_confirmation(world: World) -> None:
     kitchen = _kitchen(world, ANA)
     source = _personal(world, ANA, "ana's Notebook")

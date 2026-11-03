@@ -11,6 +11,7 @@ import { notebooksMessages } from "@/lib/i18n/notebooks";
 import { fetchKitchenNotebooks, type NotebookResponse } from "@/lib/notebooksClient";
 import { requestSidePanelRefresh } from "@/lib/sidePanelClient";
 
+import { NewNotebookCard } from "../notebooks/NewNotebookCard";
 import styles from "../notebooks/notebooks.module.scss";
 import { AddNotebookSnapshot } from "./AddNotebookSnapshot";
 
@@ -27,9 +28,9 @@ type KitchenNotebooksScreenProps = {
 };
 
 /**
- * The kitchen's notebooks as cards, in the Notebook tab's grid (spec 035 FR-007a). The first cell
- * adds a personal notebook. A kitchen that isn't archived always lists at least one notebook,
- * since the first read makes it, so an empty list also means no add action.
+ * The kitchen's notebooks as cards, in the Notebook tab's grid (spec 035 FR-007a). The first cells
+ * add a personal notebook and a new empty one. A kitchen that isn't archived always lists at least
+ * one notebook, since the first read makes it, so an empty list also means no add action.
  */
 export function KitchenNotebooksScreen({
   kitchenId,
@@ -107,6 +108,11 @@ export function KitchenNotebooksScreen({
           {canAdd ? (
             <li>
               <AddNotebookSnapshot kitchenId={kitchenId} locale={locale} onAdded={onAdded} />
+            </li>
+          ) : null}
+          {canAdd ? (
+            <li>
+              <NewNotebookCard locale={locale} kitchenId={kitchenId} />
             </li>
           ) : null}
           {state.notebooks.map((notebook) => (

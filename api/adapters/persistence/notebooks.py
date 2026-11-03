@@ -6,7 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from application.ports import NotebookFacts, NotebookMemberRecord
-from domain.errors import NotebookNotFoundError, PrincipalNotFoundError
+from domain.errors import KitchenNotFoundError, NotebookNotFoundError, PrincipalNotFoundError
 from domain.notebook import Notebook, NotebookRole
 from sqlalchemy import Row, Select, and_, case, delete, exists, func, or_, select, update
 from sqlalchemy.orm import Session, aliased
@@ -243,11 +243,16 @@ class SqlAlchemyNotebookRepository:
     def lock_kitchen(self, kitchen_id: UUID) -> None:
         # FOR NO KEY UPDATE: serializes first creations in one kitchen without blocking
         # the FOR KEY SHARE locks that foreign-key inserts take (research R6).
-        self._session.execute(
-            select(KitchenModel.id)
+        # populate_existing: a read after the lock sees what the lock waited for, not the copy
+        # this session loaded before it (spec 059 research R2).
+        locked = self._session.scalars(
+            select(KitchenModel)
             .where(KitchenModel.id == kitchen_id)
             .with_for_update(key_share=True)
-        ).one()
+            .execution_options(populate_existing=True)
+        ).one_or_none()
+        if locked is None:
+            raise KitchenNotFoundError()
 
     def find_snapshot(self, kitchen_id: UUID, snapshot_key: UUID) -> UUID | None:
         return self._session.scalar(
@@ -271,15 +276,27 @@ class SqlAlchemyNotebookRepository:
 
     def lock_notebook(self, notebook_id: UUID) -> None:
         # Same strength as lock_kitchen: recipe saves take FOR KEY SHARE and are not blocked.
-        locked = self._session.execute(
-            select(NotebookModel.id)
+        # populate_existing, as in lock_kitchen: facts read after the lock carry the current name.
+        locked = self._session.scalars(
+            select(NotebookModel)
             .where(NotebookModel.id == notebook_id)
             .with_for_update(key_share=True)
+            .execution_options(populate_existing=True)
         ).one_or_none()
         if locked is None:
             raise NotebookNotFoundError()
 
-    def delete_personal(self, notebook_id: UUID) -> None:
+    def rename(self, notebook_id: UUID, name: str) -> None:
+        self._session.execute(
+            update(NotebookModel).where(NotebookModel.id == notebook_id).values(name=name)
+        )
+
+    def delete(self, notebook_id: UUID) -> None:
+        # The full lock: a recipe save holds FOR KEY SHARE, so with anything weaker it could
+        # commit after the source ids are read and leave its source behind (research R1).
+        self._session.execute(
+            select(NotebookModel.id).where(NotebookModel.id == notebook_id).with_for_update()
+        )
         source_ids = [
             source_id
             for source_id in self._session.scalars(

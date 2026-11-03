@@ -7,7 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NewNotebookCard } from "./NewNotebookCard";
 
 const push = vi.fn();
-const router = { push };
+const replace = vi.fn();
+const router = { push, replace };
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 
 describe("NewNotebookCard", () => {
@@ -105,5 +106,35 @@ describe("NewNotebookCard", () => {
     expect(container.querySelector('[role="dialog"]')).toBeNull();
     await click(button("New notebook"));
     expect((container.querySelector('input[type="text"]') as HTMLInputElement).value).toBe("");
+  });
+
+  describe("in a kitchen", () => {
+    beforeEach(() => {
+      replace.mockReset();
+      act(() => root.render(<NewNotebookCard locale="en" kitchenId="k1" />));
+    });
+
+    it("adds to the kitchen and opens the notebook with the way back to its list", async () => {
+      const fetchMock = reply(201, { id: "nb-9", name: "Holidays" });
+      await open("Holidays");
+      await click(button("Create"));
+      expect((fetchMock.mock.calls[0] as unknown as [string])[0]).toBe(
+        "/api/notebooks/kitchens/k1",
+      );
+      expect(push).toHaveBeenCalledWith(
+        `/notebooks/nb-9?from=${encodeURIComponent("/kitchens/k1/notebooks")}`,
+      );
+    });
+
+    it("says the kitchen is gone, and closing goes to the kitchens", async () => {
+      reply(404, { code: "kitchen_not_found" });
+      await open("Holidays");
+      await click(button("Create"));
+      expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+        "This kitchen is no longer available.",
+      );
+      await click(button("Close"));
+      expect(replace).toHaveBeenCalledWith("/kitchens");
+    });
   });
 });

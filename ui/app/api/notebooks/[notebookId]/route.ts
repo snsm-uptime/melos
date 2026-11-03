@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getApiInternalUrl } from "@/lib/api";
+import { forwardRecipeRequest } from "@/lib/recipeBff";
 
 type RouteContext = {
   params: Promise<{ notebookId: string }>;
@@ -35,5 +36,24 @@ export async function GET(request: NextRequest, context: RouteContext) {
       "Content-Type":
         upstream.headers.get("Content-Type") || "application/json",
     },
+  });
+}
+
+/** Renames a notebook (spec 059). */
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  const { notebookId } = await context.params;
+  return forwardRecipeRequest(request, {
+    method: "PATCH",
+    path: `/notebooks/${encodeURIComponent(notebookId)}`,
+    withBody: true,
+  });
+}
+
+/** Deletes a notebook; a 204 passes through with no body (spec 059). */
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  const { notebookId } = await context.params;
+  return forwardRecipeRequest(request, {
+    method: "DELETE",
+    path: `/notebooks/${encodeURIComponent(notebookId)}`,
   });
 }

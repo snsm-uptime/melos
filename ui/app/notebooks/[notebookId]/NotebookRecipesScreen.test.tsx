@@ -208,8 +208,171 @@ describe("NotebookRecipesScreen", () => {
     expect(replace).toHaveBeenCalledWith("/notebooks");
   });
 
+  it("on a first load that answers 404, goes back to the list it came from", async () => {
+    search = `from=${encodeURIComponent("/kitchens/k1/notebooks")}`;
+    stub({ notebook: { status: 404, body: { code: "notebook_not_found" } } });
+
+    await render();
+
+    expect(replace).toHaveBeenCalledWith("/kitchens/k1/notebooks");
+  });
+
+  it("goes to the kitchen's notebooks when a loaded kitchen notebook goes", async () => {
+    const inKitchen = {
+      ...notebook,
+      kind: "kitchen",
+      access: "kitchen_member",
+      kitchen_id: "k1",
+      kitchen_is_archived: false,
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const gone = url.includes("/recipes");
+        return {
+          ok: !gone,
+          status: gone ? 404 : 200,
+          json: async () => (gone ? { code: "notebook_not_found" } : inKitchen),
+        };
+      }),
+    );
+
+    await render();
+
+    expect(replace).toHaveBeenCalledWith("/kitchens/k1/notebooks");
+  });
+
   const empty = { items: [], page: 1, page_size: 12, total: 0, total_pages: 0 };
   const shareButton = () => container.querySelector('button[aria-label="Share this notebook"]');
+  const optionsButton = () =>
+    container.querySelector('button[aria-label="Notebook options"]') as HTMLButtonElement | null;
+  const item = (name: string) =>
+    Array.from(container.querySelectorAll<HTMLElement>('[role="menuitem"]')).find(
+      (el) => el.textContent === name,
+    ) as HTMLElement;
+  const dialogButton = (name: string) =>
+    Array.from(container.querySelectorAll('[role="dialog"] button, main button')).find(
+      (el) => el.textContent === name,
+    ) as HTMLButtonElement;
+  const inKitchen = {
+    ...notebook,
+    kind: "kitchen",
+    access: "kitchen_member",
+    is_default: false,
+    kitchen_id: "k1",
+    kitchen_is_archived: false,
+  };
+
+  async function choose(name: string) {
+    act(() => optionsButton()?.click());
+    await act(async () => {
+      item(name).click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+
+  function stubWrites(body: unknown, write: { status: number; body: unknown }) {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      const reply =
+        init?.method === "PATCH" || init?.method === "DELETE"
+          ? write
+          : url.includes("/recipes")
+            ? { status: 200, body: empty }
+            : url.endsWith("/members")
+              ? { status: 200, body: { members: [] } }
+              : { status: 200, body };
+      return {
+        ok: reply.status < 300,
+        status: reply.status,
+        json: async () => reply.body,
+      };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  it.each([
+    ["the owner", notebook],
+    ["a member of an active kitchen", inKitchen],
+  ])("shows the options to %s", async (_who, body) => {
+    stub({ notebook: { status: 200, body }, recipes: empty });
+
+    await render();
+
+    expect(optionsButton()).not.toBeNull();
+  });
+
+  it.each([
+    ["a notebook member", { ...notebook, access: "member" }],
+    ["an archived kitchen", { ...inKitchen, kitchen_is_archived: true }],
+  ])("shows no options to %s", async (_who, body) => {
+    stub({ notebook: { status: 200, body }, recipes: empty });
+
+    await render();
+
+    expect(optionsButton()).toBeNull();
+  });
+
+  it("keeps Share with the options on a personal notebook, after it", async () => {
+    stub({ notebook: { status: 200, body: notebook }, recipes: empty });
+
+    await render();
+
+    const position = shareButton()?.compareDocumentPosition(optionsButton() as Node) ?? 0;
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("renames, closes the dialog and updates the title", async () => {
+    const fetchMock = stubWrites(notebook, {
+      status: 200,
+      body: { ...notebook, name: "Winter soups" },
+    });
+    await render();
+    await choose("Rename");
+    const input = container.querySelector('[role="dialog"] input') as HTMLInputElement;
+    expect(input.value).toBe("ana's Notebook");
+
+    await act(async () => {
+      dialogButton("Save").click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH")).toBe(true);
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(container.querySelector("header h1")?.textContent).toBe("Winter soups");
+  });
+
+  it("on a rename that finds it gone, closing goes to the kitchen's notebooks", async () => {
+    stubWrites(inKitchen, { status: 404, body: { code: "notebook_not_found" } });
+    await render();
+    await choose("Rename");
+
+    await act(async () => {
+      dialogButton("Save").click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(container.querySelector('[role="dialog"] [role="alert"]')?.textContent).toBe(
+      "This notebook no longer exists.",
+    );
+    await act(async () => dialogButton("Close").click());
+    expect(replace).toHaveBeenCalledWith("/kitchens/k1/notebooks");
+  });
+
+  it("deletes after confirming and goes to the person's notebooks", async () => {
+    const fetchMock = stubWrites(notebook, { status: 204, body: null });
+    await render();
+    await choose("Delete");
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "DELETE")).toBe(false);
+
+    await act(async () => {
+      dialogButton("Delete").click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "DELETE")).toBe(true);
+    expect(replace).toHaveBeenCalledWith("/notebooks");
+  });
 
   it("puts the share button in the chrome on a personal notebook and opens the dialog", async () => {
     stub({ notebook: { status: 200, body: notebook }, recipes: empty });

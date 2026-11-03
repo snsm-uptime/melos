@@ -910,6 +910,9 @@ def test_notebook_routes_are_gets_on_the_four_contract_paths(client: TestClient)
         "/notebooks/kitchens/{kitchen_id}/capture-notebook",
     }
     assert {path: notebook_paths.pop(path) for path in writes} == dict.fromkeys(writes, {"post"})
+    # S-059: a kitchen notebook is added, and any notebook renamed or deleted.
+    assert notebook_paths.pop("/notebooks/kitchens/{kitchen_id}") == {"get", "post"}
+    assert notebook_paths.pop("/notebooks/{notebook_id}") == {"get", "patch", "delete"}
     assert {method for operations in notebook_paths.values() for method in operations} == {"get"}
     capture_paths = {path: set(ops) for path, ops in paths.items() if "/captures/" in path}
     assert capture_paths == {"/notebooks/{notebook_id}/captures/text": {"post"}}

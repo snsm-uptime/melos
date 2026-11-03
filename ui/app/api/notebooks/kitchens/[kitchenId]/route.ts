@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getApiInternalUrl } from "@/lib/api";
+import { forwardRecipeRequest } from "@/lib/recipeBff";
 
 type RouteContext = {
   params: Promise<{ kitchenId: string }>;
@@ -35,5 +36,15 @@ export async function GET(request: NextRequest, context: RouteContext) {
       "Content-Type":
         upstream.headers.get("Content-Type") || "application/json",
     },
+  });
+}
+
+/** Adds an empty kitchen notebook (spec 059). */
+export async function POST(request: NextRequest, context: RouteContext) {
+  const { kitchenId } = await context.params;
+  return forwardRecipeRequest(request, {
+    method: "POST",
+    path: `/notebooks/kitchens/${encodeURIComponent(kitchenId)}`,
+    withBody: true,
   });
 }

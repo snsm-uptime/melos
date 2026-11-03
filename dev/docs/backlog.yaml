@@ -456,10 +456,11 @@ stories:
     priority: must
     status: in_progress
     journey: J1a
-    source: prd.md 1.5H, 1.6 (notebook), J1a, Appendix A (Notebook); gap found by spec 056 on 2026-10-23
+    source: prd.md 1.5H, 1.6 (notebook), J1a, Appendix A (Notebook); gap found by spec 056 on 2026-10-23; specs/059-notebook-management
     notes: >
       Started 2026-11-01 on branch 057-notebook-invites: creating a personal notebook (POST /notebooks and
-      the plus tile on the Notebook tab) is built. Rename, delete and kitchen notebooks are not.
+      the plus tile on the Notebook tab) is built. Built 2026-11-02 on worktree-059-notebook-rename,
+      not merged yet: rename, delete and adding an empty kitchen notebook.
       Added 2026-10-23: S-056 makes only the default personal notebook, the kitchen notebook made
       with a kitchen and the capture notebook, and no story covered the rest of PRD J1a. A person
       creates more personal notebooks (they are the owner; the catalog starts from their personal
@@ -468,6 +469,10 @@ stories:
       notebook deletes its recipes and catalog; a deleted default is recreated on next use
       (S-056); snapshots made from it keep their recipes and lose the origin label. Must per PRD
       Appendix C (notebooks), but not needed for the first full flow, so it comes after S-058.
+    verification: >
+      api 1451 passed, 2 failed before and after; ui 1311 passed; browser walk passed at 360 and 1280
+      in both languages and by keyboard. Quickstart steps not walked in a browser are in
+      specs/059-notebook-management/notes.md.
 
   - id: S-019
     title: Embeddings and pgvector search pre-filtered by kitchen

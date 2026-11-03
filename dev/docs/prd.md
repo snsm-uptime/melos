@@ -44,8 +44,8 @@ Browser / External AI (Claude, ChatGPT, etc.)
 | Area | Reused as is | Adapted |
 |---|---|---|
 | Repo layout | `api/` (hexagonal), `ui/`, `scripts/`, `.github/workflows/ci.yml`, `.cursor/worktrees.json` | Project name, env prefix `FH_` → `MELOS_`, data dir `~/melos` |
-| Compose | `docker-compose.yml` + `dev`, `prod`, `test`, `worktree`, `worktree-lite` overlays | `db` image → `pgvector/pgvector:pg16`; add `GEMINI_*` variables |
-| Scripts | `compose-up/down/restart/wipe-db.sh`, `compose-lib.sh`, `worktree/*` | Names and default ports only |
+| Compose | `docker-compose.yml` + `dev`, `prod`, `test`, `worktree` overlays | `db` image → `pgvector/pgvector:pg16`; add `GEMINI_*` variables |
+| Scripts | `compose-up/down/restart/wipe-db.sh`, `compose-lib.sh`, `worktree/*` | Names and default ports only. Parallel work uses Claude Code worktrees, set up by a hook (`scripts/worktree/README.md`) |
 | Lists + membership + invites | Membership checks, list access checks, invite-by-email flow | "List" becomes **Kitchen** |
 | Authentication | The whole layer, see 1.3 | Names only (cookie `melos_session`, env prefix) |
 | UI shell | `AppShell`, `AccountMenu`, `ActionDialog`, `Chip`, `ChipPicker`, `IconButton`, `Disclosure`, `CopyButton` and the Tailwind theme | Keep the language setting: the UI is English and Spanish, chosen in the account |

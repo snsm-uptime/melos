@@ -37,6 +37,6 @@ Do this at 360px and 1280px, in English and Spanish, and once with the keyboard 
 ## Automated-only cases
 
 - A forced failure halfway through the copy leaves nothing behind (SC-005).
-- Deleting the original clears the label and keeps the recipes, and FR-017 still holds. No route deletes a personal notebook until S-059.
+- Deleting the original clears the label and keeps the recipes, and FR-017 still holds.
 - The same `snapshot_key` sent twice, in sequence and concurrently, makes one snapshot.
 - A field-by-field comparison of original and copy (SC-003).

@@ -17,8 +17,10 @@ from uuid import UUID
 from domain.errors import (
     InvalidNotebookError,
     InvalidNotebookNameError,
+    KitchenArchivedError,
     NotebookChoiceRequiredError,
     NotebookNotFoundError,
+    NotebookOwnerOnlyError,
 )
 from domain.preferences import name_language
 
@@ -126,6 +128,18 @@ def can_write_recipes(access: NotebookAccess, kitchen_is_archived: bool | None) 
     if access == "kitchen_member":
         return not kitchen_is_archived
     return True
+
+
+def assert_can_manage(access: NotebookAccess, kitchen_is_archived: bool | None) -> None:
+    """Refuse a caller who may see a notebook but not rename or delete it (spec 059 research R5).
+
+    The owner of a personal notebook may, its members may not. A member of a kitchen may manage
+    its notebooks unless the kitchen is archived.
+    """
+    if access == "member":
+        raise NotebookOwnerOnlyError()
+    if access == "kitchen_member" and kitchen_is_archived:
+        raise KitchenArchivedError()
 
 
 def choose_capture_notebook(candidates: list[UUID], picked: UUID | None) -> UUID | None:

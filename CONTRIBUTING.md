@@ -93,11 +93,12 @@ Services will be available at:
    docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api
    ```
 
-5. **Use git worktrees for parallel development**:
+5. **Use Claude Code worktrees for parallel development**:
    ```bash
-   ./scripts/worktree/worktree-add.sh <slug> <branch>
+   claude -n <story> -w <story>-<name>
    ```
-   This gives each worktree its own Compose stack with isolated ports and data.
+   A hook gives the worktree its own ports and data. See
+   [`scripts/worktree/README.md`](scripts/worktree/README.md).
 
 ## Code Review Process
 

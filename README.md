@@ -162,8 +162,8 @@ push or deploy without it.
 (`docker compose -f docker-compose.yml -f docker-compose.test.yml run --rm --build api`)
 with ruff; ui runs vitest, ESLint and the TypeScript check. CI
 (`.github/workflows/ci.yml`) runs the api and ui checks on every push and
-pull request. Worktrees (`scripts/worktree/`) give parallel agents
-their own Compose stack.
+pull request. Claude Code worktrees give parallel agents their own Compose stack
+(`scripts/worktree/README.md`).
 
 ## Contributing
 
@@ -220,9 +220,9 @@ cd api && uv run ruff check . && uv run pytest -q
 cd ui && npm run lint && npm run typecheck && npm test
 ```
 
-Parallel work: `./scripts/worktree/worktree-add.sh <slug> <branch>` gives each
-worktree its own Compose stack (`MELOS_COMPOSE_NAME`, `API_HOST_PORT`,
-`UI_HOST_PORT`). `compose-up.sh` refuses to start while another Compose project
+Parallel work: `claude -n <story> -w <story>-<name>` gives each worktree its own
+Compose stack (`MELOS_COMPOSE_NAME`, `API_HOST_PORT`, `UI_HOST_PORT`), set up by a
+hook (`scripts/worktree/README.md`). `compose-up.sh` refuses to start while another Compose project
 is using this checkout's data directory, because a different project name does
 not separate the Postgres data; give each checkout its own `MELOS_DATA`.
 

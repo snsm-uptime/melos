@@ -13,7 +13,7 @@ from application.ports import (
     RecipeLineDetail,
     StoredRecipe,
 )
-from domain.errors import RecipeChangedError, RecipeNotFoundError
+from domain.errors import NotebookNotFoundError, RecipeChangedError, RecipeNotFoundError
 from domain.recipe import EditedRecipe, NewRecipe
 from domain.recipe_draft import IngredientLine
 from sqlalchemy import delete, func, insert, select
@@ -70,6 +70,9 @@ class SqlAlchemyRecipeRepository:
         except IntegrityError as exc:
             if recipe.save_key is not None and "uq_recipe_author_save_key" in str(exc.orig):
                 raise DuplicateSaveKeyError from exc
+            # The notebook was deleted after it was read (spec 059 research R4).
+            if "recipe_notebook_id_fkey" in str(exc.orig):
+                raise NotebookNotFoundError from exc
             raise
         return _stored(row)
 

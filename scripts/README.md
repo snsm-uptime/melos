@@ -175,11 +175,11 @@ Each script automatically selects the right docker-compose files for your checko
 - `docker-compose.dev.yml` — local development overrides
 
 **Worktree files (when detected):**
-- `docker-compose.worktree.yml` — per-branch isolation (cursor worktree integration)
+- `docker-compose.worktree.yml` — per-branch isolation
 
 Worktree detection checks your `.env` file:
 - Looks for `MELOS_COMPOSE_NAME=melos-*` (indicates a worktree checkout)
-- Looks for a generated marker comment (`# --- cursor worktree overrides (generated) ---`)
+- Looks for a generated marker comment (`# --- worktree overrides (generated) ---`)
 
 ### Validation
 
@@ -385,9 +385,9 @@ COMPOSE_ROOT=/tmp/test-stack ./scripts/compose-up.sh -d
 COMPOSE_ROOT=/tmp/test-stack ./scripts/compose-down.sh
 ```
 
-### Worktree Integration (Cursor)
+### Worktree Integration
 
-If you're using a cursor worktree:
+In a Claude Code worktree set up as in [`worktree/README.md`](worktree/README.md):
 ```bash
 ./scripts/compose-up.sh -d
 # Automatically loads docker-compose.worktree.yml if detected

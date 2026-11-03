@@ -124,5 +124,5 @@ def test_a_notebook_with_no_members_is_deleted() -> None:
     result = _settle(repo)
 
     assert result == PassOwnedNotebooksResult(passed=[], deleted=[notebook_id])
-    assert repo.log == ["lock", "delete_personal"]
+    assert repo.log == ["lock", "delete"]
     assert notebook_id not in repo.notebooks

@@ -6,7 +6,7 @@ import { getApiInternalUrl } from "@/lib/api";
 export const RECIPE_WRITE_DEADLINE_MS = 15_000;
 
 type ForwardOptions = {
-  method: "GET" | "POST" | "PUT" | "DELETE";
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   path: string;
   /** Read the JSON body of the incoming request and send it on. */
   withBody?: boolean;
