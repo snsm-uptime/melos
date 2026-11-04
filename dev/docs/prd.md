@@ -1,6 +1,6 @@
 # Melos — Product specification
 
-> Instructions for the coding agent. Build exactly what is described here. If something is ambiguous or missing, **ask before assuming**. Items marked *Should* or *Later* are not built until the *Must* items in Appendix C are done.
+> Instructions for the coding agent. Build exactly what is described here. If something is ambiguous or missing, **ask before assuming**. The MVP closed on 2026-11-04 (Appendix C); later work is chosen by the owner from the backlog by priority, and a *Should* or *Later* item no longer waits for the *Must* items. Rules below that came from MVP limits may be changed by the story that needs it (constitution 2.0.0, principle 9).
 
 **Problem.** A couple that plans a weekly menu wastes time building the shopping list by hand from several recipes, with quantities that depend on how many people eat.
 
@@ -479,7 +479,7 @@ The user signs up, signs in, signs out, resets their password by email and edits
 - No crawling. A URL import fetches exactly the one page the user gave.
 - Imported recipes keep their source link. A personal notebook is private to its owner and members and is never shown in a kitchen; a kitchen gets a snapshot copy instead. No public sharing.
 - Author history is out of scope. A recipe shows its author's alias; if the author's account is deleted, the alias reads "unknown". A copy keeps no record of the recipe it was copied from; a snapshot keeps only a label naming the notebook it came from.
-- Captured source photos are not stored; only the extracted text is kept. A recipe's preview image may be stored as base64 text on the recipe.
+- Images are stored only where a story says so, with a size limit and a format check: a recipe's image (base64 text on the recipe; spec 026 and the recipe image story S-067) and cart receipts (S-068). A photo sent only for extraction is not kept unless its story stores it. (Before 2026-11-04, captured source photos were never stored; that MVP rule is lifted.)
 - No conversion between units or between mass and volume. No carry-over ("1 cup + 20 tbsp" stays as is).
 - An AI draft is never saved without the user confirming it.
 - Messages are never edited after they are sent.
@@ -604,6 +604,8 @@ steps[3]: "Fry the garlic in oil.","Add the tomato and cook 5 minutes.","Add the
 **Chat output format:** When the assistant returns shopping list history or other structured data, it is formatted as TOON in the response. The UI parses this TOON output and renders it as interactive cards (dates, recipes, kitchen names) for the user to click and navigate.
 
 ## Appendix C · Scope and schedule (delivery 02/11/2026)
+
+**MVP closed (2026-11-04).** The MVP is what was built up to 2026-11-04 (backlog S-001 to S-065, as recorded that day). The tables below are the MVP plan, kept for history. Work after that date is post-MVP: the owner picks stories from `dev/docs/backlog.yaml` by priority, *Should* and *Later* items no longer wait for *Must* items, and MVP-era descopes (such as Appendix E) may be restored by their story. New post-MVP stories so far: URL capture with the page's recipe photo (S-026, in design), recipe image (S-067), cart receipts (S-068).
 
 | Priority | Items |
 |---|---|

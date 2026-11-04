@@ -57,7 +57,8 @@ default one and holds log out.
 ## Progress
 
 Tracked in [dev/docs/backlog.yaml](dev/docs/backlog.yaml); the product spec is
-[dev/docs/prd.md](dev/docs/prd.md). Delivery: 02/11/2026.
+[dev/docs/prd.md](dev/docs/prd.md). MVP delivered 02/11/2026 and closed on
+2026-11-04; later work is post-MVP, picked from the backlog by priority.
 
 | Area | Status |
 |---|---|
