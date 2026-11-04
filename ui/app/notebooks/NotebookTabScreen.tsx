@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
+import { ChopsticksWokIcon, UserIcon } from "@/app/icons";
 import { CauldronLoader } from "@/components/CauldronLoader";
 import { useChromeHeader } from "@/components/ChromeBack";
 import { NotebookCard } from "@/components/NotebookCard/NotebookCard";
@@ -21,6 +22,9 @@ import styles from "./notebooks.module.scss";
 
 /** Same target as `aliasSetupHref` in lib/alias, kept local so this client file never imports server code. */
 const ALIAS_STEP_HREF = `/alias?returnTo=${encodeURIComponent("/notebooks")}`;
+
+/** The notebook tab's two lists: the caller's personal notebooks, and the notebooks of their kitchens. */
+type ListTab = "personal" | "kitchen";
 
 type TabState =
   | { status: "loading" }
@@ -42,6 +46,7 @@ export function NotebookTabScreen({
   const router = useRouter();
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<TabState>({ status: "loading" });
+  const [listTab, setListTab] = useState<ListTab>("personal");
 
   useEffect(() => {
     let current = true;
@@ -84,45 +89,115 @@ export function NotebookTabScreen({
     setAttempt((value) => value + 1);
   }
 
+  const kindOfTab = listTab === "personal" ? "personal" : "kitchen";
+  const shown = state.status === "ready" ? state.notebooks.filter((n) => n.kind === kindOfTab) : [];
+  const emptyText = listTab === "personal" ? t.tabEmpty : t.tabKitchenEmpty;
+
   return (
     <main className={`${styles.tabMain} flex-1`}>
       <SavedNotice returnPath="/notebooks" />
-      {state.status === "loading" ? <CauldronLoader label={t.loading} /> : null}
-      {state.status === "error" ? (
-        <div className={styles.state}>
-          <p className={styles.copy} role="alert">
-            {t.loadError}
-          </p>
-          <button type="button" className={styles.retry} onClick={retry}>
-            {t.retry}
-          </button>
-        </div>
-      ) : null}
-      {state.status === "ready" && state.notebooks.length === 0 ? (
-        <p className={styles.copy}>{t.tabEmpty}</p>
-      ) : null}
-      {state.status === "ready" && state.notebooks.length > 0 ? (
-        <ul className={styles.grid}>
-          {/* The first cell makes a notebook; recipes are added inside a notebook. */}
-          <li>
-            <NewNotebookCard locale={locale} />
-          </li>
-          {state.notebooks.map((notebook) => (
-            <li key={notebook.id}>
-              <NotebookCard
-                name={notebook.name}
-                ownerAlias={notebook.owner_alias}
-                recipeCount={notebook.recipe_count}
-                access={notebook.access}
-                isDefault={notebook.is_default}
-                viewerAlias={viewerAlias}
-                locale={locale}
-                href={`/notebooks/${notebook.id}`}
-              />
+      <div role="tablist" aria-label={t.tabsLabel} className={styles.tabs}>
+        <TabButton
+          id="notebook-tab-personal"
+          selected={listTab === "personal"}
+          onSelect={() => setListTab("personal")}
+          icon={<UserIcon className="size-5" />}
+          label={t.tabPersonal}
+        />
+        <TabButton
+          id="notebook-tab-kitchen"
+          selected={listTab === "kitchen"}
+          onSelect={() => setListTab("kitchen")}
+          icon={<ChopsticksWokIcon className="size-5" />}
+          label={t.tabKitchen}
+        />
+      </div>
+      <div role="tabpanel" aria-labelledby={`notebook-tab-${listTab}`} className={styles.tabPanel}>
+        {state.status === "loading" ? <CauldronLoader label={t.loading} /> : null}
+        {state.status === "error" ? (
+          <div className={styles.state}>
+            <p className={styles.copy} role="alert">
+              {t.loadError}
+            </p>
+            <button type="button" className={styles.retry} onClick={retry}>
+              {t.retry}
+            </button>
+          </div>
+        ) : null}
+        {state.status === "ready" && listTab === "personal" ? (
+          <ul className={styles.grid}>
+            {/* The first cell makes a notebook; recipes are added inside a notebook. */}
+            <li>
+              <NewNotebookCard locale={locale} />
             </li>
-          ))}
-        </ul>
-      ) : null}
+            {shown.map((notebook) => (
+              <li key={notebook.id}>
+                <NotebookCard
+                  name={notebook.name}
+                  ownerAlias={notebook.owner_alias}
+                  recipeCount={notebook.recipe_count}
+                  access={notebook.access}
+                  isDefault={notebook.is_default}
+                  viewerAlias={viewerAlias}
+                  locale={locale}
+                  href={`/notebooks/${notebook.id}`}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {state.status === "ready" && listTab === "personal" && shown.length === 0 ? (
+          <p className={styles.copy}>{emptyText}</p>
+        ) : null}
+        {state.status === "ready" && listTab === "kitchen" && shown.length > 0 ? (
+          <ul className={styles.grid}>
+            {shown.map((notebook) => (
+              <li key={notebook.id}>
+                <NotebookCard
+                  name={notebook.name}
+                  kind="kitchen"
+                  ownerAlias={notebook.owner_alias}
+                  recipeCount={notebook.recipe_count}
+                  viewerAlias={viewerAlias}
+                  locale={locale}
+                  href={`/notebooks/${notebook.id}`}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {state.status === "ready" && listTab === "kitchen" && shown.length === 0 ? (
+          <p className={styles.copy}>{emptyText}</p>
+        ) : null}
+      </div>
     </main>
+  );
+}
+
+function TabButton({
+  id,
+  selected,
+  onSelect,
+  icon,
+  label,
+}: {
+  id: string;
+  selected: boolean;
+  onSelect: () => void;
+  icon: ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      id={id}
+      aria-selected={selected}
+      className={selected ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+      onClick={onSelect}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
   );
 }

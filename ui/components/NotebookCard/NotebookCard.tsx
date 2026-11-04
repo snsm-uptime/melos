@@ -10,6 +10,8 @@ import styles from "./NotebookCard.module.scss";
 export type NotebookCardProps = {
   name: string;
   ownerAlias: string | null;
+  /** A kitchen notebook's name already says whose it is, so it shows no owner or access chips. */
+  kind?: "personal" | "kitchen";
   recipeCount: number;
   /** Shown only when passed (the Notebook tab). The kitchen section omits it. */
   access?: "owner" | "member" | "kitchen_member";
@@ -28,6 +30,7 @@ export type NotebookCardProps = {
 export function NotebookCard({
   name,
   ownerAlias,
+  kind = "personal",
   recipeCount,
   access,
   isDefault = false,
@@ -36,9 +39,11 @@ export function NotebookCard({
   href,
 }: NotebookCardProps) {
   const t = notebooksMessages[locale];
-  const showOwner = ownerAlias === null || ownerAlias !== viewerAlias;
-  const accessLabel =
-    access === "owner"
+  const kitchen = kind === "kitchen";
+  const showOwner = !kitchen && (ownerAlias === null || ownerAlias !== viewerAlias);
+  const accessLabel = kitchen
+    ? null
+    : access === "owner"
       ? t.accessOwner
       : access === "member"
         ? t.accessMember
