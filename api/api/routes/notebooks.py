@@ -13,6 +13,7 @@ import uuid
 from dataclasses import asdict
 
 from adapters.email import SmtpEmailSender, load_smtp_settings
+from adapters.persistence.embeddings import SqlAlchemyEmbeddingJobs
 from adapters.persistence.ingredient_catalog import SqlAlchemyIngredientCatalog
 from adapters.persistence.notebook_invites import SqlAlchemyNotebookInviteRepository
 from adapters.persistence.notebooks import (
@@ -92,7 +93,7 @@ from domain.errors import (
     SmtpSendError,
     SnapshotExistsError,
 )
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -122,6 +123,7 @@ from api.schemas.notebooks import (
 from api.schemas.recipe_lists import RecipePageResponse
 from api.settings import AuthSettings
 from api.smtp_responses import smtp_error_response
+from api.worker import wake_embedding_worker
 
 logger = logging.getLogger(__name__)
 
@@ -336,6 +338,7 @@ def create_kitchen_notebook(
     status_code=status.HTTP_201_CREATED,
 )
 def add_notebook_snapshot(
+    request: Request,
     kitchen_id: uuid.UUID,
     body: AddNotebookSnapshotRequest,
     response: Response,
@@ -347,6 +350,7 @@ def add_notebook_snapshot(
         SqlAlchemyNotebookRepository(db),
         SqlAlchemyIngredientCatalog(db),
         SqlAlchemyRecipeRepository(db),
+        embedding_jobs=SqlAlchemyEmbeddingJobs(db),
     )
     try:
         added = service.execute(
@@ -371,6 +375,8 @@ def add_notebook_snapshot(
         )
     if not added.created:
         response.status_code = status.HTTP_200_OK
+    else:
+        wake_embedding_worker(request.app)
     return _response(added.notebook)
 
 

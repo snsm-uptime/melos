@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
+from adapters.persistence.db import get_session_factory
 from application.rate_limit import SlidingWindowRateLimiter
 from domain.errors import AliasRequiredError, InvalidPhotoError
 from fastapi import Depends, FastAPI, Request, status
@@ -23,7 +26,8 @@ from api.routes.recipe_capture import router as recipe_capture_router
 from api.routes.recipes import router as recipes_router
 from api.routes.shopping_list import router as shopping_list_router
 from api.routes.side_panel import router as side_panel_router
-from api.settings import load_auth_settings
+from api.settings import load_auth_settings, load_embedding_settings
+from api.worker import start_embedding_worker
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,8 +35,23 @@ logging.basicConfig(
 )
 
 
+@asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Start the embedding worker thread when it is enabled, and stop it on exit (spec 019)."""
+    settings = load_embedding_settings()
+    worker = None
+    if settings.worker_enabled:
+        worker = start_embedding_worker(app, settings, get_session_factory())
+    try:
+        yield
+    finally:
+        if worker is not None:
+            worker.stop(timeout_s=5.0)
+            app.state.embedding_worker = None
+
+
 def create_app() -> FastAPI:
-    application = FastAPI(title="melos-api", version="0.1.0")
+    application = FastAPI(title="melos-api", version="0.1.0", lifespan=_lifespan)
     application.state.auth_settings = load_auth_settings()
     application.state.rate_limiter = SlidingWindowRateLimiter()
 

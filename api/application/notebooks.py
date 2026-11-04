@@ -37,6 +37,7 @@ from application.kitchen_access import (
 )
 from application.kitchens import KitchenRecord, KitchenRepository
 from application.ports import (
+    EmbeddingJobs,
     IngredientCatalog,
     KitchenAccessGrant,
     NotebookFacts,
@@ -625,11 +626,14 @@ class AddNotebookSnapshotService:
         notebooks: NotebookRepository,
         catalog: IngredientCatalog,
         recipes: RecipeRepository,
+        *,
+        embedding_jobs: EmbeddingJobs | None = None,
     ) -> None:
         self._kitchens = kitchens
         self._notebooks = notebooks
         self._catalog = catalog
         self._recipes = recipes
+        self._embedding_jobs = embedding_jobs
 
     def execute(self, command: AddNotebookSnapshotCommand) -> AddedSnapshot:
         grant = AuthorizeKitchenAccessService(self._kitchens).execute(
@@ -670,6 +674,9 @@ class AddNotebookSnapshotService:
         self._notebooks.create(notebook)
         self._catalog.copy_names(source.notebook.id, notebook.id)
         copied = self._recipes.copy_all(source.notebook.id, notebook.id)
+        if self._embedding_jobs is not None:
+            # One statement; the copies are embedded later (spec 019 FR-006, spec 035 FR-013).
+            self._embedding_jobs.enqueue_notebook(notebook.id)
         logger.info("notebook snapshot outcome=created recipes=%d", copied)
         return AddedSnapshot(self._view(command.actor_user_id, notebook.id), created=True)
 

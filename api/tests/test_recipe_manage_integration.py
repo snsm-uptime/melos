@@ -14,6 +14,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from adapters.persistence.models import (
+    EmbeddingJobModel,
     IngredientModel,
     KitchenMembershipModel,
     NotebookMembershipModel,
@@ -30,7 +31,7 @@ from domain.errors import RecipeChangedError
 from domain.recipe import EditedRecipe
 from domain.recipe_draft import IngredientLine
 from fastapi.testclient import TestClient
-from sqlalchemy import func, inspect, select, update
+from sqlalchemy import delete, func, inspect, select, text, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from tests.integration_db import claim_alias, database_url
@@ -605,8 +606,9 @@ def test_a_kitchen_recipe_leaves_the_kitchen_list(client: TestClient, db_session
 def test_only_the_lines_and_steps_point_at_recipe_ids(engine: Engine):
     """A new table with a key to recipe.id must cascade, or be cleaned in DeleteRecipeService.
 
-    Spec 027 FR-016: when this fails, S-019 (embeddings) or S-030 (citations) added a reference.
-    Add its cleanup to DeleteRecipeService, then update this list. The cart (S-022) cascades.
+    Spec 027 FR-016: when this fails, a story (S-030 citations, for one) added a reference.
+    Add its cleanup to DeleteRecipeService, then update this list. The cart (S-022) and the
+    search data (S-019: embeddings, embedding jobs, search result records) cascade.
     """
     inspector = inspect(engine)
     referencing: dict[str, str | None] = {}
@@ -619,6 +621,9 @@ def test_only_the_lines_and_steps_point_at_recipe_ids(engine: Engine):
         "step": "CASCADE",
         "cart_item": "CASCADE",
         "recipe_edit_lock": "CASCADE",
+        "recipe_embedding": "CASCADE",
+        "embedding_job": "CASCADE",
+        "search_result": "CASCADE",
     }
 
 
@@ -847,3 +852,45 @@ def test_a_new_word_from_that_member_still_needs_a_yes(
     )
     assert kept.status_code == 200, kept.text
     assert client.get("/recipe-vocabulary").json()["units"][-1] == "bote"
+
+
+# --- Spec 019: an edit queues the recipe again and never waits for it -------------------------
+
+
+def test_an_edit_queues_the_recipe_and_takes_its_old_embedding_out_of_search(
+    client: TestClient, db_session: Session, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv("GEMINI_API_KEY", "")
+    _register(client, "ana_reembed@example.com")
+    recipe_id = _save(client, _personal_notebook(client))
+    db_session.execute(
+        delete(EmbeddingJobModel).where(EmbeddingJobModel.recipe_id == UUID(recipe_id))
+    )
+    db_session.execute(
+        text(
+            "INSERT INTO recipe_embedding (recipe_id, model, embedding, strategy_used,"
+            " recipe_updated_at) SELECT id, 'm', array_fill(0.1, ARRAY[768])::vector, 'toon',"
+            " updated_at FROM recipe WHERE id = :id"
+        ),
+        {"id": UUID(recipe_id)},
+    )
+    recipe = client.get(f"/recipes/{recipe_id}").json()
+
+    response = _put(client, recipe_id, json=_edit_body(recipe, title="Edited title"))
+
+    assert response.status_code == 200, response.text
+    jobs = db_session.scalar(
+        select(func.count())
+        .select_from(EmbeddingJobModel)
+        .where(EmbeddingJobModel.recipe_id == UUID(recipe_id))
+    )
+    assert jobs == 1
+    current = db_session.scalar(
+        text(
+            "SELECT count(*) FROM recipe_embedding e JOIN recipe r ON r.id = e.recipe_id"
+            " WHERE r.id = :id AND e.recipe_updated_at = r.updated_at"
+        ),
+        {"id": UUID(recipe_id)},
+    )
+    assert current == 0
+    assert getattr(client.app.state, "embedder", None) is None

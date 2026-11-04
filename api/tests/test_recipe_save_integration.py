@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 import pytest
 from adapters.persistence.ingredient_catalog import SqlAlchemyIngredientCatalog
 from adapters.persistence.models import (
+    EmbeddingJobModel,
     IngredientModel,
     NotebookModel,
     RecipeIngredientModel,
@@ -404,3 +405,42 @@ def test_too_many_kept_words_are_refused(client: TestClient) -> None:
     _register(client, "save_many@example.com")
     body = _body(_personal_notebook(client), keep_units=["lata"] * 1000)
     assert client.post("/recipes", json=body).status_code == 422
+
+
+# --- Spec 019: a save queues its embedding and never waits for it -----------------------------
+
+
+def _job_count(db: Session, recipe_id: str) -> int:
+    return db.scalar(
+        select(func.count())
+        .select_from(EmbeddingJobModel)
+        .where(EmbeddingJobModel.recipe_id == UUID(recipe_id))
+    )
+
+
+def test_a_save_writes_one_embedding_job_and_calls_no_service(
+    client: TestClient, db_session: Session, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv("GEMINI_API_KEY", "")
+    _register(client, "ana_embed@example.com")
+    body = _body(_personal_notebook(client))
+
+    first = client.post("/recipes", json=body)
+    again = client.post("/recipes", json=body)
+
+    assert first.status_code == 201, first.text
+    assert again.status_code == 200, again.text
+    recipe_id = first.json()["recipe"]["id"]
+    assert _job_count(db_session, recipe_id) == 1
+    assert getattr(client.app.state, "embedder", None) is None
+    assert getattr(client.app.state, "embedding_worker", None) is None
+
+
+def test_a_refused_save_writes_no_embedding_job(client: TestClient, db_session: Session):
+    _register(client, "ana_embed_refused@example.com")
+    before = db_session.scalar(select(func.count()).select_from(EmbeddingJobModel))
+
+    response = client.post("/recipes", json=_body(_personal_notebook(client), title="  "))
+
+    assert response.status_code == 422
+    assert db_session.scalar(select(func.count()).select_from(EmbeddingJobModel)) == before

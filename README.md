@@ -213,6 +213,34 @@ set it, so the owner sets it once on the server:
 UPDATE users SET is_admin = true WHERE email = '<address>';
 ```
 
+**Recipe embeddings and search**
+
+Every recipe gets a search fingerprint (`gemini-embedding-001`, 768 values). A background
+thread inside the api makes them. Saving, editing and snapshots only queue the recipe, so they
+never wait for Gemini or fail because of it. When an embedding fails, the worker tries again
+later: first after 1 minute, then each wait is 50% longer, up to 2 hours, with no limit on tries.
+When the api starts, it queues every recipe that has no current embedding.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `GEMINI_EMBED_MODEL`, `GEMINI_EMBED_DIM` | `gemini-embedding-001`, `768` | The dimension must match the stored column |
+| `EMBED_TEXT_STRATEGY` | `toon` | Text that is embedded: `toon` or `plain` |
+| `EMBEDDING_WORKER_ENABLED` | `true` | `false` turns the thread off (tests do) |
+| `EMBED_WORKER_POLL_S`, `EMBED_BATCH_SIZE` | `5`, `1` | Idle wait in seconds, recipes per call |
+| `EMBED_RETRY_FIRST_WAIT_S`, `EMBED_RETRY_GROWTH`, `EMBED_RETRY_CAP_S` | `60`, `1.5`, `7200` | The retry rule |
+| `SEARCH_MIN_CLOSENESS` | `0.65` | Results at or above it are marked close, the rest weak |
+| `SEARCH_RECORD_RETENTION_DAYS` | `180` | Search records are deleted after this, once a day |
+
+Operator commands, run inside the api container (each is safe to repeat):
+
+```bash
+docker compose exec api uv run python -m scripts.embeddings status        # waiting, longest wait, failures
+docker compose exec api uv run python -m scripts.embeddings catch-up      # queue recipes without one
+docker compose exec api uv run python -m scripts.embeddings catch-up --reembed-other-strategy
+docker compose exec api uv run python -m scripts.embeddings score-report  # used share per score band
+docker compose exec api uv run python -m scripts.embeddings cleanup       # delete old search records now
+```
+
 **Tests and linting**
 
 ```bash

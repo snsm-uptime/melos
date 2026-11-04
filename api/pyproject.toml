@@ -14,6 +14,7 @@ dependencies = [
   "aiosmtplib==5.1.2",
   "google-genai>=2.32.0",
   "pyyaml>=6.0.3",
+  "python-toon>=0.2.0",
 ]
 
 [dependency-groups]

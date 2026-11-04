@@ -8,22 +8,17 @@ body leaves this module (FR-003 to FR-005, FR-009, FR-014, SC-006).
 from __future__ import annotations
 
 import logging
-import math
-import re
 import uuid
 from collections.abc import Sequence
 from typing import Any, Literal
 
-import httpx
 from application.recipe_extraction import (
     AIProviderError,
     Draft,
     ExtractionResult,
     InvalidOutput,
-    LimitReached,
     NotARecipe,
     NotRecipeReason,
-    Unavailable,
 )
 from domain.recipe_draft import (
     DraftRecipe,
@@ -32,14 +27,12 @@ from domain.recipe_draft import (
 )
 from google import genai
 from google.genai import types
-from google.genai.errors import APIError, ClientError, ServerError
 from pydantic import BaseModel, ValidationError
 
+from adapters.llm.gemini_errors import classify
 from adapters.llm.prompt import build_contents, system_instruction
 
 logger = logging.getLogger(__name__)
-
-RETRY_DELAY_PATTERN = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*s?\s*$")
 
 RESPONSE_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -164,43 +157,6 @@ def _payload_to_result(payload: _ExtractionPayload) -> ExtractionResult:
     )
 
 
-def _find_retry_delay(node: object) -> str | None:
-    """Look for a RetryInfo `retryDelay` value (for example "30s") anywhere in error details."""
-    if isinstance(node, dict):
-        if isinstance(node.get("retryDelay"), str):
-            return node["retryDelay"]
-        for value in node.values():
-            found = _find_retry_delay(value)
-            if found is not None:
-                return found
-    elif isinstance(node, list):
-        for value in node:
-            found = _find_retry_delay(value)
-            if found is not None:
-                return found
-    return None
-
-
-def _retry_after_seconds(exc: APIError) -> int | None:
-    """Whole seconds from the Retry-After header or RetryInfo; None when absent or not positive."""
-    raw: str | None = None
-    headers = getattr(getattr(exc, "response", None), "headers", None)
-    if headers is not None:
-        raw = headers.get("retry-after")
-    if raw is None:
-        raw = _find_retry_delay(getattr(exc, "details", None))
-    if raw is None:
-        return None
-    match = RETRY_DELAY_PATTERN.match(raw)
-    if match is None:
-        return None
-    seconds = float(match.group(1))
-    if not math.isfinite(seconds):
-        return None
-    whole = round(seconds)
-    return whole if whole > 0 else None
-
-
 class GeminiRecipeExtractor:
     """Production RecipeExtractor. The key and model come from settings only (FR-009)."""
 
@@ -284,14 +240,4 @@ class GeminiRecipeExtractor:
         return _payload_to_result(payload)
 
     def _classify(self, exc: Exception) -> ExtractionResult:
-        if isinstance(exc, httpx.TransportError):
-            return Unavailable()
-        if isinstance(exc, ServerError):
-            return Unavailable()
-        if isinstance(exc, ClientError):
-            if exc.code == 429:
-                return LimitReached(retry_after_seconds=_retry_after_seconds(exc))
-            if exc.code in (401, 403, 404):
-                return AIProviderError()
-            return InvalidOutput()
-        return Unavailable()
+        return classify(exc)

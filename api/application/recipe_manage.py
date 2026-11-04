@@ -33,6 +33,7 @@ from application.notebooks import NotebookView, notebook_view
 from application.ports import (
     CartRepository,
     EditLockRepository,
+    EmbeddingJobs,
     IngredientCatalog,
     NotebookRepository,
     RecipeDetail,
@@ -190,12 +191,14 @@ class UpdateRecipeService:
         locks: EditLockRepository | None = None,
         *,
         units: UnitRepository,
+        embedding_jobs: EmbeddingJobs | None = None,
     ) -> None:
         self._recipes = recipes
         self._notebooks = notebooks
         self._catalog = catalog
         self._locks = locks
         self._units = units
+        self._embedding_jobs = embedding_jobs
 
     def execute(self, command: UpdateRecipeCommand) -> UpdatedRecipe:
         if len(command.lines) > MAX_LINES or len(command.steps) > MAX_STEPS:
@@ -246,6 +249,9 @@ class UpdateRecipeService:
         kept = kept_units_to_add(command.keep_units, lines, available)
         if kept:
             self._units.add_user(kept, command.actor_user_id)
+        if self._embedding_jobs is not None:
+            # The old embedding stopped being current with the new updated_at (spec 019 FR-003).
+            self._embedding_jobs.enqueue([command.recipe_id])
         if self._locks is not None and command.session_id is not None:
             self._locks.release_recipe(command.recipe_id, command.session_id)
         logger.info(
@@ -271,9 +277,10 @@ class DeleteRecipeService:
     """Remove a recipe, its lines, steps and source.
 
     This is the one place a recipe is deleted. Cart entries and edit locks leave by FK cascade
-    (spec 022 research R1). Search data (S-019) and chat citations (S-030) do not exist yet;
-    each adds its cleanup here, and the schema guard test in
-    tests/test_recipe_manage_integration.py fails until it does (spec 027 FR-016).
+    (spec 022 research R1), and so does the search data of S-019: the recipe's embeddings, its
+    embedding job and its search result records. Chat citations (S-030) do not exist yet; they
+    add their cleanup here, and the schema guard test in
+    tests/test_recipe_manage_integration.py fails until they do (spec 027 FR-016).
 
     Refused while another live session edits the recipe (spec 022 FR-022).
     """

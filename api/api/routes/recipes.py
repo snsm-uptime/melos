@@ -43,7 +43,7 @@ from domain.recipe_draft import (
     InvalidDraftError,
     clean_display_name,
 )
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import JSONResponse
 
 from api.deps import (
@@ -71,6 +71,7 @@ from api.schemas.recipes import (
     UpdateRecipeBody,
     UpdateRecipeResponse,
 )
+from api.worker import wake_embedding_worker
 
 router = APIRouter(tags=["recipes"])
 
@@ -124,6 +125,7 @@ def _problems(problems: DraftProblems) -> JSONResponse:
 
 @router.post("/recipes")
 def save_recipe(
+    request: Request,
     body: SaveRecipeBody,
     user_id: uuid.UUID = Depends(require_user_alias),
     save: SaveRecipeDraft = Depends(get_save_recipe_draft),
@@ -174,6 +176,8 @@ def save_recipe(
         return _problems(exc)
     except InvalidDraftError as exc:
         return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "invalid_recipe", str(exc))
+    if saved.created:
+        wake_embedding_worker(request.app)
     return JSONResponse(
         status_code=status.HTTP_201_CREATED if saved.created else status.HTTP_200_OK,
         content=_body(saved),
@@ -286,6 +290,7 @@ def match_recipe_names(
 
 @router.put("/recipes/{recipe_id}")
 def update_recipe(
+    request: Request,
     recipe_id: uuid.UUID,
     body: UpdateRecipeBody,
     ref: SessionRef = Depends(require_session_ref),
@@ -330,6 +335,7 @@ def update_recipe(
         return _problems(exc)
     except InvalidDraftError as exc:
         return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "invalid_recipe", str(exc))
+    wake_embedding_worker(request.app)
     response = UpdateRecipeResponse(
         **_detail(updated.view).model_dump(),
         created_catalog_names=list(updated.created_catalog_names),

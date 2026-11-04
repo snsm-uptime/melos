@@ -401,6 +401,26 @@ class NotebookMemberNotFoundError(DomainError):
         super().__init__(self.MESSAGE)
 
 
+class InvalidSearchQuestionError(DomainError):
+    """Raised when a recipe search gets an empty or blank question (spec 019)."""
+
+    MESSAGE = "Type a question first."
+    CODE = "invalid_search_question"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class InvalidSearchFiltersError(DomainError):
+    """Raised when a recipe search's filters cannot match anything as given (spec 019)."""
+
+    MESSAGE = "The start date must be before the end date."
+    CODE = "invalid_search_filters"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
 class InvalidPageError(DomainError):
     """Raised when a recipe list asks for a page below 1 (spec 021)."""
 

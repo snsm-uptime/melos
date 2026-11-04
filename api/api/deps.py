@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterator
 
+from adapters.llm.gemini_embedder import GeminiEmbedder
 from adapters.llm.gemini_extractor import GeminiRecipeExtractor
 from adapters.persistence.admin import SqlAlchemyAdminReports
 from adapters.persistence.cart_activity import SqlAlchemyCartActivityLog
@@ -13,6 +14,7 @@ from adapters.persistence.carts import SqlAlchemyCartRepository, SqlAlchemyIngre
 # MVP-OUT: from adapters.llm.vocabulary import load_vocabulary, load_vocabulary_documents
 from adapters.persistence.db import get_session_factory
 from adapters.persistence.edit_locks import SqlAlchemyEditLockRepository, resolve_session_ref
+from adapters.persistence.embeddings import SqlAlchemyEmbeddingJobs, SqlAlchemyRecipeEmbeddings
 from adapters.persistence.ingredient_catalog import SqlAlchemyIngredientCatalog
 from adapters.persistence.notebooks import (
     SqlAlchemyNotebookRepository,
@@ -26,6 +28,7 @@ from adapters.persistence.repositories import (
     SqlAlchemyAuthUserRepository,
     SqlAlchemyKitchenRepository,
 )
+from adapters.persistence.search_records import SqlAlchemySearchRecords
 from adapters.persistence.sessions import SqlAlchemySessionStore
 from adapters.persistence.shopping_lists import SqlAlchemyShoppingListRepository
 from adapters.persistence.units import SqlAlchemyUnitRepository
@@ -41,6 +44,7 @@ from application.carts import (
 )
 from application.notebooks import ResolveCaptureNotebookService
 from application.ports import (
+    Embedder,
     PasswordHasher,
     PreferencesRepository,
     SessionRef,
@@ -59,6 +63,7 @@ from application.recipe_manage import (
     UpdateRecipeService,
 )
 from application.recipe_save import SaveRecipeDraft
+from application.recipe_search import MarkSearchResultUsed, SearchRecipesService
 from application.recipe_vocabulary import vocabulary_answer
 from application.shopping_list import (
     ActiveListSync,
@@ -75,6 +80,7 @@ from sqlalchemy.orm import Session
 from api.settings import (
     AuthSettings,
     load_auth_settings,
+    load_embedding_settings,
     load_gemini_settings,
     load_recipe_text_max_chars,
 )
@@ -254,6 +260,7 @@ def get_save_recipe_draft(db: Session = Depends(get_db)) -> SaveRecipeDraft:
         ),
         units=SqlAlchemyUnitRepository(db),
         max_text_chars=load_recipe_text_max_chars(),
+        embedding_jobs=SqlAlchemyEmbeddingJobs(db),
     )
 
 
@@ -281,6 +288,7 @@ def get_update_recipe(db: Session = Depends(get_db)) -> UpdateRecipeService:
         SqlAlchemyIngredientCatalog(db),
         SqlAlchemyEditLockRepository(db),
         units=SqlAlchemyUnitRepository(db),
+        embedding_jobs=SqlAlchemyEmbeddingJobs(db),
     )
 
 
@@ -411,3 +419,37 @@ def get_closed_shopping_lists(db: Session = Depends(get_db)) -> ClosedShoppingLi
         SqlAlchemyCartRepository(db),
         SqlAlchemyShoppingListRepository(db),
     )
+
+
+def get_embedder(request: Request) -> Embedder:
+    """One embedder per process, shared with the worker thread (spec 019)."""
+    cached = getattr(request.app.state, "embedder", None)
+    if cached is None:
+        settings = load_embedding_settings()
+        cached = GeminiEmbedder(
+            api_key=settings.api_key, model=settings.model, dimension=settings.dimension
+        )
+        request.app.state.embedder = cached
+    return cached
+
+
+def get_search_recipes(
+    db: Session = Depends(get_db),
+    embedder: Embedder = Depends(get_embedder),
+) -> SearchRecipesService:
+    """For S-030, S-044 and S-032; this story adds no route (contracts/search-service.md)."""
+    settings = load_embedding_settings()
+    return SearchRecipesService(
+        SqlAlchemyKitchenRepository(db),
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyRecipeEmbeddings(db),
+        embedder,
+        SqlAlchemySearchRecords(db),
+        strategy=settings.strategy,
+        min_closeness=settings.min_closeness,
+        timeout_s=settings.text_timeout_s,
+    )
+
+
+def get_mark_search_result_used(db: Session = Depends(get_db)) -> MarkSearchResultUsed:
+    return MarkSearchResultUsed(SqlAlchemySearchRecords(db))

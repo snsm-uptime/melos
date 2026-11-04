@@ -12,15 +12,18 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 import pytest
+from adapters.persistence.embeddings import SqlAlchemyEmbeddingJobs
 from adapters.persistence.ingredient_catalog import SqlAlchemyIngredientCatalog
 from adapters.persistence.models import (
     CartItemModel,
+    EmbeddingJobModel,
     IngredientModel,
     KitchenMembershipModel,
     KitchenModel,
     NotebookMembershipModel,
     NotebookModel,
     RecipeEditLockModel,
+    RecipeEmbeddingModel,
     RecipeIngredientModel,
     RecipeModel,
     SessionModel,
@@ -35,7 +38,7 @@ from application.notebooks import AddNotebookSnapshotCommand, AddNotebookSnapsho
 from domain.recipe import EditedRecipe
 from domain.recipe_draft import IngredientLine
 from fastapi.testclient import TestClient
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, event, func, select, text, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from tests.integration_db import claim_alias, database_url
@@ -1103,3 +1106,90 @@ def test_creating_a_notebook_needs_an_alias(client: TestClient) -> None:
     client.post("/auth/register", json={"email": email, "password": "password1"})
     response = client.post("/notebooks", json={"name": "Postres"})
     assert (response.status_code, response.json()["code"]) == (403, "alias_required")
+
+
+# --- Spec 019: the copies are queued for embedding (FR-006, SC-006) ---------------------------
+
+
+def _embed_directly(db: Session, recipe_id: UUID) -> None:
+    db.execute(
+        text(
+            "INSERT INTO recipe_embedding (recipe_id, model, embedding, strategy_used,"
+            " recipe_updated_at) SELECT id, 'm', array_fill(0.1, ARRAY[768])::vector, 'toon',"
+            " updated_at FROM recipe WHERE id = :id"
+        ),
+        {"id": recipe_id},
+    )
+
+
+def _embedding_times(db: Session, recipe_ids: list[UUID]) -> dict[UUID, datetime]:
+    rows = db.execute(
+        select(RecipeEmbeddingModel.recipe_id, RecipeEmbeddingModel.updated_at).where(
+            RecipeEmbeddingModel.recipe_id.in_(recipe_ids)
+        )
+    ).all()
+    return {row.recipe_id: row.updated_at for row in rows}
+
+
+def test_a_snapshot_queues_each_copy_and_leaves_the_originals_embeddings(
+    client: TestClient, db_session: Session, ana: tuple[UUID, str]
+) -> None:
+    ana_id, token = ana
+    kitchen = _kitchen(db_session, ana_id)
+    source = _personal(db_session, ana_id)
+    originals = [_recipe(db_session, source, ana_id, f"Dish {n}") for n in range(3)]
+    for recipe_id in originals:
+        _embed_directly(db_session, recipe_id)
+    before = _embedding_times(db_session, originals)
+
+    _use(client, token)
+    snapshot = _added(client, kitchen, source)
+
+    copies = [row.id for row in _recipes_of(db_session, snapshot)]
+    assert len(copies) == 3
+    queued = db_session.scalar(
+        select(func.count())
+        .select_from(EmbeddingJobModel)
+        .where(EmbeddingJobModel.recipe_id.in_(copies))
+    )
+    assert queued == 3
+    assert _embedding_times(db_session, copies) == {}
+    assert _embedding_times(db_session, originals) == before and len(before) == 3
+
+
+def test_a_50_recipe_snapshot_takes_at_most_5_more_statements(
+    db_session: Session, ana: tuple[UUID, str]
+) -> None:
+    ana_id, _ = ana
+    kitchen = _kitchen(db_session, ana_id)
+    plain_source = _personal(db_session, ana_id)
+    queued_source = _personal(db_session, ana_id)
+    for n in range(50):
+        _recipe(db_session, plain_source, ana_id, f"Plain {n}")
+        _recipe(db_session, queued_source, ana_id, f"Queued {n}")
+    statements: list[str] = []
+
+    def count(conn, cursor, statement, parameters, context, executemany):  # noqa: ANN001, ANN202, ARG001
+        statements.append(statement)
+
+    connection = db_session.connection()
+    event.listen(connection, "before_cursor_execute", count)
+    try:
+        recipes = SqlAlchemyRecipeRepository(db_session)
+        _service(db_session, recipes).execute(
+            AddNotebookSnapshotCommand(ana_id, kitchen, plain_source, uuid4())
+        )
+        without = len(statements)
+        statements.clear()
+        AddNotebookSnapshotService(
+            SqlAlchemyKitchenRepository(db_session),
+            SqlAlchemyNotebookRepository(db_session),
+            SqlAlchemyIngredientCatalog(db_session),
+            recipes,
+            embedding_jobs=SqlAlchemyEmbeddingJobs(db_session),
+        ).execute(AddNotebookSnapshotCommand(ana_id, kitchen, queued_source, uuid4()))
+        with_jobs = len(statements)
+    finally:
+        event.remove(connection, "before_cursor_execute", count)
+
+    assert with_jobs - without <= 5, (without, with_jobs)
