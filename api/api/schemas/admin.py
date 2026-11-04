@@ -15,6 +15,8 @@ from pydantic import BaseModel
 class AdminUnit(BaseModel):
     name: str
     user_references: list[UUID]
+    # Aliases of the people in user_references, alias-sorted; None for an account with no alias.
+    user_aliases: list[str | None]
     reference_count: int
     is_default: bool
     created_at: datetime
@@ -41,6 +43,8 @@ class AdminRecipe(BaseModel):
     notebook_name: str
     notebook_kind: Literal["personal", "kitchen"]
     people_with_access: int
+    # Aliases of everyone who can read the recipe, alias-sorted; None for an account with no alias.
+    people_aliases: list[str | None]
 
 
 class AdminRecipesResponse(BaseModel):

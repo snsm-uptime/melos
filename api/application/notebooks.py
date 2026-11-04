@@ -9,7 +9,7 @@ with notebook_view.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from uuid import UUID, uuid4
 
 from domain.errors import (
@@ -98,6 +98,14 @@ def _naming_profile(prefs: PreferencesRepository, user_id: UUID) -> tuple[str, s
     return record.alias, record.language
 
 
+def _readable_by(notebooks: NotebookRepository, user_id: UUID, notebook_id: UUID) -> bool:
+    """Whether the person can still see the notebook: a member who left no longer can."""
+    facts = notebooks.facts_for(user_id, notebook_id)
+    return facts is not None and notebook_access(
+        facts.notebook.kind, facts.role, facts.in_kitchen
+    ) is not None
+
+
 def ensure_default_notebook(
     user_id: UUID,
     *,
@@ -112,7 +120,7 @@ def ensure_default_notebook(
     on the lock and finds the default set.
     """
     current = defaults.get_for_update(user_id)
-    if current is not None and notebooks.get(current) is not None:
+    if current is not None and _readable_by(notebooks, user_id, current):
         return current, False
 
     alias, language = _naming_profile(prefs, user_id)
@@ -241,6 +249,39 @@ class ListMyNotebooksService:
             notebook_view(facts)
             for facts in self._notebooks.visible_facts_for(command.actor_user_id)
         ]
+
+
+@dataclass(frozen=True, slots=True)
+class SetDefaultNotebookCommand:
+    actor_user_id: UUID
+    notebook_id: UUID
+
+
+class SetDefaultNotebookService:
+    """Make one of the caller's personal notebooks their default (Settings).
+
+    Any personal notebook the caller can read may be chosen, owned or joined. A kitchen
+    notebook is never a default, so it is reported as not found.
+    """
+
+    def __init__(
+        self,
+        notebooks: NotebookRepository,
+        defaults: UserDefaultNotebook,
+        committer: TransactionCommitter,
+    ) -> None:
+        self._notebooks = notebooks
+        self._defaults = defaults
+        self._committer = committer
+
+    def execute(self, command: SetDefaultNotebookCommand) -> NotebookView:
+        facts = self._notebooks.facts_for(command.actor_user_id, command.notebook_id)
+        if facts is None or facts.notebook.kind != "personal":
+            raise NotebookNotFoundError()
+        view = notebook_view(facts)
+        self._defaults.set(command.actor_user_id, command.notebook_id)
+        self._committer.commit()
+        return replace(view, is_default=True)
 
 
 @dataclass(frozen=True, slots=True)

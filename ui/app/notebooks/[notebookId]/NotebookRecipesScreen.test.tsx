@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "@/components/AppShell";
+import { SHOW_DELAY_MS } from "@/components/Tooltip/Tooltip";
 
 import { NotebookRecipesScreen } from "./NotebookRecipesScreen";
 
@@ -386,7 +387,7 @@ describe("NotebookRecipesScreen", () => {
     expect(document.querySelector('[role="dialog"]')).not.toBeNull();
   });
 
-  it("has no share button on a kitchen notebook", async () => {
+  it("shows the share button disabled on a kitchen notebook, with the kitchen-invite tooltip", async () => {
     stub({
       notebook: { status: 200, body: { ...notebook, kind: "kitchen", access: "kitchen_member" } },
       recipes: empty,
@@ -394,7 +395,18 @@ describe("NotebookRecipesScreen", () => {
 
     await render();
 
-    expect(shareButton()).toBeNull();
+    const button = shareButton() as HTMLButtonElement | null;
+    expect(button).not.toBeNull();
+    expect(button?.disabled).toBe(true);
+    await act(async () => {
+      button?.parentElement?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, SHOW_DELAY_MS + 50));
+    });
+    expect(document.querySelector('[data-testid="tooltip-bubble"]')?.textContent).toBe(
+      "Requires invite to kitchen",
+    );
+    act(() => button?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
 
   it("redirects to the alias step when an alias is required", async () => {

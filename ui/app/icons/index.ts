@@ -19,6 +19,7 @@ export { FileIcon } from "./FileIcon";
 export { FileImportIcon } from "./FileImportIcon";
 export { FileImportMorphIcon } from "./FileImportMorphIcon";
 export { UserIcon } from "./UserIcon";
+export { ChopsticksWokIcon } from "./ChopsticksWokIcon";
 export { UsersIcon } from "./UsersIcon";
 export { WalletIcon } from "./WalletIcon";
 export { SunIcon } from "./SunIcon";

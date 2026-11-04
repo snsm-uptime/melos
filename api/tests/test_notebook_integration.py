@@ -525,7 +525,7 @@ def test_first_open_creates_the_kitchen_notebook_and_second_open_lists_it(
     notebooks = first.json()["notebooks"]
     assert len(notebooks) == 1
     view = notebooks[0]
-    assert view["name"] == f"Cuaderno de {alias} (Home)"
+    assert view["name"] == f"Home by {alias}"
     assert view["kind"] == "kitchen"
     assert view["access"] == "kitchen_member"
     assert view["owner_alias"] == alias
@@ -631,7 +631,7 @@ def test_rename_keeps_the_kitchen_notebook_name(client: TestClient, db_session: 
     after = client.get(f"/notebooks/kitchens/{kitchen_id}").json()["notebooks"][0]
 
     assert after["id"] == before["id"]
-    assert after["name"] == f"Cuaderno de {alias} (Home)"
+    assert after["name"] == f"Home by {alias}"
 
 
 def test_archived_kitchen_without_notebook_lists_nothing(
@@ -714,7 +714,7 @@ def test_first_capture_in_a_kitchen_creates_its_notebook_and_second_uses_it(
     assert second.created is False
     assert second.notebook_id == first.notebook_id
     row = db_session.get(NotebookModel, first.notebook_id)
-    assert row.name == "Cuaderno de ana_cap (My kitchen)"
+    assert row.name == "My kitchen by ana_cap"
     assert row.owner_user_id == ana
     assert _notebook_count(db_session, kitchen_id=kitchen_id) == 1
 

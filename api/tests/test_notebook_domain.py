@@ -80,13 +80,13 @@ def test_default_notebook_name_uses_alias_in_the_language() -> None:
 
 
 def test_kitchen_notebook_name_uses_alias_and_kitchen_in_the_language() -> None:
-    assert kitchen_notebook_name("ana", "Home", "en") == "ana's (Home) Notebook"
-    assert kitchen_notebook_name("ana", "Casa", "es") == "Cuaderno de ana (Casa)"
+    assert kitchen_notebook_name("ana", "Home", "en") == "Home by ana"
+    assert kitchen_notebook_name("ana", "Casa", "es") == "Casa de ana"
 
 
 def test_notebook_names_are_spanish_when_no_language_is_saved() -> None:
     assert default_notebook_name("ana", None) == "Cuaderno de ana"
-    assert kitchen_notebook_name("ana", "Casa", None) == "Cuaderno de ana (Casa)"
+    assert kitchen_notebook_name("ana", "Casa", None) == "Casa de ana"
 
 
 def test_personal_access_is_the_callers_role() -> None:

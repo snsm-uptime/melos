@@ -92,6 +92,14 @@ describe("NotebookTabScreen", () => {
     vi.unstubAllGlobals();
   });
 
+  function retryButton(): HTMLButtonElement {
+    const found = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent === "Try again",
+    );
+    if (!found) throw new Error("no retry button");
+    return found;
+  }
+
   function render(viewerAlias: string | null = "ben") {
     act(() => {
       root.render(<NotebookTabScreen locale="en" viewerAlias={viewerAlias} />);
@@ -206,6 +214,58 @@ describe("NotebookTabScreen", () => {
     expect(cells[0].querySelector("h3")).toBeNull();
   });
 
+  it("splits personal and kitchen notebooks onto two tabs, kitchen cards without owner chips", async () => {
+    const kitchenNotebook = {
+      ...sharedNotebook,
+      id: "nb-kitchen",
+      name: "Home by ben",
+      kind: "kitchen",
+      owner_alias: null,
+      access: "kitchen_member",
+    };
+    stubBff({
+      "/api/notebooks/default": [{ status: 200, body: defaultNotebook }],
+      "/api/notebooks": [
+        { status: 200, body: { notebooks: [defaultNotebook, sharedNotebook, kitchenNotebook] } },
+      ],
+    });
+
+    render();
+    await flush();
+
+    const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["Personal", "Kitchens"]);
+    expect(tabs[0].getAttribute("aria-selected")).toBe("true");
+    expect(container.textContent).not.toContain("Home by ben");
+
+    await act(async () => {
+      (tabs[1] as HTMLButtonElement).click();
+    });
+
+    expect(tabs[1].getAttribute("aria-selected")).toBe("true");
+    const headings = Array.from(container.querySelectorAll("h3")).map((h) => h.textContent);
+    expect(headings).toEqual(["Home by ben"]);
+    expect(container.textContent).not.toContain("Owned by");
+    expect(container.textContent).not.toContain("Kitchen member");
+    expect(container.querySelector('[aria-label="New notebook"]')).toBeNull();
+  });
+
+  it("shows the kitchen empty text on the kitchens tab when there are none", async () => {
+    stubBff({
+      "/api/notebooks/default": [{ status: 200, body: defaultNotebook }],
+      "/api/notebooks": [{ status: 200, body: { notebooks: [defaultNotebook] } }],
+    });
+
+    render();
+    await flush();
+    await act(async () => {
+      (container.querySelectorAll('[role="tab"]')[1] as HTMLButtonElement).click();
+    });
+
+    expect(container.textContent).toContain("No kitchen notebooks yet.");
+    expect(container.querySelector("h3")).toBeNull();
+  });
+
   it("shows the empty state when the list is empty", async () => {
     stubBff({
       "/api/notebooks/default": [{ status: 200, body: defaultNotebook }],
@@ -276,7 +336,7 @@ describe("NotebookTabScreen", () => {
     await flush();
     expect(container.querySelector('[role="alert"]')).not.toBeNull();
 
-    const retry = container.querySelector("button") as HTMLButtonElement;
+    const retry = retryButton();
     await act(async () => {
       retry.click();
     });
@@ -313,7 +373,7 @@ describe("NotebookTabScreen", () => {
     expect(container.querySelector('[role="alert"]')).not.toBeNull();
 
     await act(async () => {
-      (container.querySelector("button") as HTMLButtonElement).click();
+      retryButton().click();
     });
 
     expect(container.querySelector('[role="alert"]')).toBeNull();

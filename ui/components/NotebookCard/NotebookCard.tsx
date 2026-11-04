@@ -1,7 +1,9 @@
 import Link from "next/link";
 
 import { BookmarkIcon } from "@/app/icons";
+import { linkCardClassName } from "@/components/Card";
 import { Chip } from "@/components/Chip";
+import { Tooltip } from "@/components/Tooltip";
 import type { Locale } from "@/lib/i18n/locale";
 import { notebooksMessages } from "@/lib/i18n/notebooks";
 
@@ -10,6 +12,8 @@ import styles from "./NotebookCard.module.scss";
 export type NotebookCardProps = {
   name: string;
   ownerAlias: string | null;
+  /** A kitchen notebook's name already says whose it is, so it shows no owner or access chips. */
+  kind?: "personal" | "kitchen";
   recipeCount: number;
   /** Shown only when passed (the Notebook tab). The kitchen section omits it. */
   access?: "owner" | "member" | "kitchen_member";
@@ -28,6 +32,7 @@ export type NotebookCardProps = {
 export function NotebookCard({
   name,
   ownerAlias,
+  kind = "personal",
   recipeCount,
   access,
   isDefault = false,
@@ -36,9 +41,11 @@ export function NotebookCard({
   href,
 }: NotebookCardProps) {
   const t = notebooksMessages[locale];
-  const showOwner = ownerAlias === null || ownerAlias !== viewerAlias;
-  const accessLabel =
-    access === "owner"
+  const kitchen = kind === "kitchen";
+  const showOwner = !kitchen && (ownerAlias === null || ownerAlias !== viewerAlias);
+  const accessLabel = kitchen
+    ? null
+    : access === "owner"
       ? t.accessOwner
       : access === "member"
         ? t.accessMember
@@ -48,7 +55,9 @@ export function NotebookCard({
 
   const card = (
     <article
-      className={`${styles.card} relative flex min-w-0 items-stretch gap-[var(--space-3)] rounded-[var(--radius-md)] border border-border bg-surface p-[var(--space-3)]`}
+      className={`${styles.card} relative flex min-w-0 items-stretch gap-[var(--space-3)] rounded-[var(--radius-md)] border border-border bg-surface p-[var(--space-3)]${
+        href ? ` ${linkCardClassName}` : ""
+      }`}
     >
       <span className={styles.spine} aria-hidden="true" />
       <div className="flex min-w-0 flex-1 flex-col gap-[var(--space-1)]">
@@ -71,9 +80,11 @@ export function NotebookCard({
         ) : null}
       </div>
       {isDefault ? (
-        <span role="img" aria-label={t.defaultMarker} className="flex-shrink-0 self-start text-accent">
-          <BookmarkIcon className="block size-5" />
-        </span>
+        <Tooltip label={t.defaultNotebook}>
+          <span role="img" aria-label={t.defaultMarker} className="flex-shrink-0 self-start text-muted">
+            <BookmarkIcon filled className="block size-5" />
+          </span>
+        </Tooltip>
       ) : null}
     </article>
   );

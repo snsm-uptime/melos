@@ -21,6 +21,10 @@ export const sidePanelMessages = {
     restore: "Restore kitchen",
     archive: "Archive kitchen",
     noKitchens: "Create a kitchen to get started.",
+    defaultNotebook: "Default notebook",
+    searchNotebooks: "Search notebooks",
+    noNotebookMatch: "No notebook matches.",
+    defaultNotebookError: "Could not save the default notebook. Try again.",
   },
   es: {
     nav: "Menú principal",
@@ -42,5 +46,9 @@ export const sidePanelMessages = {
     restore: "Restaurar cocina",
     archive: "Archivar cocina",
     noKitchens: "Crea una cocina para empezar.",
+    defaultNotebook: "Cuaderno por defecto",
+    searchNotebooks: "Buscar cuadernos",
+    noNotebookMatch: "Ningún cuaderno coincide.",
+    defaultNotebookError: "No se pudo guardar el cuaderno por defecto. Inténtalo de nuevo.",
   },
 } as const;

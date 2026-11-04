@@ -15,6 +15,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from adapters.persistence.models import UnitModel, UserModel
+from adapters.persistence.recipes import SqlAlchemyRecipeRepository
 
 _INGREDIENTS = text(
     """
@@ -44,7 +45,19 @@ _RECIPES = text(
              ELSE
                (SELECT count(*) FROM kitchen_memberships AS member
                 WHERE member.kitchen_id = notebook.kitchen_id)
-           END AS people_with_access
+           END AS people_with_access,
+           CASE
+             WHEN notebook.kitchen_id IS NULL THEN
+               (SELECT array_agg(users.alias ORDER BY users.alias NULLS LAST, users.id)
+                FROM notebook_membership AS member
+                JOIN users ON users.id = member.user_id
+                WHERE member.notebook_id = notebook.id)
+             ELSE
+               (SELECT array_agg(users.alias ORDER BY users.alias NULLS LAST, users.id)
+                FROM kitchen_memberships AS member
+                JOIN users ON users.id = member.user_id
+                WHERE member.kitchen_id = notebook.kitchen_id)
+           END AS people_aliases
     FROM recipe
     JOIN notebook ON notebook.id = recipe.notebook_id
     ORDER BY cart_adds DESC, recipe.title, recipe.id
@@ -97,13 +110,31 @@ class SqlAlchemyAdminReports:
         return bool(self._session.scalar(select(UserModel.is_admin).where(UserModel.id == user_id)))
 
     def units(self) -> Sequence[AdminUnitRow]:
-        rows = self._session.scalars(
-            select(UnitModel).order_by(UnitModel.reference_count.desc(), UnitModel.name)
+        rows = list(
+            self._session.scalars(
+                select(UnitModel).order_by(UnitModel.reference_count.desc(), UnitModel.name)
+            )
         )
+        ids = {uid for row in rows for uid in row.user_references}
+        aliases: dict[UUID, str | None] = {}
+        if ids:
+            aliases = dict(
+                self._session.execute(
+                    select(UserModel.id, UserModel.alias).where(UserModel.id.in_(ids))
+                )
+                .tuples()
+                .all()
+            )
         return [
             AdminUnitRow(
                 name=row.name,
                 user_references=tuple(row.user_references),
+                user_aliases=tuple(
+                    sorted(
+                        (aliases.get(uid) for uid in row.user_references),
+                        key=lambda alias: (alias is None, alias or ""),
+                    )
+                ),
                 reference_count=row.reference_count,
                 is_default=row.is_default,
                 created_at=row.created_at,
@@ -115,7 +146,15 @@ class SqlAlchemyAdminReports:
         return [AdminIngredientRow(**row._mapping) for row in self._session.execute(_INGREDIENTS)]
 
     def recipes(self) -> Sequence[AdminRecipeRow]:
-        return [AdminRecipeRow(**row._mapping) for row in self._session.execute(_RECIPES)]
+        return [
+            AdminRecipeRow(**{**row._mapping, "people_aliases": tuple(row.people_aliases or ())})
+            for row in self._session.execute(_RECIPES)
+        ]
 
     def users(self) -> Sequence[AdminUserRow]:
         return [AdminUserRow(**row._mapping) for row in self._session.execute(_USERS)]
+
+    def delete_recipe(self, recipe_id: UUID) -> None:
+        # Lines, steps, source, cart entries, locks and search data leave with it (see
+        # DeleteRecipeService for the cascade list).
+        SqlAlchemyRecipeRepository(self._session).delete(recipe_id)

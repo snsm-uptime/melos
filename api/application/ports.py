@@ -687,6 +687,7 @@ class CartActivityLog(Protocol):
 class AdminUnitRow:
     name: str
     user_references: tuple[UUID, ...]
+    user_aliases: tuple[str | None, ...]
     reference_count: int
     is_default: bool
     created_at: datetime
@@ -707,6 +708,7 @@ class AdminRecipeRow:
     notebook_name: str
     notebook_kind: str
     people_with_access: int
+    people_aliases: tuple[str | None, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -724,7 +726,10 @@ class AdminUserRow:
 
 
 class AdminReportRepository(Protocol):
-    """Read-only figures across every account (spec 055 R17). Holds no recipe content."""
+    """Figures across every account (spec 055 R17) and the admin's recipe delete.
+
+    Holds no recipe content.
+    """
 
     def is_admin(self, user_id: UUID) -> bool: ...
 
@@ -735,6 +740,10 @@ class AdminReportRepository(Protocol):
     def recipes(self) -> Sequence[AdminRecipeRow]: ...
 
     def users(self) -> Sequence[AdminUserRow]: ...
+
+    def delete_recipe(self, recipe_id: UUID) -> None:
+        """Remove a recipe in any notebook. Raises RecipeNotFoundError when it is gone."""
+        ...
 
 
 class SidePanelRepository(Protocol):

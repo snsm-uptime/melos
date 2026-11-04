@@ -1,10 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { CheckIcon, CloseIcon } from "@/app/icons";
+import { Chip } from "@/components/Chip";
 import { useChromeHeader } from "@/components/ChromeBack";
 import { CauldronLoader } from "@/components/CauldronLoader";
+import { DeleteItemButton } from "@/components/DeleteItemButton";
 import { adminMessages } from "@/lib/i18n/admin";
 import type { Locale } from "@/lib/i18n/locale";
 import { withMinimumLoading } from "@/lib/minimumLoading";
@@ -16,11 +24,47 @@ type Row = Record<string, unknown>;
 type Loaded = { state: "ready"; rows: Row[] } | { state: "failed" };
 type Messages = (typeof adminMessages)[Locale];
 
-type Column = { key: string; label: string; show?: (value: unknown) => ReactNode };
+type Column = {
+  key: string;
+  label: string;
+  show?: (value: unknown, row: Row) => ReactNode;
+};
 
-function columnsFor(section: Section, t: Messages, locale: Locale): Column[] {
+type Actions = { deleteRecipe: (id: string) => Promise<boolean> };
+
+/** The count of people with access, then the aliases of each as a row of chips that scrolls. */
+function PeopleWithAccess({
+  count,
+  aliases,
+  noAlias,
+}: {
+  count: unknown;
+  aliases: unknown;
+  noAlias: string;
+}) {
+  const names = Array.isArray(aliases) ? aliases : [];
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <span className="shrink-0 font-semibold">{String(count)}</span>
+      <div className="flex max-w-[14rem] gap-1 overflow-x-auto pb-1">
+        {names.map((alias, index) => (
+          <Chip key={index}>{typeof alias === "string" ? alias : noAlias}</Chip>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function columnsFor(
+  section: Section,
+  t: Messages,
+  locale: Locale,
+  actions: Actions,
+): Column[] {
   const date = (value: unknown) =>
-    typeof value === "string" ? new Date(value).toLocaleDateString(locale) : t.none;
+    typeof value === "string"
+      ? new Date(value).toLocaleDateString(locale)
+      : t.none;
   switch (section) {
     case "units": {
       const c = t.columns.units;
@@ -44,7 +88,13 @@ function columnsFor(section: Section, t: Messages, locale: Locale): Column[] {
         {
           key: "user_references",
           label: c.userReferences,
-          show: (v) => (Array.isArray(v) && v.length > 0 ? v.join(", ") : t.none),
+          show: (_value, row) => (
+            <PeopleWithAccess
+              count={row.reference_count}
+              aliases={row.user_aliases}
+              noAlias={t.noAlias}
+            />
+          ),
         },
       ];
     }
@@ -67,14 +117,46 @@ function columnsFor(section: Section, t: Messages, locale: Locale): Column[] {
           label: c.notebookKind,
           show: (v) => (v === "kitchen" ? t.kinds.kitchen : t.kinds.personal),
         },
-        { key: "people_with_access", label: c.peopleWithAccess },
+        {
+          key: "people_with_access",
+          label: c.peopleWithAccess,
+          show: (count, row) => (
+            <PeopleWithAccess
+              count={count}
+              aliases={row.people_aliases}
+              noAlias={t.noAlias}
+            />
+          ),
+        },
         { key: "id", label: c.id },
+        {
+          key: "delete",
+          label: c.delete,
+          show: (_value, row) => {
+            const title = typeof row.title === "string" ? row.title : "";
+            return (
+              <DeleteItemButton
+                label={t.actions.deleteLabel(title)}
+                dialogTitle={t.actions.deleteTitle(title)}
+                message={t.actions.deleteMessage}
+                confirmLabel={t.actions.confirm}
+                cancelLabel={t.actions.cancel}
+                errorMessage={t.actions.deleteFailed}
+                onDelete={() => actions.deleteRecipe(String(row.id))}
+              />
+            );
+          },
+        },
       ];
     }
     case "users": {
       const c = t.columns.users;
       return [
-        { key: "alias", label: c.alias, show: (v) => (typeof v === "string" ? v : t.noAlias) },
+        {
+          key: "alias",
+          label: c.alias,
+          show: (v) => (typeof v === "string" ? v : t.noAlias),
+        },
         { key: "open_sessions", label: c.openSessions },
         { key: "newest_session_at", label: c.newestSessionAt, show: date },
         { key: "recipes_authored", label: c.recipesAuthored },
@@ -82,7 +164,11 @@ function columnsFor(section: Section, t: Messages, locale: Locale): Column[] {
         { key: "carts_created", label: c.cartsCreated },
         { key: "carts_edited", label: c.cartsEdited },
         { key: "carts_closed", label: c.cartsClosed },
-        { key: "latest_cart_action_at", label: c.latestCartActionAt, show: date },
+        {
+          key: "latest_cart_action_at",
+          label: c.latestCartActionAt,
+          show: date,
+        },
         { key: "id", label: c.id },
       ];
     }
@@ -99,14 +185,42 @@ async function loadSection(section: Section): Promise<Loaded> {
     });
     if (!response.ok) return { state: "failed" };
     const rows = ((await response.json()) as Record<string, unknown>)[section];
-    return Array.isArray(rows) ? { state: "ready", rows: rows as Row[] } : { state: "failed" };
+    return Array.isArray(rows)
+      ? { state: "ready", rows: rows as Row[] }
+      : { state: "failed" };
   } catch {
     return { state: "failed" };
   }
 }
 
-function SectionTable({ columns, rows, empty }: { columns: Column[]; rows: Row[]; empty: string }) {
-  if (rows.length === 0) return <p className="m-0 text-[0.9rem] text-muted">{empty}</p>;
+/** True when the recipe is gone, including when another admin removed it first. */
+async function deleteAdminRecipe(id: string): Promise<boolean> {
+  try {
+    const response = await fetch(
+      `/api/admin/recipes/${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+        credentials: "same-origin",
+        cache: "no-store",
+      },
+    );
+    return response.ok || response.status === 404;
+  } catch {
+    return false;
+  }
+}
+
+function SectionTable({
+  columns,
+  rows,
+  empty,
+}: {
+  columns: Column[];
+  rows: Row[];
+  empty: string;
+}) {
+  if (rows.length === 0)
+    return <p className="m-0 text-[0.9rem] text-muted">{empty}</p>;
   return (
     // Wide sections scroll inside their box, so the page itself fits a 360px screen.
     <div className="max-w-full overflow-x-auto rounded-[0.75rem] border border-border">
@@ -126,7 +240,7 @@ function SectionTable({ columns, rows, empty }: { columns: Column[]; rows: Row[]
         </thead>
         <tbody>
           {rows.map((row, index) => (
-            <tr key={index}>
+            <tr key={typeof row.id === "string" ? row.id : index}>
               {columns.map((column) => (
                 <td
                   key={column.key}
@@ -134,7 +248,9 @@ function SectionTable({ columns, rows, empty }: { columns: Column[]; rows: Row[]
                     column.key === "user_references" ? "" : "whitespace-nowrap"
                   }`}
                 >
-                  {column.show ? column.show(row[column.key]) : String(row[column.key])}
+                  {column.show
+                    ? column.show(row[column.key], row)
+                    : String(row[column.key])}
                 </td>
               ))}
             </tr>
@@ -188,6 +304,25 @@ export function AdminDashboard({ locale }: { locale: Locale }) {
     });
   }, []);
 
+  /** Deletes a recipe, then takes its row out of the loaded table. */
+  const deleteRecipe = useCallback(async (id: string) => {
+    const deleted = await deleteAdminRecipe(id);
+    if (deleted) {
+      setLoaded((before) => {
+        const recipes = before.recipes;
+        if (recipes?.state !== "ready") return before;
+        return {
+          ...before,
+          recipes: {
+            state: "ready",
+            rows: recipes.rows.filter((row) => row.id !== id),
+          },
+        };
+      });
+    }
+    return deleted;
+  }, []);
+
   /** Back to the first-load state, so a retry shows the cauldron again. */
   function retry() {
     setLoaded((before) => {
@@ -204,10 +339,12 @@ export function AdminDashboard({ locale }: { locale: Locale }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4 p-4">
       <div role="tabpanel" className="flex min-w-0 flex-1 flex-col">
-        {current === undefined ? <CauldronLoader label={t.tabs[section]} /> : null}
+        {current === undefined ? (
+          <CauldronLoader label={t.tabs[section]} />
+        ) : null}
         {current?.state === "ready" ? (
           <SectionTable
-            columns={columnsFor(section, t, locale)}
+            columns={columnsFor(section, t, locale, { deleteRecipe })}
             rows={current.rows}
             empty={t.empty}
           />

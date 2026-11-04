@@ -5,7 +5,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { formatQuantity } from "@/lib/recipeLines";
 
 import { Card, CardBody, CardHeader } from "@/components/Card";
-import { SearchableSelect } from "@/components/soft-ledger/SearchableSelect";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import type { DraftErrors } from "@/lib/capture/draftRules";
 import {
   chooseLineMatch,

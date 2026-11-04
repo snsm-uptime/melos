@@ -18,6 +18,14 @@ type CardPartProps = {
 export const cardClassName =
   "flex min-w-0 flex-col overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-2dp";
 
+/**
+ * A card whose whole face is a link: the pointer, and the accent border on hover or keyboard focus.
+ * Keyboard focus only (`:focus-visible`), so a click does not leave the border lit after the
+ * pointer leaves; `has-` covers a link inside the card, `in-` a link wrapping it.
+ */
+export const linkCardClassName =
+  "cursor-pointer transition-colors hover:border-accent has-focus-visible:border-accent in-focus-visible:border-accent";
+
 /** A raised surface. Compose with `CardHeader` and `CardBody`, or put content in it directly. */
 export function Card({ children, as: Element = "div", className }: CardProps) {
   return <Element className={`${cardClassName} ${className ?? ""}`}>{children}</Element>;

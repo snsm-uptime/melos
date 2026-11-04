@@ -9,6 +9,7 @@ import { useChromeHeader } from "@/components/ChromeBack";
 import { IconButton } from "@/components/IconButton";
 import { RecipeList } from "@/components/RecipeList/RecipeList";
 import { SavedNotice } from "@/components/RecipeDraft/SavedNotice";
+import { Tooltip } from "@/components/Tooltip";
 import { listAddress, readListAddress } from "@/lib/listAddress";
 import type { Locale } from "@/lib/i18n/locale";
 import { notebooksMessages } from "@/lib/i18n/notebooks";
@@ -97,13 +98,16 @@ export function NotebookRecipesScreen({
   );
 
   const returnPath = `/notebooks/${notebookId}`;
-  // Personal notebooks only: a kitchen notebook's people come from the kitchen (spec 057 FR-003).
+  // Personal notebooks can be shared. A kitchen notebook's people come from the kitchen (spec 057
+  // FR-003), so its share button is shown disabled, explaining why in a tooltip.
   const sharedPersonally = state.status === "ready" && state.notebook.kind === "personal";
+  const kitchenNotebook = state.status === "ready" && state.notebook.kind === "kitchen";
   const canManage = state.status === "ready" && canManageNotebook(state.notebook);
   const shareLabel = notebooksMessages[locale].sharingOpen;
+  const kitchenInviteLabel = notebooksMessages[locale].sharingKitchenInvite;
   const trailing = useMemo(
     () =>
-      sharedPersonally || canManage ? (
+      sharedPersonally || kitchenNotebook || canManage ? (
         <>
           {sharedPersonally ? (
             <IconButton
@@ -115,6 +119,20 @@ export function NotebookRecipesScreen({
               icon={<ShareIcon className="size-6" />}
             />
           ) : null}
+          {kitchenNotebook ? (
+            // A disabled button fires no mouse events, so the tooltip hangs on the wrapper span.
+            <Tooltip label={kitchenInviteLabel}>
+              <span className="inline-flex">
+                <IconButton
+                  type="button"
+                  variant="ghost"
+                  label={shareLabel}
+                  disabled
+                  icon={<ShareIcon className="size-6" />}
+                />
+              </span>
+            </Tooltip>
+          ) : null}
           {canManage ? (
             <NotebookOptionsMenu
               locale={locale}
@@ -124,7 +142,7 @@ export function NotebookRecipesScreen({
           ) : null}
         </>
       ) : undefined,
-    [canManage, locale, shareLabel, sharedPersonally],
+    [canManage, kitchenInviteLabel, kitchenNotebook, locale, shareLabel, sharedPersonally],
   );
   useChromeHeader({
     backHref,
