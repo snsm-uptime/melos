@@ -1,12 +1,8 @@
 # Melos Project Constitution
 
-**Version:** 2.0.0  
+**Version:** 1.0.0  
 **Ratified:** 2026-10-19  
-**Last Amended:** 2026-11-04
-
-### Amendment log
-
-- **2.0.0 (2026-11-04)**: The MVP is closed: it is the work done up to 2026-11-04 (backlog stories S-001 to S-065 as recorded in `dev/docs/backlog.yaml` on that date). Work from now on is post-MVP and is not held to the MVP's product limits. Principle 5 drops "Photos are not stored"; principle 9 is redefined from the MVP scope and deadline to post-MVP scope by backlog priority. Every other principle is unchanged. Approved by the project lead in the spec 026 planning session (2026-11-04).
+**Last Amended:** 2026-10-19
 
 ---
 
@@ -96,7 +92,7 @@ Amendments are recorded with their date and version in this document's header.
 **Non-negotiable rules:**
 - An AI draft is never saved without the user confirming it first
 - The assistant only answers from the kitchen's recipes, ingredients, categories, and conversation history—no web search, no general knowledge, no nutrition or health advice
-- Images (recipe images, receipts, photos sent for capture) are stored only when a story says so, with a size limit and a format check; an image sent only for extraction is not kept unless its story stores it
+- Photos are not stored; only extracted text is kept
 - No unit conversion or carry-over ("1 cup + 20 tbsp" stays as is)
 - Messages are never edited after sending
 
@@ -151,17 +147,17 @@ Amendments are recorded with their date and version in this document's header.
 
 ---
 
-### 9. Product Scope (post-MVP)
+### 9. Product Scope and Schedule
 
 **Non-negotiable rules:**
-- The MVP is closed (2026-11-04): it is what was built up to that date. Its limits (the 02/11/2026 deadline, "Should waits for Must", features moved out of the MVP such as main ingredients and cuisines) no longer bind new work
-- Post-MVP work is chosen from `dev/docs/backlog.yaml` by the owner's priority (must, should, later); a Should or Later story may be built before an open Must when the owner picks it
-- Every story still has a spec under `specs/` before it is built, and follows principles 1 to 8
-- Product rules in the PRD that came from MVP limits may be changed by the story that needs the change; the story's spec records the change and the PRD is updated when the story is done
+- v1 MVP (deadline 02/11/2026) covers: scaffold + auth, kitchens + invites, capture (text, URL), draft review, recipes, cart, shopping list, conversations with history
+- MCP service v1: per-user API keys, capture tool, recipe read, cart ops, shopping list ops
+- "Should" items (photo, @mentions, catalog management, semantic search, API key UI) are deferred until Must items are done
+- "Later" items (ML model, public sharing, offline mode) are out of v1 scope
 
-**Rationale:** The MVP proved the core flow. Later work should be judged on its value, not on limits set to meet one deadline, while the engineering principles stay in force.
+**Rationale:** Clear scope prevents feature creep and ensures on-time delivery of core value.
 
-**How to apply:** Before starting a story, check its priority and status in the backlog and that a spec exists. When a story lifts an MVP-era rule, say which rule in its spec.
+**How to apply:** Before adding features, check Appendix C of the PRD. Anything not in "Must" waits until Must is complete.
 
 ---
 

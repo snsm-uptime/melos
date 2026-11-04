@@ -21,10 +21,6 @@
 # private; kitchen notebooks belong to a kitchen and every member reads and writes them; a personal
 # notebook reaches a kitchen only as a snapshot copy. Kitchen links and kept copies were dropped.
 # S-056 re-scoped, S-057 added, S-035, S-048 and S-058 re-titled (PRD 1.5 H, 1.6, J1a).
-# MVP closed 2026-11-04: the MVP is the work done up to that date. Open stories are post-MVP and
-# are not held to MVP limits (constitution 2.0.0, principle 9; PRD Appendix C): the owner picks
-# them by priority, and a should or later story no longer waits for the musts. S-067 and S-068
-# added the same day.
 
 stories:
   # ---------------------------------------------------------------------------
@@ -482,7 +478,7 @@ stories:
     title: Embeddings and pgvector search pre-filtered by kitchen
     epic: Ask
     priority: must
-    status: done
+    status: in_progress
     source: prd.md 1.5E, 1.5F, 1.6 (recipe_embedding), Appendix D; specs/019-recipe-embeddings-search
     verification: >
       Built on worktree-kitchen-vectors, not merged. Live check 2026-11-02: 768 values, not
@@ -508,19 +504,10 @@ stories:
     title: Capture a recipe from a URL (SSRF-safe fetch, JSON-LD first)
     epic: Capture
     priority: must
-    status: done
+    status: backlog
     journey: J2
-    source: prd.md J2, 1.5A, 1.7 (URL fetching); specs/026-capture-recipe-url
+    source: prd.md J2, 1.5A, 1.7 (URL fetching)
     acceptance: [AC2.3]
-    verification: >
-      2026-11-04, see specs/026-capture-recipe-url/notes.md. api 1910 passed, 4 known environment
-      failures (live embedder, two paste-limit tests with RECIPE_TEXT_MAX_CHARS=10000, one
-      shopping-list date check); ruff clean. ui 1387 passed, lint and typecheck clean. SC-003
-      address set walked by hand through the BFF (19 links, all refused). Browser walk 45/45:
-      English 1280 px, Spanish 360 px, keyboard at 360 px, on a public schema.org page. Batches
-      walked on a public page without schema.org data (4 batches, 4.7 s). Not met or not walked:
-      SC-002 ten timed runs (2 drafts, then the key's usage limit); SC-006 evaluation about 75%
-      (Spanish counted lines lose quantity and unit in the whole-recipe prompt).
 
   - id: S-028
     title: Recipe PDF with correct accents and fractions
@@ -586,37 +573,6 @@ stories:
     priority: must
     status: backlog
     source: prd.md 1.8 item 5, Appendix C (AI evaluation)
-
-  - id: S-067
-    title: Recipe image (add, replace or remove a recipe's image; shown on the detail and the cards)
-    epic: Recipes
-    priority: must
-    status: backlog
-    journey: J3
-    source: owner request 2026-11-04 (post-MVP; not in prd.md); lifts the MVP rule "photos are not stored"
-    notes: >
-      S-026 fills recipe.preview_image_base64 (migration 0015) from a captured page's main photo.
-      This story lets anyone who can write to the recipe's notebook upload, replace or remove the
-      image on the recipe (detail and edit, spec 027), shrunk in the browser like the avatar
-      (ui/lib/imageEncode.ts) and checked on the server (domain/recipe_preview.py, from S-026).
-      The image is shown on the detail and on recipe cards (S-047 uses it in place of the default
-      pot). Open for its spec: whether a photo capture (S-041) keeps its photo as the recipe image,
-      and the size and format limits. Build after S-026, which adds the column and the check.
-
-  - id: S-068
-    title: Cart receipts (paste what was bought; match it to the shopping list and keep it with the list)
-    epic: Cart
-    priority: must
-    status: backlog
-    journey: J5
-    source: owner request 2026-11-04 (post-MVP; not in prd.md; extends J5 Saved list)
-    notes: >
-      A member pastes a receipt (the text of what was bought) for the kitchen's active shopping list
-      (S-025). The items are matched to the list's lines by ingredient name (S-018 matcher), the
-      matched lines are marked bought, and the receipt is kept with the list, so a closed list shows
-      what was actually bought. Open for its spec: whether a receipt photo is accepted and stored
-      (allowed since the MVP rule on photos was lifted), whether prices are kept, how unmatched
-      receipt items are shown, and whether S-031 (history in chat) reads receipts.
 
   # ---------------------------------------------------------------------------
   # Should
@@ -815,18 +771,6 @@ stories:
       PassOwnedNotebooksService before deleting the user row, in the same transaction, under the
       conditions in specs/058-notebook-ownership-passing/contracts/ownership-rule.md.
 
-  - id: S-066
-    title: Render recipe pages that build their content only in the browser (URL capture)
-    epic: Capture
-    priority: later
-    status: backlog
-    journey: J2
-    source: spec 026 clarify session 2026-11-04 (not in prd.md; extends J2 URL capture)
-    notes: >
-      Spec 026 reads the HTML as the site sends it and runs no page scripts. Rendering pages needs a
-      headless browser, a new service or library, so it needs the owner's approval and an
-      architecture exception, and the same address checks for every request the browser makes.
-
   - id: S-061
     title: Main ingredients and cuisines on recipes (controlled lists, scored cuisine, draft chips, edit, filter)
     epic: Recipes
@@ -835,7 +779,6 @@ stories:
     source: prd.md Appendix E (moved out of the MVP 2026-10-27); specs 015 and 016 (FR-006 scoring, FR-011, FR-012)
     notes: >
       Moved out of the MVP on 2026-10-27. S-018 (ingredient catalog matching) is not part of it and stays.
-      The MVP closed on 2026-11-04, so this story no longer waits on it; it is built when the owner picks it.
       To restore: the PRD text is in Appendix E; the code is commented out under "MVP-OUT:" (grep for it); the
       data files dev/docs/categories.yaml, dev/docs/cuisine.yml and category-prompt.md were left in place.
       Covers: the extractor's main_ingredients field and prompt rule, cuisine scoring in the domain, the

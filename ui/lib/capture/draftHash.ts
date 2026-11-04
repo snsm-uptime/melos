@@ -22,7 +22,5 @@ export function draftHash(draft: DraftView): string {
       line.note,
     ]),
     steps: draft.steps.map((step) => step.text),
-    // Removing the page's photo is an edit (spec 026).
-    previewImage: draft.previewImage ?? null,
   });
 }

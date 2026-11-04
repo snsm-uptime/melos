@@ -12,8 +12,6 @@ import {
   savedReturnPath,
   closeSheet,
   openSheet,
-  removePreviewImage,
-  setLink,
   setText,
   showDraft,
   startSave,
@@ -172,84 +170,5 @@ describe("savedReturnPath", () => {
     openSheet({ ...notebook, returnPath: "/notebooks/nb-1" });
 
     expect(getCaptureState().notebook?.returnPath).toBe("/notebooks/nb-1");
-  });
-});
-
-describe("link capture (spec 026)", () => {
-  const LINK = "https://example.test/soup";
-  const linkDraft: DraftView = {
-    ...draft,
-    sourceUrl: LINK,
-    previewImage: "data:image/jpeg;base64,AAAA",
-    pageCut: false,
-  };
-
-  it("opens the text sheet by default and the link sheet when asked", () => {
-    openSheet(notebook);
-    expect(getCaptureState().source).toEqual({ kind: "text" });
-
-    openSheet(notebook, "url");
-    expect(getCaptureState().source).toEqual({ kind: "url", link: "" });
-  });
-
-  it("keeps a typed link when the notebook picker reopens the sheet", () => {
-    openSheet(notebook, "url");
-    setLink(LINK);
-
-    openSheet({ ...notebook, id: "nb-2" });
-
-    expect(getCaptureState().source).toEqual({ kind: "url", link: LINK });
-  });
-
-  it("keeps the link unchanged on Back (FR-018)", () => {
-    openSheet(notebook, "url");
-    setLink(LINK);
-    showDraft(linkDraft, "en");
-
-    backToSheet();
-
-    expect(getCaptureState().source).toEqual({ kind: "url", link: LINK });
-    expect(getCaptureState().sheetOpen).toBe(true);
-  });
-
-  it("clears the link on Discard and stays on the link sheet", () => {
-    openSheet(notebook, "url");
-    setLink(LINK);
-    showDraft(linkDraft, "en");
-
-    discardDraft();
-
-    expect(getCaptureState().source).toEqual({ kind: "url", link: "" });
-    expect(getCaptureState().draft).toBeNull();
-  });
-
-  it("clears the link after a successful Save", () => {
-    openSheet(notebook, "url");
-    setLink(LINK);
-    showDraft(linkDraft, "en");
-
-    markSaved("/notebooks");
-
-    expect(getCaptureState().source).toEqual({ kind: "text" });
-  });
-
-  it("removing the photo empties it and counts as an edit", () => {
-    showDraft(linkDraft, "en");
-
-    removePreviewImage();
-
-    expect(getCaptureState().draft?.previewImage).toBeNull();
-    expect(getCaptureState().draft?.sourceUrl).toBe(LINK);
-    expect(isDraftEdited(getCaptureState())).toBe(true);
-  });
-
-  it("a typed link clears an earlier message", () => {
-    openSheet(notebook, "url");
-    setLink("bad");
-    failSave({ code: "page_fetch_failed" });
-
-    setLink(LINK);
-
-    expect(getCaptureState().message).toBeNull();
   });
 });

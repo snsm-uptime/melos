@@ -32,8 +32,6 @@ from adapters.persistence.search_records import SqlAlchemySearchRecords
 from adapters.persistence.sessions import SqlAlchemySessionStore
 from adapters.persistence.shopping_lists import SqlAlchemyShoppingListRepository
 from adapters.persistence.units import SqlAlchemyUnitRepository
-from adapters.web.page_fetcher import HttpxPageFetcher
-from adapters.web.page_reader import TrafilaturaPageReader
 from application.admin import AdminDashboard
 from application.carts import (
     AddToDraftService,
@@ -47,8 +45,6 @@ from application.carts import (
 from application.notebooks import ResolveCaptureNotebookService
 from application.ports import (
     Embedder,
-    PageFetcher,
-    PageReader,
     PasswordHasher,
     PreferencesRepository,
     SessionRef,
@@ -57,7 +53,6 @@ from application.ports import (
 )
 from application.rate_limit import SlidingWindowRateLimiter, resolve_trusted_client_ip
 from application.recipe_capture import CaptureRecipeText
-from application.recipe_capture_url import CaptureRecipeUrl
 from application.recipe_extraction import RecipeExtraction
 from application.recipe_lists import ListKitchenRecipesService, ListNotebookRecipesService
 from application.recipe_locks import AcquireRecipeLockService, ReleaseRecipeLockService
@@ -87,8 +82,6 @@ from api.settings import (
     load_auth_settings,
     load_embedding_settings,
     load_gemini_settings,
-    load_recipe_page_batch_chars,
-    load_recipe_page_max_batches,
     load_recipe_text_max_chars,
 )
 
@@ -247,43 +240,6 @@ def get_capture_recipe_text(
         units=SqlAlchemyUnitRepository(db),
         max_chars=load_recipe_text_max_chars(),
         timeout_s=settings.text_timeout_s,
-    )
-
-
-def get_page_fetcher(request: Request) -> PageFetcher:
-    """One SSRF-safe fetcher per process (spec 026)."""
-    cached = getattr(request.app.state, "page_fetcher", None)
-    if cached is None:
-        cached = HttpxPageFetcher()
-        request.app.state.page_fetcher = cached
-    return cached
-
-
-def get_page_reader(request: Request) -> PageReader:
-    cached = getattr(request.app.state, "page_reader", None)
-    if cached is None:
-        cached = TrafilaturaPageReader()
-        request.app.state.page_reader = cached
-    return cached
-
-
-def get_capture_recipe_url(
-    db: Session = Depends(get_db),
-    extraction: RecipeExtraction = Depends(get_recipe_extraction),
-    fetcher: PageFetcher = Depends(get_page_fetcher),
-    reader: PageReader = Depends(get_page_reader),
-) -> CaptureRecipeUrl:
-    """Link capture shares the per-process extraction use case with text capture."""
-    return CaptureRecipeUrl(
-        SqlAlchemyNotebookRepository(db),
-        SqlAlchemyIngredientCatalog(db),
-        extraction,
-        fetcher,
-        reader,
-        units=SqlAlchemyUnitRepository(db),
-        timeout_s=load_gemini_settings().text_timeout_s,
-        batch_chars=load_recipe_page_batch_chars(),
-        max_batches=load_recipe_page_max_batches(),
     )
 
 

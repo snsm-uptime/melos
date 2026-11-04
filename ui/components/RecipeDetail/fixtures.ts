@@ -19,7 +19,6 @@ export function recipeFixture(overrides: Partial<RecipeDetail> = {}): RecipeDeta
     ],
     steps: ["Fry the garlic.", "Add the rice."],
     source: null,
-    preview_image: null,
     ...overrides,
   };
 }

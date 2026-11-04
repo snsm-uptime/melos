@@ -29,10 +29,6 @@ class NewRecipe:
     author_id: UUID
     notebook_id: UUID
     save_key: UUID | None = None
-    # Link capture (spec 026): the page address replaces the pasted text as the source.
-    source_url: str | None = None
-    # The recipe image, a data URI already checked by domain.recipe_preview.
-    preview_image: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

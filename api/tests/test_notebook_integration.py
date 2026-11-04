@@ -915,11 +915,7 @@ def test_notebook_routes_are_gets_on_the_four_contract_paths(client: TestClient)
     assert notebook_paths.pop("/notebooks/{notebook_id}") == {"get", "patch", "delete"}
     assert {method for operations in notebook_paths.values() for method in operations} == {"get"}
     capture_paths = {path: set(ops) for path, ops in paths.items() if "/captures/" in path}
-    # Spec 026 adds capture from a link beside capture from text.
-    assert capture_paths == {
-        "/notebooks/{notebook_id}/captures/text": {"post"},
-        "/notebooks/{notebook_id}/captures/url": {"post"},
-    }
+    assert capture_paths == {"/notebooks/{notebook_id}/captures/text": {"post"}}
 
 
 def test_read_routes_show_each_person_only_what_they_may_see(

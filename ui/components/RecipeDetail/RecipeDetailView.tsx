@@ -138,17 +138,6 @@ export function RecipeDetailView({
           ) : null}
         </header>
 
-        {recipe.preview_image ? (
-          <div className="px-4">
-            {/* eslint-disable-next-line @next/next/no-img-element -- a stored data URI */}
-            <img
-              src={recipe.preview_image}
-              alt={recipe.title}
-              className="block max-h-72 max-w-full rounded-[0.75rem] object-cover"
-            />
-          </div>
-        ) : null}
-
         {lockedBy ? (
           <div className="px-4">
             <EditorNotice alias={lockedBy.alias} kind="recipe" locale={locale} />

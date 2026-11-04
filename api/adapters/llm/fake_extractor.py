@@ -6,7 +6,7 @@ import threading
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from application.recipe_extraction import ExtractionMode, ExtractionResult
+from application.recipe_extraction import ExtractionResult
 
 
 @dataclass(frozen=True, slots=True)
@@ -14,8 +14,6 @@ class ExtractionCall:
     text: str
     ingredient_names: tuple[str, ...]
     timeout_s: float
-    mode: ExtractionMode = ExtractionMode.WHOLE
-    part: tuple[int, int] | None = None
 
 
 @dataclass(slots=True)
@@ -36,12 +34,9 @@ class FakeRecipeExtractor:
         text: str,
         ingredient_names: Sequence[str],
         timeout_s: float,
-        *,
-        mode: ExtractionMode = ExtractionMode.WHOLE,
-        part: tuple[int, int] | None = None,
     ) -> ExtractionResult:
         with self._lock:
-            self.calls.append(ExtractionCall(text, tuple(ingredient_names), timeout_s, mode, part))
+            self.calls.append(ExtractionCall(text, tuple(ingredient_names), timeout_s))
             if isinstance(self.script, (list, tuple)):
                 result = self.script[min(self._index, len(self.script) - 1)]
                 self._index += 1

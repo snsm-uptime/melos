@@ -11,7 +11,6 @@ from application.ports import DuplicateSaveKeyError, NotebookFacts, StoredRecipe
 from application.recipe_capture import TextTooLongError
 from application.recipe_save import SaveRecipeCommand, SaveRecipeDraft
 from domain.errors import (
-    InvalidPreviewImageError,
     KitchenArchivedError,
     NotebookChoiceRequiredError,
     NotebookNotFoundError,
@@ -452,91 +451,4 @@ def test_a_refused_save_enqueues_nothing() -> None:
         h.run(nid)
     with pytest.raises(InvalidDraftError):
         h.run(None)
-    assert h.jobs.enqueued == []
-
-
-# --- link capture source and image (spec 026 T039) ---
-
-JPEG_URI = "data:image/jpeg;base64,/9j/4AAQSkZJRg=="
-
-
-def test_a_link_capture_stores_the_address_and_the_image_and_no_text() -> None:
-    h = Harness()
-    fact, nid = personal()
-    h.add(fact)
-
-    h.run(
-        nid,
-        source_text="",
-        source_url="https://Example.TEST/recipes/soup",
-        preview_image=JPEG_URI,
-    )
-
-    recipe = h.recipes.stored[0]
-    assert recipe.source_url == "https://example.test/recipes/soup"
-    assert recipe.source_text == ""
-    assert recipe.preview_image == JPEG_URI
-
-
-def test_a_link_capture_without_an_image_stores_none() -> None:
-    h = Harness()
-    fact, nid = personal()
-    h.add(fact)
-
-    h.run(nid, source_text="", source_url="https://example.test/soup")
-
-    assert h.recipes.stored[0].preview_image is None
-
-
-def test_a_text_capture_is_unchanged() -> None:
-    h = Harness()
-    fact, nid = personal()
-    h.add(fact)
-
-    h.run(nid)
-
-    assert h.recipes.stored[0].source_url is None
-    assert h.recipes.stored[0].preview_image is None
-
-
-@pytest.mark.parametrize(
-    "overrides",
-    [
-        {"source_url": "https://example.test/soup"},  # pasted text alongside a link
-        {"source_text": "", "source_url": "ftp://example.test/soup"},
-        {"source_text": "", "source_url": "https://user:pw@example.test/"},
-        {"source_text": "", "source_url": "not a link"},
-        {"source_text": "", "source_url": "https://example.test/" + "a" * 2100},
-    ],
-)
-def test_a_bad_source_address_is_refused_and_stores_nothing(overrides: dict) -> None:
-    h = Harness()
-    fact, nid = personal()
-    h.add(fact)
-
-    with pytest.raises(InvalidDraftError):
-        h.run(nid, **overrides)
-    assert h.recipes.stored == []
-
-
-@pytest.mark.parametrize(
-    "overrides",
-    [
-        {"preview_image": JPEG_URI},  # an image without a link
-        {"source_text": "", "source_url": "https://example.test/", "preview_image": "data:x"},
-        {
-            "source_text": "",
-            "source_url": "https://example.test/",
-            "preview_image": "data:image/jpeg;base64," + "A" * 500_000,
-        },
-    ],
-)
-def test_a_bad_image_is_refused_and_stores_nothing(overrides: dict) -> None:
-    h = Harness()
-    fact, nid = personal()
-    h.add(fact)
-
-    with pytest.raises(InvalidPreviewImageError):
-        h.run(nid, **overrides)
-    assert h.recipes.stored == []
     assert h.jobs.enqueued == []
