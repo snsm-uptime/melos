@@ -26,6 +26,7 @@ import {
   failSave,
   getCaptureState,
   markSaved,
+  removePreviewImage,
   savedReturnPath,
   startSave,
   undoChange,
@@ -265,6 +266,35 @@ export function RecipeDraftEditor() {
       />
       */}
 
+      {draft.previewImage || draft.pageCut ? (
+        <div className="flex flex-col gap-3 px-4">
+          {draft.previewImage ? (
+            <figure className="relative m-0 self-start">
+              {/* eslint-disable-next-line @next/next/no-img-element -- a data URI, not a site address */}
+              <img
+                src={draft.previewImage}
+                alt={t.pagePhotoAlt}
+                className="block max-h-56 max-w-full rounded-[0.75rem] object-cover"
+              />
+              <span className="absolute top-2 right-2">
+                <IconButton
+                  variant="ghost"
+                  label={t.removePhoto}
+                  icon={<TrashIcon className="size-5" />}
+                  onClick={removePreviewImage}
+                  className="bg-background/80"
+                />
+              </span>
+            </figure>
+          ) : null}
+          {draft.pageCut ? (
+            <p role="note" className="m-0 text-[0.9rem] text-muted">
+              {t.pageCut}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-6 px-4 md:min-h-0 md:flex-1 md:flex-row">
         <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:max-w-[450px] md:flex-1 md:overflow-hidden">
           <div className="flex shrink-0 items-center justify-between gap-2">
@@ -395,7 +425,12 @@ export function RecipeDraftEditor() {
 
       {capture.message ? (
         <p role="alert" className="px-4 text-[0.9rem] text-error">
-          {messageForCode(capture.message, locale)}
+          {messageForCode(
+            capture.message,
+            locale,
+            undefined,
+            draft.sourceUrl ? "url" : "text",
+          )}
         </p>
       ) : null}
     </div>

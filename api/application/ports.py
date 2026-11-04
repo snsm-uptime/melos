@@ -6,13 +6,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Protocol
+from typing import Literal, Protocol
 from uuid import UUID
 
 from domain.cart import CartAction
 from domain.default_kitchen import MemberKitchen
 from domain.notebook import Notebook, NotebookRole
 from domain.recipe import EditedRecipe, NewRecipe
+from domain.recipe_page import PageRecipe
 from domain.recipe_search import SearchFilters
 from domain.shopping_list import SavedLine, SavedList
 
@@ -314,6 +315,8 @@ class RecipeDetail:
     source_url: str | None
     created_at: datetime
     updated_at: datetime
+    # The recipe image as a data URI, or None (spec 026).
+    preview_image: str | None = None
 
 
 class DuplicateSaveKeyError(Exception):
@@ -941,3 +944,53 @@ class SearchRecords(Protocol):
     def delete_older_than(self, cutoff: datetime) -> int: ...
 
     def score_bands(self, width: float) -> list[Band]: ...
+
+
+# --- Link capture (spec 026, contracts/ports.md) ---
+
+PageFetchFailureKind = Literal[
+    "blocked", "dns", "timeout", "connect", "redirect", "status", "not_html", "too_large"
+]
+ImageMediaType = Literal["image/jpeg", "image/png", "image/webp"]
+
+
+@dataclass(frozen=True, slots=True)
+class FetchedPage:
+    # The address after redirects; what the draft returns and Save stores.
+    final_url: str
+    html: str
+    byte_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class PageFetchFailed:
+    """The page could not be fetched. Every kind shows the member the same message (R10)."""
+
+    kind: PageFetchFailureKind
+
+
+@dataclass(frozen=True, slots=True)
+class FetchedImage:
+    media_type: ImageMediaType
+    data: bytes
+
+
+@dataclass(frozen=True, slots=True)
+class PageContent:
+    recipes: tuple[PageRecipe, ...]
+    main_image_url: str | None
+    markdown: str
+
+
+class PageFetcher(Protocol):
+    """Port: the one page the member gave, and its main photo. Never raises."""
+
+    def fetch_page(self, url: str) -> FetchedPage | PageFetchFailed: ...
+
+    def fetch_image(self, url: str) -> FetchedImage | None: ...
+
+
+class PageReader(Protocol):
+    """Port: HTML in, schema.org recipes, main photo address and Markdown out. Never raises."""
+
+    def read(self, html: str, base_url: str) -> PageContent: ...

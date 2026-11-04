@@ -15,20 +15,28 @@ from types import SimpleNamespace
 import httpx
 import pytest
 from adapters.llm import gemini_extractor
-from adapters.llm.gemini_extractor import RESPONSE_SCHEMA, GeminiRecipeExtractor
+from adapters.llm.gemini_extractor import (
+    PAGE_PART_RESPONSE_SCHEMA,
+    RESPONSE_SCHEMA,
+    GeminiRecipeExtractor,
+)
 from adapters.llm.prompt import (
     TEXT_CLOSE,
     TEXT_OPEN,
     VAGUE_PHRASES,
     build_contents,
+    page_part_system_instruction,
     system_instruction,
 )
 from api.settings import GeminiSettings
 from application.recipe_extraction import (
     AIProviderError,
     Draft,
+    DraftPart,
+    ExtractionMode,
     InvalidOutput,
     LimitReached,
+    NoRecipeContent,
     NotARecipe,
     NotRecipeReason,
     Unavailable,
@@ -485,3 +493,171 @@ def test_fields_outside_the_schema_are_ignored_not_read() -> None:
     extractor_, _ = extractor(response({**RECIPE_JSON, "extra": "ignore me"}))
 
     assert isinstance(extractor_.extract("text", [], 10.0), Draft)
+
+
+# ── partial page mode (spec 026 T017) ───────────────────────────────────────
+
+
+def _part_call(behaviour, part=(2, 3)):
+    extractor_, models = extractor(behaviour)
+    result = extractor_.extract(
+        "Step 4. Serve hot.", ["onion"], 10.0, mode=ExtractionMode.PAGE_PART, part=part
+    )
+    return result, models
+
+
+def test_part_mode_sends_the_part_system_instruction_schema_and_line() -> None:
+    _, models = _part_call(response({"outcome": "no_recipe_content"}))
+
+    config = models.calls[0]["config"]
+    assert config.system_instruction == page_part_system_instruction()
+    assert config.response_json_schema == PAGE_PART_RESPONSE_SCHEMA
+    assert models.calls[0]["contents"] == build_contents("Step 4. Serve hot.", ["onion"], (2, 3))
+    assert config.http_options.retry_options.attempts == 1
+
+
+def test_whole_mode_request_is_unchanged_by_part_mode() -> None:
+    extractor_, models = extractor(response(RECIPE_JSON))
+
+    extractor_.extract("pasted text", ["onion"], 10.0)
+
+    config = models.calls[0]["config"]
+    assert config.system_instruction == system_instruction()
+    assert config.response_json_schema == RESPONSE_SCHEMA
+    assert models.calls[0]["contents"] == build_contents("pasted text", ["onion"])
+
+
+def test_part_schema_requires_no_recipe_field() -> None:
+    recipe = PAGE_PART_RESPONSE_SCHEMA["properties"]["recipe"]
+
+    assert PAGE_PART_RESPONSE_SCHEMA["properties"]["outcome"]["enum"] == [
+        "recipe_part",
+        "no_recipe_content",
+        "multiple_recipes",
+    ]
+    assert "required" not in recipe
+    assert set(recipe["properties"]) == {"title", "base_servings", "ingredient_lines", "steps"}
+
+
+def test_a_part_with_only_steps_is_a_draft_part() -> None:
+    result, _ = _part_call(
+        response({"outcome": "recipe_part", "recipe": {"steps": ["Serve hot."]}})
+    )
+
+    assert result == DraftPart(
+        title=None, base_servings=None, ingredient_lines=(), steps=("Serve hot.",)
+    )
+
+
+def test_a_part_with_lines_and_a_title_maps_every_field() -> None:
+    result, _ = _part_call(
+        response(
+            {
+                "outcome": "recipe_part",
+                "recipe": {
+                    "title": "Bean stew",
+                    "base_servings": 6,
+                    "ingredient_lines": [
+                        {
+                            "name": "onion",
+                            "vague": False,
+                            "quantity": 1,
+                            "unit": "unit",
+                            "preparation": "chopped",
+                            "text_name": "onion",
+                            "catalog_match": "onion",
+                        },
+                    ],
+                },
+            }
+        )
+    )
+
+    assert isinstance(result, DraftPart)
+    assert result.title == "Bean stew"
+    assert result.base_servings == 6
+    assert result.steps == ()
+    line = result.ingredient_lines[0]
+    assert (line.name, line.quantity, line.preparation, line.catalog_match) == (
+        "onion",
+        1,
+        "chopped",
+        "onion",
+    )
+
+
+def test_part_outcomes_without_a_recipe() -> None:
+    assert _part_call(response({"outcome": "no_recipe_content"}))[0] == NoRecipeContent()
+    assert _part_call(response({"outcome": "multiple_recipes"}))[0] == NotARecipe(
+        reason=NotRecipeReason.MULTIPLE_RECIPES
+    )
+    assert _part_call(response({"outcome": "recipe_part"}))[0] == NoRecipeContent()
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "not json",
+        json.dumps({"outcome": "recipe"}),
+        json.dumps({"outcome": "not_a_recipe", "reason": "not_food"}),
+        json.dumps({"outcome": "recipe_part", "recipe": {"steps": "one string"}}),
+    ],
+)
+def test_part_schema_errors_are_invalid_output(body: str) -> None:
+    assert _part_call(response(body))[0] == InvalidOutput()
+
+
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (httpx.ReadTimeout("slow"), Unavailable()),
+        (api_error(ServerError, 503), Unavailable()),
+        (api_error(ClientError, 401), AIProviderError()),
+    ],
+)
+def test_part_sdk_errors_map_as_in_whole_mode(error, expected) -> None:
+    assert _part_call(error)[0] == expected
+
+
+def test_parallel_first_calls_share_one_sdk_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Parts of one page start together; a second client made in a race would be closed while
+    # its call is still running ("client has been closed", seen in the spec 026 walk).
+    import threading
+
+    made: list[object] = []
+    gate = threading.Barrier(4, timeout=5)
+
+    class _CountingClient:
+        def __init__(self, api_key: str) -> None:
+            time.sleep(0.05)  # widen the race window
+            made.append(self)
+            self.models = _StubModels(response({"outcome": "no_recipe_content"}))
+
+    monkeypatch.setattr(gemini_extractor.genai, "Client", _CountingClient)
+    shared = GeminiRecipeExtractor(api_key=SECRET_KEY, model="gemini-test")
+    results: list[object] = []
+
+    def call(index: int) -> None:
+        gate.wait()
+        results.append(
+            shared.extract("x", [], 10.0, mode=ExtractionMode.PAGE_PART, part=(index, 4))
+        )
+
+    threads = [threading.Thread(target=call, args=(index,)) for index in range(1, 5)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=10)
+
+    assert len(made) == 1
+    assert results == [NoRecipeContent()] * 4
+
+
+def test_part_with_no_key_is_ai_provider_error() -> None:
+    client = _StubClient(response({"outcome": "no_recipe_content"}))
+    result = GeminiRecipeExtractor(api_key="", model="gemini-test", client=client).extract(
+        "text", [], 10.0, mode=ExtractionMode.PAGE_PART, part=(1, 2)
+    )
+
+    assert result == AIProviderError()
+    assert client.models.calls == []

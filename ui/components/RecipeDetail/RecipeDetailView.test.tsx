@@ -104,6 +104,24 @@ describe("RecipeDetailView", () => {
     );
   });
 
+  it("opens the source page in a new tab that cannot reach back (spec 026)", () => {
+    render(recipeFixture({ source: { type: "url", url: "https://example.com/soup" } }));
+
+    const link = container.querySelector("a[target=_blank]");
+    expect(link?.getAttribute("rel")).toBe("noopener noreferrer");
+  });
+
+  it("shows the recipe image at the top only when it has one (spec 026)", () => {
+    render();
+    expect(container.querySelector("img")).toBeNull();
+
+    render(recipeFixture({ preview_image: "data:image/jpeg;base64,AAAA" }));
+
+    const img = container.querySelector("img");
+    expect(img?.getAttribute("src")).toBe("data:image/jpeg;base64,AAAA");
+    expect(img?.getAttribute("alt")).toBe("Tomato rice");
+  });
+
   it("goes back to the list it came from", () => {
     render();
     expect(container.querySelector("a[aria-label=Back]")?.getAttribute("href")).toBe(

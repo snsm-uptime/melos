@@ -1,4 +1,4 @@
-"""Recipe capture from pasted text, and the units and sizes lists (spec 016).
+"""Recipe capture from pasted text (spec 016) and from a link (spec 026), and the units lists.
 
 The use case does the checks and the assistant call. This module only maps each
 outcome to its HTTP status and `code` (contracts/capture-api.md). Messages carry no
@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from application.ports import PreferencesRepository, UnitRepository
+from application.ports import PageFetchFailed, PreferencesRepository, UnitRepository
 from application.recipe_capture import (
     CapturedDraft,
     CaptureOutcome,
@@ -18,6 +18,12 @@ from application.recipe_capture import (
     CaptureRecipeText,
     TextEmptyError,
     TextTooLongError,
+)
+from application.recipe_capture_url import (
+    CapturedPageDraft,
+    CaptureRecipeUrl,
+    CaptureRecipeUrlCommand,
+    PageNoRecipe,
 )
 from application.recipe_extraction import (
     AIProviderError,
@@ -32,6 +38,7 @@ from application.recipe_vocabulary import check_unit_word, vocabulary_for_person
 from application.units import available_units
 from domain.errors import KitchenArchivedError, NotebookNotFoundError
 from domain.ingredient_catalog import LineMatch
+from domain.page_link import MAX_LINK_CHARS, PageLinkRefused
 from domain.preferences import effective_language
 from domain.recipe_draft import clean_display_name
 from fastapi import APIRouter, Depends, Request, status
@@ -39,12 +46,13 @@ from fastapi.responses import JSONResponse
 
 from api.deps import (
     get_capture_recipe_text,
+    get_capture_recipe_url,
     get_preferences_repository,
     get_unit_repository,
     get_vocabulary_answer,
     require_user_alias,
 )
-from api.schemas.recipe_capture import CaptureTextBody, UnitCheckBody
+from api.schemas.recipe_capture import CaptureTextBody, CaptureUrlBody, UnitCheckBody
 from api.settings import load_recipe_text_max_chars
 
 # MVP-OUT: the draft no longer uses `domain.labels.pick_label` (category chip labels)
@@ -67,7 +75,7 @@ def _match_body(match: LineMatch | None) -> dict[str, Any]:
     return {"kind": "matched", "entry": match.entry}
 
 
-def _draft_body(captured: CapturedDraft) -> dict[str, Any]:
+def _draft_body(captured: CapturedDraft | CapturedPageDraft) -> dict[str, Any]:
     language = captured.language
     # MVP-OUT: main_labels = {item["id"]: item["label"] for item in vocabulary["main_ingredients"]}
     # MVP-OUT: cuisines = {item["id"]: item for item in vocabulary["cuisines"]}
@@ -250,6 +258,84 @@ def capture_recipe_text(
             KitchenArchivedError.CODE,
             KitchenArchivedError.MESSAGE,
         )
+    return _outcome_response(outcome)
+
+
+def _language(request: Request, prefs: PreferencesRepository, user_id: uuid.UUID) -> str:
+    record = prefs.get_preferences(user_id)
+    return effective_language(
+        record.language if record else None,
+        request.headers.get("accept-language"),
+    )
+
+
+# One body for every fetch failure, blocked addresses included, so the message never lets a
+# member probe the network (spec 026 R10, FR-024): no kind, address or site text.
+def _page_fetch_failed() -> JSONResponse:
+    return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "page_fetch_failed", "")
+
+
+def _link_refused(exc: PageLinkRefused) -> JSONResponse:
+    if exc.kind in ("credentials", "port"):
+        return _page_fetch_failed()
+    if exc.kind == "empty":
+        return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "link_empty", "")
+    if exc.kind == "too_long":
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={"detail": "", "code": "link_too_long", "max": MAX_LINK_CHARS},
+        )
+    return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "link_invalid", "")
+
+
+@router.post("/notebooks/{notebook_id}/captures/url")
+def capture_recipe_url(
+    notebook_id: uuid.UUID,
+    body: CaptureUrlBody,
+    request: Request,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    capture: CaptureRecipeUrl = Depends(get_capture_recipe_url),
+    prefs: PreferencesRepository = Depends(get_preferences_repository),
+) -> JSONResponse:
+    """A draft from the one page the link points to (spec 026, contracts/capture-url-api.md)."""
+    try:
+        outcome = capture.execute(
+            CaptureRecipeUrlCommand(
+                actor_user_id=user_id,
+                notebook_id=notebook_id,
+                url=body.url,
+                language=_language(request, prefs, user_id),
+            )
+        )
+    except PageLinkRefused as exc:
+        return _link_refused(exc)
+    except NotebookNotFoundError:
+        return _error(
+            status.HTTP_404_NOT_FOUND,
+            NotebookNotFoundError.CODE,
+            NotebookNotFoundError.MESSAGE,
+        )
+    except KitchenArchivedError:
+        return _error(
+            status.HTTP_409_CONFLICT,
+            KitchenArchivedError.CODE,
+            KitchenArchivedError.MESSAGE,
+        )
+    if isinstance(outcome, PageFetchFailed):
+        return _page_fetch_failed()
+    if isinstance(outcome, PageNoRecipe):
+        return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "page_no_recipe", "")
+    if isinstance(outcome, CapturedPageDraft):
+        content = _draft_body(outcome)
+        content["page"] = {
+            "source_url": outcome.source_url,
+            "preview_image": outcome.preview_image,
+            "cut": outcome.page_cut,
+        }
+        return JSONResponse(status_code=status.HTTP_200_OK, content=content)
+    if isinstance(outcome, NotARecipe) and outcome.reason != NotRecipeReason.MULTIPLE_RECIPES:
+        # The use case never returns this; a page that is not a recipe is page_no_recipe.
+        return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "page_no_recipe", "")
     return _outcome_response(outcome)
 
 

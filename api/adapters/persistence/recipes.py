@@ -49,9 +49,15 @@ class SqlAlchemyRecipeRepository:
         try:
             # A savepoint, so a duplicate save key leaves the caller's transaction usable.
             with self._session.begin_nested():
-                source = SourceModel(
-                    user_id=recipe.author_id, type="text", raw_text=recipe.source_text
-                )
+                if recipe.source_url is not None:
+                    # A link capture stores the address only, never the page (FR-019).
+                    source = SourceModel(
+                        user_id=recipe.author_id, type="url", url=recipe.source_url, raw_text=None
+                    )
+                else:
+                    source = SourceModel(
+                        user_id=recipe.author_id, type="text", raw_text=recipe.source_text
+                    )
                 self._session.add(source)
                 self._session.flush()
                 row = RecipeModel(
@@ -62,6 +68,7 @@ class SqlAlchemyRecipeRepository:
                     base_servings=recipe.base_servings,
                     servings_estimated=recipe.servings_estimated,
                     save_key=recipe.save_key,
+                    preview_image_base64=recipe.preview_image,
                 )
                 self._session.add(row)
                 self._session.flush()
@@ -141,6 +148,7 @@ class SqlAlchemyRecipeRepository:
             source_url=source_url,
             created_at=row.created_at,
             updated_at=row.updated_at,
+            preview_image=row.preview_image_base64,
         )
 
     def _lock(self, recipe_id: UUID) -> RecipeModel:
@@ -186,6 +194,7 @@ class SqlAlchemyRecipeRepository:
                 RecipeModel.base_servings,
                 RecipeModel.servings_estimated,
                 RecipeModel.created_at,
+                RecipeModel.preview_image_base64,
             )
             .where(RecipeModel.notebook_id == source_id)
             .with_for_update(read=True)
@@ -233,6 +242,7 @@ class SqlAlchemyRecipeRepository:
                     "servings_estimated": recipe.servings_estimated,
                     # Kept, because the kitchen list sorts by it (research R5).
                     "created_at": recipe.created_at,
+                    "preview_image_base64": recipe.preview_image_base64,
                 }
                 for recipe in recipes
             ],

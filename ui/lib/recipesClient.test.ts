@@ -95,6 +95,7 @@ describe("one recipe (spec 027)", () => {
     ],
     steps: ["Cook."],
     source: null,
+    preview_image: null,
   };
   const json = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });

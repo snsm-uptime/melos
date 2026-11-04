@@ -1193,3 +1193,21 @@ def test_a_50_recipe_snapshot_takes_at_most_5_more_statements(
         event.remove(connection, "before_cursor_execute", count)
 
     assert with_jobs - without <= 5, (without, with_jobs)
+
+
+def test_a_snapshot_copies_the_recipe_image(
+    client: TestClient, db_session: Session, ana: tuple[UUID, str]
+) -> None:
+    ana_id, token = ana
+    kitchen = _kitchen(db_session, ana_id)
+    source = _personal(db_session, ana_id)
+    original = _recipe(db_session, source, ana_id, "With photo")
+    preview = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ=="
+    db_session.get(RecipeModel, original).preview_image_base64 = preview
+    db_session.flush()
+
+    _use(client, token)
+    snapshot = _added(client, kitchen, source)
+
+    (copy,) = _recipes_of(db_session, snapshot)
+    assert copy.preview_image_base64 == preview

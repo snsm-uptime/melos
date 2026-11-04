@@ -161,6 +161,25 @@ def load_recipe_text_max_chars() -> int:
     return value
 
 
+def load_recipe_page_batch_chars() -> int:
+    """Characters of page Markdown per assistant request in link capture (spec 026 R8).
+
+    At most the extraction limit (10,000), because each batch is one extraction call.
+    """
+    value = _env_int("RECIPE_PAGE_BATCH_CHARS", 10_000)
+    if not 1_000 <= value <= 10_000:
+        raise ValueError(f"RECIPE_PAGE_BATCH_CHARS must be 1000 to 10000, got {value}")
+    return value
+
+
+def load_recipe_page_max_batches() -> int:
+    """Most assistant requests per link capture (spec 026 R8)."""
+    value = _env_int("RECIPE_PAGE_MAX_BATCHES", 4)
+    if not 1 <= value <= 8:
+        raise ValueError(f"RECIPE_PAGE_MAX_BATCHES must be 1 to 8, got {value}")
+    return value
+
+
 def load_gemini_settings() -> GeminiSettings:
     return GeminiSettings(
         api_key=(os.environ.get("GEMINI_API_KEY") or "").strip(),
