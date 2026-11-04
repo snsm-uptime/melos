@@ -57,6 +57,8 @@ from application.notebooks import (
     DeleteNotebookService,
     GetDefaultNotebookCommand,
     GetDefaultNotebookService,
+    SetDefaultNotebookCommand,
+    SetDefaultNotebookService,
     GetNotebookCommand,
     GetNotebookService,
     ListKitchenNotebooksCommand,
@@ -119,6 +121,7 @@ from api.schemas.notebooks import (
     NameNotebookRequest,
     NotebookResponse,
     NotebooksResponse,
+    SetDefaultNotebookRequest,
 )
 from api.schemas.recipe_lists import RecipePageResponse
 from api.settings import AuthSettings
@@ -276,6 +279,26 @@ def get_default_notebook(
         SqlAlchemyIngredientCatalog(db),
     )
     view = service.execute(GetDefaultNotebookCommand(actor_user_id=user_id))
+    return _response(view)
+
+
+@router.put("/default", response_model=NotebookResponse)
+def set_default_notebook(
+    body: SetDefaultNotebookRequest,
+    user_id: uuid.UUID = Depends(require_authenticated_user),
+    db: Session = Depends(get_db),
+) -> NotebookResponse | JSONResponse:
+    service = SetDefaultNotebookService(
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyUserDefaultNotebook(db),
+        SqlAlchemyTransactionCommitter(db),
+    )
+    try:
+        view = service.execute(
+            SetDefaultNotebookCommand(actor_user_id=user_id, notebook_id=body.notebook_id)
+        )
+    except NotebookNotFoundError:
+        return _notebook_not_found()
     return _response(view)
 
 

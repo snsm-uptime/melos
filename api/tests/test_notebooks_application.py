@@ -21,6 +21,8 @@ from application.notebooks import (
     NotebookView,
     ResolveCaptureNotebookCommand,
     ResolveCaptureNotebookService,
+    SetDefaultNotebookCommand,
+    SetDefaultNotebookService,
 )
 from application.ports import KitchenAccessGrant, NotebookFacts, UserPreferencesRecord
 from domain.errors import (
@@ -512,6 +514,61 @@ def test_default_notebook_is_named_in_spanish_when_the_account_saved_no_language
     view = _default(world).execute(GetDefaultNotebookCommand(actor_user_id=ana))
 
     assert view.name == "Cuaderno de ana"
+
+
+def test_set_default_makes_an_owned_personal_notebook_the_default() -> None:
+    ana = uuid4()
+    world = _world({ana: "ana"})
+    _default(world).execute(GetDefaultNotebookCommand(actor_user_id=ana))
+    work = _personal(world, ana, "Work")
+
+    view = SetDefaultNotebookService(world.notebooks, world.defaults, world.committer).execute(
+        SetDefaultNotebookCommand(actor_user_id=ana, notebook_id=work)
+    )
+
+    assert view.is_default is True
+    assert world.defaults.get_for_update(ana) == work
+    assert world.committer.commits == 1
+
+
+def test_set_default_refuses_a_notebook_the_person_cannot_read() -> None:
+    ana, ben = uuid4(), uuid4()
+    world = _world({ana: "ana", ben: "ben"})
+    bens = _personal(world, ben, "Ben's")
+
+    with pytest.raises(NotebookNotFoundError):
+        SetDefaultNotebookService(world.notebooks, world.defaults, world.committer).execute(
+            SetDefaultNotebookCommand(actor_user_id=ana, notebook_id=bens)
+        )
+    assert world.defaults.get_for_update(ana) is None
+
+
+def test_set_default_refuses_a_kitchen_notebook() -> None:
+    ana = uuid4()
+    world = _world({ana: "ana"})
+    home = _kitchen(world, ana, "Casa")
+    kitchen_notebook = _kitchen_notebook(world, home, "Casa de ana", ana)
+
+    with pytest.raises(NotebookNotFoundError):
+        SetDefaultNotebookService(world.notebooks, world.defaults, world.committer).execute(
+            SetDefaultNotebookCommand(actor_user_id=ana, notebook_id=kitchen_notebook)
+        )
+
+
+def test_default_that_the_person_has_left_is_replaced_by_their_own() -> None:
+    ana, ben = uuid4(), uuid4()
+    world = _world({ana: "ana", ben: "ben"})
+    shared = _personal(world, ana, "Shared")
+    world.notebooks.roles[(shared, ben)] = "member"
+    SetDefaultNotebookService(world.notebooks, world.defaults, world.committer).execute(
+        SetDefaultNotebookCommand(actor_user_id=ben, notebook_id=shared)
+    )
+    del world.notebooks.roles[(shared, ben)]
+
+    view = _default(world).execute(GetDefaultNotebookCommand(actor_user_id=ben))
+
+    assert view.id != shared
+    assert view.is_default is True
 
 
 def test_kitchen_notebook_takes_the_language_of_the_member_who_opens_it() -> None:

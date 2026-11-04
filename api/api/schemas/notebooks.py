@@ -31,6 +31,12 @@ class CreateNotebookRequest(BaseModel):
     name: str
 
 
+class SetDefaultNotebookRequest(BaseModel):
+    """The personal notebook to make the caller's default (Settings)."""
+
+    notebook_id: UUID
+
+
 class NameNotebookRequest(BaseModel):
     """A new name, or the name of a new kitchen notebook (spec 059). Its rules are in the domain."""
 
