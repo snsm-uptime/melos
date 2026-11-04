@@ -168,3 +168,80 @@ def load_gemini_settings() -> GeminiSettings:
         text_timeout_s=_env_float("GEMINI_TEXT_TIMEOUT_S", 10.0),
         image_timeout_s=_env_float("GEMINI_IMAGE_TIMEOUT_S", 30.0),
     )
+
+
+EMBED_TEXT_STRATEGIES = ("toon", "plain")
+
+
+@dataclass(frozen=True, slots=True)
+class EmbeddingSettings:
+    """Embeddings, the worker and search (spec 019). The key is never shown in repr or logs."""
+
+    api_key: str = field(repr=False)
+    model: str
+    dimension: int
+    text_timeout_s: float
+    strategy: str
+    worker_enabled: bool
+    worker_poll_s: float
+    batch_size: int
+    retry_first_wait_s: float
+    retry_growth: float
+    retry_cap_s: float
+    min_closeness: float
+    record_retention_days: int
+
+    @property
+    def configured(self) -> bool:
+        return bool(self.api_key) and bool(self.model)
+
+
+def _env_number(name: str, default: float) -> float:
+    """A float with no sign rule; the caller checks the range."""
+    raw = (os.environ.get(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        return float(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a number, got {raw!r}") from exc
+
+
+def _env_positive_int(name: str, default: int) -> int:
+    value = _env_int(name, default)
+    if value < 1:
+        raise ValueError(f"{name} must be >= 1, got {value}")
+    return value
+
+
+def load_embedding_settings() -> EmbeddingSettings:
+    strategy = (os.environ.get("EMBED_TEXT_STRATEGY") or "toon").strip().lower() or "toon"
+    if strategy not in EMBED_TEXT_STRATEGIES:
+        raise ValueError(
+            f"EMBED_TEXT_STRATEGY must be one of {EMBED_TEXT_STRATEGIES}, got {strategy!r}"
+        )
+    first = _env_float("EMBED_RETRY_FIRST_WAIT_S", 60.0)
+    growth = _env_float("EMBED_RETRY_GROWTH", 1.5)
+    if growth <= 1:
+        raise ValueError(f"EMBED_RETRY_GROWTH must be > 1, got {growth}")
+    cap = _env_float("EMBED_RETRY_CAP_S", 7200.0)
+    if cap < first:
+        raise ValueError(f"EMBED_RETRY_CAP_S must be >= EMBED_RETRY_FIRST_WAIT_S, got {cap}")
+    closeness = _env_number("SEARCH_MIN_CLOSENESS", 0.65)
+    if not -1 <= closeness <= 1:
+        raise ValueError(f"SEARCH_MIN_CLOSENESS must be between -1 and 1, got {closeness}")
+    return EmbeddingSettings(
+        api_key=(os.environ.get("GEMINI_API_KEY") or "").strip(),
+        model=(os.environ.get("GEMINI_EMBED_MODEL") or "gemini-embedding-001").strip(),
+        dimension=_env_positive_int("GEMINI_EMBED_DIM", 768),
+        text_timeout_s=_env_float("GEMINI_TEXT_TIMEOUT_S", 10.0),
+        strategy=strategy,
+        worker_enabled=_env_bool("EMBEDDING_WORKER_ENABLED", default=True),
+        worker_poll_s=_env_float("EMBED_WORKER_POLL_S", 5.0),
+        batch_size=_env_positive_int("EMBED_BATCH_SIZE", 1),
+        retry_first_wait_s=first,
+        retry_growth=growth,
+        retry_cap_s=cap,
+        min_closeness=closeness,
+        record_retention_days=_env_positive_int("SEARCH_RECORD_RETENTION_DAYS", 180),
+    )

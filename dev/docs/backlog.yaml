@@ -478,10 +478,22 @@ stories:
     title: Embeddings and pgvector search pre-filtered by kitchen
     epic: Ask
     priority: must
-    status: backlog
-    source: prd.md 1.5E, 1.5F, 1.6 (recipe_embedding), Appendix D
+    status: in_progress
+    source: prd.md 1.5E, 1.5F, 1.6 (recipe_embedding), Appendix D; specs/019-recipe-embeddings-search
+    verification: >
+      Built on worktree-kitchen-vectors, not merged. Live check 2026-11-02: 768 values, not
+      normalized (the adapter normalizes), no token statistics on the Developer API (count_tokens
+      used). Compose suite 1591 passed, 2 failed; HEAD before the story 1451 passed with the same
+      2 failures (spec 016 paste-limit tests; the worktree .env sets RECIPE_TEXT_MAX_CHARS=10000).
+      Quickstart steps 1 to 7 walked on the worktree stack with invented data; SC-001 p95 9.1 s,
+      max 9.4 s over 21 recipes. Results in specs/019-recipe-embeddings-search/notes.md.
     notes: >
-      Embedding model and dimension check still open (Appendix D). Moved after the shopping
+      Specified 2026-11-02 (owner decisions): model gemini-embedding-001 at 768 dimensions,
+      confirmed by a live check (notes.md); a failed embedding never fails a save or edit,
+      and a worker inside the api retries it; a catch-up runs at api start-up and by command.
+      The in-api worker needs a constitution exception (principle 1, "No queue, no worker").
+      Appendix D's embedding item is answered by the live check; the PRD wording waits for the
+      owner (notes.md drafts). Moved after the shopping
       list on 2026-10-22: adds embed-on-save and embeds the recipes saved before it.
       Spec 027: re-embed in UpdateRecipeService (edit), and remove the embedding on delete in
       DeleteRecipeService (FR-016); the schema guard test fails until the new table is handled.
@@ -596,6 +608,10 @@ stories:
     priority: should
     status: backlog
     source: prd.md Appendix C, 1.5F
+    notes: >
+      Spec 019 FR-015b (2026-11-02): the ingredient filter keeps recipes that contain every chosen
+      ingredient; each chosen ingredient shows as a chip below the search bar with a close icon that
+      removes it and re-runs the search; ingredients are offered from the searched catalogs only.
 
   - id: S-045
     title: API key management UI on the account page (generate, copy, revoke)

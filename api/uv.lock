@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -777,6 +777,7 @@ dependencies = [
     { name = "google-genai" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
+    { name = "python-toon" },
     { name = "pyyaml" },
     { name = "sqlalchemy" },
     { name = "uvicorn", extra = ["standard"] },
@@ -799,6 +800,7 @@ requires-dist = [
     { name = "google-genai", specifier = ">=2.32.0" },
     { name = "psycopg", extras = ["binary"], specifier = "==3.3.4" },
     { name = "pydantic", specifier = "==2.13.4" },
+    { name = "python-toon", specifier = ">=0.2.0" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "sqlalchemy", specifier = "==2.0.51" },
     { name = "uvicorn", extras = ["standard"], specifier = "==0.52.1" },
@@ -1040,6 +1042,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/82/ed/0301aeeac3e5353ef3d94b6ec08bbcabd04a72018415dcb29e588514bba8/python_dotenv-1.2.2.tar.gz", hash = "sha256:2c371a91fbd7ba082c2c1dc1f8bf89ca22564a087c2c287cd9b662adde799cf3", size = 50135, upload-time = "2026-03-01T16:00:26.196Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0b/d7/1959b9648791274998a9c3526f6d0ec8fd2233e4d4acce81bbae76b44b2a/python_dotenv-1.2.2-py3-none-any.whl", hash = "sha256:1d8214789a24de455a8b8bd8ae6fe3c6b69a5e3d64aa8a8e5d68e694bbcb285a", size = 22101, upload-time = "2026-03-01T16:00:25.09Z" },
+]
+
+[[package]]
+name = "python-toon"
+version = "0.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/40/78/25f79f308d1a685da4969b6b84585f3a3148523c05a3de0848338a33eefc/python_toon-0.2.0.tar.gz", hash = "sha256:1b9fcb3fa225cb7973a2637834de08a26236013ab04da0cf80c4af73e141ccf2", size = 55594, upload-time = "2026-09-29T07:40:49.991Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ea/9a/90ba108ce3ce3e7f50855066fe0269a2f29e399ac9d6a69df94ecbe8fa9e/python_toon-0.2.0-py3-none-any.whl", hash = "sha256:40056dafb8f28ad71440fce11cc12dda63045c752319a0d87bc7b95761a45955", size = 24894, upload-time = "2026-09-29T07:40:48.754Z" },
 ]
 
 [[package]]

@@ -13,7 +13,15 @@ from domain.cart import CartAction
 from domain.default_kitchen import MemberKitchen
 from domain.notebook import Notebook, NotebookRole
 from domain.recipe import EditedRecipe, NewRecipe
+from domain.recipe_search import SearchFilters
 from domain.shopping_list import SavedLine, SavedList
+
+from application.recipe_extraction import (
+    AIProviderError,
+    InvalidOutput,
+    LimitReached,
+    Unavailable,
+)
 
 # Canonical session TTL (30d).
 # adapters.persistence.sessions re-exports this for SESSION_COOKIE_MAX_AGE.
@@ -740,3 +748,187 @@ class SidePanelRepository(Protocol):
     def count_notebooks(self, user_id: UUID) -> int: ...
 
     def is_admin(self, user_id: UUID) -> bool: ...
+
+
+# --- Recipe embeddings and search (spec 019) --------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class Embedded:
+    """Vectors of the configured length, L2-normalized, one per text in order."""
+
+    vectors: tuple[tuple[float, ...], ...]
+    # None where the service did not say (research R2).
+    token_counts: tuple[int | None, ...]
+    truncated: tuple[bool, ...]
+
+
+# The failures are the extractor's result classes: one vocabulary for Gemini (research R11).
+EmbedFailure = LimitReached | Unavailable | InvalidOutput | AIProviderError
+EmbedResult = Embedded | EmbedFailure
+
+
+class Embedder(Protocol):
+    """Port: one service call per method call, no retries. Never raises for service problems."""
+
+    @property
+    def model(self) -> str: ...
+
+    @property
+    def dimension(self) -> int: ...
+
+    @property
+    def configured(self) -> bool:
+        """False with no key or no model: every call would answer AIProviderError (FR-014)."""
+        ...
+
+    def embed_documents(
+        self, texts: Sequence[str], titles: Sequence[str], timeout_s: float
+    ) -> EmbedResult:
+        """Recipes, as RETRIEVAL_DOCUMENT with their titles."""
+        ...
+
+    def embed_query(self, text: str, timeout_s: float) -> EmbedResult:
+        """A question, as RETRIEVAL_QUERY; one vector."""
+        ...
+
+    def count_tokens(self, text: str, timeout_s: float) -> int | None:
+        """The input size in tokens, or None when it cannot be counted."""
+        ...
+
+
+class EmbedTextStrategy(Protocol):
+    @property
+    def name(self) -> str: ...
+
+    def render(self, recipe: RecipeDetail) -> str: ...
+
+
+@dataclass(frozen=True, slots=True)
+class ClaimedJob:
+    recipe_id: UUID
+    attempts: int
+    # The wait used after the last failure; None before any (the retry rule starts over).
+    last_wait_s: float | None
+
+
+@dataclass(frozen=True, slots=True)
+class Backlog:
+    count: int
+    oldest_enqueued_at: datetime | None
+
+
+class EmbeddingJobs(Protocol):
+    def enqueue(self, recipe_ids: Sequence[UUID]) -> None:
+        """Make each recipe due now, with its retry state reset (an upsert)."""
+        ...
+
+    def enqueue_notebook(self, notebook_id: UUID) -> None:
+        """Enqueue every recipe of the notebook, in one statement."""
+        ...
+
+    def enqueue_missing(self, model: str, *, other_strategy_of: str | None = None) -> int:
+        """Queue recipes without a current embedding for the model; returns how many.
+
+        With `other_strategy_of`, an embedding made with another strategy does not count.
+        Recipes already queued keep their attempts and last wait but become due now (SC-003);
+        they are not counted.
+        """
+        ...
+
+    def claim(self, batch: int, lease_s: float) -> list[ClaimedJob]:
+        """Take up to `batch` due jobs no other process holds, for `lease_s` seconds."""
+        ...
+
+    def fail(self, recipe_id: UUID, wait_s: float, failure: str) -> None:
+        """Due again after `wait_s`. `failure` is a result class name, never a message."""
+        ...
+
+    def release_changed(self, recipe_id: UUID) -> None:
+        """The recipe changed while it was embedded: due now, attempts unchanged."""
+        ...
+
+    def backlog(self) -> Backlog: ...
+
+    def failure_counts(self) -> dict[str, int]:
+        """Waiting jobs by the class of their last failure."""
+        ...
+
+
+class RecipeEmbeddings(Protocol):
+    def content_for(self, recipe_ids: Sequence[UUID]) -> list[RecipeDetail]:
+        """The recipes that still exist; `updated_at` is the version that was read."""
+        ...
+
+    def write_if_current(
+        self,
+        recipe_id: UUID,
+        read_version: datetime,
+        model: str,
+        vector: Sequence[float],
+        strategy: str,
+        tokens: int | None,
+        truncated: bool = False,
+    ) -> bool:
+        """Store the embedding only if the recipe still has `read_version`, and end its job.
+
+        False when the recipe changed or is gone; nothing is written then (research R5).
+        """
+        ...
+
+    def search(
+        self,
+        notebook_ids: Sequence[UUID],
+        filters: SearchFilters,
+        model: str,
+        query_vector: Sequence[float],
+        limit: int,
+    ) -> list[RawHit]:
+        """Current embeddings of the model only, filters first, then closest first."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class RawHit:
+    recipe_id: UUID
+    notebook_id: UUID
+    title: str
+    # 1 - cosine distance.
+    score: float
+
+
+@dataclass(frozen=True, slots=True)
+class SearchEventRecord:
+    feature: str
+    scope_kind: str
+    model: str
+    strategy: str
+    min_closeness: float
+
+
+@dataclass(frozen=True, slots=True)
+class RecordedHit:
+    recipe_id: UUID
+    rank: int
+    score: float
+    mark: str
+
+
+@dataclass(frozen=True, slots=True)
+class Band:
+    low: float
+    high: float
+    shown: int
+    used: int
+
+
+class SearchRecords(Protocol):
+    def record(self, event: SearchEventRecord, hits: Sequence[RecordedHit]) -> UUID: ...
+
+    def mark_used(self, search_id: UUID, recipe_id: UUID) -> bool:
+        """Set `used_at` once; False when the pair does not exist."""
+        ...
+
+    def delete_older_than(self, cutoff: datetime) -> int: ...
+
+    def score_bands(self, width: float) -> list[Band]: ...

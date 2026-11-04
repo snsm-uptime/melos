@@ -23,6 +23,7 @@ from domain.recipe_draft import (
     InvalidDraftError,
     LineProblemKind,
 )
+from tests.embedding_fakes import FakeEmbeddingJobs
 from tests.unit_fakes import FakeUnits
 
 MAX_TEXT = 200
@@ -124,6 +125,7 @@ class Harness:
         self.recipes = FakeRecipes()
         self.capture_notebook = FakeCaptureNotebook()
         self.units = FakeUnits()
+        self.jobs = FakeEmbeddingJobs()
         self.save = SaveRecipeDraft(
             self.notebooks,
             self.catalog,
@@ -131,6 +133,7 @@ class Harness:
             self.capture_notebook,  # type: ignore[arg-type]
             units=self.units,
             max_text_chars=MAX_TEXT,
+            embedding_jobs=self.jobs,
         )
 
     def add(self, fact: NotebookFacts, names: list[str] | None = None) -> UUID:
@@ -417,3 +420,35 @@ def test_a_replayed_save_adds_no_unit() -> None:
     h.units.added.clear()
     saved = h.run(nid, save_key=key, lines=(LATA,), keep_units=("lata",))
     assert saved.created is False and h.units.added == []
+
+
+# --- Spec 019: a created save queues its embedding --------------------------------------------
+
+
+def test_a_created_save_enqueues_its_recipe_once() -> None:
+    h = Harness()
+    fact, nid = personal()
+    h.add(fact)
+    saved = h.run(nid)
+    assert h.jobs.enqueued == [saved.recipe.id]
+
+
+def test_a_replayed_save_enqueues_nothing() -> None:
+    h = Harness()
+    fact, nid = personal()
+    h.add(fact)
+    key = uuid4()
+    h.run(nid, save_key=key)
+    h.run(nid, save_key=key)
+    assert len(h.jobs.enqueued) == 1
+
+
+def test_a_refused_save_enqueues_nothing() -> None:
+    h = Harness()
+    fact, nid = kitchen(archived=True)
+    h.add(fact)
+    with pytest.raises(KitchenArchivedError):
+        h.run(nid)
+    with pytest.raises(InvalidDraftError):
+        h.run(None)
+    assert h.jobs.enqueued == []

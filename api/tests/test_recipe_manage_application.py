@@ -27,6 +27,7 @@ from domain.recipe_draft import (
     InvalidDraftError,
     LineProblemKind,
 )
+from tests.embedding_fakes import FakeEmbeddingJobs
 from tests.test_notebooks_application import (
     World,
     _join,
@@ -504,3 +505,42 @@ def test_a_unit_already_on_the_recipe_stays_for_a_member_without_it() -> None:
     result = _update_service(world, recipes, catalog, units).execute(second)
     assert result.view.detail.lines[0].unit == "lata"
     assert units.added == []
+
+
+# --- Spec 019: an edit queues the recipe's embedding ------------------------------------------
+
+
+def test_an_edit_enqueues_the_recipe() -> None:
+    world, recipes, catalog = _setup()
+    nb = _personal(world, ANA, "ana's Notebook", {"rice"})
+    recipe_id = recipes.put(nb)
+    jobs = FakeEmbeddingJobs()
+    service = UpdateRecipeService(
+        recipes, world.notebooks, catalog, units=FakeUnits(), embedding_jobs=jobs
+    )
+
+    service.execute(_update(recipes, recipe_id, ANA, title="Better rice"))
+
+    assert jobs.enqueued == [recipe_id]
+
+
+def test_a_refused_edit_enqueues_nothing() -> None:
+    world, recipes, catalog = _setup()
+    nb = _personal(world, ANA, "ana's Notebook", {"rice"})
+    recipe_id = recipes.put(nb)
+    jobs = FakeEmbeddingJobs()
+    service = UpdateRecipeService(
+        recipes, world.notebooks, catalog, units=FakeUnits(), embedding_jobs=jobs
+    )
+    stale = _update(recipes, recipe_id, ANA, title="Better rice")
+    service.execute(stale)
+    jobs.enqueued.clear()
+
+    with pytest.raises(RecipeChangedError):
+        service.execute(stale)
+    with pytest.raises(DraftProblems):
+        service.execute(_update(recipes, recipe_id, ANA, lines=()))
+    with pytest.raises(RecipeNotFoundError):
+        service.execute(_update(recipes, recipe_id, BEN))
+
+    assert jobs.enqueued == []

@@ -6,8 +6,9 @@ Order of checks, so that a refused save stores nothing (research R4):
 3. the notebook exists, the caller may see it, and its kitchen is not archived (FR-012);
    with only a kitchen given, the capture-notebook step picks or creates one (FR-011);
 4. the edited draft passes the recipe rules again (FR-005);
-5. the catalog is read, names are resolved, and the recipe, the new names and the kept units
-   are stored in one transaction.
+5. the catalog is read, names are resolved, and the recipe, the new names, the kept units and
+   the recipe's embedding job (spec 019) are stored in one transaction. A replay enqueues
+   nothing (spec 019 FR-007).
 
 Nothing is logged but the outcome and the counts (constitution §4).
 """
@@ -30,6 +31,7 @@ from application.notebooks import (
 )
 from application.ports import (
     DuplicateSaveKeyError,
+    EmbeddingJobs,
     IngredientCatalog,
     NotebookRepository,
     RecipeRepository,
@@ -78,6 +80,7 @@ class SaveRecipeDraft:
         *,
         units: UnitRepository,
         max_text_chars: int,
+        embedding_jobs: EmbeddingJobs | None = None,
     ) -> None:
         self._notebooks = notebooks
         self._catalog = catalog
@@ -85,6 +88,7 @@ class SaveRecipeDraft:
         self._capture_notebook = capture_notebook
         self._units = units
         self._max_text_chars = max_text_chars
+        self._embedding_jobs = embedding_jobs
 
     def execute(self, command: SaveRecipeCommand) -> SavedRecipe:
         if (command.notebook_id is None) == (command.kitchen_id is None):
@@ -140,6 +144,9 @@ class SaveRecipeDraft:
         kept = kept_units_to_add(command.keep_units, lines, available)
         if kept:
             self._units.add_user(kept, command.actor_user_id)
+        if self._embedding_jobs is not None:
+            # Same transaction: a saved recipe cannot miss its embedding (spec 019 FR-002).
+            self._embedding_jobs.enqueue([stored.id])
         logger.info(
             "recipe save outcome=created lines=%d steps=%d new_names=%d",
             len(lines),

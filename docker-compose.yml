@@ -63,6 +63,18 @@ services:
       # Pin tighter (ui container CIDR) if api is reachable beyond the Compose network.
       TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-172.16.0.0/12,127.0.0.1,::1}
       PDF_STORAGE_PATH: ${PDF_STORAGE_PATH:-/data/pdfs}
+      # Recipe embeddings and search (spec 019); the worker is a thread inside this service.
+      GEMINI_EMBED_MODEL: ${GEMINI_EMBED_MODEL:-gemini-embedding-001}
+      GEMINI_EMBED_DIM: ${GEMINI_EMBED_DIM:-768}
+      EMBED_TEXT_STRATEGY: ${EMBED_TEXT_STRATEGY:-toon}
+      EMBEDDING_WORKER_ENABLED: ${EMBEDDING_WORKER_ENABLED:-true}
+      EMBED_WORKER_POLL_S: ${EMBED_WORKER_POLL_S:-5}
+      EMBED_BATCH_SIZE: ${EMBED_BATCH_SIZE:-1}
+      EMBED_RETRY_FIRST_WAIT_S: ${EMBED_RETRY_FIRST_WAIT_S:-60}
+      EMBED_RETRY_GROWTH: ${EMBED_RETRY_GROWTH:-1.5}
+      EMBED_RETRY_CAP_S: ${EMBED_RETRY_CAP_S:-7200}
+      SEARCH_MIN_CLOSENESS: ${SEARCH_MIN_CLOSENESS:-0.65}
+      SEARCH_RECORD_RETENTION_DAYS: ${SEARCH_RECORD_RETENTION_DAYS:-180}
       # Dev/worktree only — seeds pre-verified accounts at boot (see api/scripts/seed_dev_user.py).
       SEED_DEV_USER: ${SEED_DEV_USER:-0}
       SEED_DEV_USER_EMAIL: ${SEED_DEV_USER_EMAIL:-}
@@ -125,7 +137,7 @@ services:
       PYTHONUNBUFFERED: "1"
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_CHAT_MODEL: ${GEMINI_CHAT_MODEL:-gemini-2.0-flash}
-      GEMINI_EMBED_MODEL: ${GEMINI_EMBED_MODEL:-text-embedding-004}
+      GEMINI_EMBED_MODEL: ${GEMINI_EMBED_MODEL:-gemini-embedding-001}
       GEMINI_EMBED_DIM: ${GEMINI_EMBED_DIM:-768}
     depends_on:
       - db

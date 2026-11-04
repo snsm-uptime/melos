@@ -11,11 +11,13 @@ from sqlalchemy import (
     Computed,
     Date,
     DateTime,
+    Double,
     ForeignKey,
     ForeignKeyConstraint,
     Index,
     Integer,
     Numeric,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -26,6 +28,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from adapters.persistence.base import Base
+from adapters.persistence.vector import Vector
 
 
 class UserModel(Base):
@@ -676,3 +679,112 @@ class RecipeEditLockModel(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     last_active_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+# The column dimension; GEMINI_EMBED_DIM must equal it (spec 019 FR-025, checked by the worker).
+EMBEDDING_DIM = 768
+
+
+class RecipeEmbeddingModel(Base):
+    """A recipe's search fingerprint for one model (spec 019). Internal only (FR-024)."""
+
+    __tablename__ = "recipe_embedding"
+    __table_args__ = (
+        CheckConstraint("btrim(model) <> ''", name="ck_recipe_embedding_model_not_blank"),
+        CheckConstraint(
+            "input_tokens IS NULL OR input_tokens >= 0", name="ck_recipe_embedding_input_tokens"
+        ),
+    )
+
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("recipe.id", ondelete="CASCADE"), primary_key=True
+    )
+    model: Mapped[str] = mapped_column(Text, primary_key=True)
+    embedding: Mapped[tuple[float, ...]] = mapped_column(Vector(EMBEDDING_DIM), nullable=False)
+    strategy_used: Mapped[str] = mapped_column(Text, nullable=False)
+    input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    input_truncated: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    # The recipe's updated_at when its content was read; current while it still matches (R5).
+    recipe_updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class EmbeddingJobModel(Base):
+    """A recipe waiting for an embedding (spec 019 research R4)."""
+
+    __tablename__ = "embedding_job"
+    __table_args__ = (CheckConstraint("attempts >= 0", name="ck_embedding_job_attempts"),)
+
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("recipe.id", ondelete="CASCADE"), primary_key=True
+    )
+    due_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    last_wait_s: Mapped[float | None] = mapped_column(Double, nullable=True)
+    claimed_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Result class name only (Unavailable, LimitReached, …), never a message (FR-023).
+    last_failure: Mapped[str | None] = mapped_column(Text, nullable=True)
+    enqueued_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class SearchEventModel(Base):
+    """One search, with no person, question, kitchen or notebook (spec 019 FR-017b)."""
+
+    __tablename__ = "search_event"
+    __table_args__ = (
+        CheckConstraint(
+            "feature IN ('assistant', 'list_search', 'mcp', 'test')",
+            name="ck_search_event_feature",
+        ),
+        CheckConstraint(
+            "scope_kind IN ('kitchen', 'my_notebooks', 'notebook')",
+            name="ck_search_event_scope_kind",
+        ),
+        CheckConstraint("result_count BETWEEN 0 AND 5", name="ck_search_event_result_count"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    feature: Mapped[str] = mapped_column(Text, nullable=False)
+    scope_kind: Mapped[str] = mapped_column(Text, nullable=False)
+    result_count: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    model: Mapped[str] = mapped_column(Text, nullable=False)
+    strategy: Mapped[str] = mapped_column(Text, nullable=False)
+    min_closeness: Mapped[float] = mapped_column(Double, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+
+
+class SearchResultModel(Base):
+    """One result a search returned, and whether it was used (spec 019 FR-017b, FR-017c)."""
+
+    __tablename__ = "search_result"
+    __table_args__ = (
+        CheckConstraint("rank BETWEEN 1 AND 5", name="ck_search_result_rank"),
+        CheckConstraint("mark IN ('close', 'weak')", name="ck_search_result_mark"),
+    )
+
+    search_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("search_event.id", ondelete="CASCADE"), primary_key=True
+    )
+    # Indexed so deleting a recipe finds its records without a scan.
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("recipe.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+    rank: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    score: Mapped[float] = mapped_column(Double, nullable=False)
+    mark: Mapped[str] = mapped_column(Text, nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

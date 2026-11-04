@@ -7,6 +7,7 @@ Mailer-aware client fixtures stay in password-reset / email-verification modules
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterator
 
 import pytest
@@ -15,6 +16,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from tests.integration_db import database_url, make_client
+
+# Host runs too: the app's lifespan must not start the embedding thread in tests (spec 019).
+# Read when an app starts, so setting it here, before any test, is enough.
+os.environ["EMBEDDING_WORKER_ENABLED"] = "false"
 
 
 @pytest.fixture(scope="module")

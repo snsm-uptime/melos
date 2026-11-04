@@ -18,6 +18,7 @@ from domain.errors import (
     SnapshotExistsError,
 )
 from domain.notebook import Notebook
+from tests.embedding_fakes import FakeEmbeddingJobs
 from tests.test_notebooks_application import World, _join, _kitchen, _personal, _world
 
 ANA, BEN = uuid4(), uuid4()
@@ -46,9 +47,14 @@ def _add(
     key: UUID | None = None,
     confirm: bool = False,
     recipes: FakeRecipes | None = None,
+    jobs: FakeEmbeddingJobs | None = None,
 ):
     service = AddNotebookSnapshotService(
-        world.kitchens, world.notebooks, world.catalog, recipes or FakeRecipes()
+        world.kitchens,
+        world.notebooks,
+        world.catalog,
+        recipes or FakeRecipes(),
+        embedding_jobs=jobs,
     )
     return service.execute(
         AddNotebookSnapshotCommand(
@@ -268,3 +274,28 @@ def test_the_view_reports_a_snapshot(world: World) -> None:
     assert notebook_view(facts).is_snapshot is True
     assert added.notebook.is_snapshot is True
     assert added.notebook.is_own_capture_notebook is False
+
+
+# --- Spec 019: the copies are queued for embedding -------------------------------------------
+
+
+def test_a_created_snapshot_enqueues_its_notebook_once(world: World) -> None:
+    kitchen = _kitchen(world, ANA)
+    source = _personal(world, ANA, "ana's Notebook")
+    jobs = FakeEmbeddingJobs()
+
+    added = _add(world, kitchen, source, jobs=jobs)
+
+    assert jobs.enqueued_notebooks == [added.notebook.id]
+
+
+def test_a_replayed_snapshot_enqueues_nothing(world: World) -> None:
+    kitchen = _kitchen(world, ANA)
+    source = _personal(world, ANA, "ana's Notebook")
+    key = uuid4()
+    jobs = FakeEmbeddingJobs()
+    _add(world, kitchen, source, key=key, jobs=jobs)
+
+    _add(world, kitchen, source, key=key, jobs=jobs)
+
+    assert len(jobs.enqueued_notebooks) == 1
