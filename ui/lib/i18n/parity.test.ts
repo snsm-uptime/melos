@@ -62,7 +62,6 @@ const SAME_ON_PURPOSE = new Set<string>([
   "alias.photoCropZoom", // "Zoom", as above
   "alias.label", // "Alias" is the same word in Spanish
   "capture.optionUrl", // "URL"
-  "capture.linkPlaceholder", // "https://…", a link has no language
   "customUnits.no", // "No" is the same word in Spanish
 ]);
 

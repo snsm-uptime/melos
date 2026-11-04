@@ -28,8 +28,6 @@ export type CaptureDraftResponse = {
     steps: string[];
     unknown_units?: { word: string; lines: number[] }[];
   };
-  /** Link capture only (spec 026): where the draft came from and the page's photo. */
-  page?: { source_url: string; preview_image: string | null; cut: boolean };
 };
 
 export type CaptureResult =
@@ -54,26 +52,13 @@ function isDraftResponse(data: unknown): data is CaptureDraftResponse {
 
 /** Submit one text for one notebook. One attempt; the member retries by submitting again (FR-025). */
 export async function submitCapture(notebookId: string, text: string): Promise<CaptureResult> {
-  return postCapture(notebookId, "text", { text });
-}
-
-/** Submit one link for one notebook (spec 026). The api fetches the page; one attempt. */
-export async function submitLinkCapture(notebookId: string, url: string): Promise<CaptureResult> {
-  return postCapture(notebookId, "url", { url });
-}
-
-async function postCapture(
-  notebookId: string,
-  source: "text" | "url",
-  payload: Record<string, string>,
-): Promise<CaptureResult> {
   let response: Response;
   try {
-    response = await fetch(`/api/notebooks/${encodeURIComponent(notebookId)}/captures/${source}`, {
+    response = await fetch(`/api/notebooks/${encodeURIComponent(notebookId)}/captures/text`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       credentials: "same-origin",
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ text }),
     });
   } catch {
     return { ok: false, message: { code: "ai_unavailable" } };
@@ -94,15 +79,9 @@ async function postCapture(
     ingredient?: unknown;
     missing?: unknown;
     line_problems?: unknown;
-    max?: unknown;
   };
   const code = typeof body.code === "string" ? body.code : "ai_unavailable";
-  const max =
-    code === "text_too_long"
-      ? extractMax(body.detail)
-      : code === "link_too_long" && typeof body.max === "number"
-        ? body.max
-        : undefined;
+  const max = code === "text_too_long" ? extractMax(body.detail) : undefined;
   return {
     ok: false,
     message: {

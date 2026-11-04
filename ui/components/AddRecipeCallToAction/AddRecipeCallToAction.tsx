@@ -6,17 +6,11 @@ import { useState } from "react";
 import { PlusIcon } from "@/app/icons";
 import { AddItemCard } from "@/components/Card";
 import { AccentButton } from "@/components/soft-ledger/AccentButton";
-import {
-  openSheet,
-  useCaptureState,
-  type CaptureNotebook,
-  type CaptureSource,
-} from "@/lib/capture/captureStore";
+import { openSheet, useCaptureState, type CaptureNotebook } from "@/lib/capture/captureStore";
 import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
 
 import { AddRecipeOptionsDialog } from "./AddRecipeOptionsDialog";
 import { TextCaptureSheet } from "./TextCaptureSheet";
-import { UrlCaptureSheet } from "./UrlCaptureSheet";
 
 export type CaptureCandidate = {
   id: string;
@@ -41,8 +35,7 @@ type AddRecipeCallToActionProps = {
 
 /**
  * The shared add-recipe call to action (AGENTS.md): a rounded placeholder with a plus icon.
- * Tapping it opens the options dialog; URL opens the link sheet and Text the text sheet, for the
- * chosen notebook (specs 016 and 026).
+ * Tapping it opens the options dialog; Text opens the text sheet for the chosen notebook.
  */
 export function AddRecipeCallToAction({
   candidates,
@@ -57,9 +50,8 @@ export function AddRecipeCallToAction({
 
   const preselected = candidates.find((item) => item.id === defaultId) ?? candidates[0];
   const sheetOpen = capture.sheetOpen && capture.notebook?.returnPath === returnPath;
-  const goToDraft = () => router.push("/notebooks/draft");
 
-  function choose(kind: CaptureSource["kind"]) {
+  function chooseText() {
     setOptionsOpen(false);
     if (!preselected) return;
     const notebook: CaptureNotebook = {
@@ -69,7 +61,7 @@ export function AddRecipeCallToAction({
       kitchenId: preselected.kitchenId,
       returnPath,
     };
-    openSheet(notebook, kind);
+    openSheet(notebook);
   }
 
   return (
@@ -97,18 +89,12 @@ export function AddRecipeCallToAction({
       <AddRecipeOptionsDialog
         open={optionsOpen}
         onClose={() => setOptionsOpen(false)}
-        onChooseUrl={() => choose("url")}
-        onChooseText={() => choose("text")}
+        onChooseText={chooseText}
       />
       <TextCaptureSheet
-        open={sheetOpen && capture.source.kind === "text"}
+        open={sheetOpen}
         candidates={candidates}
-        onDraftReady={goToDraft}
-      />
-      <UrlCaptureSheet
-        open={sheetOpen && capture.source.kind === "url"}
-        candidates={candidates}
-        onDraftReady={goToDraft}
+        onDraftReady={() => router.push("/notebooks/draft")}
       />
     </>
   );

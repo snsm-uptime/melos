@@ -8,12 +8,6 @@ Each file here holds one prompt, and each file has one purpose. The code in
 |---|---|---|---|
 | `recipe_extraction_system.md` | System instruction for the recipe extractor: outcomes, recipe fields, matching rules | `system_instruction()` → `GeminiRecipeExtractor` | `TEXT_OPEN`, `TEXT_CLOSE`, `NAMES_OPEN`, `NAMES_CLOSE`, `VAGUE_PHRASES` |
 | `recipe_extraction_user.md` | User turn: the pasted text and the catalog names, each in its own delimited block | `build_contents()` → `GeminiRecipeExtractor` | `TEXT_OPEN`, `TEXT`, `TEXT_CLOSE`, `NAMES_OPEN`, `NAMES_JSON`, `NAMES_CLOSE` |
-| `recipe_extraction_page_part_system.md` | System instruction for one part of a long web page (spec 026, partial page mode): outcomes `recipe_part`, `no_recipe_content`, `multiple_recipes`, and the same security and line rules as the whole-recipe template | `page_part_system_instruction()` → `GeminiRecipeExtractor` in `ExtractionMode.PAGE_PART` | `TEXT_OPEN`, `TEXT_CLOSE`, `NAMES_OPEN`, `NAMES_CLOSE`, `VAGUE_PHRASES` |
-| `recipe_extraction_page_part_line.md` | The line put before the user turn in partial page mode: which part of the page this is | `build_contents(..., part=(i, n))` | `PART`, `TOTAL` |
-
-The security rule and the recipe field rules are written twice, once in each system template, and
-must stay identical: `tests/test_prompt_characterization.py` compares the two blocks. Change both
-together.
 
 ## Syntax
 

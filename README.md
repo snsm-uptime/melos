@@ -57,8 +57,7 @@ default one and holds log out.
 ## Progress
 
 Tracked in [dev/docs/backlog.yaml](dev/docs/backlog.yaml); the product spec is
-[dev/docs/prd.md](dev/docs/prd.md). MVP delivered 02/11/2026 and closed on
-2026-11-04; later work is post-MVP, picked from the backlog by priority.
+[dev/docs/prd.md](dev/docs/prd.md). Delivery: 02/11/2026.
 
 | Area | Status |
 |---|---|
@@ -231,17 +230,6 @@ When the api starts, it queues every recipe that has no current embedding.
 | `EMBED_RETRY_FIRST_WAIT_S`, `EMBED_RETRY_GROWTH`, `EMBED_RETRY_CAP_S` | `60`, `1.5`, `7200` | The retry rule |
 | `SEARCH_MIN_CLOSENESS` | `0.65` | Results at or above it are marked close, the rest weak |
 | `SEARCH_RECORD_RETENTION_DAYS` | `180` | Search records are deleted after this, once a day |
-
-**Recipe from a link**
-
-The api opens the one page the member pasted (public addresses only, ports 80 and 443, 10 s,
-2 MB) and its main photo (5 s, 2 MB). A long page is read in parts, sent to the assistant at
-the same time.
-
-| Variable | Default | Meaning |
-|---|---|---|
-| `RECIPE_PAGE_BATCH_CHARS` | `10000` | Characters of page Markdown per assistant request, 1000 to 10000 |
-| `RECIPE_PAGE_MAX_BATCHES` | `4` | Most assistant requests per link capture, 1 to 8 |
 
 Operator commands, run inside the api container (each is safe to repeat):
 

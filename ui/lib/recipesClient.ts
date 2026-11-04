@@ -100,8 +100,6 @@ export type RecipeDetail = {
   ingredient_lines: RecipeLine[];
   steps: string[];
   source: { type: string; url: string | null } | null;
-  /** The recipe image as a data URI (spec 026), or null. */
-  preview_image: string | null;
   /** Who edits the recipe now (spec 022); null when nobody does. Absent from older answers. */
   editor?: LockEditor | null;
   /** Kitchen recipes only (null for personal notebooks): in the cart as I see it. */

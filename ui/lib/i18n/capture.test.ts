@@ -130,35 +130,6 @@ describe("Spanish capture messages (spec 063)", () => {
     }
   });
 
-  it.each<[string, keyof typeof captureMessages]>([
-    ["link_empty", "linkInvalid"],
-    ["link_invalid", "linkInvalid"],
-    ["link_too_long", "linkTooLong"],
-    ["page_fetch_failed", "pageFetchFailed"],
-    ["page_no_recipe", "pageNoRecipe"],
-  ])("link capture: %s has its own message (spec 026)", (code, key) => {
-    expect(messageForCode({ code }, "en", undefined, "url")).toBe(captureMessages[key]);
-    expect(messageForCode({ code }, "es", undefined, "url")).toBe(captureMessagesFor("es")[key]);
-  });
-
-  it("link capture says the link is kept, text capture says the text is kept", () => {
-    expect(messageForCode({ code: "ai_unavailable" }, "en", undefined, "url")).toContain("Your link is kept");
-    expect(messageForCode({ code: "ai_misconfigured" }, "en", undefined, "url")).toBe(
-      "Assistant misconfigured. Your link is kept",
-    );
-    expect(messageForCode({ code: "ai_misconfigured" }, "es", undefined, "url")).toContain(
-      "Tu enlace se conserva",
-    );
-    expect(messageForCode({ code: "ai_unavailable" }, "en")).toBe(captureMessages.unavailable);
-    expect(messageForCode({ code: "ai_misconfigured" }, "en")).toBe(captureMessages.misconfigured);
-  });
-
-  it("the other codes read the same for a link as for text", () => {
-    for (const code of ["one_recipe_at_a_time", "ai_limit_reached", "ai_invalid_output", "kitchen_archived"]) {
-      expect(messageForCode({ code }, "en", undefined, "url")).toBe(messageForCode({ code }, "en"));
-    }
-  });
-
   it("captureMessagesFor returns the chosen language", () => {
     expect(captureMessagesFor("es").save).toBe("Guardar receta");
     expect(captureMessagesFor("en").save).toBe("Save recipe");

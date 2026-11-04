@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { submitCapture, submitLinkCapture } from "./captureClient";
+import { submitCapture } from "./captureClient";
 
 const okBody = {
   outcome: "draft",
@@ -188,53 +188,6 @@ describe("submitCapture", () => {
     expect(await submitCapture("nb-1", "x")).toMatchObject({
       ok: false,
       message: { code: "ai_limit_reached" },
-    });
-  });
-});
-
-describe("submitLinkCapture (spec 026)", () => {
-  const page = { source_url: "https://example.test/soup", preview_image: null, cut: true };
-
-  it("posts the link to the url capture route and returns the draft with its page", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(respond(200, { ...okBody, page }));
-    vi.stubGlobal("fetch", fetchMock);
-
-    const result = await submitLinkCapture("nb-1", "https://example.test/soup");
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/notebooks/nb-1/captures/url",
-      expect.objectContaining({ method: "POST", body: JSON.stringify({ url: "https://example.test/soup" }) }),
-    );
-    expect(result.ok && result.value.page).toEqual(page);
-  });
-
-  it.each(["page_fetch_failed", "page_no_recipe", "link_invalid", "link_empty", "one_recipe_at_a_time"])(
-    "keeps the %s code",
-    async (code) => {
-      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(respond(422, { code, detail: "" })));
-
-      expect(await submitLinkCapture("nb-1", "https://example.test/")).toMatchObject({
-        ok: false,
-        message: { code },
-      });
-    },
-  );
-
-  it("reads the limit from a link_too_long answer", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(respond(422, { code: "link_too_long", detail: "", max: 2048 })),
-    );
-
-    expect(await submitLinkCapture("nb-1", "x")).toMatchObject({ ok: false, max: 2048 });
-  });
-
-  it("maps a network failure to ai_unavailable", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("down")));
-
-    expect(await submitLinkCapture("nb-1", "https://example.test/")).toEqual({
-      ok: false,
-      message: { code: "ai_unavailable" },
     });
   });
 });

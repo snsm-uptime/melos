@@ -33,9 +33,6 @@ class SaveRecipeBody(BaseModel):
     ingredient_lines: list[SaveIngredientLine] = Field(max_length=MAX_LINES + 1)
     steps: list[str] = Field(max_length=MAX_STEPS + 1)
     keep_units: list[str] = Field(default_factory=list, max_length=MAX_LINES + 1)
-    # Link capture (spec 026): the page address instead of pasted text, and its photo.
-    source_url: str | None = Field(default=None, max_length=2048)
-    preview_image: str | None = None
 
 
 class UpdateRecipeBody(BaseModel):
@@ -102,8 +99,6 @@ class RecipeDetailResponse(BaseModel):
     ingredient_lines: list[RecipeLineResponse]
     steps: list[str]
     source: RecipeSourceResponse | None
-    # The recipe image as a data URI (spec 026); null when it has none.
-    preview_image: str | None = None
     # Who edits the recipe now (spec 022); null when nobody does.
     editor: EditorResponse | None = None
     # Kitchen recipes only (null for personal notebooks): in the cart as the caller sees it,

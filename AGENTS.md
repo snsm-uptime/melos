@@ -100,15 +100,11 @@ Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
   owners or the recipe a copy came from.
 - Main ingredients and cuisines are out of the MVP (2026-10-27, backlog S-061,
   PRD Appendix E). A recipe has none; their code is commented out under the
-  marker `MVP-OUT:`. Do not rebuild them unless S-061 is picked up. Since
-  the MVP closed (2026-11-04), S-061 no longer waits on the MVP; it is built
-  when the owner picks it.
+  marker `MVP-OUT:`. Do not rebuild them unless S-061 is picked up.
 - When Gemini matches a name to an existing catalog entry (e.g. "onions" to
   "onion"), the app tells the member which changes were made, before save.
-- Recipe images are stored as base64 text on the recipe. Images are stored
-  only where a story says so, with a size limit and a format check (recipe
-  images S-026 and S-067, cart receipts S-068). The MVP rule "captured source
-  photos are not stored" was lifted on 2026-11-04 (PRD §4, constitution 2.0.0).
+- Recipe preview images are stored as base64 text on the recipe. Captured
+  source photos are not stored (PRD §4).
 - Cart frequency counts every addition to the kitchen's cart, kept on the
   kitchen notebook's recipe. Removing a recipe from the cart does not lower it.
 
