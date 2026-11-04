@@ -4,7 +4,10 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ChromeBackProvider, useChromeHeaderState } from "@/components/ChromeBack";
+import {
+  ChromeBackProvider,
+  useChromeHeaderState,
+} from "@/components/ChromeBack";
 import { MIN_LOADING_MS } from "@/lib/minimumLoading";
 
 import { AdminDashboard } from "./AdminDashboard";
@@ -31,6 +34,7 @@ const SECTIONS: Record<string, unknown> = {
       {
         name: "lata",
         user_references: ["u-1", "u-2"],
+        user_aliases: ["ana", null],
         reference_count: 2,
         is_default: false,
         created_at: "2026-11-01T22:00:00Z",
@@ -38,6 +42,7 @@ const SECTIONS: Record<string, unknown> = {
       {
         name: "cup",
         user_references: [],
+        user_aliases: [],
         reference_count: 9,
         is_default: true,
         created_at: "2026-10-01T22:00:00Z",
@@ -54,6 +59,16 @@ const SECTIONS: Record<string, unknown> = {
         notebook_name: "Cuaderno de Ana",
         notebook_kind: "kitchen",
         people_with_access: 3,
+        people_aliases: ["ana", null, "ben"],
+      },
+      {
+        id: "r2",
+        title: "Pan",
+        cart_adds: 1,
+        notebook_name: "Cuaderno de Ben",
+        notebook_kind: "personal",
+        people_with_access: 1,
+        people_aliases: ["ben"],
       },
     ],
   },
@@ -80,13 +95,21 @@ describe("AdminDashboard", () => {
   let root: Root;
   let urls: string[];
   let failing: boolean;
+  let deletes: string[];
+  let deleteStatus: number;
 
   beforeEach(() => {
     urls = [];
+    deletes = [];
+    deleteStatus = 204;
     failing = false;
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (url: string) => {
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === "DELETE") {
+          deletes.push(url);
+          return new Response(null, { status: deleteStatus });
+        }
         urls.push(url);
         if (failing) return new Response("{}", { status: 500 });
         const section = url.split("/").pop() as string;
@@ -118,20 +141,32 @@ describe("AdminDashboard", () => {
   }
 
   const tab = (name: string) =>
-    Array.from(container.querySelectorAll<HTMLButtonElement>('[role="tab"]')).find(
-      (el) => el.textContent === name,
-    )!;
+    Array.from(
+      container.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+    ).find((el) => el.textContent === name)!;
 
   async function open(name: string) {
     await act(async () => tab(name).click());
     await flush();
   }
 
+  const button = (label: string) =>
+    container.querySelector<HTMLButtonElement>(
+      `button[aria-label="${label}"]`,
+    )!;
+
+  const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
+
+  const confirmButton = () =>
+    Array.from(dialog()!.querySelectorAll<HTMLButtonElement>("button")).find(
+      (el) => el.textContent === "Delete",
+    )!;
+
   it("loads only the open section, and the next when its tab is opened", async () => {
     await render();
     expect(urls).toEqual(["/api/admin/units"]);
     expect(container.textContent).toContain("lata");
-    expect(container.textContent).toContain("u-1");
+    expect(container.textContent).toContain("ana");
     expect(tab("Units").getAttribute("aria-selected")).toBe("true");
 
     await open("Ingredients");
@@ -142,8 +177,15 @@ describe("AdminDashboard", () => {
   it("marks a default unit with a check and any other with an x, named for screen readers", async () => {
     await render();
     const marks = Array.from(container.querySelectorAll('td [role="img"]'));
-    expect(marks.map((mark) => mark.getAttribute("aria-label"))).toEqual(["No", "Yes"]);
-    expect(marks.every((mark) => mark.querySelector("svg") && mark.textContent === "")).toBe(true);
+    expect(marks.map((mark) => mark.getAttribute("aria-label"))).toEqual([
+      "No",
+      "Yes",
+    ]);
+    expect(
+      marks.every(
+        (mark) => mark.querySelector("svg") && mark.textContent === "",
+      ),
+    ).toBe(true);
     expect(marks[0].querySelector("path")?.getAttribute("d")).not.toBe(
       marks[1].querySelector("path")?.getAttribute("d"),
     );
@@ -198,6 +240,68 @@ describe("AdminDashboard", () => {
     await open("Users");
     expect(container.textContent).toContain("No alias");
     expect(container.textContent).toContain("—");
+  });
+
+  it("shows the count of people with access, then their aliases as chips", async () => {
+    await render();
+    await open("Recipes");
+    const cell = container.querySelector("tbody tr td:nth-child(5)")!;
+    expect(cell.querySelector("span")?.textContent).toBe("3");
+    const chips = Array.from(cell.querySelectorAll("span.inline-flex")).map(
+      (el) => el.textContent,
+    );
+    expect(chips).toEqual(["ana", "No alias", "ben"]);
+    expect(cell.querySelector(".overflow-x-auto")).not.toBeNull();
+  });
+
+  it("deletes a recipe after confirming, and drops its row", async () => {
+    await render();
+    await open("Recipes");
+    await act(async () => button("Delete recipe Sopa").click());
+    expect(dialog()).not.toBeNull();
+    expect(deletes).toEqual([]);
+
+    await act(async () => confirmButton().click());
+    await flush();
+    expect(deletes).toEqual(["/api/admin/recipes/r1"]);
+    expect(dialog()).toBeNull();
+    expect(container.textContent).not.toContain("Sopa");
+    expect(container.textContent).toContain("Pan");
+  });
+
+  it("keeps the recipe and says so when the delete fails", async () => {
+    deleteStatus = 500;
+    await render();
+    await open("Recipes");
+    await act(async () => button("Delete recipe Sopa").click());
+    await act(async () => confirmButton().click());
+    await flush();
+    expect(dialog()?.querySelector('[role="alert"]')?.textContent).toContain(
+      "couldn't delete",
+    );
+    expect(container.textContent).toContain("Sopa");
+  });
+
+  it("does not delete when the confirmation is cancelled", async () => {
+    await render();
+    await open("Recipes");
+    await act(async () => button("Delete recipe Sopa").click());
+    const cancel = Array.from(dialog()!.querySelectorAll("button")).find(
+      (el) => el.textContent === "Cancel",
+    )!;
+    await act(async () => cancel.click());
+    expect(dialog()).toBeNull();
+    expect(deletes).toEqual([]);
+  });
+
+  it("shows the units' count of people, then their aliases as chips", async () => {
+    await render();
+    const cell = container.querySelector("tbody tr td:nth-child(5)")!;
+    expect(cell.querySelector("span")?.textContent).toBe("2");
+    const chips = Array.from(cell.querySelectorAll("span.inline-flex")).map(
+      (el) => el.textContent,
+    );
+    expect(chips).toEqual(["ana", "No alias"]);
   });
 
   it("says so when a section fails, and tries again", async () => {

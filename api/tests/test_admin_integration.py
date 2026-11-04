@@ -18,7 +18,14 @@ pytestmark = pytest.mark.skipif(
 
 SECTIONS = ("units", "ingredients", "recipes", "users")
 KEYS = {
-    "units": {"name", "user_references", "reference_count", "is_default", "created_at"},
+    "units": {
+        "name",
+        "user_references",
+        "user_aliases",
+        "reference_count",
+        "is_default",
+        "created_at",
+    },
     "ingredients": {"name", "recipes", "people"},
     "recipes": {
         "id",
@@ -27,6 +34,7 @@ KEYS = {
         "notebook_name",
         "notebook_kind",
         "people_with_access",
+        "people_aliases",
     },
     "users": {
         "id",
@@ -155,6 +163,8 @@ def test_units_show_each_name_once_with_its_references(
     lata = _one(rows, "name", "zlata")
     assert lata["reference_count"] == 3
     assert set(lata["user_references"]) == {str(uid) for uid in people.ids.values()}
+    assert len(lata["user_aliases"]) == 3
+    assert all(alias.startswith(("una", "dos", "tres")) for alias in lata["user_aliases"])
     assert lata["is_default"] is False
     assert _one(rows, "name", "zbote")["reference_count"] == 1
     assert _one(rows, "name", "g")["is_default"] is True
@@ -220,6 +230,49 @@ def test_recipes_show_figures_and_no_content(client: TestClient, db_session: Ses
     other = _one(rows, "id", private)
     assert other["notebook_kind"] == "personal" and other["people_with_access"] == 1
     assert "zsecreto" not in response.text and "secret step" not in response.text
+
+
+def test_recipes_list_the_alias_of_each_person_with_access(
+    client: TestClient, db_session: Session
+) -> None:
+    people, _kitchen_id, notebook_id = _home(client, db_session)
+    ana = people.as_("ana")
+    recipe_id = _recipe(ana, notebook_id, "Aliased", [_line("zalias")])
+    _admin(db_session, people.ids["ana"])
+
+    row = _one(people.as_("ana").get("/admin/recipes").json()["recipes"], "id", recipe_id)
+    assert row["people_with_access"] == 2
+    assert len(row["people_aliases"]) == 2
+    assert all(alias.startswith(("ana", "ben")) for alias in row["people_aliases"])
+
+
+def test_an_admin_deletes_a_recipe_in_any_notebook(client: TestClient, db_session: Session) -> None:
+    people = People(client)
+    people.register("ana")
+    people.register("cal")
+    cal = people.as_("cal")
+    private = _recipe(cal, cal.get("/notebooks/default").json()["id"], "Gone", [_line("zborrar")])
+    _admin(db_session, people.ids["ana"])
+    ana = people.as_("ana")
+
+    assert ana.delete(f"/admin/recipes/{private}").status_code == 204
+    assert private not in [row["id"] for row in _section(ana, "recipes")]
+    assert people.as_("cal").get(f"/recipes/{private}").status_code == 404
+    assert ana.delete(f"/admin/recipes/{private}").status_code == 404
+
+
+def test_a_person_who_is_not_an_admin_cannot_delete_a_recipe(
+    client: TestClient, db_session: Session
+) -> None:
+    people = People(client)
+    people.register("ana")
+    ana = people.as_("ana")
+    recipe_id = _recipe(ana, ana.get("/notebooks/default").json()["id"], "Keep", [_line("zkeep")])
+
+    response = ana.delete(f"/admin/recipes/{recipe_id}")
+    assert response.status_code == 404
+    assert response.content == ana.get("/no-such-path").content
+    assert people.as_("ana").get(f"/recipes/{recipe_id}").status_code == 200
 
 
 def test_users_show_activity_for_the_person_who_acted_only(

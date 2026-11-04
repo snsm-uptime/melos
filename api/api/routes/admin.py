@@ -1,4 +1,4 @@
-"""The read-only dashboard (spec 055, contracts/admin-api.md).
+"""The dashboard (spec 055, contracts/admin-api.md): reads, and one admin recipe delete.
 
 Anyone signed out or not an admin gets the 404 FastAPI gives an unknown path, byte for byte.
 """
@@ -11,8 +11,8 @@ from dataclasses import asdict
 from typing import Any
 
 from application.admin import AdminDashboard
-from domain.errors import AdminNotFoundError
-from fastapi import APIRouter, Depends, HTTPException, status
+from domain.errors import AdminNotFoundError, RecipeNotFoundError
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from api.deps import get_admin_dashboard, optional_user_id
 from api.schemas.admin import (
@@ -74,6 +74,20 @@ def admin_users(
 ) -> AdminUsersResponse:
     rows = _read(dashboard.users, user_id)
     return AdminUsersResponse(users=[AdminUser(**row) for row in rows])
+
+
+@router.delete("/recipes/{recipe_id}", status_code=status.HTTP_204_NO_CONTENT)
+def admin_delete_recipe(
+    recipe_id: uuid.UUID,
+    user_id: uuid.UUID | None = Depends(optional_user_id),
+    dashboard: AdminDashboard = Depends(get_admin_dashboard),
+) -> Response:
+    """Remove any recipe, whatever its notebook. Other paths still refuse writes below."""
+    try:
+        dashboard.delete_recipe(user_id, recipe_id)
+    except (AdminNotFoundError, RecipeNotFoundError):
+        raise _not_found() from None
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.api_route("/{rest:path}", methods=["POST", "PUT", "PATCH", "DELETE"])

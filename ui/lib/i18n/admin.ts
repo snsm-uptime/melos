@@ -19,6 +19,15 @@ export const adminMessages = {
     none: "—",
     noAlias: "No alias",
     kinds: { personal: "Personal", kitchen: "Kitchen" },
+    actions: {
+      deleteLabel: (title: string) => `Delete recipe ${title}`,
+      deleteTitle: (title: string) => `Delete “${title}”?`,
+      deleteMessage:
+        "The recipe is removed for everyone who can see it, in any notebook. This can't be undone.",
+      confirm: "Delete",
+      cancel: "Cancel",
+      deleteFailed: "We couldn't delete this recipe. Try again.",
+    },
     columns: {
       units: {
         name: "Name",
@@ -35,6 +44,7 @@ export const adminMessages = {
         notebookName: "Notebook",
         notebookKind: "Type",
         peopleWithAccess: "People with access",
+        delete: "Delete",
       },
       users: {
         id: "Id",
@@ -68,6 +78,15 @@ export const adminMessages = {
     none: "—",
     noAlias: "Sin alias",
     kinds: { personal: "Personal", kitchen: "Cocina" },
+    actions: {
+      deleteLabel: (title: string) => `Eliminar la receta ${title}`,
+      deleteTitle: (title: string) => `¿Eliminar “${title}”?`,
+      deleteMessage:
+        "La receta se quita para todas las personas que pueden verla, en cualquier cuaderno. No se puede deshacer.",
+      confirm: "Eliminar",
+      cancel: "Cancelar",
+      deleteFailed: "No pudimos eliminar esta receta. Inténtalo de nuevo.",
+    },
     columns: {
       units: {
         name: "Nombre",
@@ -84,6 +103,7 @@ export const adminMessages = {
         notebookName: "Cuaderno",
         notebookKind: "Tipo",
         peopleWithAccess: "Personas con acceso",
+        delete: "Eliminar",
       },
       users: {
         id: "Identificador",
