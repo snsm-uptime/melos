@@ -2,7 +2,9 @@
 
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { SHOW_DELAY_MS } from "@/components/Tooltip";
 
 import { NotebookCard } from "./NotebookCard";
 
@@ -51,6 +53,24 @@ describe("NotebookCard", () => {
 
     render({ recipeCount: 0, name: "ana's (Home) Notebook", ownerAlias: "ana", locale: "en" });
     expect(container.querySelector('[role="img"]')).toBeNull();
+  });
+
+  it("shows a tooltip naming the default notebook on hover", () => {
+    vi.useFakeTimers();
+    try {
+      render({ recipeCount: 0, name: "ana's Notebook", ownerAlias: "ana", locale: "en", isDefault: true });
+      const marker = container.querySelector('[role="img"]') as HTMLElement;
+      act(() => {
+        marker.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+        marker.dispatchEvent(new MouseEvent("mouseenter", { bubbles: false }));
+      });
+      act(() => {
+        vi.advanceTimersByTime(SHOW_DELAY_MS);
+      });
+      expect(document.querySelector('[data-testid="tooltip-bubble"]')?.textContent).toBe("Default notebook");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("shows how many recipes it has", () => {

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { BookmarkIcon } from "@/app/icons";
 import { Chip } from "@/components/Chip";
+import { Tooltip } from "@/components/Tooltip";
 import type { Locale } from "@/lib/i18n/locale";
 import { notebooksMessages } from "@/lib/i18n/notebooks";
 
@@ -76,9 +77,11 @@ export function NotebookCard({
         ) : null}
       </div>
       {isDefault ? (
-        <span role="img" aria-label={t.defaultMarker} className="flex-shrink-0 self-start text-accent">
-          <BookmarkIcon className="block size-5" />
-        </span>
+        <Tooltip label={t.defaultNotebook}>
+          <span role="img" aria-label={t.defaultMarker} className="flex-shrink-0 self-start text-muted">
+            <BookmarkIcon filled className="block size-5" />
+          </span>
+        </Tooltip>
       ) : null}
     </article>
   );
