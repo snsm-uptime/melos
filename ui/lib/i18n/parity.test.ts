@@ -63,6 +63,7 @@ const SAME_ON_PURPOSE = new Set<string>([
   "alias.label", // "Alias" is the same word in Spanish
   "capture.optionUrl", // "URL"
   "customUnits.no", // "No" is the same word in Spanish
+  "notebooks.tabPersonal", // "Personal" is the same word in Spanish
 ]);
 
 function paths(value: unknown, prefix = ""): { path: string; leaf: unknown }[] {

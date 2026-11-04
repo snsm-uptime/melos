@@ -57,8 +57,6 @@ from application.notebooks import (
     DeleteNotebookService,
     GetDefaultNotebookCommand,
     GetDefaultNotebookService,
-    SetDefaultNotebookCommand,
-    SetDefaultNotebookService,
     GetNotebookCommand,
     GetNotebookService,
     ListKitchenNotebooksCommand,
@@ -70,6 +68,8 @@ from application.notebooks import (
     RenameNotebookService,
     ResolveCaptureNotebookCommand,
     ResolveCaptureNotebookService,
+    SetDefaultNotebookCommand,
+    SetDefaultNotebookService,
 )
 from application.recipe_lists import (
     ListKitchenRecipesCommand,
