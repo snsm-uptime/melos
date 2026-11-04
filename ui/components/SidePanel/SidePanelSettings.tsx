@@ -11,6 +11,7 @@ import { accountCopy } from "@/lib/i18n/account";
 import type { ThemePreference } from "@/lib/i18n/locale";
 import { sidePanelMessages } from "@/lib/i18n/sidePanel";
 import { signOut } from "@/lib/signOut";
+import { DefaultNotebookField } from "./DefaultNotebookField";
 import { panelEntryClass, usePanelLayout } from "./panelLayout";
 import { SidePanelEntry } from "./SidePanelEntry";
 
@@ -79,6 +80,10 @@ export function SidePanelSettings({
                 ]}
               />
               {error ? <p className="m-0 text-[0.8rem] text-error">{error}</p> : null}
+            </section>
+            <section className="flex flex-col gap-2">
+              <h2 className={headingClass}>{sidePanelMessages[locale].defaultNotebook}</h2>
+              <DefaultNotebookField active={expanded} locale={locale} />
             </section>
             <section className="flex flex-col gap-2">
               <h2 className={headingClass}>{t.language}</h2>

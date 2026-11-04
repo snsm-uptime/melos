@@ -100,6 +100,15 @@ export function fetchPersonalNotebooks(): Promise<NotebookResult<NotebookRespons
   return getJson("/api/notebooks", asNotebookList);
 }
 
+/** Makes one of the caller's personal notebooks their default (Settings). */
+export function setDefaultNotebook(notebookId: string): Promise<NotebookResult<NotebookResponse>> {
+  return requestJson("/api/notebooks/default", asNotebook, {
+    method: "PUT",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ notebook_id: notebookId }),
+  });
+}
+
 /** A new personal notebook with no recipes, owned by the caller (S-059). */
 export function createNotebook(name: string): Promise<NotebookResult<NotebookResponse>> {
   return requestJson("/api/notebooks", asNotebook, {
