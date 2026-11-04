@@ -19,12 +19,14 @@ export type SearchableSelectOption = {
   pinned?: boolean;
 };
 
-type SearchableSelectProps = {
+export type SearchableSelectProps = {
   value: string;
   options: SearchableSelectOption[];
   disabled?: boolean;
   /** Replaces the trigger's look, so it can read as part of the row around it. */
   className?: string;
+  /** Width of the open panel in px. Long option labels need a wider panel. */
+  panelWidth?: number;
   "aria-label": string;
   /** Label and placeholder of the search field. */
   searchLabel: string;
@@ -34,7 +36,7 @@ type SearchableSelectProps = {
   onChange: (value: string, query: string) => void;
 };
 
-const PANEL_WIDTH_PX = 176;
+const DEFAULT_PANEL_WIDTH_PX = 176;
 /** The search field plus the list at its tallest (`max-h-56`). */
 const PANEL_HEIGHT_PX = 288;
 const EDGE_GAP_PX = 8;
@@ -50,13 +52,13 @@ function searchable(text: string): string {
 }
 
 /** Right-aligned to the trigger, opening upward when there is no room below. */
-function panelPosition(trigger: HTMLElement): CSSProperties {
+function panelPosition(trigger: HTMLElement, panelWidth: number): CSSProperties {
   const rect = trigger.getBoundingClientRect();
   const left = Math.max(
     EDGE_GAP_PX,
     Math.min(
-      rect.right - PANEL_WIDTH_PX,
-      window.innerWidth - PANEL_WIDTH_PX - EDGE_GAP_PX,
+      rect.right - panelWidth,
+      window.innerWidth - panelWidth - EDGE_GAP_PX,
     ),
   );
   const below = window.innerHeight - rect.bottom;
@@ -74,6 +76,7 @@ export function SearchableSelect({
   options,
   disabled = false,
   className,
+  panelWidth = DEFAULT_PANEL_WIDTH_PX,
   "aria-label": ariaLabel,
   searchLabel,
   noResults,
@@ -103,7 +106,7 @@ export function SearchableSelect({
         options.findIndex((option) => option.value === value),
       ),
     );
-    setPosition(panelPosition(triggerRef.current));
+    setPosition(panelPosition(triggerRef.current, panelWidth));
     setOpen(true);
   }
 
@@ -120,7 +123,7 @@ export function SearchableSelect({
   useEffect(() => {
     if (!open) return;
     function follow() {
-      if (triggerRef.current) setPosition(panelPosition(triggerRef.current));
+      if (triggerRef.current) setPosition(panelPosition(triggerRef.current, panelWidth));
     }
     function onPointerDown(event: PointerEvent) {
       const target = event.target as Node;
@@ -136,7 +139,7 @@ export function SearchableSelect({
       window.removeEventListener("resize", follow);
       document.removeEventListener("pointerdown", onPointerDown);
     };
-  }, [open]);
+  }, [open, panelWidth]);
 
   useEffect(() => {
     if (!open) return;
@@ -201,7 +204,7 @@ export function SearchableSelect({
             <div
               ref={panelRef}
               className={`${menuSurface.panel} fixed z-50 p-1`}
-              style={{ ...position, width: PANEL_WIDTH_PX }}
+              style={{ ...position, width: panelWidth }}
             >
               <input
                 type="text"
