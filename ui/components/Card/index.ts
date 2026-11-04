@@ -1,2 +1,2 @@
-export { Card, CardBody, CardHeader, cardClassName, type CardProps } from "./Card";
+export { Card, CardBody, CardHeader, cardClassName, linkCardClassName, type CardProps } from "./Card";
 export { AddItemCard, type AddItemCardProps } from "./AddItemCard";

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { BookmarkIcon } from "@/app/icons";
+import { linkCardClassName } from "@/components/Card";
 import { Chip } from "@/components/Chip";
 import { Tooltip } from "@/components/Tooltip";
 import type { Locale } from "@/lib/i18n/locale";
@@ -54,7 +55,9 @@ export function NotebookCard({
 
   const card = (
     <article
-      className={`${styles.card} relative flex min-w-0 items-stretch gap-[var(--space-3)] rounded-[var(--radius-md)] border border-border bg-surface p-[var(--space-3)]`}
+      className={`${styles.card} relative flex min-w-0 items-stretch gap-[var(--space-3)] rounded-[var(--radius-md)] border border-border bg-surface p-[var(--space-3)]${
+        href ? ` ${linkCardClassName}` : ""
+      }`}
     >
       <span className={styles.spine} aria-hidden="true" />
       <div className="flex min-w-0 flex-1 flex-col gap-[var(--space-1)]">
