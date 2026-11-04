@@ -36,8 +36,35 @@ def system_instruction() -> str:
     )
 
 
-def build_contents(text: str, ingredient_names: Sequence[str]) -> str:
-    """User turn: the pasted text and the catalog names, each in its own delimited block."""
+def page_part_system_instruction() -> str:
+    """System instruction for one part of a web page (spec 026, partial page mode)."""
+    return render(
+        "recipe_extraction_page_part_system",
+        TEXT_OPEN=TEXT_OPEN,
+        TEXT_CLOSE=TEXT_CLOSE,
+        NAMES_OPEN=NAMES_OPEN,
+        NAMES_CLOSE=NAMES_CLOSE,
+        VAGUE_PHRASES=VAGUE_PHRASES,
+    )
+
+
+def build_contents(
+    text: str, ingredient_names: Sequence[str], part: tuple[int, int] | None = None
+) -> str:
+    """User turn: the pasted text and the catalog names, each in its own delimited block.
+
+    With `part` (index from 1, total), one line before the blocks says which part of the page
+    this is. Without it the turn is exactly the text-capture one.
+    """
+    turn = _user_turn(text, ingredient_names)
+    if part is None:
+        return turn
+    index, total = part
+    line = render("recipe_extraction_page_part_line", PART=str(index), TOTAL=str(total))
+    return f"{line}\n\n{turn}"
+
+
+def _user_turn(text: str, ingredient_names: Sequence[str]) -> str:
     return render(
         "recipe_extraction_user",
         TEXT_OPEN=TEXT_OPEN,

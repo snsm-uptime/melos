@@ -508,10 +508,19 @@ stories:
     title: Capture a recipe from a URL (SSRF-safe fetch, JSON-LD first)
     epic: Capture
     priority: must
-    status: in_design
+    status: done
     journey: J2
     source: prd.md J2, 1.5A, 1.7 (URL fetching); specs/026-capture-recipe-url
     acceptance: [AC2.3]
+    verification: >
+      2026-11-04, see specs/026-capture-recipe-url/notes.md. api 1910 passed, 4 known environment
+      failures (live embedder, two paste-limit tests with RECIPE_TEXT_MAX_CHARS=10000, one
+      shopping-list date check); ruff clean. ui 1387 passed, lint and typecheck clean. SC-003
+      address set walked by hand through the BFF (19 links, all refused). Browser walk 45/45:
+      English 1280 px, Spanish 360 px, keyboard at 360 px, on a public schema.org page. Batches
+      walked on a public page without schema.org data (4 batches, 4.7 s). Not met or not walked:
+      SC-002 ten timed runs (2 drafts, then the key's usage limit); SC-006 evaluation about 75%
+      (Spanish counted lines lose quantity and unit in the whole-recipe prompt).
 
   - id: S-028
     title: Recipe PDF with correct accents and fractions

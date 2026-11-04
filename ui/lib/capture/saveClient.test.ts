@@ -3,6 +3,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CaptureState } from "./captureStore";
 import { buildSaveBody, submitSave } from "./saveClient";
 
+const encode = vi.hoisted(() => ({ result: "data:image/jpeg;base64,SMALL" as string | null }));
+vi.mock("@/lib/imageEncode", () => ({
+  encodeRecipePreview: vi.fn(async () => encode.result),
+}));
+
 function state(overrides: Partial<CaptureState> = {}): CaptureState {
   return {
     notebook: {
@@ -13,6 +18,7 @@ function state(overrides: Partial<CaptureState> = {}): CaptureState {
       returnPath: "/notebooks",
     },
     text: "  2 large onions.  ",
+    source: { kind: "text" },
     sheetOpen: false,
     phase: "draft",
     message: null,
@@ -169,5 +175,58 @@ describe("submitSave", () => {
     const fetchMock = stubFetch(new Response("{}", { status: 201 }));
     expect(await submitSave(state({ draft: null }))).toMatchObject({ ok: false });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("a draft from a link (spec 026)", () => {
+  const LINK = "https://example.test/soup";
+
+  function linkState(previewImage: string | null): CaptureState {
+    const base = state({ text: "" });
+    return {
+      ...base,
+      source: { kind: "url", link: LINK },
+      draft: { ...base.draft!, sourceUrl: LINK, previewImage, pageCut: false },
+    };
+  }
+
+  it("sends the page address and no pasted text", () => {
+    const body = buildSaveBody(linkState(null));
+
+    expect(body).toMatchObject({ source_url: LINK, source_text: "" });
+    expect(body).not.toHaveProperty("preview_image");
+  });
+
+  it("sends the shrunk photo, never the one from the page", async () => {
+    encode.result = "data:image/jpeg;base64,SMALL";
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await submitSave(linkState("data:image/png;base64,BIG"));
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.preview_image).toBe("data:image/jpeg;base64,SMALL");
+    expect(body.source_url).toBe(LINK);
+  });
+
+  it("leaves the photo out when it cannot be shrunk or was removed", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    encode.result = null;
+    await submitSave(linkState("data:image/png;base64,BIG"));
+    await submitSave(linkState(null));
+
+    for (const call of fetchMock.mock.calls) {
+      expect(JSON.parse(call[1].body)).not.toHaveProperty("preview_image");
+    }
+  });
+
+  it("a text draft never sends a link or a photo", () => {
+    const body = buildSaveBody(state(), "data:image/jpeg;base64,SMALL");
+
+    expect(body).not.toHaveProperty("source_url");
+    expect(body).not.toHaveProperty("preview_image");
+    expect(body?.source_text).toBe("2 large onions.");
   });
 });

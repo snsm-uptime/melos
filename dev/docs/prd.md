@@ -100,8 +100,14 @@ Recipes and the ingredient catalog belong to a notebook (`notebook_id`). There a
 ```
 input: text | URL | photo
   → URL: PageFetcher (SSRF-safe, see 1.7) → schema.org/Recipe JSON-LD present?
-        yes → map it to a RecipeDraft (ingredient lines still go to Gemini for normalization)
-        no  → visible page text → Gemini
+        one Recipe with ingredients → its lines go to Gemini (whole-recipe mode); title, steps
+              and whole-number servings come from the data (AC2.3)
+        two or more → "one recipe at a time"
+        no  → main page content as Markdown (trafilatura) → up to RECIPE_PAGE_BATCH_CHARS:
+              Gemini whole-recipe mode, like pasted text; longer: block-aligned batches (at most
+              RECIPE_PAGE_MAX_BATCHES) sent at the same time in partial page mode, merged in the
+              domain (repeated lines and steps dropped), then checked like any draft (spec 026)
+        the page's main photo is fetched alongside (5 s, 2 MB) and returned as a data URI
   → photo: image → Gemini (multimodal); the image is not stored
   → Gemini RecipeExtractor, given the ingredient catalog of the capture's notebook as TOON
         returns ParseResult{is_recipe, reason, draft}
@@ -199,7 +205,7 @@ users.default_notebook_id (nullable, FK notebook.id, ON DELETE SET NULL)  the pe
 ingredient(id, notebook_id, name, created_at)                         unique(notebook_id, name); a catalog is a set of unique normalized names
 source(id, user_id, type: text|url|photo, url, raw_text, created_at)
 recipe(id, notebook_id, author_id?, source_id?, title, base_servings ≥ 1,
-       servings_estimated, preview_image_base64?,
+       servings_estimated, preview_image_base64? (link capture's page photo, ≤ 300 KB JPEG/PNG/WebP),
        cart_add_count, created_at, updated_at)
                                                                       exactly one notebook (notebook_id); a copy finds its source and target by notebook id
                                                                       author_id: the person who added it; null reads "unknown"
@@ -274,14 +280,16 @@ message(id, conversation_id, role: user|assistant, content, found?, cited_recipe
 | `AIInvalidOutput` (schema or domain rule failed) | 422 | "We couldn't read that recipe. Try rephrasing or adding detail." |
 | `NotARecipe` | 422 | "That doesn't look like a recipe." + the reason |
 | `PageFetchFailed` / `PageBlocked` | 422 | "We couldn't open that page. Paste the recipe text instead." |
+| `PageNoRecipe` (the page opened but holds no recipe) | 422 | "We couldn't find a recipe on that page. Paste the recipe text instead." |
 | `EntityNotFound` (recipe, ingredient, etc.) | 404 | No UI message; the client handles 404 gracefully (e.g., "Recipe not found" or redirect to list). |
 
 The user's input (text, URL or photo) is never lost on error.
 
 **URL fetching (SSRF protection)**
-- `http`/`https` only.
-- The resolved IP must not be private, loopback, link-local or a cloud metadata address. This is checked again after every redirect, with at most 3 redirects.
-- 10 s timeout, 2 MB size limit, HTML only.
+- `http`/`https` only, ports 80 and 443 only, no user name or password in the link.
+- Every resolved IP must be public (not private, loopback, link-local, CGNAT or a cloud metadata address, also when embedded in IPv6). The connection goes to the checked address. This is checked again after every redirect, with at most 3 redirects.
+- 10 s timeout, 2 MB size limit, HTML only. The page's main photo is a second request under the same rules, 5 s and 2 MB, JPEG/PNG/WebP by its bytes.
+- Every fetch failure shows the same message, so a member cannot probe the network.
 
 **Prompt injection.** Imported pages and recipe text are data. Prompts wrap them in delimited blocks and tell the model to ignore instructions inside them (Appendix B).
 
@@ -308,7 +316,7 @@ The user's input (text, URL or photo) is never lost on error.
 ### 1.10 Shared UI components
 
 - **Side panel** (`SidePanel`, spec 064). One left panel replaces the bottom bar on every authenticated page, in this order: avatar, alias with recipe count, Home, other kitchens A to Z, Notebooks, log out. From `md` up it is icons only when closed and icons with labels when open, remembered per device. Closed, it has no scrollbar, and when the kitchens would overflow it shows only the default kitchen. On phones it is a drawer over the content, opened from the header.
-- **Add-recipe call to action** (`AddRecipeCallToAction`). A rounded-corner placeholder rectangle with a plus icon at its centre. Every page that lets a user add a recipe uses it; the first uses are a person's notebook (the Notebook tab in the bottom bar) and a kitchen's Notebook tab (J2). Tapping it opens the add-recipe options dialog: a vertical list separated by dividers, with no confirm or cancel buttons, in this order: URL (disabled, not implemented yet), Picture (disabled, "coming soon", until S-041), Text (opens the text sheet). The option list lives in this component only.
+- **Add-recipe call to action** (`AddRecipeCallToAction`). A rounded-corner placeholder rectangle with a plus icon at its centre. Every page that lets a user add a recipe uses it; the first uses are a person's notebook (the Notebook tab in the bottom bar) and a kitchen's Notebook tab (J2). Tapping it opens the add-recipe options dialog: a vertical list separated by dividers, with no confirm or cancel buttons, in this order: URL (opens the link sheet, spec 026), Picture (disabled, "coming soon", until S-041), Text (opens the text sheet). The option list lives in this component only.
 - Built on the existing `ActionDialog` (its confirm and cancel props become optional) and `Sheet`. The picture sheet, when built (S-041), has an inner dashed border of about 2rem with the text "Upload file or drag and drop".
 
 ---
@@ -357,7 +365,7 @@ The user signs up, signs in, signs out, resets their password by email and edits
 
 ### J2 · Capture a recipe
 - **Entry:** in a notebook (the member's notebook from Notebooks in the left side panel, or a kitchen's Notebook tab), a placeholder image rectangle (standard rounded corners) below the page header shows a plus icon at its centre. Tapping it opens an options dialog with no confirm or cancel buttons: a vertical list separated by dividers, in this order:
-  - **URL:** a link to one recipe page. Shown but disabled until built.
+  - **URL:** a link to one recipe page. Opens a link sheet with one field; the api opens the page (the browser never contacts the site) and returns the same draft, with the page's photo.
   - **Picture:** one image of a cookbook page (JPEG/PNG/HEIC, up to 10 MB). Shown but disabled, marked "coming soon", until S-041. The upload sheet has an inner dashed border (about 2rem thick) with the text "Upload file or drag and drop".
   - **Text:** a free description. Opens a text sheet with the paste input and submit control.
 - **Output:** a **draft review screen**:
@@ -476,7 +484,7 @@ The user signs up, signs in, signs out, resets their password by email and edits
 
 **Product**
 - The assistant never answers from outside the kitchen's data. No web search, no general cooking, nutrition, allergy or health advice. It never says a recipe is safe for an allergy.
-- No crawling. A URL import fetches exactly the one page the user gave.
+- No crawling. A URL import fetches exactly the page the user gave and its one main recipe photo.
 - Imported recipes keep their source link. A personal notebook is private to its owner and members and is never shown in a kitchen; a kitchen gets a snapshot copy instead. No public sharing.
 - Author history is out of scope. A recipe shows its author's alias; if the author's account is deleted, the alias reads "unknown". A copy keeps no record of the recipe it was copied from; a snapshot keeps only a label naming the notebook it came from.
 - Images are stored only where a story says so, with a size limit and a format check: a recipe's image (base64 text on the recipe; spec 026 and the recipe image story S-067) and cart receipts (S-068). A photo sent only for extraction is not kept unless its story stores it. (Before 2026-11-04, captured source photos were never stored; that MVP rule is lifted.)

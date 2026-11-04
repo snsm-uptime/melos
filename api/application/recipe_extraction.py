@@ -24,6 +24,10 @@ from domain.recipe_draft import (
     check_draft,
 )
 
+# Partial page mode results (spec 026), re-exported: they live in the domain for merge_parts.
+from domain.recipe_page import DraftPart as DraftPart
+from domain.recipe_page import NoRecipeContent as NoRecipeContent
+
 logger = logging.getLogger(__name__)
 MAX_TEXT_CHARS = 10_000
 
@@ -59,6 +63,8 @@ class NotARecipe:
 @dataclass(frozen=True, slots=True)
 class DraftIncomplete:
     problems: DraftProblems
+    # The draft as the service gave it, so link capture can still open it in the form (spec 026).
+    recipe: DraftRecipe | None = field(default=None, compare=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,6 +87,13 @@ class AIProviderError:
     pass
 
 
+class ExtractionMode(StrEnum):
+    """WHOLE: one whole recipe (text capture). PAGE_PART: one part of a web page (spec 026)."""
+
+    WHOLE = "whole"
+    PAGE_PART = "page_part"
+
+
 ExtractionResult = (
     Draft
     | NotARecipe
@@ -89,17 +102,26 @@ ExtractionResult = (
     | LimitReached
     | InvalidOutput
     | AIProviderError
+    | DraftPart
+    | NoRecipeContent
 )
 
 
 class RecipeExtractor(Protocol):
-    """Port: one service call per text. Never raises for service, network or output problems."""
+    """Port: one service call per text. Never raises for service, network or output problems.
+
+    WHOLE mode never returns DraftPart or NoRecipeContent. `part` is (index from 1, total),
+    given only in PAGE_PART mode.
+    """
 
     def extract(
         self,
         text: str,
         ingredient_names: Sequence[str],
         timeout_s: float,
+        *,
+        mode: ExtractionMode = ExtractionMode.WHOLE,
+        part: tuple[int, int] | None = None,
     ) -> ExtractionResult: ...
 
 
@@ -110,9 +132,15 @@ class _InFlight:
     error: BaseException | None = None
 
 
-def _flight_key(text: str, ingredient_names: Sequence[str], available_units: Sequence[str]) -> str:
-    """Only calls judged by the same lists may share a result (spec 055 R5)."""
-    parts = json.dumps([text, sorted(ingredient_names), sorted(available_units)])
+def _flight_key(
+    text: str,
+    ingredient_names: Sequence[str],
+    available_units: Sequence[str],
+    mode: ExtractionMode,
+    part: tuple[int, int] | None,
+) -> str:
+    """Only calls judged by the same lists, mode and part may share a result (spec 055 R5)."""
+    parts = json.dumps([text, sorted(ingredient_names), sorted(available_units), mode.value, part])
     return hashlib.sha256(parts.encode("utf-8")).hexdigest()
 
 
@@ -131,6 +159,9 @@ class RecipeExtraction:
         ingredient_names: Sequence[str],
         timeout_s: float,
         available_units: Sequence[str] = (),
+        *,
+        mode: ExtractionMode = ExtractionMode.WHOLE,
+        part: tuple[int, int] | None = None,
     ) -> ExtractionResult:
         trimmed = text.strip()
         if not trimmed:
@@ -138,7 +169,7 @@ class RecipeExtraction:
         if len(trimmed) > MAX_TEXT_CHARS:
             raise RecipeTextRefusedError(RecipeTextRefusedError.TOO_LONG)
 
-        key = _flight_key(trimmed, ingredient_names, available_units)
+        key = _flight_key(trimmed, ingredient_names, available_units, mode, part)
         with self._lock:
             flight = self._in_flight.get(key)
             owner = flight is None
@@ -154,7 +185,9 @@ class RecipeExtraction:
             return flight.result
 
         try:
-            flight.result = self._evaluate(trimmed, ingredient_names, timeout_s, available_units)
+            flight.result = self._evaluate(
+                trimmed, ingredient_names, timeout_s, available_units, mode, part
+            )
         except BaseException as exc:
             flight.error = exc
             raise
@@ -170,8 +203,16 @@ class RecipeExtraction:
         ingredient_names: Sequence[str],
         timeout_s: float,
         available_units: Sequence[str],
+        mode: ExtractionMode,
+        part: tuple[int, int] | None,
     ) -> ExtractionResult:
         # The units stay here: they are compared in code and never reach the model (spec 055 R4).
+        if mode is ExtractionMode.PAGE_PART:
+            # A part may hold only steps or only lines: the merged draft is checked instead.
+            return self._extractor.extract(
+                trimmed, ingredient_names, timeout_s, mode=mode, part=part
+            )
+        # Whole mode calls the port exactly as before spec 026.
         result = self._extractor.extract(trimmed, ingredient_names, timeout_s)
         if not isinstance(result, Draft):
             return result
@@ -184,7 +225,7 @@ class RecipeExtraction:
                 ",".join(exc.missing),
                 ",".join(problem.kind.value for problem in exc.line_problems),
             )
-            return DraftIncomplete(problems=exc)
+            return DraftIncomplete(problems=exc, recipe=result.recipe)
         except InvalidDraftError as exc:
             # The rule that broke, by name only: no values and no text.
             logger.warning("draft rejected by a recipe rule: %s", exc.MESSAGE)

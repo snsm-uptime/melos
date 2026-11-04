@@ -26,6 +26,7 @@ from application.recipe_manage import (
 )
 from application.recipe_save import SavedRecipe, SaveRecipeCommand, SaveRecipeDraft
 from domain.errors import (
+    InvalidPreviewImageError,
     KitchenArchivedError,
     KitchenNotFoundError,
     NotebookChoiceRequiredError,
@@ -153,6 +154,8 @@ def save_recipe(
         ),
         steps=tuple(body.steps),
         keep_units=tuple(body.keep_units),
+        source_url=body.source_url,
+        preview_image=body.preview_image,
     )
     try:
         saved = save.execute(command)
@@ -174,6 +177,12 @@ def save_recipe(
         return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, TextTooLongError.CODE, str(exc))
     except DraftProblems as exc:
         return _problems(exc)
+    except InvalidPreviewImageError:
+        return _error(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            InvalidPreviewImageError.CODE,
+            InvalidPreviewImageError.MESSAGE,
+        )
     except InvalidDraftError as exc:
         return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "invalid_recipe", str(exc))
     if saved.created:
@@ -219,6 +228,7 @@ def _detail(view: RecipeView) -> RecipeDetailResponse:
             if detail.source_url
             else None
         ),
+        preview_image=detail.preview_image,
         editor=editor_response(view.editor),
         in_cart=view.cart.in_cart if view.cart is not None else None,
         cart_editor=editor_response(view.cart.editor) if view.cart is not None else None,

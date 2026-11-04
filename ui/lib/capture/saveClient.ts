@@ -1,17 +1,29 @@
 /** Client helper for Save, through the same-origin BFF (spec 020, contracts/save-api.md). */
 
+import { encodeRecipePreview } from "@/lib/imageEncode";
+
 import type { CaptureMessage, CaptureState } from "./captureStore";
 
 export type SaveResult = { ok: true } | { ok: false; message: CaptureMessage };
 
-/** The body of POST /recipes for the draft on screen, or null when there is nothing to save. */
-export function buildSaveBody(capture: CaptureState): Record<string, unknown> | null {
+/**
+ * The body of POST /recipes for the draft on screen, or null when there is nothing to save.
+ * A link draft sends its page address instead of pasted text, and `previewImage`, the photo
+ * already shrunk for Save, when there is one (spec 026).
+ */
+export function buildSaveBody(
+  capture: CaptureState,
+  previewImage: string | null = null,
+): Record<string, unknown> | null {
   const { draft, notebook, saveKey, text } = capture;
   if (!draft || !notebook || !saveKey) return null;
+  const sourceUrl = draft.sourceUrl;
   return {
     save_key: saveKey,
     notebook_id: notebook.id,
-    source_text: text.trim(),
+    source_text: sourceUrl ? "" : text.trim(),
+    ...(sourceUrl ? { source_url: sourceUrl } : {}),
+    ...(sourceUrl && previewImage ? { preview_image: previewImage } : {}),
     title: draft.title,
     base_servings: draft.baseServings,
     servings_estimated: draft.servingsEstimated,
@@ -46,7 +58,10 @@ function readLineProblems(value: unknown): CaptureMessage["lineProblems"] {
 
 /** Save the draft once. The same key is sent on a retry, so a repeat never makes a second recipe. */
 export async function submitSave(capture: CaptureState): Promise<SaveResult> {
-  const body = buildSaveBody(capture);
+  const photo = capture.draft?.sourceUrl ? capture.draft.previewImage : null;
+  // Shrunk here, so the api never needs an image library; a photo that cannot fit is left out.
+  const previewImage = photo ? await encodeRecipePreview(photo) : null;
+  const body = buildSaveBody(capture, previewImage);
   if (!body) return { ok: false, message: { code: "save_unavailable" } };
 
   let response: Response;

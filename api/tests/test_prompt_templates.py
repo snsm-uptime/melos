@@ -63,6 +63,12 @@ def test_value_containing_placeholder_syntax_is_not_expanded() -> None:
     assert text.startswith("<<<T\n" + pasted + "\nT>>>")
 
 
+def test_the_page_part_line_template_fills_part_and_total() -> None:
+    assert render("recipe_extraction_page_part_line", PART="2", TOTAL="4") == (
+        "Part 2 of 4 of one web page."
+    )
+
+
 def test_missing_template_file_raises() -> None:
     with pytest.raises(FileNotFoundError):
         load_template("no_such_prompt")

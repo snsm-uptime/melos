@@ -1,7 +1,8 @@
 """Save a confirmed draft as a recipe in its notebook (spec 020).
 
 Order of checks, so that a refused save stores nothing (research R4):
-1. the pasted text and the draft size are within their limits (FR-019);
+1. the pasted text and the draft size are within their limits (FR-019); a link capture's
+   address passes the link rules and its image the preview rule (spec 026);
 2. a repeated Save with the same key returns the recipe already stored (FR-013);
 3. the notebook exists, the caller may see it, and its kitchen is not archived (FR-012);
    with only a kitchen given, the capture-notebook step picks or creates one (FR-011);
@@ -19,9 +20,11 @@ import logging
 from dataclasses import dataclass
 from uuid import UUID
 
-from domain.errors import KitchenArchivedError, NotebookNotFoundError
+from domain.errors import InvalidPreviewImageError, KitchenArchivedError, NotebookNotFoundError
+from domain.page_link import PageLinkRefused, check_link
 from domain.recipe import MAX_LINES, MAX_STEPS, NewRecipe, resolve_line_names
 from domain.recipe_draft import DraftRecipe, IngredientLine, InvalidDraftError, check_edited_draft
+from domain.recipe_preview import validate_preview_image
 
 from application.notebooks import (
     NotebookView,
@@ -59,6 +62,9 @@ class SaveRecipeCommand:
     kitchen_id: UUID | None = None
     # Words the person said yes to; those a saved line uses join their list (spec 055 R10).
     keep_units: tuple[str, ...] = ()
+    # Link capture (spec 026): the page address, with no pasted text, and the page's photo.
+    source_url: str | None = None
+    preview_image: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +104,10 @@ class SaveRecipeDraft:
             raise TextTooLongError(self._max_text_chars)
         if len(command.lines) > MAX_LINES or len(command.steps) > MAX_STEPS:
             raise InvalidDraftError("too long")
+        source_url = self._source_url(command, source_text)
+        if command.preview_image is not None and source_url is None:
+            raise InvalidPreviewImageError("A recipe image comes only with a link capture.")
+        preview_image = validate_preview_image(command.preview_image)
 
         stored = self._recipes.find_by_save_key(command.actor_user_id, command.save_key)
         if stored is not None:
@@ -132,6 +142,8 @@ class SaveRecipeDraft:
             author_id=command.actor_user_id,
             notebook_id=view.id,
             save_key=command.save_key,
+            source_url=source_url,
+            preview_image=preview_image,
         )
         try:
             stored = self._recipes.add(recipe)
@@ -156,6 +168,17 @@ class SaveRecipeDraft:
         return SavedRecipe(
             recipe=stored, notebook=view, created=True, created_catalog_names=new_names
         )
+
+    @staticmethod
+    def _source_url(command: SaveRecipeCommand, source_text: str) -> str | None:
+        if command.source_url is None:
+            return None
+        if source_text:
+            raise InvalidDraftError("source")
+        try:
+            return check_link(command.source_url.strip()).url
+        except PageLinkRefused as exc:
+            raise InvalidDraftError("source_url") from exc
 
     def _notebook(self, command: SaveRecipeCommand) -> NotebookView:
         notebook_id = command.notebook_id
