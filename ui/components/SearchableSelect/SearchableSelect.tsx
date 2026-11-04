@@ -10,6 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
+import { BackIcon } from "@/app/icons";
 import { menuSurface } from "@/components/MenuSurface";
 
 export type SearchableSelectOption = {
@@ -195,9 +196,9 @@ export function SearchableSelect({
         <span className="whitespace-nowrap">
           {options.find((option) => option.value === value)?.label ?? ""}
         </span>
-        <span aria-hidden="true" className="text-[0.7em] opacity-60">
-          ▾
-        </span>
+        <BackIcon
+          className={`size-[0.8em] shrink-0 opacity-60 transition-transform duration-200 ease-out motion-reduce:transition-none ${open ? "rotate-90" : "-rotate-90"}`}
+        />
       </button>
       {open
         ? createPortal(

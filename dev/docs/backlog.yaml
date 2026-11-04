@@ -801,3 +801,14 @@ stories:
       the owner 2026-11-01) and a read-only dashboard of units, ingredients, recipes and users.
       Promotion to default, at more than 5 distinct people with a maintainer review, is a later
       story. Before it, unit forms in Spanish and English and plural display stay open.
+
+  - id: S-066
+    title: Sort and search as a standard layout for every table
+    epic: Platform
+    priority: should
+    status: backlog
+    source: todos.md (dashboard table request, 2026-11-04)
+    notes: >
+      Spec: specs/066-table-sort-search. Every column table gets alphabetical and numerical sort, ascending
+      and descending. The dashboard's units, ingredients and recipes tables get a search bar above them.
+      Built once as a shared table layout, so later table features reach every table.
