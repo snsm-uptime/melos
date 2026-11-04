@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { encodeCroppedAvatar, loadImage, type Area } from "@/lib/imageEncode";
+import { encodeCroppedAvatar, encodeRecipePreview, loadImage, type Area } from "@/lib/imageEncode";
 
 function makeImage(): HTMLImageElement {
   return { naturalWidth: 800, naturalHeight: 600 } as HTMLImageElement;
@@ -163,5 +163,95 @@ describe("loadImage", () => {
     const file = new File(["fake"], "photo.png", { type: "image/png" });
 
     await expect(loadImage(file)).rejects.toThrow("Could not read image file.");
+  });
+});
+
+describe("encodeRecipePreview (spec 026)", () => {
+  let drawImageSpy: ReturnType<typeof vi.fn>;
+  let sizes: { width: number; height: number }[];
+
+  function stubImage(width: number, height: number, fails = false) {
+    const fakeImg = document.createElement("img");
+    Object.defineProperty(fakeImg, "naturalWidth", { value: width });
+    Object.defineProperty(fakeImg, "naturalHeight", { value: height });
+    Object.defineProperty(fakeImg, "src", {
+      set() {
+        queueMicrotask(() =>
+          fails
+            ? fakeImg.onerror?.(new Event("error") as unknown as string | globalThis.Event)
+            : fakeImg.onload?.(new Event("load") as unknown as globalThis.Event),
+        );
+      },
+    });
+    vi.stubGlobal("Image", function () {
+      return fakeImg;
+    });
+  }
+
+  function stubCanvas(bytesFor: (quality: number) => number) {
+    drawImageSpy = vi.fn();
+    sizes = [];
+    const ctx = { drawImage: drawImageSpy, fillRect: vi.fn(), fillStyle: "" } as unknown as CanvasRenderingContext2D;
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockImplementation(function (
+      this: HTMLCanvasElement,
+      ...args: unknown[]
+    ) {
+      sizes.push({ width: this.width, height: this.height });
+      const bytes = bytesFor(args[1] as number);
+      return "data:image/jpeg;base64," + "A".repeat(Math.ceil((bytes * 4) / 3));
+    });
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("shrinks the longest side to 800 px and returns a JPEG", async () => {
+    stubImage(1600, 1200);
+    stubCanvas(() => 1000);
+
+    const result = await encodeRecipePreview("data:image/png;base64,AAAA");
+
+    expect(result?.startsWith("data:image/jpeg;base64,")).toBe(true);
+    expect(sizes[0]).toEqual({ width: 800, height: 600 });
+  });
+
+  it("never enlarges a small photo", async () => {
+    stubImage(300, 200);
+    stubCanvas(() => 1000);
+
+    await encodeRecipePreview("data:image/webp;base64,AAAA");
+
+    expect(sizes[0]).toEqual({ width: 300, height: 200 });
+  });
+
+  it("steps the quality down until it fits 300 KB", async () => {
+    stubImage(800, 800);
+    const qualities: number[] = [];
+    stubCanvas((quality) => {
+      qualities.push(quality);
+      return quality > 0.6 ? 400_000 : 250_000;
+    });
+
+    const result = await encodeRecipePreview("data:image/jpeg;base64,AAAA");
+
+    expect(result).not.toBeNull();
+    expect(qualities).toEqual([0.85, 0.75, 0.65, 0.55]);
+  });
+
+  it("returns null when even the lowest quality is too big", async () => {
+    stubImage(800, 800);
+    stubCanvas(() => 400_000);
+
+    expect(await encodeRecipePreview("data:image/jpeg;base64,AAAA")).toBeNull();
+  });
+
+  it("returns null when the photo cannot be read", async () => {
+    stubImage(0, 0, true);
+    stubCanvas(() => 1000);
+
+    expect(await encodeRecipePreview("data:image/jpeg;base64,AAAA")).toBeNull();
   });
 });

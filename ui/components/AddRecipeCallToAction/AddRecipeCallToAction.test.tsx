@@ -82,7 +82,7 @@ describe("AddRecipeCallToAction", () => {
       disabled: el.getAttribute("aria-disabled"),
     }));
     expect(items).toEqual([
-      { text: "URLNot available yet", disabled: "true" },
+      { text: "URL", disabled: null },
       { text: "PictureComing soon", disabled: "true" },
       { text: "Text", disabled: null },
     ]);
@@ -98,6 +98,28 @@ describe("AddRecipeCallToAction", () => {
 
     expect(document.querySelector("[role='dialog']")?.textContent).toContain("ana's Notebook");
     expect(document.querySelector("textarea")).not.toBeNull();
+  });
+
+  it("opens the link sheet for the preselected notebook when URL is chosen (spec 026)", () => {
+    render();
+    act(() => button("Add a recipe")!.click());
+
+    act(() => button("URL")!.click());
+
+    const dialog = document.querySelector("[role='dialog']");
+    expect(dialog?.textContent).toContain("ana's Notebook");
+    expect(dialog?.querySelector("input[type='url']")).not.toBeNull();
+    expect(document.querySelector("textarea")).toBeNull();
+  });
+
+  it("Picture stays disabled and opens nothing", () => {
+    render();
+    act(() => button("Add a recipe")!.click());
+
+    act(() => button("PictureComing soon")!.click());
+
+    expect(document.querySelector("input[type='url']")).toBeNull();
+    expect(document.querySelector("textarea")).toBeNull();
   });
 
   it("shows the notebook picker only when there is more than one notebook", () => {

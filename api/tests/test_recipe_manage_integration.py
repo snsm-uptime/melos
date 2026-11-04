@@ -894,3 +894,34 @@ def test_an_edit_queues_the_recipe_and_takes_its_old_embedding_out_of_search(
     )
     assert current == 0
     assert getattr(client.app.state, "embedder", None) is None
+
+
+# --- the recipe image across edit and delete (spec 026 T039) ---
+
+PREVIEW = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ=="
+
+
+def test_an_edit_keeps_the_image_and_a_delete_removes_it(client: TestClient, db_session: Session):
+    _register(client, "img_manage@example.com")
+    notebook_id = _personal_notebook(client)
+    recipe_id = _save(
+        client,
+        notebook_id,
+        source_text="",
+        source_url="https://example.test/rice",
+        preview_image=PREVIEW,
+    )
+    recipe = client.get(f"/recipes/{recipe_id}").json()
+
+    edited = _put(client, recipe_id, _edit_body(recipe, title="Better rice"))
+
+    assert edited.status_code == 200, edited.text
+    after = client.get(f"/recipes/{recipe_id}").json()
+    assert after["title"] == "Better rice"
+    assert after["preview_image"] == PREVIEW
+    assert after["source"]["url"] == "https://example.test/rice"
+
+    assert client.delete(f"/recipes/{recipe_id}").status_code in (200, 204)
+    db_session.expire_all()
+    assert db_session.get(RecipeModel, UUID(recipe_id)) is None
+    assert client.get(f"/recipes/{recipe_id}").status_code == 404

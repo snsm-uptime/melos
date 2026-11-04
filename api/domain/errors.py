@@ -158,6 +158,16 @@ class InvalidPhotoError(DomainError):
         super().__init__(detail or self.MESSAGE)
 
 
+class InvalidPreviewImageError(DomainError):
+    """Raised when a recipe preview image fails its format or size check (spec 026)."""
+
+    MESSAGE = "The recipe image must be a JPEG, PNG or WebP under 300 KB."
+    CODE = "invalid_preview_image"
+
+    def __init__(self, detail: str | None = None) -> None:
+        super().__init__(detail or self.MESSAGE)
+
+
 class AliasRequiredError(DomainError):
     """Raised when an authenticated user without an alias touches kitchen surfaces."""
 

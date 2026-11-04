@@ -13,7 +13,6 @@ const en = {
   addRecipe: "Add a recipe",
   addRecipeButton: "Add recipe",
   optionUrl: "URL",
-  optionUrlNote: "Not available yet",
   optionPicture: "Picture",
   optionPictureNote: "Coming soon",
   optionText: "Text",
@@ -30,6 +29,18 @@ const en = {
   invalidOutput:
     "The app could not build a recipe from this text. Try again, or shorten the text to one recipe.",
   misconfigured: "Assistant misconfigured. Your text is kept",
+  linkLabel: "Recipe link",
+  linkPlaceholder: "https://…",
+  linkInvalid: "Paste a link that starts with http:// or https://",
+  linkTooLong: "That link is too long.",
+  submittingLink: "Reading the page…",
+  pageFetchFailed: "We couldn't open that page. Paste the recipe text instead.",
+  pageNoRecipe: "We couldn't find a recipe on that page. Paste the recipe text instead.",
+  pageCut: "This page was long, so part of it was not read. Check the ingredients and steps.",
+  unavailableLink: "The assistant isn't responding. Your link is kept — try again.",
+  misconfiguredLink: "Assistant misconfigured. Your link is kept",
+  pagePhotoAlt: "Photo from the recipe page",
+  removePhoto: "Remove photo",
   archived: "This kitchen is archived, so recipes can't be added.",
   notFound: "This kitchen is unavailable.",
   notebookGone: "This notebook no longer exists, or you no longer have access to it.",
@@ -112,7 +123,6 @@ const es: CaptureMessages = {
   addRecipe: "Agregar una receta",
   addRecipeButton: "Agregar receta",
   optionUrl: "URL",
-  optionUrlNote: "Aún no disponible",
   optionPicture: "Imagen",
   optionPictureNote: "Próximamente",
   optionText: "Texto",
@@ -129,6 +139,18 @@ const es: CaptureMessages = {
   invalidOutput:
     "La app no pudo armar una receta con este texto. Inténtalo de nuevo o acórtalo a una sola receta.",
   misconfigured: "El asistente está mal configurado. Tu texto se conserva.",
+  linkLabel: "Enlace de la receta",
+  linkPlaceholder: "https://…",
+  linkInvalid: "Pega un enlace que empiece por http:// o https://",
+  linkTooLong: "Ese enlace es demasiado largo.",
+  submittingLink: "Leyendo la página…",
+  pageFetchFailed: "No pudimos abrir esa página. Pega el texto de la receta.",
+  pageNoRecipe: "No encontramos una receta en esa página. Pega el texto de la receta.",
+  pageCut: "Esta página era larga y no se leyó entera. Revisa los ingredientes y los pasos.",
+  unavailableLink: "El asistente no responde. Tu enlace se conserva: inténtalo de nuevo.",
+  misconfiguredLink: "El asistente está mal configurado. Tu enlace se conserva.",
+  pagePhotoAlt: "Foto de la página de la receta",
+  removePhoto: "Quitar foto",
   archived: "Esta cocina está archivada, así que no se pueden agregar recetas.",
   notFound: "Esta cocina no está disponible.",
   notebookGone: "Este cuaderno ya no existe, o ya no tienes acceso a él.",
@@ -259,10 +281,28 @@ function notARecipeSentence(t: CaptureMessages, message: CaptureMessage): string
   }
 }
 
-/** The message shown for an API refusal (contracts/capture-messages.md), in the screen's language. */
-export function messageForCode(message: CaptureMessage, locale: Locale, max?: number): string {
+/**
+ * The message shown for an API refusal (contracts/capture-messages.md), in the screen's language.
+ * `source` is the sheet the member used: a link capture says "Your link is kept" (spec 026).
+ */
+export function messageForCode(
+  message: CaptureMessage,
+  locale: Locale,
+  max?: number,
+  source: "text" | "url" = "text",
+): string {
   const t = captureMessagesFor(locale);
+  const link = source === "url";
   switch (message.code) {
+    case "link_empty":
+    case "link_invalid":
+      return t.linkInvalid;
+    case "link_too_long":
+      return t.linkTooLong;
+    case "page_fetch_failed":
+      return t.pageFetchFailed;
+    case "page_no_recipe":
+      return t.pageNoRecipe;
     case "draft_incomplete":
     case "ingredient_line_problem":
       return draftSentences(t, message);
@@ -275,7 +315,7 @@ export function messageForCode(message: CaptureMessage, locale: Locale, max?: nu
     case "ai_invalid_output":
       return t.invalidOutput;
     case "ai_misconfigured":
-      return t.misconfigured;
+      return link ? t.misconfiguredLink : t.misconfigured;
     case "text_too_long":
       return t.tooLong(max ?? 5000);
     case "kitchen_archived":
@@ -290,6 +330,6 @@ export function messageForCode(message: CaptureMessage, locale: Locale, max?: nu
     case "kitchen_not_found":
       return t.notFound;
     default:
-      return t.unavailable;
+      return link ? t.unavailableLink : t.unavailable;
   }
 }

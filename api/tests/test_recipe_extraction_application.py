@@ -20,8 +20,11 @@ from application.recipe_extraction import (
     AIProviderError,
     Draft,
     DraftIncomplete,
+    DraftPart,
+    ExtractionMode,
     InvalidOutput,
     LimitReached,
+    NoRecipeContent,
     NotARecipe,
     NotRecipeReason,
     RecipeExtraction,
@@ -435,9 +438,122 @@ def test_the_port_gets_no_stored_unit() -> None:
 
 
 def test_the_port_signature_has_no_units() -> None:
+    # spec 026 added the keyword-only mode and part; units still never reach the port.
     assert list(inspect.signature(RecipeExtractor.extract).parameters) == [
         "self",
         "text",
         "ingredient_names",
         "timeout_s",
+        "mode",
+        "part",
     ]
+
+
+# --- partial page mode (spec 026 T011) -------------------------------------------------------
+
+
+def _part(**overrides) -> DraftPart:
+    values = {
+        "title": None,
+        "base_servings": None,
+        "ingredient_lines": (),
+        "steps": ("Simmer for an hour.",),
+    }
+    return DraftPart(**(values | overrides))
+
+
+def test_whole_mode_calls_the_port_with_no_mode_or_part() -> None:
+    service, fake = use_case(Draft(recipe=acceptance_draft()))
+
+    service.extract(ACCEPTANCE_TEXT, ["salt"], 10.0)
+
+    assert fake.calls[0].mode is ExtractionMode.WHOLE
+    assert fake.calls[0].part is None
+
+
+def test_page_part_mode_passes_mode_and_part_and_skips_the_draft_check() -> None:
+    # No title and no ingredient lines: check_draft would refuse this, a part may hold it.
+    part = _part()
+    service, fake = use_case(part)
+
+    result = service.extract(
+        "Step 3. Simmer for an hour.", ["salt"], 10.0, mode=ExtractionMode.PAGE_PART, part=(2, 3)
+    )
+
+    assert result == part
+    assert fake.calls[0].mode is ExtractionMode.PAGE_PART
+    assert fake.calls[0].part == (2, 3)
+    assert fake.calls[0].ingredient_names == ("salt",)
+
+
+@pytest.mark.parametrize(
+    "outcome",
+    [
+        NoRecipeContent(),
+        NotARecipe(reason=NotRecipeReason.MULTIPLE_RECIPES),
+        Unavailable(),
+        LimitReached(retry_after_seconds=7),
+        InvalidOutput(),
+        AIProviderError(),
+    ],
+)
+def test_page_part_mode_passes_other_results_through(outcome) -> None:
+    service, _ = use_case(outcome)
+
+    result = service.extract("text", [], 10.0, mode=ExtractionMode.PAGE_PART, part=(1, 2))
+
+    assert result == outcome
+
+
+def test_page_part_mode_still_refuses_empty_and_over_long_text() -> None:
+    service, fake = use_case(_part())
+
+    with pytest.raises(RecipeTextRefusedError):
+        service.extract("  ", [], 10.0, mode=ExtractionMode.PAGE_PART, part=(1, 2))
+    with pytest.raises(RecipeTextRefusedError):
+        service.extract(
+            "a" * (MAX_TEXT_CHARS + 1), [], 10.0, mode=ExtractionMode.PAGE_PART, part=(1, 2)
+        )
+    assert fake.calls == []
+
+
+class _CountingGate:
+    """Holds every call until `expected` are inside, so shared flights would deadlock."""
+
+    def __init__(self, expected: int) -> None:
+        self.barrier = threading.Barrier(expected, timeout=5)
+        self.calls: list[tuple[object, object]] = []
+        self._lock = threading.Lock()
+
+    def extract(self, text, ingredient_names, timeout_s, *, mode=None, part=None):
+        with self._lock:
+            self.calls.append((mode, part))
+        self.barrier.wait()
+        return _part()
+
+
+def test_one_text_in_different_modes_or_parts_never_shares_a_flight() -> None:
+    gate = _CountingGate(3)
+    service = RecipeExtraction(gate)
+    text = "Same words on every part."
+    calls = [
+        {},
+        {"mode": ExtractionMode.PAGE_PART, "part": (1, 2)},
+        {"mode": ExtractionMode.PAGE_PART, "part": (2, 2)},
+    ]
+    threads = [
+        threading.Thread(target=service.extract, args=(text, [], 10.0), kwargs=kwargs)
+        for kwargs in calls
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=10)
+
+    assert sorted(map(repr, gate.calls)) == sorted(
+        [
+            repr((None, None)),
+            repr((ExtractionMode.PAGE_PART, (1, 2))),
+            repr((ExtractionMode.PAGE_PART, (2, 2))),
+        ]
+    )

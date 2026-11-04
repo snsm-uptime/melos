@@ -444,3 +444,86 @@ def test_a_refused_save_writes_no_embedding_job(client: TestClient, db_session: 
 
     assert response.status_code == 422
     assert db_session.scalar(select(func.count()).select_from(EmbeddingJobModel)) == before
+
+
+# --- link capture source and image (spec 026 T039) ---
+
+PREVIEW = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ=="
+
+
+def test_a_link_save_stores_the_address_and_the_image_and_the_detail_returns_both(
+    client: TestClient, db_session: Session
+):
+    _register(client, "url_save@example.com")
+    notebook_id = _personal_notebook(client)
+
+    response = client.post(
+        "/recipes",
+        json=_body(
+            notebook_id,
+            source_text="",
+            source_url="https://example.test/recipes/soup",
+            preview_image=PREVIEW,
+        ),
+    )
+
+    assert response.status_code == 201, response.text
+    recipe_id = response.json()["recipe"]["id"]
+    recipe = db_session.get(RecipeModel, UUID(recipe_id))
+    assert recipe is not None and recipe.preview_image_base64 == PREVIEW
+    source = db_session.get(SourceModel, recipe.source_id)
+    assert source is not None
+    assert (source.type, source.url, source.raw_text) == (
+        "url",
+        "https://example.test/recipes/soup",
+        None,
+    )
+    detail = client.get(f"/recipes/{recipe_id}").json()
+    assert detail["preview_image"] == PREVIEW
+    assert detail["source"] == {"type": "url", "url": "https://example.test/recipes/soup"}
+
+
+def test_a_text_save_has_no_image(client: TestClient):
+    _register(client, "text_noimg@example.com")
+    response = client.post("/recipes", json=_body(_personal_notebook(client)))
+
+    detail = client.get(f"/recipes/{response.json()['recipe']['id']}").json()
+    assert detail["preview_image"] is None
+
+
+@pytest.mark.parametrize(
+    ("overrides", "code"),
+    [
+        ({"source_text": "", "source_url": "javascript:alert(1)"}, "invalid_recipe"),
+        ({"source_url": "https://example.test/soup"}, "invalid_recipe"),
+        ({"preview_image": PREVIEW}, "invalid_preview_image"),
+        (
+            {
+                "source_text": "",
+                "source_url": "https://example.test/soup",
+                "preview_image": "data:image/jpeg;base64," + "A" * 500_000,
+            },
+            "invalid_preview_image",
+        ),
+        (
+            {
+                "source_text": "",
+                "source_url": "https://example.test/soup",
+                "preview_image": "data:image/png;base64,/9j/4AAQSkZJRgABAQ==",
+            },
+            "invalid_preview_image",
+        ),
+    ],
+)
+def test_a_bad_link_or_image_is_refused_and_stores_nothing(
+    client: TestClient, db_session: Session, overrides: dict, code: str
+):
+    _register(client, f"badurl_{code}_{len(str(overrides))}@example.com")
+    notebook_id = _personal_notebook(client)
+    before = _counts(db_session)
+
+    response = client.post("/recipes", json=_body(notebook_id, **overrides))
+
+    assert response.status_code == 422, response.text
+    assert response.json()["code"] == code
+    assert _counts(db_session) == before

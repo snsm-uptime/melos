@@ -11,8 +11,6 @@ import {
 import {
   closeSheet,
   failSubmit,
-  openSheet,
-  OWN_NEW_NOTEBOOK_ID,
   setText,
   showDraft,
   startSubmit,
@@ -22,9 +20,9 @@ import {
 import { messageForCode } from "@/lib/i18n/capture";
 import { useLocale } from "@/lib/i18n/useLocale";
 import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
-import { resolveCaptureNotebook } from "@/lib/notebooksClient";
 
 import type { CaptureCandidate } from "./AddRecipeCallToAction";
+import { captureTarget, chooseNotebook, pickerOptions } from "./captureNotebook";
 
 /** The api's default paste limit, used until the controlled lists load (RECIPE_TEXT_MAX_CHARS). */
 const DEFAULT_MAX_CHARS = 5000;
@@ -62,6 +60,14 @@ export function toDraftView(response: CaptureDraftResponse): DraftView {
     })),
     steps: draft.steps.map((text) => ({ key: nextKey(), text })),
     catalog: response.catalog,
+    // Link capture only (spec 026).
+    ...(response.page
+      ? {
+          sourceUrl: response.page.source_url,
+          previewImage: response.page.preview_image,
+          pageCut: response.page.cut,
+        }
+      : {}),
   };
 }
 
@@ -103,33 +109,15 @@ export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCapture
   const submitting = capture.phase === "submitting";
   const disabled = trimmed.length === 0 || tooLong || submitting || notebook === null;
 
-  function chooseNotebook(id: string) {
-    const picked = options.find((item) => item.id === id);
-    if (!picked || !notebook) return;
-    openSheet({
-      id: picked.id,
-      kind: picked.kind,
-      name: picked.name,
-      kitchenId: picked.kitchenId,
-      returnPath: notebook.returnPath,
-    });
-  }
-
   async function submit() {
     if (!notebook || disabled) return;
     startSubmit();
-    let target = notebook;
-    if (notebook.id === OWN_NEW_NOTEBOOK_ID && notebook.kitchenId) {
-      // Made now, before extraction, and kept even if no recipe is saved (spec 035 FR-017).
-      const own = await resolveCaptureNotebook(notebook.kitchenId);
-      if (!own.ok) {
-        failSubmit({ code: own.code ?? "unavailable" });
-        return;
-      }
-      target = { ...notebook, id: own.value.id, name: own.value.name };
-      openSheet(target);
+    const target = await captureTarget(notebook);
+    if (!target.ok) {
+      failSubmit({ code: target.code });
+      return;
     }
-    const result = await submitCapture(target.id, capture.text);
+    const result = await submitCapture(target.notebook.id, capture.text);
     if (!result.ok) {
       if (result.max !== undefined) setMax(result.max);
       failSubmit(result.message);
@@ -139,13 +127,7 @@ export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCapture
     onDraftReady();
   }
 
-  // After a failed extraction the "new" row has become the real notebook.
-  const options =
-    notebook && !candidates.some((item) => item.id === notebook.id)
-      ? candidates.map((item) =>
-          item.id === OWN_NEW_NOTEBOOK_ID ? { ...item, id: notebook.id, name: notebook.name } : item,
-        )
-      : candidates;
+  const options = pickerOptions(candidates, notebook);
 
   const message = capture.message
     ? messageForCode(capture.message, locale, max)
@@ -162,7 +144,7 @@ export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCapture
             className={fieldClassName}
             value={notebook.id}
             disabled={submitting}
-            onChange={(event) => chooseNotebook(event.target.value)}
+            onChange={(event) => chooseNotebook(options, event.target.value, notebook)}
           >
             {options.map((item) => (
               <option key={item.id} value={item.id}>

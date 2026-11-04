@@ -442,6 +442,8 @@ class RecipeModel(Base):
     )
     # Additions to a kitchen's cart, raised by each cart save; never lowered (spec 022 FR-013).
     cart_add_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    # The recipe image as a data URI, at most 300 KB decoded (spec 026, domain.recipe_preview).
+    preview_image_base64: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class RecipeIngredientModel(Base):

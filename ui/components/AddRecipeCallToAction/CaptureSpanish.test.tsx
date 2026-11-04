@@ -50,7 +50,7 @@ describe("the add-recipe entry points in Spanish (spec 063)", () => {
   });
 
   it("the options dialog names its options in Spanish", () => {
-    act(() => root.render(<AddRecipeOptionsDialog open onClose={() => {}} onChooseText={() => {}} />));
+    act(() => root.render(<AddRecipeOptionsDialog open onClose={() => {}} onChooseUrl={() => {}} onChooseText={() => {}} />));
     const text = document.body.textContent ?? "";
     expect(text).toContain("Agregar una receta");
     expect(text).toContain("Texto");

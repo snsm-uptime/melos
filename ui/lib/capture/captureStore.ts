@@ -69,7 +69,19 @@ export type DraftView = {
   keptUnits?: string[];
   /** Words the person said no to on this draft. Never remembered (FR-006). */
   declinedUnits?: string[];
+  /** Link capture (spec 026): the page address after redirects, which Save stores. */
+  sourceUrl?: string;
+  /** The page's photo as a data URI; null after the member removes it, or when there is none. */
+  previewImage?: string | null;
+  /** The page was long and part of it was not read: the draft shows the long-page note. */
+  pageCut?: boolean;
 };
+
+/**
+ * What the capture sheet shows (spec 026): the text sheet, or the link sheet with the link the
+ * member typed. Back and any refusal keep the link unchanged (FR-018).
+ */
+export type CaptureSource = { kind: "text" } | { kind: "url"; link: string };
 
 /** The match-control value that means "new ingredient". Not a catalog entry name. */
 export const NEW_CHOICE = "__new__";
@@ -77,6 +89,8 @@ export const NEW_CHOICE = "__new__";
 export type CaptureState = {
   notebook: CaptureNotebook | null;
   text: string;
+  /** Which sheet is open, and the link on the link sheet (spec 026). */
+  source: CaptureSource;
   sheetOpen: boolean;
   phase: "idle" | "submitting" | "draft";
   message: CaptureMessage | null;
@@ -93,6 +107,7 @@ export type CaptureState = {
 const EMPTY: CaptureState = {
   notebook: null,
   text: "",
+  source: { kind: "text" },
   sheetOpen: false,
   phase: "idle",
   message: null,
@@ -131,9 +146,28 @@ export function isDraftEdited(current: CaptureState): boolean {
   return draftHash(current.draft) !== current.originalHash;
 }
 
-export function openSheet(notebook: CaptureNotebook): void {
+/**
+ * Open the sheet for a notebook. With `kind`, the text or the link sheet; without it (the
+ * notebook picker), the sheet already shown. A link already typed is kept.
+ */
+export function openSheet(notebook: CaptureNotebook, kind?: CaptureSource["kind"]): void {
   // Always the caller's notebook: each page's sheet opens only for its own returnPath.
-  update({ notebook, sheetOpen: true });
+  update({ notebook, sheetOpen: true, source: sourceFor(kind) });
+}
+
+function sourceFor(kind: CaptureSource["kind"] | undefined): CaptureSource {
+  if (kind === undefined || kind === state.source.kind) return state.source;
+  return kind === "url" ? { kind: "url", link: "" } : { kind: "text" };
+}
+
+export function setLink(link: string): void {
+  update({ source: { kind: "url", link }, message: null });
+}
+
+/** The member removed the page's photo from the draft; Save then stores none. */
+export function removePreviewImage(): void {
+  if (!state.draft) return;
+  update({ draft: { ...state.draft, previewImage: null } });
 }
 
 export function closeSheet(): void {
@@ -194,6 +228,7 @@ export function markSaved(returnPath: string): void {
     draft: null,
     originalHash: null,
     text: "",
+    source: { kind: "text" },
     sheetOpen: false,
     message: null,
     saveKey: null,
@@ -238,7 +273,7 @@ export function chooseMatch(index: number, choice: string): void {
   mapDraftLine(index, (line) => chooseLineMatch(line, choice));
 }
 
-/** Back on the draft page: the pasted text stays, the draft is dropped (FR-031). */
+/** Back on the draft page: the pasted text or the link stays, the draft is dropped (FR-031). */
 export function backToSheet(): void {
   update({
     phase: "idle",
@@ -251,13 +286,14 @@ export function backToSheet(): void {
   });
 }
 
-/** Discard: the draft and the text are cleared; no leave prompt (FR-020). */
+/** Discard: the draft and the text or link are cleared; no leave prompt (FR-020, 026 FR-018). */
 export function discardDraft(): void {
   update({
     phase: "idle",
     draft: null,
     originalHash: null,
     text: "",
+    source: state.source.kind === "url" ? { kind: "url", link: "" } : { kind: "text" },
     sheetOpen: true,
     message: null,
     saveKey: null,
