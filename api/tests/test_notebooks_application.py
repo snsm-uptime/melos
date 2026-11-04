@@ -413,7 +413,7 @@ def test_first_open_creates_kitchen_notebook_owned_by_the_opener() -> None:
 
     assert len(views) == 1
     view = views[0]
-    assert view.name == "ben's (Home) Notebook"
+    assert view.name == "Home by ben"
     assert view.kind == "kitchen"
     assert view.access == "kitchen_member"
     assert view.owner_alias == "ben"
@@ -524,7 +524,7 @@ def test_kitchen_notebook_takes_the_language_of_the_member_who_opens_it() -> Non
         ListKitchenNotebooksCommand(actor_user_id=ben, kitchen_id=home)
     )
 
-    assert [view.name for view in views] == ["Cuaderno de ben (Casa)"]
+    assert [view.name for view in views] == ["Casa de ben"]
 
 
 # --- The capture notebook step (US3, FR-009 to FR-011) ---
@@ -543,7 +543,7 @@ def test_kitchen_capture_with_no_notebook_creates_one_and_commits_once() -> None
 
     notebook = world.notebooks.notebooks[result.notebook_id]
     assert result.created is True
-    assert notebook.name == "ana's (My kitchen) Notebook"
+    assert notebook.name == "My kitchen by ana"
     assert notebook.owner_user_id == ana
     assert notebook.kitchen_id == my_kitchen
     assert world.catalog.names_for_notebook(result.notebook_id) == ["onion"]

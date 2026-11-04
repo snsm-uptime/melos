@@ -102,8 +102,8 @@ def kitchen_notebook_name(alias: str, kitchen_name: str, language: str | None) -
     Written in that member's language.
     """
     if name_language(language) == "es":
-        return f"Cuaderno de {alias} ({kitchen_name})"
-    return f"{alias}'s ({kitchen_name}) Notebook"
+        return f"{kitchen_name} de {alias}"
+    return f"{kitchen_name} by {alias}"
 
 
 def notebook_access(
