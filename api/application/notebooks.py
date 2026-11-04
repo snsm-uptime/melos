@@ -101,9 +101,10 @@ def _naming_profile(prefs: PreferencesRepository, user_id: UUID) -> tuple[str, s
 def _readable_by(notebooks: NotebookRepository, user_id: UUID, notebook_id: UUID) -> bool:
     """Whether the person can still see the notebook: a member who left no longer can."""
     facts = notebooks.facts_for(user_id, notebook_id)
-    return facts is not None and notebook_access(
-        facts.notebook.kind, facts.role, facts.in_kitchen
-    ) is not None
+    return (
+        facts is not None
+        and notebook_access(facts.notebook.kind, facts.role, facts.in_kitchen) is not None
+    )
 
 
 def ensure_default_notebook(

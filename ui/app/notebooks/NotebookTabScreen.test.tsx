@@ -130,7 +130,7 @@ describe("NotebookTabScreen", () => {
     await flush();
 
     const header = container.querySelector('[data-app-chrome="header"]') as HTMLElement;
-    expect(header.querySelector("h1")?.textContent).toBe("Notebook");
+    expect(header.querySelector("h1")?.textContent).toBe("Notebooks");
     expect(header.querySelector('a[href="/account"]')).toBeNull();
     expect(container.querySelectorAll("h1")).toHaveLength(1);
   });

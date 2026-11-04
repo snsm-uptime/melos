@@ -64,6 +64,7 @@ const SAME_ON_PURPOSE = new Set<string>([
   "capture.optionUrl", // "URL"
   "capture.linkPlaceholder", // "https://…", a link has no language
   "customUnits.no", // "No" is the same word in Spanish
+  "notebooks.tabPersonal", // "Personal" is the same word in Spanish
 ]);
 
 function paths(value: unknown, prefix = ""): { path: string; leaf: unknown }[] {
