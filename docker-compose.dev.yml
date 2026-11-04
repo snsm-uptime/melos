@@ -94,6 +94,8 @@ services:
       # URLs (it never fetches them over the CDP connection). A named volume
       # keeps .next container-only, so every source-map read 404s. See
       # JS-DAP.md. Already gitignored (ui/.gitignore).
+      # The entrypoint runs next dev as the owner of ./ui, so these files are
+      # not root-owned and the worktree can be removed.
       - ./ui/.next:/app/.next
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
