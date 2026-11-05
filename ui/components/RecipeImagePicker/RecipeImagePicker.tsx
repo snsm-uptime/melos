@@ -2,8 +2,9 @@
 
 import { useRef, useState, type ChangeEvent } from "react";
 
-import { PencilIcon, TrashIcon, UploadIcon } from "@/app/icons";
+import { PencilIcon, PotIcon, TrashIcon, UploadIcon } from "@/app/icons";
 import { AvatarCropSheet } from "@/components/AvatarCropSheet";
+import { AddItemCard } from "@/components/Card";
 import { IconButton } from "@/components/IconButton";
 import { captureMessagesFor } from "@/lib/i18n/capture";
 import type { Locale } from "@/lib/i18n/locale";
@@ -19,6 +20,11 @@ type RecipeImagePickerProps = {
   onChange: (value: string | null) => void;
   locale: Locale;
   disabled?: boolean;
+  /**
+   * With no image: "placeholder" shows the cards' pot placeholder with an upload button (the
+   * draft); "add" shows the shared add-item card (the edit page).
+   */
+  empty?: "placeholder" | "add";
 };
 
 /**
@@ -31,6 +37,7 @@ export function RecipeImagePicker({
   onChange,
   locale,
   disabled = false,
+  empty = "placeholder",
 }: RecipeImagePickerProps) {
   const t = captureMessagesFor(locale);
   const input = useRef<HTMLInputElement>(null);
@@ -61,12 +68,13 @@ export function RecipeImagePicker({
         onChange={onPick}
       />
       {value ? (
-        <figure className="relative m-0 self-start">
+        // The detail page's image: full column width, at most 18rem tall.
+        <figure className="relative m-0">
           {/* eslint-disable-next-line @next/next/no-img-element -- a data URI, not a site address */}
           <img
             src={value}
             alt={t.recipePhotoAlt}
-            className="block max-h-56 max-w-full rounded-[0.75rem] object-cover"
+            className="block max-h-72 w-full rounded-[0.75rem] object-cover"
           />
           <span className="absolute top-2 right-2 flex gap-1">
             <IconButton
@@ -87,16 +95,27 @@ export function RecipeImagePicker({
             />
           </span>
         </figure>
+      ) : empty === "add" ? (
+        <AddItemCard label={t.addPhoto} onClick={pick} disabled={disabled} className="min-h-40" />
       ) : (
-        <button
-          type="button"
-          onClick={pick}
-          disabled={disabled}
-          className="flex items-center gap-2 self-start rounded-[0.75rem] border border-dashed border-border px-4 py-3 text-[0.9rem] text-muted hover:text-foreground disabled:opacity-50"
-        >
-          <UploadIcon className="size-5" />
-          {t.addPhoto}
-        </button>
+        // The cards' placeholder, at the detail image's size.
+        <div className="relative">
+          <span
+            data-testid="recipe-image-placeholder"
+            className="flex h-56 w-full items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface text-muted"
+          >
+            <PotIcon />
+          </span>
+          <span className="absolute top-2 right-2">
+            <IconButton
+              variant="ghost"
+              label={t.addPhoto}
+              icon={<UploadIcon className="size-5" />}
+              onClick={pick}
+              disabled={disabled}
+            />
+          </span>
+        </div>
       )}
       {failed ? (
         <p role="alert" className="m-0 text-[0.85rem] text-error">

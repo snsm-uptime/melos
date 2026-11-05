@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { CartPlusIcon } from "@/app/icons";
+import { CartPlusIcon, PotIcon } from "@/app/icons";
 import { linkCardClassName } from "@/components/Card";
 import { Chip } from "@/components/Chip";
 import { IconButton } from "@/components/IconButton";
@@ -36,28 +36,6 @@ export type CardCart = {
   /** Never disabled: a refusal while someone else edits shows a toast (spec 022 FR-017b). */
   onToggle: () => void;
 };
-
-/** The default image until a recipe has its own: a cooking pot. */
-function PotIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="28"
-      height="28"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      data-testid="recipe-pot-icon"
-    >
-      <path d="M4 10h16v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-6Z" />
-      <path d="M2 10h2M20 10h2" />
-      <path d="M9 7c0-1.2 1-1.2 1-2.4M14 7c0-1.2 1-1.2 1-2.4" />
-    </svg>
-  );
-}
 
 /**
  * Recipe card: links to the detail; no categories (spec 021 FR-014, spec 027). Kitchen cards

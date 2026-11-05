@@ -300,8 +300,10 @@ export function RecipeEditForm({
         </HeaderActions>
       </header>
 
-      <div className="px-4">
+      {/* The ingredients column's width, as on the detail page. */}
+      <div className="px-4 md:max-w-[calc(450px+2rem)]">
         <RecipeImagePicker
+          empty="add"
           value={state.previewImage}
           onChange={(previewImage) =>
             commit({ ...stateRef.current, previewImage, imageChanged: true })

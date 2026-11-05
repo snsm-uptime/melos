@@ -267,102 +267,108 @@ export function RecipeDraftEditor() {
       />
       */}
 
-      <div className="flex flex-col gap-3 px-4">
-        {/* The page's photo, or the member's own (S-067): add, change or remove it. */}
-        <RecipeImagePicker
-          value={draft.previewImage ?? null}
-          onChange={setPreviewImage}
-          locale={locale}
-          disabled={capture.saving}
-        />
-        {draft.pageCut ? (
-          <p role="note" className="m-0 text-[0.9rem] text-muted">
-            {t.pageCut}
-          </p>
-        ) : null}
-      </div>
+      {draft.pageCut ? (
+        <p role="note" className="m-0 px-4 text-[0.9rem] text-muted">
+          {t.pageCut}
+        </p>
+      ) : null}
 
       <div className="flex flex-col gap-6 px-4 md:min-h-0 md:flex-1 md:flex-row">
-        <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:max-w-[450px] md:flex-1 md:overflow-hidden">
-          <div className="flex shrink-0 items-center justify-between gap-2">
-            <h2 className="m-0 text-[1rem] font-[550] text-foreground">
-              {t.ingredients}
-            </h2>
-            <div className="flex flex-col items-end gap-1">
-              <label className="flex items-center gap-2 text-[0.85rem] text-muted">
-                {t.servingsLabel}
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  className="w-20 rounded-[0.75rem] border border-border bg-background px-3 py-1 text-[1rem] text-foreground"
-                  value={draft.baseServings}
-                  onChange={(event) =>
-                    update({
-                      baseServings: Number(event.target.value),
-                      servingsEstimated: false,
-                    })
-                  }
-                />
-              </label>
-              {errors.servings ? (
-                <span role="alert" className="text-[0.8rem] text-error">
-                  {t.errors[errors.servings]}
-                </span>
-              ) : null}
+        {/* As on the detail page: the image over the ingredients, one column beside the steps. */}
+        <div className="flex min-w-0 flex-col gap-6 md:min-h-0 md:max-w-[450px] md:flex-1">
+          {/* The page's photo, or the member's own (S-067): add, change or remove it. */}
+          <RecipeImagePicker
+            value={draft.previewImage ?? null}
+            onChange={setPreviewImage}
+            locale={locale}
+            disabled={capture.saving}
+          />
+          <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-hidden">
+            <div className="flex shrink-0 items-center justify-between gap-2">
+              <h2 className="m-0 text-[1rem] font-[550] text-foreground">
+                {t.ingredients}
+              </h2>
+              <div className="flex flex-col items-end gap-1">
+                <label className="flex items-center gap-2 text-[0.85rem] text-muted">
+                  {t.servingsLabel}
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    className="w-20 rounded-[0.75rem] border border-border bg-background px-3 py-1 text-[1rem] text-foreground"
+                    value={draft.baseServings}
+                    onChange={(event) =>
+                      update({
+                        baseServings: Number(event.target.value),
+                        servingsEstimated: false,
+                      })
+                    }
+                  />
+                </label>
+                {errors.servings ? (
+                  <span role="alert" className="text-[0.8rem] text-error">
+                    {t.errors[errors.servings]}
+                  </span>
+                ) : null}
+              </div>
             </div>
-          </div>
-          <div className="flex flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
-            <UnknownUnitQuestion words={unitQuestions} onAnswer={answerUnit} />
-            <ul className="m-0 flex list-none flex-col gap-2 p-0">
-              {draft.lines.map((line, index) => (
-                <IngredientLineRow
-                  key={line.key}
-                  line={line}
-                  index={index}
-                  count={draft.lines.length}
-                  errors={errors.lines[index] ?? []}
-                  units={units}
-                  sizes={sizes}
-                  onCheckUnit={checkUnitWord}
-                  catalog={draft.catalog}
-                  change={changesByLine.get(index)}
-                  onUndoChange={undoChange}
-                  onChange={(next) => updateLine(index, next)}
-                  onRemove={() =>
-                    update({ lines: draft.lines.filter((_, i) => i !== index) })
-                  }
-                  onMove={(direction) =>
-                    update({ lines: moveItem(draft.lines, index, direction) })
-                  }
-                />
-              ))}
-            </ul>
-            <AddItemCard
-              label={t.addIngredient}
-              className="min-h-14"
-              onClick={() =>
-                update({
-                  lines: [
-                    ...draft.lines,
-                    {
-                      key: nextKey(),
-                      name: "",
-                      vague: false,
-                      quantity: null,
-                      unit: null,
-                      size: null,
-                      preparation: null,
-                      note: null,
-                      textName: "",
-                      match: { kind: "new", entry: null },
-                    },
-                  ],
-                })
-              }
-            />
-          </div>
-        </section>
+            <div className="flex flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
+              <UnknownUnitQuestion
+                words={unitQuestions}
+                onAnswer={answerUnit}
+              />
+              <ul className="m-0 flex list-none flex-col gap-2 p-0">
+                {draft.lines.map((line, index) => (
+                  <IngredientLineRow
+                    key={line.key}
+                    line={line}
+                    index={index}
+                    count={draft.lines.length}
+                    errors={errors.lines[index] ?? []}
+                    units={units}
+                    sizes={sizes}
+                    onCheckUnit={checkUnitWord}
+                    catalog={draft.catalog}
+                    change={changesByLine.get(index)}
+                    onUndoChange={undoChange}
+                    onChange={(next) => updateLine(index, next)}
+                    onRemove={() =>
+                      update({
+                        lines: draft.lines.filter((_, i) => i !== index),
+                      })
+                    }
+                    onMove={(direction) =>
+                      update({ lines: moveItem(draft.lines, index, direction) })
+                    }
+                  />
+                ))}
+              </ul>
+              <AddItemCard
+                label={t.addIngredient}
+                className="min-h-14"
+                onClick={() =>
+                  update({
+                    lines: [
+                      ...draft.lines,
+                      {
+                        key: nextKey(),
+                        name: "",
+                        vague: false,
+                        quantity: null,
+                        unit: null,
+                        size: null,
+                        preparation: null,
+                        note: null,
+                        textName: "",
+                        match: { kind: "new", entry: null },
+                      },
+                    ],
+                  })
+                }
+              />
+            </div>
+          </section>
+        </div>
 
         <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-hidden">
           <h2 className="m-0 shrink-0 text-[1rem] font-[550] text-foreground">
