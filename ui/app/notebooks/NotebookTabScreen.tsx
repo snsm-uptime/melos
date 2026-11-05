@@ -1,13 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 
 import { ChopsticksWokIcon, UserIcon } from "@/app/icons";
 import { CauldronLoader } from "@/components/CauldronLoader";
 import { useChromeHeader } from "@/components/ChromeBack";
 import { NotebookCard } from "@/components/NotebookCard/NotebookCard";
 import { SavedNotice } from "@/components/RecipeDraft/SavedNotice";
+import { TabButton, TabList } from "@/components/Tabs";
 import type { Locale } from "@/lib/i18n/locale";
 import { notebooksMessages } from "@/lib/i18n/notebooks";
 import {
@@ -96,7 +97,7 @@ export function NotebookTabScreen({
   return (
     <main className={`${styles.tabMain} flex-1`}>
       <SavedNotice returnPath="/notebooks" />
-      <div role="tablist" aria-label={t.tabsLabel} className={styles.tabs}>
+      <TabList label={t.tabsLabel}>
         <TabButton
           id="notebook-tab-personal"
           selected={listTab === "personal"}
@@ -111,7 +112,7 @@ export function NotebookTabScreen({
           icon={<ChopsticksWokIcon className="size-5" />}
           label={t.tabKitchen}
         />
-      </div>
+      </TabList>
       <div role="tabpanel" aria-labelledby={`notebook-tab-${listTab}`} className={styles.tabPanel}>
         {state.status === "loading" ? <CauldronLoader label={t.loading} /> : null}
         {state.status === "error" ? (
@@ -174,30 +175,3 @@ export function NotebookTabScreen({
   );
 }
 
-function TabButton({
-  id,
-  selected,
-  onSelect,
-  icon,
-  label,
-}: {
-  id: string;
-  selected: boolean;
-  onSelect: () => void;
-  icon: ReactNode;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      id={id}
-      aria-selected={selected}
-      className={selected ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-      onClick={onSelect}
-    >
-      {icon}
-      <span>{label}</span>
-    </button>
-  );
-}

@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { BoxIcon, HashtagIcon, NotebookIcon, UsersIcon } from "@/app/icons";
 import { useChromeHeader } from "@/components/ChromeBack";
 import { CauldronLoader } from "@/components/CauldronLoader";
 import { DataTable } from "@/components/DataTable";
+import { TabButton, TabList } from "@/components/Tabs";
 import { adminMessages } from "@/lib/i18n/admin";
 import type { Locale } from "@/lib/i18n/locale";
 import { tableMessages } from "@/lib/i18n/table";
@@ -23,6 +25,13 @@ import {
 
 const SECTIONS = ["units", "ingredients", "recipes", "users"] as const;
 type Section = (typeof SECTIONS)[number];
+
+const TAB_ICONS: Record<Section, typeof BoxIcon> = {
+  units: HashtagIcon,
+  ingredients: BoxIcon,
+  recipes: NotebookIcon,
+  users: UsersIcon,
+};
 
 type Row = Record<string, unknown>;
 type Loaded = { state: "ready"; rows: Row[] } | { state: "failed" };
@@ -121,26 +130,6 @@ export function AdminDashboard({ locale }: { locale: Locale }) {
   useChromeHeader({
     title: t.title,
     sidePanel: true,
-    titleAside: (
-      <div role="tablist" aria-label={t.tabsLabel} className="flex w-max gap-2">
-        {SECTIONS.map((name) => (
-          <button
-            key={name}
-            type="button"
-            role="tab"
-            aria-selected={name === section}
-            className={`min-h-10 rounded-[0.75rem] border px-3 py-1 text-[0.9rem] whitespace-nowrap ${
-              name === section
-                ? "border-accent text-foreground"
-                : "border-border text-muted hover:text-foreground"
-            }`}
-            onClick={() => setSection(name)}
-          >
-            {t.tabs[name]}
-          </button>
-        ))}
-      </div>
-    ),
   });
 
   // Going back to a section mid-load must not ask for it twice.
@@ -189,7 +178,26 @@ export function AdminDashboard({ locale }: { locale: Locale }) {
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4 p-4">
-      <div role="tabpanel" className="flex min-w-0 flex-1 flex-col">
+      <TabList label={t.tabsLabel}>
+        {SECTIONS.map((name) => {
+          const Icon = TAB_ICONS[name];
+          return (
+            <TabButton
+              key={name}
+              id={`admin-tab-${name}`}
+              selected={name === section}
+              onSelect={() => setSection(name)}
+              icon={<Icon className="size-5" />}
+              label={t.tabs[name]}
+            />
+          );
+        })}
+      </TabList>
+      <div
+        role="tabpanel"
+        aria-labelledby={`admin-tab-${section}`}
+        className="flex min-w-0 flex-1 flex-col"
+      >
         {current === undefined ? (
           <CauldronLoader label={t.tabs[section]} />
         ) : null}

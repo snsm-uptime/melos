@@ -63,7 +63,7 @@ export function DataTable<T>({
   return (
     <div className="flex min-w-0 flex-col gap-3">
       {schema.search || clearButton ? (
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           {schema.search ? (
             <>
               <label htmlFor={searchId} className="sr-only">

@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   ChromeBackProvider,
-  useChromeHeaderState,
 } from "@/components/ChromeBack";
 import { MIN_LOADING_MS } from "@/lib/minimumLoading";
 
@@ -14,15 +13,9 @@ import { AdminDashboard } from "./AdminDashboard";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/admin" }));
 
-/** The part of AppShell's header that holds the tabs. */
-function Tabs() {
-  return <>{useChromeHeaderState().titleAside}</>;
-}
-
 function Screen({ locale }: { locale: "en" | "es" }) {
   return (
     <ChromeBackProvider>
-      <Tabs />
       <AdminDashboard locale={locale} />
     </ChromeBackProvider>
   );
@@ -411,7 +404,7 @@ describe("AdminDashboard", () => {
       expect(search()!.value).toBe("");
     });
 
-    it("filters Recipes as the admin types, and Users has no search bar", async () => {
+    it("filters Recipes as the admin types, and Users has its own search bar", async () => {
       await render();
       await open("Recipes");
       type("sop");
@@ -419,7 +412,8 @@ describe("AdminDashboard", () => {
       type("BEN");
       expect(firstCells()).toEqual(["Sopa", "Pan"]);
       await open("Users");
-      expect(search()).toBeNull();
+      expect(search()).not.toBeNull();
+      expect(search()!.value).toBe("");
     });
   });
 

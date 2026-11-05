@@ -210,13 +210,14 @@ export function recipesTable(
 export function usersTable(t: Messages, locale: Locale): TableSchema<UserRow> {
   const c = t.columns.users;
   return {
-    search: false,
+    search: true,
     rowKey: (row) => row.id,
     columns: [
       {
         key: "alias",
         label: c.alias,
         sort: "text",
+        searchable: true,
         cell: (row) => row.alias ?? t.noAlias,
       },
       { key: "open_sessions", label: c.openSessions, sort: "number" },
@@ -232,7 +233,7 @@ export function usersTable(t: Messages, locale: Locale): TableSchema<UserRow> {
         t,
         locale,
       ),
-      { key: "id", label: c.id, sort: "text" },
+      { key: "id", label: c.id, sort: "text", searchable: true },
     ],
   };
 }
