@@ -190,7 +190,7 @@ describe("KitchenNotebooksSection", () => {
     expect(container.querySelector("h3")).toBeNull();
   });
 
-  it("shows no notebook cards, and one Add recipe button beside the filter", async () => {
+  it("shows no notebook cards, and the add card first in the recipe grid", async () => {
     withRecipe();
     stubBff([{ status: 200, body: { notebooks: [homeNotebook, secondNotebook] } }]);
 
@@ -198,12 +198,9 @@ describe("KitchenNotebooksSection", () => {
     await flush();
 
     expect(container.textContent).not.toContain("Owned by");
-    const buttons = Array.from(container.querySelectorAll("button")).filter(
-      (el) => el.textContent === "Add recipe",
-    );
-    expect(buttons).toHaveLength(1);
-    const filter = container.querySelector("input[type=search]") as HTMLInputElement;
-    expect(filter.parentElement?.parentElement).toBe(buttons[0].parentElement);
+    const adds = container.querySelectorAll('button[aria-label="Add a recipe"]');
+    expect(adds).toHaveLength(1);
+    expect(adds[0].closest("li")).toBe(container.querySelector("ul > li"));
   });
 
   it("paints the server's reads at once: an empty kitchen has the plus square and no filter", () => {
@@ -487,7 +484,7 @@ describe("KitchenNotebooksSection", () => {
 
     async function openSheet() {
       await flush();
-      press("Add recipe");
+      press("Add a recipe");
       press("Text");
       await flush();
     }

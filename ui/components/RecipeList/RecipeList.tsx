@@ -36,6 +36,8 @@ type RecipeListProps = {
    * the empty text); omit to show none (archived kitchen).
    */
   addCandidates?: CaptureCandidate[];
+  /** The notebook the add card preselects; the first candidate when absent. */
+  addDefaultId?: string;
   returnPath: string;
   /** Sits beside the filter (e.g. the add-recipe button). */
   filterAction?: ReactNode;
@@ -61,6 +63,7 @@ export function RecipeList({
   onChange,
   load,
   addCandidates,
+  addDefaultId,
   returnPath,
   filterAction,
   emptyAction,
@@ -113,7 +116,7 @@ export function RecipeList({
     addCandidates && addCandidates.length > 0 ? (
       <AddRecipeCallToAction
         candidates={addCandidates}
-        defaultId={addCandidates[0]?.id ?? null}
+        defaultId={addDefaultId ?? addCandidates[0]?.id ?? null}
         returnPath={returnPath}
       />
     ) : (
@@ -200,7 +203,7 @@ export function RecipeList({
               <li>
                 <AddRecipeCallToAction
                   candidates={addCandidates}
-                  defaultId={addCandidates[0]?.id ?? null}
+                  defaultId={addDefaultId ?? addCandidates[0]?.id ?? null}
                   returnPath={returnPath}
                 />
               </li>
