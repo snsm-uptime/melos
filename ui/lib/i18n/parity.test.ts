@@ -18,6 +18,7 @@ import { shoppingListMessages } from "./shoppingList";
 import { sidePanelMessages } from "./sidePanel";
 import { signInMessages } from "./signin";
 import { signupMessages } from "./signup";
+import { tableMessages } from "./table";
 import { verifyMessages } from "./verify";
 
 /**
@@ -44,6 +45,7 @@ const SETS: Record<string, { en: unknown; es: unknown }> = {
   sidePanel: sidePanelMessages,
   signIn: signInMessages,
   signup: signupMessages,
+  table: tableMessages,
   verify: verifyMessages,
 };
 

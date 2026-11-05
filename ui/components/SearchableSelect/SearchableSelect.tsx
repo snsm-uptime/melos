@@ -11,6 +11,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { BackIcon } from "@/app/icons";
+import { foldText } from "@/components/DataTable/tableRows";
 import { menuSurface } from "@/components/MenuSurface";
 
 export type SearchableSelectOption = {
@@ -45,11 +46,7 @@ const TRIGGER_GAP_PX = 4;
 
 /** Lower case, no accents: "cucharón" is found by typing "cucharon". */
 function searchable(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .trim();
+  return foldText(text).trim();
 }
 
 /** Right-aligned to the trigger, opening upward when there is no room below. */
