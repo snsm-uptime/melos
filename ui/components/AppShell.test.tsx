@@ -146,7 +146,7 @@ describe("AppShell chrome header", () => {
     expect(container.querySelector("nav")).toBeNull();
   });
 
-  it("shows the panel on authenticated routes, with a header holding the quick add on every width", async () => {
+  it("shows the panel on authenticated routes, with the quick add in the panel", async () => {
     pathname = "/home";
     await act(async () => {
       root.render(
@@ -156,8 +156,9 @@ describe("AppShell chrome header", () => {
       );
     });
 
-    expect(container.querySelector("header")?.className).not.toContain("md:hidden");
-    expect(container.querySelector("header [data-quick-add]")).toBeTruthy();
+    expect(container.querySelector("header")?.className).toContain("md:hidden");
+    expect(container.querySelector("nav [data-quick-add]")).toBeTruthy();
+    expect(container.querySelector("header [data-quick-add]")).toBeNull();
     expect(container.querySelector("nav")).toBeTruthy();
   });
 

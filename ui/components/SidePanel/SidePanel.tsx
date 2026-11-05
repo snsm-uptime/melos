@@ -15,6 +15,7 @@ import { fetchKitchens, type KitchenItem } from "@/app/kitchens/kitchensClient";
 import { useMembershipKitchens } from "@/app/kitchens/membershipKitchensStore";
 import { IconButton } from "@/components/IconButton";
 import { usePreferences } from "@/components/PreferencesProvider";
+import { QuickAddRecipe } from "@/components/QuickAddRecipe";
 import { panelEntryFromPath } from "@/lib/appChrome";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
 import { adminMessages } from "@/lib/i18n/admin";
@@ -203,6 +204,10 @@ export function SidePanel({
             notebookCount={panel ? t.notebookCount(panel.notebooks) : null}
           />
           <ul className="m-0 flex list-none flex-col gap-1 p-0">
+            {/* The quick add (spec 069 FR-001), wherever the panel shows. */}
+            <li className="min-w-0">
+              <QuickAddRecipe />
+            </li>
             <li className="min-w-0">
               <SidePanelEntry
                 href="/notebooks"

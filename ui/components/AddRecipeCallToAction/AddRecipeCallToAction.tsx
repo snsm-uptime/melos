@@ -6,6 +6,7 @@ import { useState } from "react";
 import { PlusIcon } from "@/app/icons";
 import { AddItemCard } from "@/components/Card";
 import { IconButton } from "@/components/IconButton";
+import { SidePanelEntry } from "@/components/SidePanel/SidePanelEntry";
 import { useToast } from "@/components/Toast";
 import { AccentButton } from "@/components/soft-ledger/AccentButton";
 import {
@@ -54,9 +55,9 @@ type AddRecipeCallToActionProps = {
   returnPath: string;
   /**
    * "placeholder" is the rounded plus tile; "button" is a compact labelled button that sits
-   * beside a list's filter; "icon" is the plus icon button of the app header (quick add).
+   * beside a list's filter; "icon" is a plus icon button; "panel" is a side panel row (quick add).
    */
-  variant?: "placeholder" | "button" | "icon";
+  variant?: "placeholder" | "button" | "icon" | "panel";
   /** Adds "Recipe from another notebook" to the options; absent on personal notebooks. */
   fromNotebook?: FromNotebookTarget;
   /** Tells this action's captures apart from another one on the same page (quick add). */
@@ -140,7 +141,14 @@ export function AddRecipeCallToAction({
 
   return (
     <>
-      {variant === "icon" ? (
+      {variant === "panel" ? (
+        <SidePanelEntry
+          label={t.addRecipeButton}
+          icon={<PlusIcon className="size-7 shrink-0 p-0.5" />}
+          disabled={!preselected}
+          onClick={() => setOptionsOpen(true)}
+        />
+      ) : variant === "icon" ? (
         <IconButton
           variant="ghost"
           label={t.addRecipeButton}

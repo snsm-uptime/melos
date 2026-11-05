@@ -44,6 +44,10 @@ vi.mock("@/lib/sidePanelClient", async (original) => ({
 }));
 
 const signOut = vi.fn<(target: string) => Promise<void>>(() => new Promise<void>(() => {}));
+// The quick add reads notebooks; QuickAddRecipe.test.tsx covers it (spec 069).
+vi.mock("@/components/QuickAddRecipe", () => ({
+  QuickAddRecipe: () => <button type="button" aria-label="Add recipe" data-quick-add />,
+}));
 vi.mock("@/lib/signOut", () => ({ signOut: (target: string) => signOut(target) }));
 
 import {
@@ -194,6 +198,7 @@ describe("SidePanel", () => {
   it("keeps the entry order, with the default first and the others A to Z", async () => {
     await render();
     expect(names()).toEqual([
+      "Add recipe",
       "Notebooks",
       "Show archived kitchens",
       "Create kitchen",
@@ -227,7 +232,7 @@ describe("SidePanel", () => {
     const zooStar = link("zoo").closest("li")?.querySelector("button") as HTMLButtonElement;
     await act(async () => zooStar.click());
     expect(setDefaultKitchen).toHaveBeenCalledWith("k3");
-    expect(names()[3]).toBe("zoo");
+    expect(names()[4]).toBe("zoo");
     expect(refresh).toHaveBeenCalled();
   });
 
@@ -235,7 +240,7 @@ describe("SidePanel", () => {
     await render();
     setDefaultKitchen.mockResolvedValue(null);
     await act(async () => button("Set as default").click());
-    expect(names()[3]).toBe("Mine");
+    expect(names()[4]).toBe("Mine");
     expect(host.querySelector('[role="alert"]')).toBeTruthy();
   });
 

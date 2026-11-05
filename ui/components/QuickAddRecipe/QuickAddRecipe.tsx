@@ -28,7 +28,7 @@ export function kitchenFromPath(pathname: string): string | null {
 }
 
 /**
- * The header's quick add (spec 069 US2): the add-recipe options from any signed-in page, plus
+ * The side panel's quick add (spec 069 US2): the add-recipe options from any signed-in page, plus
  * Recipe from another notebook. Inside an active kitchen, captures default to the member's own
  * kitchen notebook and the copy targets that kitchen; elsewhere, captures go to the default
  * personal notebook and the copy asks which active kitchen.
@@ -110,7 +110,7 @@ export function QuickAddRecipe() {
 
   return (
     <AddRecipeCallToAction
-      variant="icon"
+      variant="panel"
       opener="quick-add"
       candidates={target?.candidates ?? []}
       defaultId={target?.defaultId ?? null}

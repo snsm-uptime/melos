@@ -12,7 +12,6 @@ import {
 } from "@/components/ChromeBack";
 import { IconButton } from "@/components/IconButton";
 import { usePreferences } from "@/components/PreferencesProvider";
-import { QuickAddRecipe } from "@/components/QuickAddRecipe";
 import { SidePanel } from "@/components/SidePanel";
 import { ToastProvider, ToastViewport } from "@/components/Toast";
 import { showsAppChrome, showsFloatingLanguageSwitch } from "@/lib/appChrome";
@@ -44,11 +43,14 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   // just the header — a way back to "/" — via useChromeHeader, without also
   // gaining the authenticated side panel that showsAppChrome gates.
   const showPanel = showsAppChrome(pathname) || header.sidePanel === true;
-  // The quick add (spec 069 FR-001) is on every signed-in page, so the header shows on desktop
-  // too wherever the panel does.
-  const quickAdd = showsAppChrome(pathname) ? <QuickAddRecipe /> : null;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
+  // A page change closes the drawer, also one the panel's quick add makes (its draft page).
+  const [drawerPath, setDrawerPath] = useState(pathname);
+  if (drawerPath !== pathname) {
+    setDrawerPath(pathname);
+    setDrawerOpen(false);
+  }
   // The header sits on the page gutter so it lines up with the content below it. Icon buttons at
   // its start keep the tighter inset: Back, and on phones the panel's menu button.
   const headerInset =
@@ -86,7 +88,7 @@ function AppShellFrame({ children }: { children: ReactNode }) {
         {showHeader || showPanel ? (
           <header
             data-app-chrome="header"
-            className={`flex shrink-0 items-center gap-2 ${showHeader || quickAdd ? "" : "md:hidden "}${header.progressBar
+            className={`flex shrink-0 items-center gap-2 ${showHeader ? "" : "md:hidden "}${header.progressBar
                 ? "pt-[max(1rem,env(safe-area-inset-top))]"
                 : "pt-[max(0.5rem,env(safe-area-inset-top))]"
               } pr-[max(var(--page-gutter),env(safe-area-inset-right))] pb-1 ${headerInset}`}
@@ -144,9 +146,8 @@ function AppShellFrame({ children }: { children: ReactNode }) {
                 <div className="min-w-0 flex-1 basis-full overflow-x-auto md:basis-0">{header.titleAside}</div>
               ) : null}
             </div>
-            {header.trailing || quickAdd ? (
+            {header.trailing ? (
               <div className="flex shrink-0 items-center gap-1 self-center">
-                {quickAdd}
                 {header.trailing}
               </div>
             ) : null}
