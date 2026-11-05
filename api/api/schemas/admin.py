@@ -66,3 +66,17 @@ class AdminUser(BaseModel):
 
 class AdminUsersResponse(BaseModel):
     users: list[AdminUser]
+
+
+class AdminRefusedSite(BaseModel):
+    domain: str
+    total_refusals: int
+    distinct_members: int
+    first_seen_at: datetime
+    last_seen_at: datetime
+    last_status: int
+    last_message: str
+
+
+class AdminRefusedSitesResponse(BaseModel):
+    refused_sites: list[AdminRefusedSite]

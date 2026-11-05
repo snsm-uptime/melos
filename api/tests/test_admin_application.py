@@ -35,8 +35,12 @@ class FakeReports:
         self.reads.append("users")
         return []
 
+    def refused_sites(self) -> list:
+        self.reads.append("refused_sites")
+        return []
 
-SECTIONS = ("units", "ingredients", "recipes", "users")
+
+SECTIONS = ("units", "ingredients", "recipes", "users", "refused_sites")
 
 
 @pytest.mark.parametrize("section", SECTIONS)

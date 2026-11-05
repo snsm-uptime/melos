@@ -17,6 +17,7 @@ dependencies = [
   "python-toon>=0.2.0",
   "trafilatura==2.3.1",
   "httpx==0.28.1",
+  "tldextract>=5.4.0",
 ]
 
 [dependency-groups]

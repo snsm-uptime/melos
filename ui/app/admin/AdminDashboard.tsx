@@ -12,29 +12,203 @@ import type { Locale } from "@/lib/i18n/locale";
 import { tableMessages } from "@/lib/i18n/table";
 import { withMinimumLoading } from "@/lib/minimumLoading";
 
-import {
-  ingredientsTable,
-  recipesTable,
-  unitsTable,
-  usersTable,
-  type IngredientRow,
-  type RecipeRow,
-  type UnitRow,
-  type UserRow,
-} from "./adminTables";
-
-const SECTIONS = ["units", "ingredients", "recipes", "users"] as const;
+const SECTIONS = [
+  "units",
+  "ingredients",
+  "recipes",
+  "users",
+  "refused-sites",
+] as const;
 type Section = (typeof SECTIONS)[number];
 
-const TAB_ICONS: Record<Section, typeof BoxIcon> = {
-  units: HashtagIcon,
-  ingredients: BoxIcon,
-  recipes: NotebookIcon,
-  users: UsersIcon,
+/** The response key for each section's rows. */
+const ROWS_KEY: Record<Section, string> = {
+  units: "units",
+  ingredients: "ingredients",
+  recipes: "recipes",
+  users: "users",
+  "refused-sites": "refused_sites",
 };
+
+/** Cells that wrap instead of keeping to one line. */
+const WRAPPING = new Set(["user_references", "last_message"]);
 
 type Row = Record<string, unknown>;
 type Loaded = { state: "ready"; rows: Row[] } | { state: "failed" };
+type Messages = (typeof adminMessages)[Locale];
+
+type Column = {
+  key: string;
+  label: string;
+  show?: (value: unknown, row: Row) => ReactNode;
+};
+
+type Actions = { deleteRecipe: (id: string) => Promise<boolean> };
+
+/** The count of people with access, then the aliases of each as a row of chips that scrolls. */
+function PeopleWithAccess({
+  count,
+  aliases,
+  noAlias,
+}: {
+  count: unknown;
+  aliases: unknown;
+  noAlias: string;
+}) {
+  const names = Array.isArray(aliases) ? aliases : [];
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <span className="shrink-0 font-semibold">{String(count)}</span>
+      <div className="flex max-w-[14rem] gap-1 overflow-x-auto pb-1">
+        {names.map((alias, index) => (
+          <Chip key={index}>{typeof alias === "string" ? alias : noAlias}</Chip>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function columnsFor(
+  section: Section,
+  t: Messages,
+  locale: Locale,
+  actions: Actions,
+): Column[] {
+  const date = (value: unknown) =>
+    typeof value === "string"
+      ? new Date(value).toLocaleDateString(locale)
+      : t.none;
+  switch (section) {
+    case "units": {
+      const c = t.columns.units;
+      return [
+        { key: "name", label: c.name },
+        { key: "reference_count", label: c.referenceCount },
+        {
+          key: "is_default",
+          label: c.isDefault,
+          show: (v) => (
+            <span
+              role="img"
+              aria-label={v ? t.yes : t.no}
+              className={`inline-flex align-middle ${v ? "text-accent" : "text-error"}`}
+            >
+              {v ? <CheckIcon /> : <CloseIcon />}
+            </span>
+          ),
+        },
+        { key: "created_at", label: c.createdAt, show: date },
+        {
+          key: "user_references",
+          label: c.userReferences,
+          show: (_value, row) => (
+            <PeopleWithAccess
+              count={row.reference_count}
+              aliases={row.user_aliases}
+              noAlias={t.noAlias}
+            />
+          ),
+        },
+      ];
+    }
+    case "ingredients": {
+      const c = t.columns.ingredients;
+      return [
+        { key: "name", label: c.name },
+        { key: "recipes", label: c.recipes },
+        { key: "people", label: c.people },
+      ];
+    }
+    case "recipes": {
+      const c = t.columns.recipes;
+      return [
+        { key: "title", label: c.title },
+        { key: "cart_adds", label: c.cartAdds },
+        { key: "notebook_name", label: c.notebookName },
+        {
+          key: "notebook_kind",
+          label: c.notebookKind,
+          show: (v) => (v === "kitchen" ? t.kinds.kitchen : t.kinds.personal),
+        },
+        {
+          key: "people_with_access",
+          label: c.peopleWithAccess,
+          show: (count, row) => (
+            <PeopleWithAccess
+              count={count}
+              aliases={row.people_aliases}
+              noAlias={t.noAlias}
+            />
+          ),
+        },
+        { key: "id", label: c.id },
+        {
+          key: "delete",
+          label: c.delete,
+          show: (_value, row) => {
+            const title = typeof row.title === "string" ? row.title : "";
+            return (
+              <DeleteItemButton
+                label={t.actions.deleteLabel(title)}
+                dialogTitle={t.actions.deleteTitle(title)}
+                message={t.actions.deleteMessage}
+                confirmLabel={t.actions.confirm}
+                cancelLabel={t.actions.cancel}
+                errorMessage={t.actions.deleteFailed}
+                onDelete={() => actions.deleteRecipe(String(row.id))}
+              />
+            );
+          },
+        },
+      ];
+    }
+    case "users": {
+      const c = t.columns.users;
+      return [
+        {
+          key: "alias",
+          label: c.alias,
+          show: (v) => (typeof v === "string" ? v : t.noAlias),
+        },
+        { key: "open_sessions", label: c.openSessions },
+        { key: "newest_session_at", label: c.newestSessionAt, show: date },
+        { key: "recipes_authored", label: c.recipesAuthored },
+        { key: "latest_recipe_at", label: c.latestRecipeAt, show: date },
+        { key: "carts_created", label: c.cartsCreated },
+        { key: "carts_edited", label: c.cartsEdited },
+        { key: "carts_closed", label: c.cartsClosed },
+        {
+          key: "latest_cart_action_at",
+          label: c.latestCartActionAt,
+          show: date,
+        },
+        { key: "id", label: c.id },
+      ];
+    }
+    case "refused-sites": {
+      const c = t.columns.refusedSites;
+      return [
+        { key: "domain", label: c.domain },
+        { key: "total_refusals", label: c.totalRefusals },
+        { key: "distinct_members", label: c.distinctMembers },
+        { key: "first_seen_at", label: c.firstSeenAt, show: date },
+        { key: "last_seen_at", label: c.lastSeenAt, show: date },
+        { key: "last_status", label: c.lastStatus },
+        {
+          key: "last_message",
+          label: c.lastMessage,
+          // The site's own text: a React text node, so it is never read as HTML (spec 067 R7).
+          show: (v) => (
+            <span className="block max-w-[28rem] min-w-[12rem] break-words whitespace-normal">
+              {typeof v === "string" && v ? v : t.none}
+            </span>
+          ),
+        },
+      ];
+    }
+  }
+}
+
 async function loadSection(section: Section): Promise<Loaded> {
   try {
     const response = await fetch(`/api/admin/${section}`, {
@@ -44,7 +218,9 @@ async function loadSection(section: Section): Promise<Loaded> {
       cache: "no-store",
     });
     if (!response.ok) return { state: "failed" };
-    const rows = ((await response.json()) as Record<string, unknown>)[section];
+    const rows = ((await response.json()) as Record<string, unknown>)[
+      ROWS_KEY[section]
+    ];
     return Array.isArray(rows)
       ? { state: "ready", rows: rows as Row[] }
       : { state: "failed" };
@@ -84,44 +260,56 @@ function SectionTable({
   locale: Locale;
   deleteRecipe: (id: string) => Promise<boolean>;
 }) {
-  const common = { locale, labels: tableMessages[locale], empty: t.empty };
-  switch (section) {
-    case "units":
-      return (
-        <DataTable
-          schema={unitsTable(t, locale)}
-          rows={rows as UnitRow[]}
-          {...common}
-        />
-      );
-    case "ingredients":
-      return (
-        <DataTable
-          schema={ingredientsTable(t)}
-          rows={rows as IngredientRow[]}
-          {...common}
-        />
-      );
-    case "recipes":
-      return (
-        <DataTable
-          schema={recipesTable(t, { deleteRecipe })}
-          rows={rows as RecipeRow[]}
-          {...common}
-        />
-      );
-    case "users":
-      return (
-        <DataTable
-          schema={usersTable(t, locale)}
-          rows={rows as UserRow[]}
-          {...common}
-        />
-      );
-  }
+  if (rows.length === 0)
+    return <p className="m-0 text-[0.9rem] text-muted">{empty}</p>;
+  return (
+    // Wide sections scroll inside their box, so the page itself fits a 360px screen.
+    <div className="max-w-full overflow-x-auto rounded-[0.75rem] border border-border">
+      <table className="w-full border-collapse text-left text-[0.85rem]">
+        <thead>
+          <tr>
+            {columns.map((column) => (
+              <th
+                key={column.key}
+                scope="col"
+                className="border-b border-border px-3 py-2 font-semibold whitespace-nowrap text-muted"
+              >
+                {column.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr
+              key={
+                typeof row.id === "string"
+                  ? row.id
+                  : typeof row.domain === "string"
+                    ? row.domain
+                    : index
+              }
+            >
+              {columns.map((column) => (
+                <td
+                  key={column.key}
+                  className={`border-b border-border px-3 py-2 text-foreground ${WRAPPING.has(column.key) ? "" : "whitespace-nowrap"
+                    }`}
+                >
+                  {column.show
+                    ? column.show(row[column.key], row)
+                    : String(row[column.key])}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
-/** Four tabs, each loaded the first time it opens (spec 055 contracts/admin-api.md). */
+/** Five tabs, each loaded the first time it opens (spec 055 contracts/admin-api.md). */
 export function AdminDashboard({ locale }: { locale: Locale }) {
   const t = adminMessages[locale];
   const [section, setSection] = useState<Section>("units");

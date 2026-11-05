@@ -181,6 +181,7 @@ describe("UrlCaptureSheet", () => {
   // T055: every refusal shows its message and keeps the link (FR-023, FR-025, SC-004).
   it.each<[string, Record<string, unknown>, number, string]>([
     ["page_fetch_failed", {}, 422, "We couldn't open that page. Paste the recipe text instead."],
+    ["site_requires_license", {}, 422, "This website requires a license, it's not supported yet."],
     ["page_no_recipe", {}, 422, "We couldn't find a recipe on that page. Paste the recipe text instead."],
     ["link_invalid", {}, 422, "Paste a link that starts with http:// or https://"],
     ["link_empty", {}, 422, "Paste a link that starts with http:// or https://"],
@@ -244,6 +245,7 @@ describe("UrlCaptureSheet in Spanish (spec 063)", () => {
         .fn()
         .mockResolvedValueOnce(json(422, { code: "page_fetch_failed", detail: "" }))
         .mockResolvedValueOnce(json(422, { code: "page_no_recipe", detail: "" }))
+        .mockResolvedValueOnce(json(422, { code: "site_requires_license", detail: "" }))
         .mockResolvedValueOnce(json(503, { code: "ai_misconfigured", detail: "" })),
     );
     render();
@@ -255,6 +257,9 @@ describe("UrlCaptureSheet in Spanish (spec 063)", () => {
 
     await act(async () => submitButton().click());
     expect(alertText()).toBe("No encontramos una receta en esa página. Pega el texto de la receta.");
+
+    await act(async () => submitButton().click());
+    expect(alertText()).toBe("Este sitio web requiere una licencia, aún no es compatible.");
 
     await act(async () => submitButton().click());
     expect(alertText()).toBe("El asistente está mal configurado. Tu enlace se conserva.");

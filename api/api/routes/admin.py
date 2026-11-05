@@ -20,6 +20,8 @@ from api.schemas.admin import (
     AdminIngredientsResponse,
     AdminRecipe,
     AdminRecipesResponse,
+    AdminRefusedSite,
+    AdminRefusedSitesResponse,
     AdminUnit,
     AdminUnitsResponse,
     AdminUser,
@@ -74,6 +76,15 @@ def admin_users(
 ) -> AdminUsersResponse:
     rows = _read(dashboard.users, user_id)
     return AdminUsersResponse(users=[AdminUser(**row) for row in rows])
+
+
+@router.get("/refused-sites", response_model=AdminRefusedSitesResponse)
+def admin_refused_sites(
+    user_id: uuid.UUID | None = Depends(optional_user_id),
+    dashboard: AdminDashboard = Depends(get_admin_dashboard),
+) -> AdminRefusedSitesResponse:
+    rows = _read(dashboard.refused_sites, user_id)
+    return AdminRefusedSitesResponse(refused_sites=[AdminRefusedSite(**row) for row in rows])
 
 
 @router.delete("/recipes/{recipe_id}", status_code=status.HTTP_204_NO_CONTENT)

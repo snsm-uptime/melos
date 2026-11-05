@@ -135,10 +135,20 @@ describe("Spanish capture messages (spec 063)", () => {
     ["link_invalid", "linkInvalid"],
     ["link_too_long", "linkTooLong"],
     ["page_fetch_failed", "pageFetchFailed"],
+    ["site_requires_license", "siteRequiresLicense"],
     ["page_no_recipe", "pageNoRecipe"],
   ])("link capture: %s has its own message (spec 026)", (code, key) => {
     expect(messageForCode({ code }, "en", undefined, "url")).toBe(captureMessages[key]);
     expect(messageForCode({ code }, "es", undefined, "url")).toBe(captureMessagesFor("es")[key]);
+  });
+
+  it("a site refusal says it needs a license, in both languages (spec 067)", () => {
+    expect(messageForCode({ code: "site_requires_license" }, "en", undefined, "url")).toBe(
+      "This website requires a license, it's not supported yet.",
+    );
+    expect(messageForCode({ code: "site_requires_license" }, "es", undefined, "url")).toBe(
+      "Este sitio web requiere una licencia, aún no es compatible.",
+    );
   });
 
   it("link capture says the link is kept, text capture says the text is kept", () => {

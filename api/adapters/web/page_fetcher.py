@@ -10,10 +10,8 @@ a `PageFetchFailed` (page) or `None` (photo). Logs carry the kind and host only.
 
 from __future__ import annotations
 
-import codecs
 import ipaddress
 import logging
-import re
 import socket
 import time
 from collections.abc import Callable
@@ -32,6 +30,10 @@ from application.ports import (
 )
 from domain.page_link import PageLink, PageLinkRefused, check_link, is_public_address
 
+from adapters.web.refusal_text import decode as _decode
+from adapters.web.refusal_text import media_type as _media_type
+from adapters.web.refusal_text import refusal_text
+
 logger = logging.getLogger(__name__)
 # httpx logs every request line at INFO, and httpcore every connection at DEBUG, with the full
 # path, query and pinned address. Those must not reach the logs (R12), so both stay at WARNING.
@@ -47,16 +49,22 @@ _PAGE_ACCEPT = "text/html,application/xhtml+xml"
 _IMAGE_ACCEPT = "image/jpeg,image/png,image/webp"
 _HTML_TYPES = ("text/html", "application/xhtml+xml")
 _REDIRECTS = frozenset({301, 302, 303, 307, 308})
-_META_CHARSET = re.compile(rb"""<meta[^>]+charset\s*=\s*["']?\s*([A-Za-z0-9_\-:.]+)""", re.I)
+# The site itself denies access (spec 067 R1); its page is read only this far, for the admin.
+_REFUSALS = frozenset({401, 402, 403, 451})
+REFUSAL_MAX_BYTES = 64 * 1024
 
 Resolver = Callable[[str], list[str]]
 Clock = Callable[[], float]
 
 
 class _Failed(Exception):
-    def __init__(self, kind: PageFetchFailureKind) -> None:
+    def __init__(
+        self, kind: PageFetchFailureKind, *, status: int | None = None, message: str = ""
+    ) -> None:
         super().__init__(kind)
         self.kind: PageFetchFailureKind = kind
+        self.status = status
+        self.message = message
 
 
 def resolve_host(host: str) -> list[str]:
@@ -94,6 +102,12 @@ class HttpxPageFetcher:
         try:
             body = self._get(url, PAGE_TIMEOUT_S, _PAGE_ACCEPT, html_only=True)
         except _Failed as failed:
+            if failed.kind == "refused":
+                # The site's text and the path never reach the logs (spec 026 R12).
+                logger.info(
+                    "page fetch failed: kind=refused status=%d host=%s", failed.status or 0, host
+                )
+                return PageFetchFailed("refused", status=failed.status, message=failed.message)
             logger.info("page fetch failed: kind=%s host=%s", failed.kind, host)
             return PageFetchFailed(failed.kind)
         html = _decode(body.data, body.content_type)
@@ -137,6 +151,13 @@ class HttpxPageFetcher:
                         raise _Failed("redirect")
                     current = self._check(urljoin(current.url, location.strip()))
                     continue
+                if response.status_code in _REFUSALS:
+                    content_type = response.headers.get("content-type", "")
+                    raise _Failed(
+                        "refused",
+                        status=response.status_code,
+                        message=refusal_text(self._read_refusal(response, deadline), content_type),
+                    )
                 if not 200 <= response.status_code < 300:
                     raise _Failed("status")
                 content_type = response.headers.get("content-type", "")
@@ -225,6 +246,22 @@ class HttpxPageFetcher:
             raise _Failed("connect") from exc
         return b"".join(chunks)
 
+    def _read_refusal(self, response: httpx.Response, deadline: float) -> bytes:
+        """At most REFUSAL_MAX_BYTES within the same deadline; any problem gives b""."""
+        chunks: list[bytes] = []
+        total = 0
+        try:
+            for chunk in response.iter_bytes():
+                if self._clock() > deadline:
+                    return b""
+                chunks.append(chunk)
+                total += len(chunk)
+                if total >= REFUSAL_MAX_BYTES:
+                    break
+        except Exception:
+            return b""
+        return b"".join(chunks)[:REFUSAL_MAX_BYTES]
+
 
 def _is_ip_literal(host: str) -> bool:
     try:
@@ -232,34 +269,6 @@ def _is_ip_literal(host: str) -> bool:
     except ValueError:
         return False
     return True
-
-
-def _media_type(content_type: str) -> str:
-    return content_type.split(";", 1)[0].strip().lower()
-
-
-def _charset(content_type: str) -> str | None:
-    for param in content_type.split(";")[1:]:
-        name, _, value = param.partition("=")
-        if name.strip().lower() == "charset" and value.strip():
-            return value.strip().strip("\"'")
-    return None
-
-
-def _decode(data: bytes, content_type: str) -> str:
-    candidates = [_charset(content_type)]
-    match = _META_CHARSET.search(data[:2048])
-    if match:
-        candidates.append(match.group(1).decode("ascii", "ignore"))
-    for name in candidates:
-        if not name:
-            continue
-        try:
-            codecs.lookup(name)
-        except LookupError:
-            continue
-        return data.decode(name, errors="replace")
-    return data.decode("utf-8", errors="replace")
 
 
 def _image_type(data: bytes) -> ImageMediaType | None:

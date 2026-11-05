@@ -15,7 +15,7 @@ function call(section: string) {
 describe("admin BFF (spec 055)", () => {
   beforeEach(() => fetchMock.mockReset());
 
-  it.each(["units", "ingredients", "recipes", "users"])("passes %s through", async (section) => {
+  it.each(["units", "ingredients", "recipes", "users", "refused-sites"])("passes %s through", async (section) => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ [section]: [] }), { status: 200 }));
     const response = await call(section);
     expect(response.status).toBe(200);
