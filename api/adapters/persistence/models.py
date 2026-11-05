@@ -444,6 +444,14 @@ class RecipeModel(Base):
     cart_add_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     # The recipe image as a data URI, at most 300 KB decoded (spec 026, domain.recipe_preview).
     preview_image_base64: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The personal recipe this one was copied from (spec 069 FR-011). Only for repeat checks;
+    # never returned by any read. Cleared when the source is deleted.
+    copied_from_recipe_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("recipe.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
 
 class RecipeIngredientModel(Base):
