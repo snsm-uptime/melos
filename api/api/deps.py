@@ -24,6 +24,11 @@ from adapters.persistence.notebooks import (
 from adapters.persistence.password_hasher import Argon2PasswordHasher
 from adapters.persistence.recipe_lists import SqlAlchemyRecipeListRepository
 from adapters.persistence.recipes import SqlAlchemyRecipeRepository
+from adapters.persistence.refused_sites import (
+    NullRefusedSiteLog,
+    SqlRefusedSiteLog,
+    derive_key,
+)
 from adapters.persistence.repositories import (
     SqlAlchemyAuthUserRepository,
     SqlAlchemyKitchenRepository,
@@ -51,6 +56,7 @@ from application.ports import (
     PageReader,
     PasswordHasher,
     PreferencesRepository,
+    RefusedSiteLog,
     SessionRef,
     SessionStore,
     UnitRepository,
@@ -268,6 +274,7 @@ def get_page_reader(request: Request) -> PageReader:
 
 
 def get_capture_recipe_url(
+    request: Request,
     db: Session = Depends(get_db),
     extraction: RecipeExtraction = Depends(get_recipe_extraction),
     fetcher: PageFetcher = Depends(get_page_fetcher),
@@ -284,7 +291,16 @@ def get_capture_recipe_url(
         timeout_s=load_gemini_settings().text_timeout_s,
         batch_chars=load_recipe_page_batch_chars(),
         max_batches=load_recipe_page_max_batches(),
+        refused_sites=_refused_site_log(request, db),
     )
+
+
+def _refused_site_log(request: Request, db: Session) -> RefusedSiteLog:
+    """Spec 067: without SESSION_SECRET (test boot) nothing is recorded."""
+    secret = get_auth_settings(request).session_secret
+    if not secret:
+        return NullRefusedSiteLog()
+    return SqlRefusedSiteLog(db, key=derive_key(secret))
 
 
 def get_save_recipe_draft(db: Session = Depends(get_db)) -> SaveRecipeDraft:

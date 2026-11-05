@@ -80,6 +80,17 @@ def _line(name: str, quantity: float = 1.0) -> IngredientLine:
     return IngredientLine(name, False, quantity, "unit")
 
 
+class FakeRefusedSiteLog:
+    def __init__(self, *, fail: bool = False) -> None:
+        self.calls: list[tuple] = []
+        self.fail = fail
+
+    def record(self, host, actor_user_id, status, message) -> None:
+        self.calls.append((host, actor_user_id, status, message))
+        if self.fail:
+            raise RuntimeError("db down")
+
+
 class Harness:
     def __init__(
         self,
@@ -92,8 +103,10 @@ class Harness:
         batch_chars: int = 1000,
         max_batches: int = 4,
         extractor=None,
+        refused_sites: FakeRefusedSiteLog | None = None,
     ) -> None:
         self.user_id = uuid4()
+        self.refused_sites = refused_sites or FakeRefusedSiteLog()
         self.extractor = extractor or FakeRecipeExtractor(script=script)
         self.notebooks = FakeNotebooks()
         self.catalog = FakeCatalog()
@@ -112,6 +125,7 @@ class Harness:
             timeout_s=10.0,
             batch_chars=batch_chars,
             max_batches=max_batches,
+            refused_sites=self.refused_sites,
         )
         fact, self.notebook_id = personal_facts(self.user_id)
         self.notebooks.facts[self.notebook_id] = fact
@@ -188,6 +202,28 @@ def test_a_fetch_failure_is_returned_with_no_call(kind: str) -> None:
 
     assert harness.run() == PageFetchFailed(kind)
     assert harness.extractor.calls == []
+    assert harness.refused_sites.calls == []
+
+
+def test_a_site_refusal_is_recorded_and_returned() -> None:
+    refusal = PageFetchFailed("refused", status=402, message="Licensing: a@b.test")
+    harness = Harness(Draft(recipe=model_draft()), page=refusal)
+
+    assert harness.run() == refusal
+    assert harness.refused_sites.calls == [
+        ("example.test", harness.user_id, 402, "Licensing: a@b.test")
+    ]
+    assert harness.extractor.calls == []
+
+
+def test_a_failing_record_still_returns_the_refusal() -> None:
+    refusal = PageFetchFailed("refused", status=403, message="")
+    harness = Harness(
+        Draft(recipe=model_draft()), page=refusal, refused_sites=FakeRefusedSiteLog(fail=True)
+    )
+
+    assert harness.run() == refusal
+    assert len(harness.refused_sites.calls) == 1
 
 
 # --- schema.org path (AC2.3) ---

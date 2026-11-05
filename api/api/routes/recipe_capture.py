@@ -270,9 +270,15 @@ def _language(request: Request, prefs: PreferencesRepository, user_id: uuid.UUID
 
 
 # One body for every fetch failure, blocked addresses included, so the message never lets a
-# member probe the network (spec 026 R10, FR-024): no kind, address or site text.
+# member probe the network (spec 026 R10, FR-024): no kind, address or site text. The one
+# exception is a refusal the public site itself answered (401/402/403/451), which reveals nothing
+# about the network and gets its own code (spec 067 R2), still without status, domain or text.
 def _page_fetch_failed() -> JSONResponse:
     return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "page_fetch_failed", "")
+
+
+def _site_requires_license() -> JSONResponse:
+    return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "site_requires_license", "")
 
 
 def _link_refused(exc: PageLinkRefused) -> JSONResponse:
@@ -322,6 +328,8 @@ def capture_recipe_url(
             KitchenArchivedError.MESSAGE,
         )
     if isinstance(outcome, PageFetchFailed):
+        if outcome.kind == "refused":
+            return _site_requires_license()
         return _page_fetch_failed()
     if isinstance(outcome, PageNoRecipe):
         return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "page_no_recipe", "")

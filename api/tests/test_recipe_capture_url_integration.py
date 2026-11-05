@@ -35,7 +35,7 @@ from application.recipe_extraction import (
 )
 from domain.recipe_draft import DraftRecipe, IngredientLine
 from fastapi.testclient import TestClient
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 from tests.integration_db import claim_alias, database_url
 
@@ -254,6 +254,29 @@ def test_every_fetch_failure_has_one_body_with_no_kind(
     assert response.status_code == 422
     assert response.json() == {"detail": "", "code": "page_fetch_failed"}
     assert assistant.calls == []
+
+
+def test_a_site_refusal_says_license_without_detail_and_is_recorded(
+    client: TestClient,
+    fetcher: FakePageFetcher,
+    assistant: FakeRecipeExtractor,
+    db_session: Session,
+) -> None:
+    _register(client, "refused_site@example.com")
+    url = "https://www.example.com/fails/refused"
+    fetcher.pages[url] = PageFetchFailed("refused", status=402, message="Contact lic@site.test")
+
+    response = _capture(client, _notebook(client), url)
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "", "code": "site_requires_license"}
+    assert "402" not in response.text and "example" not in response.text
+    assert "lic@site.test" not in response.text
+    assert assistant.calls == []
+    row = db_session.execute(
+        text("SELECT total_refusals, last_status FROM refused_site WHERE domain = 'example.com'")
+    ).one()
+    assert tuple(row) == (1, 402)
 
 
 @pytest.mark.parametrize(

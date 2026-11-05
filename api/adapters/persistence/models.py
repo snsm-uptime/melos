@@ -16,6 +16,7 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Index,
     Integer,
+    LargeBinary,
     Numeric,
     SmallInteger,
     String,
@@ -790,3 +791,36 @@ class SearchResultModel(Base):
     score: Mapped[float] = mapped_column(Double, nullable=False)
     mark: Mapped[str] = mapped_column(Text, nullable=False)
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class RefusedSiteModel(Base):
+    """One registrable domain that refused a link capture (spec 067)."""
+
+    __tablename__ = "refused_site"
+    __table_args__ = (
+        CheckConstraint("last_status IN (401, 402, 403, 451)", name="ck_refused_site_last_status"),
+        CheckConstraint("char_length(last_message) <= 1000", name="ck_refused_site_last_message"),
+        CheckConstraint("char_length(domain) <= 253", name="ck_refused_site_domain"),
+    )
+
+    domain: Mapped[str] = mapped_column(Text, primary_key=True)
+    total_refusals: Mapped[int] = mapped_column(Integer, nullable=False)
+    distinct_members: Mapped[int] = mapped_column(Integer, nullable=False)
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_status: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    last_message: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+
+
+class RefusedSiteMemberModel(Base):
+    """An HMAC fingerprint of one member per domain; holds no user id (spec 067 R4)."""
+
+    __tablename__ = "refused_site_member"
+    __table_args__ = (
+        CheckConstraint("octet_length(member_key) = 32", name="ck_refused_site_member_key"),
+    )
+
+    domain: Mapped[str] = mapped_column(
+        Text, ForeignKey("refused_site.domain", ondelete="CASCADE"), primary_key=True
+    )
+    member_key: Mapped[bytes] = mapped_column(LargeBinary, primary_key=True)
