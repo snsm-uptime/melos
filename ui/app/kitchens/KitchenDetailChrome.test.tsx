@@ -140,11 +140,11 @@ describe("KitchenDetailChrome", () => {
     await renderWith(share);
 
     const buttons = Array.from(container.querySelectorAll("header button"));
-    expect(buttons.map((b) => b.getAttribute("aria-label"))).toEqual(["Open menu", t.mobileInviteAria]);
+    expect(buttons.map((b) => b.getAttribute("aria-label"))).toEqual(["Open menu", "Add recipe", t.mobileInviteAria]);
     expect(document.querySelector("[role=dialog]")).toBeNull();
 
     await act(async () => {
-      (buttons[1] as HTMLButtonElement).click();
+      (buttons[2] as HTMLButtonElement).click();
     });
 
     const dialog = document.querySelector("[role=dialog]") as HTMLElement;
@@ -184,11 +184,12 @@ describe("KitchenDetailChrome", () => {
     const buttons = Array.from(container.querySelectorAll("header button"));
     expect(buttons.map((b) => b.getAttribute("aria-label"))).toEqual([
       "Open menu",
+      "Add recipe",
       "Cart",
       t.mobileInviteAria,
     ]);
     await act(async () => {
-      (buttons[1] as HTMLButtonElement).click();
+      (buttons[2] as HTMLButtonElement).click();
     });
     expect(push).toHaveBeenCalledWith("/kitchens/k1/cart");
   });
@@ -198,7 +199,7 @@ describe("KitchenDetailChrome", () => {
     const labels = Array.from(container.querySelectorAll("header button")).map((b) =>
       b.getAttribute("aria-label"),
     );
-    expect(labels).toEqual(["Open menu", "Cart"]);
+    expect(labels).toEqual(["Open menu", "Add recipe", "Cart"]);
   });
 
   async function renderWithCount(count: number | null, cart: CartProp = CART) {
@@ -406,13 +407,14 @@ describe("KitchenDetailChrome", () => {
     const buttons = Array.from(container.querySelectorAll("header button"));
     expect(buttons.map((b) => b.getAttribute("aria-label"))).toEqual([
       "Open menu",
+      "Add recipe",
       "Cart",
       "Past lists",
       "Notebooks",
       t.mobileInviteAria,
     ]);
     await act(async () => {
-      (buttons[2] as HTMLButtonElement).click();
+      (buttons[3] as HTMLButtonElement).click();
     });
     expect(push).toHaveBeenCalledWith("/kitchens/k1/shopping-lists");
   });

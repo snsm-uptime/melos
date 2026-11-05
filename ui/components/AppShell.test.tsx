@@ -20,6 +20,11 @@ vi.mock("@/components/PreferencesProvider", () => ({
   usePreferences: () => ({ locale: "en", theme: "light" }),
 }));
 
+// The quick add reads notebooks; QuickAddRecipe.test.tsx covers it (spec 069).
+vi.mock("@/components/QuickAddRecipe", () => ({
+  QuickAddRecipe: () => <button type="button" aria-label="Add recipe" data-quick-add />,
+}));
+
 vi.mock("@/components/IconButton/IconButton.module.scss", () => ({
   default: new Proxy(
     {},
@@ -141,7 +146,7 @@ describe("AppShell chrome header", () => {
     expect(container.querySelector("nav")).toBeNull();
   });
 
-  it("shows the panel on authenticated routes, with a header for the menu button on phones only", async () => {
+  it("shows the panel on authenticated routes, with a header holding the quick add on every width", async () => {
     pathname = "/home";
     await act(async () => {
       root.render(
@@ -151,7 +156,8 @@ describe("AppShell chrome header", () => {
       );
     });
 
-    expect(container.querySelector("header")?.className).toContain("md:hidden");
+    expect(container.querySelector("header")?.className).not.toContain("md:hidden");
+    expect(container.querySelector("header [data-quick-add]")).toBeTruthy();
     expect(container.querySelector("nav")).toBeTruthy();
   });
 
