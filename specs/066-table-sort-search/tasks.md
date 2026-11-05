@@ -92,7 +92,7 @@ description: "Tasks for 066 Sort and Search for Tables (generic DataTable)"
 
 - [X] T022 [P] Run `cd ui && npm run test && npm run lint && npm run typecheck`; fix any failure
 - [X] T023 [P] Check performance: in a vitest case, sort and filter 1,000 invented rows and assert under 100 ms (plan Performance Goals)
-- [ ] T024 Browser walk of `specs/066-table-sort-search/quickstart.md` steps 1 to 8 at 360px and 1280px, in en and es, once keyboard only (see memory: Playwright on the host against an isolated stack); and time SC-001 (open a tab, sort, under 2 s) and SC-002 (search result under 1 s) on the dev stack; record results in `specs/066-table-sort-search/notes.md`
+- [X] T024 Browser walk of `specs/066-table-sort-search/quickstart.md` steps 1 to 8 at 360px and 1280px, in en and es, once keyboard only (see memory: Playwright on the host against an isolated stack); and time SC-001 (open a tab, sort, under 2 s) and SC-002 (search result under 1 s) on the dev stack; record results in `specs/066-table-sort-search/notes.md`
 - [X] T025 Update S-066 in `dev/docs/backlog.yaml`: add to notes "The owner approved building it before the open Must stories on 2026-11-04 (constitution 9)."; status `in_progress` while building, `verification` with test counts and walk results; ask the owner to review the Spanish strings in `ui/lib/i18n/table.ts`
 
 ---

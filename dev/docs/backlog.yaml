@@ -815,5 +815,6 @@ stories:
       The owner approved building it before the open Must stories on 2026-11-04 (constitution 9).
       Built 2026-11-04 as ui/components/DataTable (multi-level sort, search) with four schemas in
       ui/app/admin/adminTables.tsx. Tests: 16 helper, 12 component, 4 new dashboard tests pass; lint and
-      typecheck clean. Pending: browser walk (quickstart steps 1-8) and the owner's review of the Spanish
-      strings in ui/lib/i18n/table.ts.
+      typecheck clean. Browser walk 2026-11-04: quickstart steps 1-8 at 360/1280px, en and es, keyboard
+      once, 70/70 checks pass; SC-001 about 0.85 s, SC-002 under 25 ms (specs/066-table-sort-search/notes.md).
+      Pending: the owner's review of the Spanish strings in ui/lib/i18n/table.ts.
