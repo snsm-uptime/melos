@@ -377,6 +377,8 @@ class RecipeCardRow:
     notebook_id: UUID
     notebook_name: str
     created_at: datetime
+    # The recipe image as a data URI (spec 026), or None.
+    preview_image: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
