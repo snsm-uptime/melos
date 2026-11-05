@@ -419,7 +419,7 @@ stories:
     title: Share a notebook by email invite (owner invites, member accepts, leaves or is removed; catalogs merge)
     epic: Recipes
     priority: must
-    status: in_progress
+    status: done
     journey: J1a
     source: prd.md 1.5H, 1.6 (notebook_membership, notebook_invite), J1a; redesign 2026-10-23 (personal notebooks only); specs/057-notebook-invites
     acceptance: [AC1a.1, AC1a.3]
@@ -522,6 +522,55 @@ stories:
       SC-002 ten timed runs (2 drafts, then the key's usage limit); SC-006 evaluation about 75%
       (Spanish counted lines lose quantity and unit in the whole-recipe prompt).
 
+  - id: S-067
+    title: Recipe image (add, replace or remove a recipe's image; shown on the detail and the cards)
+    epic: Recipes
+    priority: must
+    status: backlog
+    journey: J3
+    source: owner request 2026-11-04 (post-MVP; not in prd.md); lifts the MVP rule "photos are not stored"
+    notes: >
+      S-026 fills recipe.preview_image_base64 (migration 0015) from a captured page's main photo.
+      This story lets anyone who can write to the recipe's notebook upload, replace or remove the
+      image on the recipe (detail and edit, spec 027), shrunk in the browser like the avatar
+      (ui/lib/imageEncode.ts) and checked on the server (domain/recipe_preview.py, from S-026).
+      The image is shown on the detail and on recipe cards (S-047 uses it in place of the default
+      pot). Open for its spec: whether a photo capture (S-041) keeps its photo as the recipe image,
+      and the size and format limits. Build after S-026, which adds the column and the check.
+
+  - id: S-068
+    title: Cart receipts (paste what was bought; match it to the shopping list and keep it with the list)
+    epic: Cart
+    priority: must
+    status: backlog
+    journey: J5
+    source: owner request 2026-11-04 (post-MVP; not in prd.md; extends J5 Saved list)
+    notes: >
+      A member pastes a receipt (the text of what was bought) for the kitchen's active shopping list
+      (S-025). The items are matched to the list's lines by ingredient name (S-018 matcher), the
+      matched lines are marked bought, and the receipt is kept with the list, so a closed list shows
+      what was actually bought. Open for its spec: whether a receipt photo is accepted and stored
+      (allowed since the MVP rule on photos was lifted), whether prices are kept, how unmatched
+      receipt items are shown, and whether S-031 (history in chat) reads receipts.
+
+  - id: S-069
+    title: Recipe quick add button in the navigation, and adding a personal-notebook recipe to a kitchen
+    epic: Recipes
+    priority: must
+    status: backlog
+    journey: J3
+    source: owner request 2026-11-04 (post-MVP; not in prd.md; extends J2 capture entry points and J3)
+    notes: >
+      Spec: specs/069-recipe-quick-add.
+      A "quick add recipe" button in the navigation opens every existing add-recipe option (the
+      capture modes) plus "Recipe from another notebook": pick a recipe from a personal notebook the
+      person can read and put it into a kitchen. The same option is added to the kitchen's own add
+      menu as "Recipe from another notebook", targeting the open kitchen. A recipe is in exactly one
+      notebook, so "assign to the kitchen" is a copy into a kitchen notebook (the member's own by
+      default), close to S-048's single-recipe copy. Open for its spec: whether it reuses or waits
+      for S-048 name normalization, which kitchen the nav button targets outside a kitchen, and
+      whether the copy keeps an origin label like a snapshot.
+
   - id: S-028
     title: Recipe PDF with correct accents and fractions
     epic: Recipes
@@ -586,55 +635,6 @@ stories:
     priority: must
     status: backlog
     source: prd.md 1.8 item 5, Appendix C (AI evaluation)
-
-  - id: S-067
-    title: Recipe image (add, replace or remove a recipe's image; shown on the detail and the cards)
-    epic: Recipes
-    priority: must
-    status: backlog
-    journey: J3
-    source: owner request 2026-11-04 (post-MVP; not in prd.md); lifts the MVP rule "photos are not stored"
-    notes: >
-      S-026 fills recipe.preview_image_base64 (migration 0015) from a captured page's main photo.
-      This story lets anyone who can write to the recipe's notebook upload, replace or remove the
-      image on the recipe (detail and edit, spec 027), shrunk in the browser like the avatar
-      (ui/lib/imageEncode.ts) and checked on the server (domain/recipe_preview.py, from S-026).
-      The image is shown on the detail and on recipe cards (S-047 uses it in place of the default
-      pot). Open for its spec: whether a photo capture (S-041) keeps its photo as the recipe image,
-      and the size and format limits. Build after S-026, which adds the column and the check.
-
-  - id: S-068
-    title: Cart receipts (paste what was bought; match it to the shopping list and keep it with the list)
-    epic: Cart
-    priority: must
-    status: backlog
-    journey: J5
-    source: owner request 2026-11-04 (post-MVP; not in prd.md; extends J5 Saved list)
-    notes: >
-      A member pastes a receipt (the text of what was bought) for the kitchen's active shopping list
-      (S-025). The items are matched to the list's lines by ingredient name (S-018 matcher), the
-      matched lines are marked bought, and the receipt is kept with the list, so a closed list shows
-      what was actually bought. Open for its spec: whether a receipt photo is accepted and stored
-      (allowed since the MVP rule on photos was lifted), whether prices are kept, how unmatched
-      receipt items are shown, and whether S-031 (history in chat) reads receipts.
-
-  - id: S-069
-    title: Recipe quick add button in the navigation, and adding a personal-notebook recipe to a kitchen
-    epic: Recipes
-    priority: must
-    status: backlog
-    journey: J3
-    source: owner request 2026-11-04 (post-MVP; not in prd.md; extends J2 capture entry points and J3)
-    notes: >
-      Spec: specs/069-recipe-quick-add.
-      A "quick add recipe" button in the navigation opens every existing add-recipe option (the
-      capture modes) plus "Recipe from another notebook": pick a recipe from a personal notebook the
-      person can read and put it into a kitchen. The same option is added to the kitchen's own add
-      menu as "Recipe from another notebook", targeting the open kitchen. A recipe is in exactly one
-      notebook, so "assign to the kitchen" is a copy into a kitchen notebook (the member's own by
-      default), close to S-048's single-recipe copy. Open for its spec: whether it reuses or waits
-      for S-048 name normalization, which kitchen the nav button targets outside a kitchen, and
-      whether the copy keeps an origin label like a snapshot.
 
   # ---------------------------------------------------------------------------
   # Should
