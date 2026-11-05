@@ -141,12 +141,18 @@ describe("RecipeDraftEditor", () => {
         container.querySelectorAll(`[data-unit-question="${word}"] button`),
       ).find((el) => el.textContent === text) as HTMLButtonElement;
     const saveButton = () => buttonByText("Save recipe");
+    /** Presses Save; true when it did not start a save. */
+    async function saveRefused() {
+      await act(async () => saveButton().click());
+      const state = getCaptureState();
+      return !state.saving && state.message === null && state.savedNotice === null;
+    }
 
     it("asks once per word, and blocks Save until it is answered", async () => {
       await open();
       expect(questions()).toEqual(["lata"]);
       expect(container.textContent).toContain('Use "lata" as a unit from now on?');
-      expect(saveButton().disabled).toBe(true);
+      expect(await saveRefused()).toBe(true);
     });
 
     it("clears the flag and keeps the word on yes", async () => {
@@ -161,7 +167,7 @@ describe("RecipeDraftEditor", () => {
       await open();
       await act(async () => answer("lata", "No").click());
       expect(questions()).toEqual([]);
-      expect(saveButton().disabled).toBe(true);
+      expect(await saveRefused()).toBe(true);
       expect(getCaptureState().draft?.keptUnits ?? []).toEqual([]);
       expect(getCaptureState().draft?.declinedUnits).toEqual(["lata"]);
     });
@@ -243,14 +249,18 @@ describe("RecipeDraftEditor", () => {
       expect(push).toHaveBeenCalledWith("/notebooks/nb-1");
     });
 
-    it("is disabled while the draft has a problem", async () => {
-      stubFetch(() => new Response("{}", { status: 201 }));
+    it("shows the problems only once Save is pressed, and does not save", async () => {
+      const fetchMock = stubFetch(() => new Response("{}", { status: 201 }));
       await render();
-      expect(buttonByText("Save recipe").disabled).toBe(false);
       await act(async () => {
         editDraft({ ...getCaptureState().draft!, title: "" });
       });
-      expect(buttonByText("Save recipe").disabled).toBe(true);
+      expect(container.textContent).not.toContain("Add a title.");
+      expect(buttonByText("Save recipe").disabled).toBe(false);
+      await act(async () => buttonByText("Save recipe").click());
+      expect(container.textContent).toContain("Add a title.");
+      expect(fetchMock.mock.calls.some(([url]) => url === "/api/recipes")).toBe(false);
+      expect(getCaptureState().saving).toBe(false);
     });
 
     it("shows the busy state and ignores a second press while saving", async () => {
@@ -416,12 +426,14 @@ describe("a draft from a link (spec 026)", () => {
     await act(async () => {
       root.render(<RecipeDraftEditor />);
     });
+    expect(document.querySelector("[role='alert']")).toBeNull();
+    await act(async () => buttonByText("Save recipe").click());
 
     const alerts = Array.from(document.querySelectorAll("[role='alert']")).map((el) => el.textContent);
     expect(alerts).toEqual(
       expect.arrayContaining(["Add a title.", "Add at least one step.", "Add an amount and a unit, or mark it as vague."]),
     );
-    expect(buttonByText("Save recipe").disabled).toBe(true);
+    expect(getCaptureState().saving).toBe(false);
   });
 
   it("a text draft shows neither", async () => {

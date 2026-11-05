@@ -81,6 +81,11 @@ describe("the draft editor in Spanish (spec 063)", () => {
   it("the field errors are Spanish", async () => {
     await act(async () => root.render(<RecipeDraftEditor />));
     act(() => editDraft({ ...getCaptureState().draft!, title: "", steps: [] }));
+    await act(async () =>
+      (Array.from(container.querySelectorAll("button")).find(
+        (el) => el.getAttribute("aria-label") === "Guardar receta" || el.textContent === "Guardar receta",
+      ) as HTMLButtonElement).click(),
+    );
     expect(container.textContent).toContain("Agrega un título.");
     expect(container.textContent).toContain("Agrega al menos un paso.");
   });

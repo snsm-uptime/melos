@@ -17,6 +17,7 @@ import {
   hasErrors,
   pendingUnitQuestions,
   withoutRechosenUnit,
+  type DraftErrors,
   type DraftInput,
 } from "@/lib/capture/draftRules";
 import { submitSave } from "@/lib/capture/saveClient";
@@ -78,6 +79,9 @@ export function RecipeDraftEditor() {
     };
   }, []);
 
+  const [movingNotebook, setMovingNotebook] = useState(false);
+  // The rule messages wait for a Save that the draft does not pass yet.
+  const [triedSave, setTriedSave] = useState(false);
   const draft = capture.draft;
   const notebook = capture.notebook;
 
@@ -107,7 +111,8 @@ export function RecipeDraftEditor() {
       line.unit && !askedUnits.includes(line.unit) ? [line.unit] : [],
     ),
   ];
-  const errors = checkDraft(input, [...availableUnits, ...keptUnits]);
+  const checked = checkDraft(input, [...availableUnits, ...keptUnits]);
+  const errors: DraftErrors = triedSave ? checked : { lines: {} };
   const unitQuestions = pendingUnitQuestions(
     draft.lines,
     availableUnits,
@@ -160,6 +165,10 @@ export function RecipeDraftEditor() {
 
   async function save() {
     if (capture.saving) return;
+    if (hasErrors(checked)) {
+      setTriedSave(true);
+      return;
+    }
     startSave();
     const result = await submitSave(getCaptureState());
     if (!result.ok) {
@@ -215,7 +224,7 @@ export function RecipeDraftEditor() {
         <HeaderActions>
           <HeaderAction
             onClick={() => void save()}
-            disabled={capture.saving || hasErrors(errors)}
+            disabled={capture.saving}
             busy={capture.saving}
             label={capture.saving ? t.saving : t.save}
             tone="accent"
