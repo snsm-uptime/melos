@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 
 from application.ports import (
     DuplicateSaveKeyError,
+    KitchenRecipeCopy,
     RecipeDetail,
     RecipeLineDetail,
     StoredRecipe,
@@ -16,17 +17,31 @@ from application.ports import (
 from domain.errors import NotebookNotFoundError, RecipeChangedError, RecipeNotFoundError
 from domain.recipe import EditedRecipe, NewRecipe
 from domain.recipe_draft import IngredientLine
-from sqlalchemy import delete, func, insert, select
+from sqlalchemy import Select, delete, func, insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from adapters.persistence.models import (
+    NotebookModel,
     RecipeIngredientModel,
     RecipeModel,
     SourceModel,
     StepModel,
     UserModel,
 )
+
+
+def _recipe_columns() -> Select[Any]:
+    return select(
+        RecipeModel.id,
+        RecipeModel.source_id,
+        RecipeModel.author_id,
+        RecipeModel.title,
+        RecipeModel.base_servings,
+        RecipeModel.servings_estimated,
+        RecipeModel.created_at,
+        RecipeModel.preview_image_base64,
+    )
 
 
 def _stored(row: RecipeModel) -> StoredRecipe:
@@ -186,25 +201,119 @@ class SqlAlchemyRecipeRepository:
         # FOR SHARE: an edit being saved finishes first, and none starts until this commits, so
         # a recipe's lines and steps can't come from two versions (spec 035 research R4).
         recipes = self._session.execute(
-            select(
-                RecipeModel.id,
-                RecipeModel.source_id,
-                RecipeModel.author_id,
-                RecipeModel.title,
-                RecipeModel.base_servings,
-                RecipeModel.servings_estimated,
-                RecipeModel.created_at,
-                RecipeModel.preview_image_base64,
-            )
-            .where(RecipeModel.notebook_id == source_id)
-            .with_for_update(read=True)
+            _recipe_columns().where(RecipeModel.notebook_id == source_id).with_for_update(read=True)
         ).all()
         if not recipes:
             return 0
         new_recipe_ids = {recipe.id: uuid4() for recipe in recipes}
-        new_source_ids = {recipe.source_id: uuid4() for recipe in recipes if recipe.source_id}
+        new_source_ids = self._copy_sources(recipes)
+        self._insert(
+            RecipeModel,
+            [
+                {
+                    "id": new_recipe_ids[recipe.id],
+                    "notebook_id": target_id,
+                    "author_id": recipe.author_id,
+                    "source_id": new_source_ids.get(recipe.source_id),
+                    "title": recipe.title,
+                    "base_servings": recipe.base_servings,
+                    "servings_estimated": recipe.servings_estimated,
+                    # Kept, because the kitchen list sorts by it (research R5).
+                    "created_at": recipe.created_at,
+                    "preview_image_base64": recipe.preview_image_base64,
+                }
+                for recipe in recipes
+            ],
+        )
+        self._copy_content(new_recipe_ids)
+        return len(recipes)
 
-        # A copy gets its own source row: deleting a recipe deletes its source (research R5).
+    def copy_one(
+        self, source_recipe_id: UUID, target_notebook_id: UUID, author_id: UUID
+    ) -> UUID | None:
+        source = self._session.execute(
+            _recipe_columns().where(RecipeModel.id == source_recipe_id).with_for_update(read=True)
+        ).first()
+        if source is None:
+            return None
+        new_id = uuid4()
+        new_source_ids = self._copy_sources([source])
+        # The copy is new in the kitchen (spec 069 R2). clock_timestamp, not now(): two copies in
+        # one transaction still order, so "the latest copy" is the one made last.
+        self._session.execute(
+            insert(RecipeModel).values(
+                {
+                    "id": new_id,
+                    "notebook_id": target_notebook_id,
+                    "author_id": author_id,
+                    "source_id": new_source_ids.get(source.source_id),
+                    "title": source.title,
+                    "base_servings": source.base_servings,
+                    "servings_estimated": source.servings_estimated,
+                    "preview_image_base64": source.preview_image_base64,
+                    "copied_from_recipe_id": source.id,
+                    "created_at": func.clock_timestamp(),
+                    "updated_at": func.clock_timestamp(),
+                }
+            )
+        )
+        self._copy_content({source.id: new_id})
+        return new_id
+
+    def overwrite_from(
+        self, target_recipe_id: UUID, source_recipe_id: UUID, author_id: UUID
+    ) -> bool:
+        source = self._session.execute(
+            _recipe_columns().where(RecipeModel.id == source_recipe_id).with_for_update(read=True)
+        ).first()
+        if source is None:
+            return False
+        try:
+            row = self._lock(target_recipe_id)
+        except RecipeNotFoundError:
+            return False
+        old_source_id = row.source_id
+        self._session.execute(
+            delete(RecipeIngredientModel).where(RecipeIngredientModel.recipe_id == target_recipe_id)
+        )
+        self._session.execute(delete(StepModel).where(StepModel.recipe_id == target_recipe_id))
+        new_source_ids = self._copy_sources([source])
+        row.source_id = new_source_ids.get(source.source_id)
+        row.title = source.title
+        row.base_servings = source.base_servings
+        row.servings_estimated = source.servings_estimated
+        row.preview_image_base64 = source.preview_image_base64
+        row.author_id = author_id
+        row.updated_at = func.clock_timestamp()
+        self._session.flush()
+        if old_source_id is not None:
+            self._session.execute(delete(SourceModel).where(SourceModel.id == old_source_id))
+        self._copy_content({source.id: target_recipe_id})
+        self._session.flush()
+        return True
+
+    def latest_copy_in_kitchen(
+        self, source_recipe_id: UUID, kitchen_id: UUID
+    ) -> KitchenRecipeCopy | None:
+        found = self._session.execute(
+            select(RecipeModel.id, NotebookModel.id, NotebookModel.name)
+            .join(NotebookModel, NotebookModel.id == RecipeModel.notebook_id)
+            .where(
+                RecipeModel.copied_from_recipe_id == source_recipe_id,
+                NotebookModel.kitchen_id == kitchen_id,
+            )
+            .order_by(RecipeModel.created_at.desc(), RecipeModel.id.desc())
+            .limit(1)
+        ).first()
+        if found is None:
+            return None
+        return KitchenRecipeCopy(recipe_id=found[0], notebook_id=found[1], notebook_name=found[2])
+
+    def _copy_sources(self, recipes: Sequence[Any]) -> dict[UUID, UUID]:
+        """A copy gets its own source row: deleting a recipe deletes its source (spec 035 R5)."""
+        new_source_ids = {recipe.source_id: uuid4() for recipe in recipes if recipe.source_id}
+        if not new_source_ids:
+            return new_source_ids
         sources = self._session.execute(
             select(
                 SourceModel.id,
@@ -229,24 +338,10 @@ class SqlAlchemyRecipeRepository:
                 for source in sources
             ],
         )
-        self._insert(
-            RecipeModel,
-            [
-                {
-                    "id": new_recipe_ids[recipe.id],
-                    "notebook_id": target_id,
-                    "author_id": recipe.author_id,
-                    "source_id": new_source_ids.get(recipe.source_id),
-                    "title": recipe.title,
-                    "base_servings": recipe.base_servings,
-                    "servings_estimated": recipe.servings_estimated,
-                    # Kept, because the kitchen list sorts by it (research R5).
-                    "created_at": recipe.created_at,
-                    "preview_image_base64": recipe.preview_image_base64,
-                }
-                for recipe in recipes
-            ],
-        )
+        return new_source_ids
+
+    def _copy_content(self, new_recipe_ids: dict[UUID, UUID]) -> None:
+        """Copy the lines and steps of each key recipe to its value recipe."""
         lines = self._session.execute(
             select(
                 RecipeIngredientModel.recipe_id,
@@ -272,7 +367,6 @@ class SqlAlchemyRecipeRepository:
             StepModel,
             [{**step._asdict(), "recipe_id": new_recipe_ids[step.recipe_id]} for step in steps],
         )
-        return len(recipes)
 
     def _insert(self, model: type[Any], rows: Sequence[dict[str, Any]]) -> None:
         # An empty list would insert one row of defaults.

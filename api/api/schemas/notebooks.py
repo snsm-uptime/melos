@@ -51,5 +51,19 @@ class AddNotebookSnapshotRequest(BaseModel):
     confirm_repeat: bool = False
 
 
+class CopyRecipeRequest(BaseModel):
+    """Copy a personal recipe into a kitchen (spec 069, contracts/recipe-copy-api.md)."""
+
+    source_recipe_id: UUID
+    on_repeat: Literal["ask", "add", "overwrite"] = "ask"
+
+
+class CopiedRecipeResponse(BaseModel):
+    recipe_id: UUID
+    notebook_id: UUID
+    notebook_name: str
+    overwritten: bool
+
+
 class NotebooksResponse(BaseModel):
     notebooks: list[NotebookResponse]
