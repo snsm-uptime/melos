@@ -13,13 +13,13 @@ Responses
 | 201 | `{ "recipe_id", "notebook_id", "notebook_name", "overwritten": false }` | New copy |
 | 200 | same, `"overwritten": true` | Overwrite done |
 | 409 | `{ "code": "recipe_already_in_kitchen", "detail", "existing_recipe_id", "notebook_name" }` | `on_repeat=ask` and a copy exists |
-| 409 | `{ "code": "recipe_locked", "detail" }` | Overwrite target is being edited |
+| 409 | `{ "code": "recipe_locked", "detail", "editor_alias" }` | Overwrite target is being edited |
 | 404 | `kitchen_not_found` | Not an active member / no kitchen |
 | 404 | `recipe_not_found` | Source missing, unreadable, or not in a personal notebook |
-| 409 | `kitchen_archived` | Archived kitchen |
+| 403 | `kitchen_archived` | Archived kitchen (same status as the snapshot and capture routes) |
 | 422 | validation | bad body |
 
 ## UI contract
 - `AddRecipeOptionsDialog` gets optional `onChooseFromNotebook` and `fromNotebookDisabledReason`; when the prop is absent the option is not rendered (personal notebook pages).
 - Option order: URL, Picture, Text, Recipe from another notebook.
-- Strings (en/es): `optionFromNotebook` "Recipe from another notebook" / "Receta de otro cuaderno"; quick add label "Add recipe" / "Añadir receta"; repeat dialog title, "Add another copy", "Overwrite", "Cancel"; empty states.
+- Strings (en/es): `optionFromNotebook` "Recipe from another notebook" / "Receta de otro cuaderno"; quick add label "Add recipe" / "Agregar receta" (the existing `addRecipeButton`, matching the app's "Agregar" wording); repeat dialog title, "Add another copy", "Overwrite", "Cancel"; empty states.

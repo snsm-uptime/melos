@@ -181,6 +181,65 @@ export function addNotebookSnapshot(
   );
 }
 
+export type RecipeCopyRepeat = "ask" | "add" | "overwrite";
+
+export type CopiedRecipe = {
+  recipe_id: string;
+  notebook_id: string;
+  notebook_name: string;
+  overwritten: boolean;
+};
+
+/**
+ * A refused copy (spec 069). `recipe_already_in_kitchen` carries the earlier copy's notebook
+ * name, and `recipe_locked` the alias of whoever edits it.
+ */
+export type RecipeCopyError = NotebookError & {
+  notebookName?: string;
+  editorAlias?: string | null;
+};
+
+/** Copies one personal recipe into the caller's own notebook of the kitchen (spec 069). */
+export async function copyRecipeToKitchen(
+  kitchenId: string,
+  sourceRecipeId: string,
+  onRepeat: RecipeCopyRepeat = "ask",
+): Promise<{ ok: true; value: CopiedRecipe } | RecipeCopyError> {
+  let response: Response;
+  try {
+    response = await fetch(
+      `/api/notebooks/kitchens/${encodeURIComponent(kitchenId)}/recipe-copies`,
+      {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({ source_recipe_id: sourceRecipeId, on_repeat: onRepeat }),
+      },
+    );
+  } catch {
+    return { ok: false, status: 0, code: null };
+  }
+  let body: Record<string, unknown> | null = null;
+  try {
+    body = (await response.json()) as Record<string, unknown> | null;
+  } catch {
+    body = null;
+  }
+  if (response.ok) {
+    if (body && typeof body.recipe_id === "string" && typeof body.notebook_name === "string") {
+      return { ok: true, value: body as unknown as CopiedRecipe };
+    }
+    return { ok: false, status: response.status, code: null };
+  }
+  return {
+    ok: false,
+    status: response.status,
+    code: typeof body?.code === "string" ? body.code : null,
+    notebookName: typeof body?.notebook_name === "string" ? body.notebook_name : undefined,
+    editorAlias: typeof body?.editor_alias === "string" ? body.editor_alias : null,
+  };
+}
+
 /** The caller's own notebook in a kitchen, created if needed (spec 035 research R6). */
 export function resolveCaptureNotebook(
   kitchenId: string,

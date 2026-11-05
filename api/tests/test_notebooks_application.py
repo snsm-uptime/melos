@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from uuid import UUID, uuid4
 
@@ -225,6 +225,9 @@ class FakeIngredientCatalog:
 
     def copy_names(self, source_id: UUID, target_id: UUID) -> None:
         self.names[target_id] = set(self.names.get(source_id, set()))
+
+    def add_names(self, notebook_id: UUID, names: Sequence[str]) -> None:
+        self.names.setdefault(notebook_id, set()).update(names)
 
 
 @dataclass

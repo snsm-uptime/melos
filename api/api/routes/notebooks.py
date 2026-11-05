@@ -13,6 +13,7 @@ import uuid
 from dataclasses import asdict
 
 from adapters.email import SmtpEmailSender, load_smtp_settings
+from adapters.persistence.edit_locks import SqlAlchemyEditLockRepository
 from adapters.persistence.embeddings import SqlAlchemyEmbeddingJobs
 from adapters.persistence.ingredient_catalog import SqlAlchemyIngredientCatalog
 from adapters.persistence.notebook_invites import SqlAlchemyNotebookInviteRepository
@@ -71,6 +72,7 @@ from application.notebooks import (
     SetDefaultNotebookCommand,
     SetDefaultNotebookService,
 )
+from application.recipe_copy import CopyRecipeToKitchenCommand, CopyRecipeToKitchenService
 from application.recipe_lists import (
     ListKitchenRecipesCommand,
     ListKitchenRecipesService,
@@ -91,6 +93,9 @@ from domain.errors import (
     NotebookNotShareableError,
     NotebookOwnerOnlyError,
     NotebookOwnerStaysError,
+    RecipeAlreadyInKitchenError,
+    RecipeLockedError,
+    RecipeNotFoundError,
     SmtpConfigurationError,
     SmtpSendError,
     SnapshotExistsError,
@@ -117,6 +122,8 @@ from api.schemas.notebook_invites import (
 )
 from api.schemas.notebooks import (
     AddNotebookSnapshotRequest,
+    CopiedRecipeResponse,
+    CopyRecipeRequest,
     CreateNotebookRequest,
     NameNotebookRequest,
     NotebookResponse,
@@ -401,6 +408,77 @@ def add_notebook_snapshot(
     else:
         wake_embedding_worker(request.app)
     return _response(added.notebook)
+
+
+@router.post(
+    "/kitchens/{kitchen_id}/recipe-copies",
+    response_model=CopiedRecipeResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def copy_recipe_to_kitchen(
+    request: Request,
+    kitchen_id: uuid.UUID,
+    body: CopyRecipeRequest,
+    response: Response,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    db: Session = Depends(get_db),
+) -> CopiedRecipeResponse | JSONResponse:
+    """Copy one personal recipe into the caller's own kitchen notebook (spec 069)."""
+    service = CopyRecipeToKitchenService(
+        SqlAlchemyKitchenRepository(db),
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyRecipeRepository(db),
+        SqlAlchemyIngredientCatalog(db),
+        SqlAlchemyAuthUserRepository(db),
+        SqlAlchemyEditLockRepository(db),
+        embedding_jobs=SqlAlchemyEmbeddingJobs(db),
+    )
+    try:
+        copied = service.execute(
+            CopyRecipeToKitchenCommand(
+                actor_id=user_id,
+                kitchen_id=kitchen_id,
+                source_recipe_id=body.source_recipe_id,
+                on_repeat=body.on_repeat,
+            )
+        )
+    except KitchenNotFoundError:
+        return _kitchen_not_found()
+    except KitchenArchivedError:
+        return _kitchen_archived()
+    except RecipeNotFoundError:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": RecipeNotFoundError.MESSAGE, "code": RecipeNotFoundError.CODE},
+        )
+    except RecipeAlreadyInKitchenError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={
+                "detail": RecipeAlreadyInKitchenError.MESSAGE,
+                "code": RecipeAlreadyInKitchenError.CODE,
+                "existing_recipe_id": str(exc.existing_recipe_id),
+                "notebook_name": exc.notebook_name,
+            },
+        )
+    except RecipeLockedError as exc:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={
+                "detail": str(exc),
+                "code": RecipeLockedError.CODE,
+                "editor_alias": exc.editor_alias,
+            },
+        )
+    if copied.overwritten:
+        response.status_code = status.HTTP_200_OK
+    wake_embedding_worker(request.app)
+    return CopiedRecipeResponse(
+        recipe_id=copied.recipe_id,
+        notebook_id=copied.notebook_id,
+        notebook_name=copied.notebook_name,
+        overwritten=copied.overwritten,
+    )
 
 
 @router.post("/kitchens/{kitchen_id}/capture-notebook", response_model=NotebookResponse)

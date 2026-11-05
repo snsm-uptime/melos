@@ -262,6 +262,18 @@ class SnapshotExistsError(DomainError):
         super().__init__(self.MESSAGE)
 
 
+class RecipeAlreadyInKitchenError(DomainError):
+    """Raised when the kitchen already holds a copy of the personal recipe (spec 069 FR-011)."""
+
+    MESSAGE = "This recipe was already added to this kitchen."
+    CODE = "recipe_already_in_kitchen"
+
+    def __init__(self, existing_recipe_id: UUID, notebook_name: str) -> None:
+        super().__init__(self.MESSAGE)
+        self.existing_recipe_id = existing_recipe_id
+        self.notebook_name = notebook_name
+
+
 class KitchenArchivedError(DomainError):
     """Raised when a capture is attempted in an archived kitchen (spec 016 FR-033)."""
 

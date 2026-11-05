@@ -364,6 +364,40 @@ class RecipeRepository(Protocol):
         """
         ...
 
+    def copy_one(
+        self, source_recipe_id: UUID, target_notebook_id: UUID, author_id: UUID
+    ) -> UUID | None:
+        """Copy one recipe into the target notebook as last saved; returns the copy's id.
+
+        The copy has its own lines, steps and source row, the given author, a creation time of
+        now, and records the source in its hidden copied_from_recipe_id (spec 069). The source
+        is read FOR SHARE. Returns None when the source is gone.
+        """
+        ...
+
+    def overwrite_from(
+        self, target_recipe_id: UUID, source_recipe_id: UUID, author_id: UUID
+    ) -> bool:
+        """Replace the target's title, servings, image, source, lines and steps with the source's.
+
+        Keeps the target's id, notebook, creation time and copied_from_recipe_id; sets its author.
+        Returns False when either recipe is gone (spec 069 research R6).
+        """
+        ...
+
+    def latest_copy_in_kitchen(
+        self, source_recipe_id: UUID, kitchen_id: UUID
+    ) -> KitchenRecipeCopy | None:
+        """The newest recipe in any notebook of the kitchen copied from the source, or None."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class KitchenRecipeCopy:
+    recipe_id: UUID
+    notebook_id: UUID
+    notebook_name: str
+
 
 @dataclass(frozen=True, slots=True)
 class RecipeCardRow:

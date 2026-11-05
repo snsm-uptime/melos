@@ -179,7 +179,8 @@ describe("NotebookRecipesScreen", () => {
 
     await render();
 
-    expect(container.textContent).not.toContain("Add a recipe");
+    // The page's own action; the header's quick add is on every page (spec 069).
+    expect(container.querySelector("main")?.textContent).not.toContain("Add a recipe");
   });
 
   it("goes to the notebooks when the member cannot see this one", async () => {

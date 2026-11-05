@@ -624,6 +624,8 @@ def test_only_the_lines_and_steps_point_at_recipe_ids(engine: Engine):
         "recipe_embedding": "CASCADE",
         "embedding_job": "CASCADE",
         "search_result": "CASCADE",
+        # A copy's hidden source link (spec 069 FR-011), cleared when the source goes.
+        "recipe": "SET NULL",
     }
 
 
