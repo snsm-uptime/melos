@@ -5,6 +5,8 @@ export const adminMessages = {
     entry: "Dashboard",
     title: "Dashboard",
     tabsLabel: "Dashboard sections",
+    previousTab: "Previous section",
+    nextTab: "Next section",
     tabs: {
       units: "Units",
       ingredients: "Ingredients",
@@ -74,6 +76,8 @@ export const adminMessages = {
     entry: "Panel de control",
     title: "Panel de control",
     tabsLabel: "Secciones del panel",
+    previousTab: "Sección anterior",
+    nextTab: "Sección siguiente",
     tabs: {
       units: "Unidades",
       ingredients: "Ingredientes",
