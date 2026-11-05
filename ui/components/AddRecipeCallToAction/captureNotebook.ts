@@ -32,6 +32,7 @@ export function chooseNotebook(
     name: picked.name,
     kitchenId: picked.kitchenId,
     returnPath: notebook.returnPath,
+    opener: notebook.opener,
   });
 }
 

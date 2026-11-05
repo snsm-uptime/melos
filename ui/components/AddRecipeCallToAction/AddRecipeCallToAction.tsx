@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { PlusIcon } from "@/app/icons";
 import { AddItemCard } from "@/components/Card";
+import { IconButton } from "@/components/IconButton";
+import { useToast } from "@/components/Toast";
 import { AccentButton } from "@/components/soft-ledger/AccentButton";
 import {
   openSheet,
@@ -13,8 +15,10 @@ import {
   type CaptureSource,
 } from "@/lib/capture/captureStore";
 import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
+import type { CopiedRecipe } from "@/lib/notebooksClient";
 
 import { AddRecipeOptionsDialog } from "./AddRecipeOptionsDialog";
+import { RecipeFromNotebookSheet, type KitchenChoice } from "./RecipeFromNotebookSheet";
 import { TextCaptureSheet } from "./TextCaptureSheet";
 import { UrlCaptureSheet } from "./UrlCaptureSheet";
 
@@ -23,6 +27,18 @@ export type CaptureCandidate = {
   name: string;
   kind: "personal" | "kitchen";
   kitchenId: string | null;
+};
+
+/** "Recipe from another notebook" (spec 069): where the copy goes. */
+export type FromNotebookTarget = {
+  /** The open kitchen; used without asking. */
+  kitchenId?: string | null;
+  /** Outside a kitchen: the active kitchens to choose from. */
+  kitchens?: KitchenChoice[];
+  /** Shows the option disabled with this reason (no active kitchen). */
+  disabledReason?: string | null;
+  /** After a copy, for example to reload the kitchen's list. */
+  onCopied?: (copied: CopiedRecipe, kitchenId: string) => void;
 };
 
 type AddRecipeCallToActionProps = {
@@ -34,9 +50,13 @@ type AddRecipeCallToActionProps = {
   returnPath: string;
   /**
    * "placeholder" is the rounded plus tile; "button" is a compact labelled button that sits
-   * beside a list's filter.
+   * beside a list's filter; "icon" is the plus icon button of the app header (quick add).
    */
-  variant?: "placeholder" | "button";
+  variant?: "placeholder" | "button" | "icon";
+  /** Adds "Recipe from another notebook" to the options; absent on personal notebooks. */
+  fromNotebook?: FromNotebookTarget;
+  /** Tells this action's captures apart from another one on the same page (quick add). */
+  opener?: string;
 };
 
 /**
@@ -49,14 +69,23 @@ export function AddRecipeCallToAction({
   defaultId,
   returnPath,
   variant = "placeholder",
+  fromNotebook,
+  opener,
 }: AddRecipeCallToActionProps) {
   const t = useCaptureMessages();
   const router = useRouter();
+  const toast = useToast();
   const capture = useCaptureState();
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [fromNotebookOpen, setFromNotebookOpen] = useState(false);
+  // A new key per open, so the picker starts fresh each time.
+  const [fromNotebookKey, setFromNotebookKey] = useState(0);
 
   const preselected = candidates.find((item) => item.id === defaultId) ?? candidates[0];
-  const sheetOpen = capture.sheetOpen && capture.notebook?.returnPath === returnPath;
+  const sheetOpen =
+    capture.sheetOpen &&
+    capture.notebook?.returnPath === returnPath &&
+    capture.notebook?.opener === opener;
   const goToDraft = () => router.push("/notebooks/draft");
 
   function choose(kind: CaptureSource["kind"]) {
@@ -68,13 +97,34 @@ export function AddRecipeCallToAction({
       name: preselected.name,
       kitchenId: preselected.kitchenId,
       returnPath,
+      opener,
     };
     openSheet(notebook, kind);
   }
 
+  function copied(result: CopiedRecipe, kitchenId: string) {
+    setFromNotebookOpen(false);
+    toast.show({
+      id: "recipe-copied",
+      text: result.overwritten
+        ? t.fromNotebookOverwritten(result.notebook_name)
+        : t.fromNotebookAdded(result.notebook_name),
+    });
+    fromNotebook?.onCopied?.(result, kitchenId);
+  }
+
   return (
     <>
-      {variant === "button" ? (
+      {variant === "icon" ? (
+        <IconButton
+          variant="ghost"
+          label={t.addRecipeButton}
+          aria-haspopup="dialog"
+          icon={<PlusIcon className="size-6" />}
+          onClick={() => setOptionsOpen(true)}
+          disabled={!preselected}
+        />
+      ) : variant === "button" ? (
         <AccentButton
           type="button"
           onClick={() => setOptionsOpen(true)}
@@ -99,7 +149,27 @@ export function AddRecipeCallToAction({
         onClose={() => setOptionsOpen(false)}
         onChooseUrl={() => choose("url")}
         onChooseText={() => choose("text")}
+        onChooseFromNotebook={
+          fromNotebook
+            ? () => {
+                setOptionsOpen(false);
+                setFromNotebookKey((value) => value + 1);
+                setFromNotebookOpen(true);
+              }
+            : undefined
+        }
+        fromNotebookDisabledReason={fromNotebook?.disabledReason}
       />
+      {fromNotebook ? (
+        <RecipeFromNotebookSheet
+          key={fromNotebookKey}
+          open={fromNotebookOpen}
+          onClose={() => setFromNotebookOpen(false)}
+          kitchenId={fromNotebook.kitchenId}
+          kitchens={fromNotebook.kitchens}
+          onDone={copied}
+        />
+      ) : null}
       <TextCaptureSheet
         open={sheetOpen && capture.source.kind === "text"}
         candidates={candidates}

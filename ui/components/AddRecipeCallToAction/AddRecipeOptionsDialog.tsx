@@ -8,6 +8,10 @@ type AddRecipeOptionsDialogProps = {
   onClose: () => void;
   onChooseUrl: () => void;
   onChooseText: () => void;
+  /** Shows "Recipe from another notebook" (spec 069); absent on personal-notebook pages. */
+  onChooseFromNotebook?: () => void;
+  /** Shows that option disabled, with this reason (no active kitchen to add to). */
+  fromNotebookDisabledReason?: string | null;
 };
 
 const optionClassName =
@@ -15,14 +19,17 @@ const optionClassName =
 
 /**
  * The add-recipe options (spec 016 FR-023): no confirm or cancel buttons, a vertical list
- * separated by dividers, in this order: URL, Picture, Text. URL opens the link sheet (spec 026);
- * Picture stays disabled until S-041.
+ * separated by dividers, in this order: URL, Picture, Text, then Recipe from another notebook when
+ * the caller passes it (spec 069). URL opens the link sheet (spec 026); Picture stays disabled
+ * until S-041.
  */
 export function AddRecipeOptionsDialog({
   open,
   onClose,
   onChooseUrl,
   onChooseText,
+  onChooseFromNotebook,
+  fromNotebookDisabledReason,
 }: AddRecipeOptionsDialogProps) {
   const t = useCaptureMessages();
   return (
@@ -50,6 +57,24 @@ export function AddRecipeOptionsDialog({
             <span>{t.optionText}</span>
           </button>
         </li>
+        {onChooseFromNotebook ? (
+          <li>
+            {fromNotebookDisabledReason ? (
+              <button
+                type="button"
+                aria-disabled="true"
+                className={`${optionClassName} opacity-50`}
+              >
+                <span>{t.optionFromNotebook}</span>
+                <span className="text-[0.8rem] text-muted">{fromNotebookDisabledReason}</span>
+              </button>
+            ) : (
+              <button type="button" onClick={onChooseFromNotebook} className={optionClassName}>
+                <span>{t.optionFromNotebook}</span>
+              </button>
+            )}
+          </li>
+        ) : null}
       </ul>
     </ActionDialog>
   );

@@ -16,6 +16,11 @@ export type CaptureNotebook = {
   kitchenId: string | null;
   /** Where Back and Discard return: the page that opened the capture. */
   returnPath: string;
+  /**
+   * Which add-recipe action opened the capture, when two can share a page (the header's quick
+   * add, spec 069). Only that action shows the sheet.
+   */
+  opener?: string;
 };
 
 /**

@@ -70,6 +70,8 @@ export function KitchenNotebooksSection({
   const pathname = usePathname();
   const { page, q } = readListAddress(useSearchParams());
   const [attempt, setAttempt] = useState(0);
+  // Moves after a recipe is copied in (spec 069), so the list and the notebooks are read again.
+  const [listVersion, setListVersion] = useState(0);
   const [state, setState] = useState<SectionState>(
     initialNotebooks ? { status: "ready", notebooks: initialNotebooks } : { status: "loading" },
   );
@@ -158,7 +160,9 @@ export function KitchenNotebooksSection({
   );
   const loadRecipes = useCallback(
     (nextPage: number, nextQ: string) => fetchKitchenRecipes(kitchenId, nextPage, nextQ),
-    [kitchenId],
+    // listVersion is not read: a new value makes a new function, which RecipeList reloads on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [kitchenId, listVersion],
   );
 
   function retry() {
@@ -191,6 +195,14 @@ export function KitchenNotebooksSection({
     candidates,
     defaultId: ownNotebook?.id ?? OWN_NEW_NOTEBOOK_ID,
     returnPath: `/kitchens/${kitchenId}`,
+    // "Recipe from another notebook" targets this kitchen (spec 069 FR-003, FR-009).
+    fromNotebook: {
+      kitchenId,
+      onCopied: () => {
+        setListVersion((value) => value + 1);
+        setAttempt((value) => value + 1);
+      },
+    },
   };
 
   return (
