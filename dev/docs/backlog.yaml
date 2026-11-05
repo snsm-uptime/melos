@@ -40,9 +40,16 @@ stories:
     title: Shopping by store (mark list items bought, store tabs on the list, ingredient catalog page in the side panel)
     epic: Cart
     priority: must
-    status: in_design
+    status: in_progress
     journey: J5
     source: owner request 2026-11-05 (post-MVP; not in prd.md; extends J5 Saved list); specs/070-shopping-by-store
+    verification: >
+      Built 2026-11-05 on branch 070-shopping-by-store, not committed. Migration
+      0018_shopping_places: upgrade, downgrade and upgrade tested. api in Compose (test overlay): 2015
+      passed, 8 failed, the same 8 as S-069 (live embedder, Spanish kitchen-notebook names, paste
+      limit, vocabulary, a fixed shopping-list date); ruff clean. ui: 1503 vitest tests, lint and
+      typecheck clean. Not done: the browser walk (T041) and the PRD update (T043). Details in
+      specs/070-shopping-by-store/notes.md.
     notes: >
       New top priority (backlog reordered 2026-11-05). Three parts: a member marks items of the
       kitchen's active shopping list (S-025) as bought and unmarks them; the list is split into tabs

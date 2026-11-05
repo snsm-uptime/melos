@@ -76,7 +76,7 @@ describe("ShoppingListSection", () => {
 
     expect(view.container.querySelector('[role="status"]')).toBeNull();
     expect(view.container.querySelector("h2")?.textContent).toBe("Shopping list");
-    const items = Array.from(view.container.querySelectorAll("ul > li > span")).map(
+    const items = Array.from(view.container.querySelectorAll("ul > li > div > span")).map(
       (span) => span.textContent,
     );
     expect(items).toEqual(["flour — 1 cup + 3 tbsp", "onion, large — 2"]);

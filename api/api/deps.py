@@ -22,6 +22,7 @@ from adapters.persistence.notebooks import (
     SqlAlchemyUserDefaultNotebook,
 )
 from adapters.persistence.password_hasher import Argon2PasswordHasher
+from adapters.persistence.places import SqlAlchemyPlaceRepository
 from adapters.persistence.recipe_lists import SqlAlchemyRecipeListRepository
 from adapters.persistence.recipes import SqlAlchemyRecipeRepository
 from adapters.persistence.refused_sites import (
@@ -83,6 +84,7 @@ from application.shopping_list import (
     CloseShoppingListService,
     GetShoppingListService,
     RemoveShoppingItemService,
+    SetItemBoughtService,
 )
 from domain.errors import AliasRequiredError
 from fastapi import Depends, HTTPException, Request, status
@@ -443,6 +445,7 @@ def get_get_shopping_list(db: Session = Depends(get_db)) -> GetShoppingListServi
         SqlAlchemyEditLockRepository(db),
         SqlAlchemyIngredientLineReader(db),
         SqlAlchemyShoppingListRepository(db),
+        SqlAlchemyPlaceRepository(db),
     )
 
 
@@ -452,6 +455,7 @@ def _list_change(cls, db: Session):  # noqa: ANN001, ANN202
         SqlAlchemyCartRepository(db),
         SqlAlchemyShoppingListRepository(db),
         _shopping_list_sync(db),
+        SqlAlchemyPlaceRepository(db),
     )
 
 
@@ -463,6 +467,10 @@ def get_remove_shopping_item(db: Session = Depends(get_db)) -> RemoveShoppingIte
     return _list_change(RemoveShoppingItemService, db)
 
 
+def get_set_item_bought(db: Session = Depends(get_db)) -> SetItemBoughtService:
+    return _list_change(SetItemBoughtService, db)
+
+
 def get_close_shopping_list(db: Session = Depends(get_db)) -> CloseShoppingListService:
     return CloseShoppingListService(
         SqlAlchemyKitchenRepository(db),
@@ -470,6 +478,7 @@ def get_close_shopping_list(db: Session = Depends(get_db)) -> CloseShoppingListS
         SqlAlchemyShoppingListRepository(db),
         _shopping_list_sync(db),
         activity=SqlAlchemyCartActivityLog(db),
+        places=SqlAlchemyPlaceRepository(db),
     )
 
 
@@ -478,6 +487,7 @@ def get_closed_shopping_lists(db: Session = Depends(get_db)) -> ClosedShoppingLi
         SqlAlchemyKitchenRepository(db),
         SqlAlchemyCartRepository(db),
         SqlAlchemyShoppingListRepository(db),
+        SqlAlchemyPlaceRepository(db),
     )
 
 

@@ -161,6 +161,11 @@ describe("SidePanel", () => {
     expect(link("Dashboard").getAttribute("href")).toBe("/admin");
   });
 
+  it("links to the Ingredients page (spec 070 FR-011)", async () => {
+    await render();
+    expect(link("Ingredients").getAttribute("href")).toBe("/ingredients");
+  });
+
   it("keeps only the default on the closed panel when the kitchens overflow", async () => {
     await render();
     await layOut(131);
@@ -200,6 +205,7 @@ describe("SidePanel", () => {
     expect(names()).toEqual([
       "Add recipe",
       "Notebooks",
+      "Ingredients",
       "Show archived kitchens",
       "Create kitchen",
       "Mine",
@@ -232,7 +238,7 @@ describe("SidePanel", () => {
     const zooStar = link("zoo").closest("li")?.querySelector("button") as HTMLButtonElement;
     await act(async () => zooStar.click());
     expect(setDefaultKitchen).toHaveBeenCalledWith("k3");
-    expect(names()[4]).toBe("zoo");
+    expect(names()[5]).toBe("zoo");
     expect(refresh).toHaveBeenCalled();
   });
 
@@ -240,7 +246,7 @@ describe("SidePanel", () => {
     await render();
     setDefaultKitchen.mockResolvedValue(null);
     await act(async () => button("Set as default").click());
-    expect(names()[4]).toBe("Mine");
+    expect(names()[5]).toBe("Mine");
     expect(host.querySelector('[role="alert"]')).toBeTruthy();
   });
 

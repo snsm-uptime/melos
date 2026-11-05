@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   ArchiveToggleIcon,
+  BoxIcon,
   HashtagIcon,
   LogOutIcon,
   MenuIcon,
@@ -214,6 +215,16 @@ export function SidePanel({
                 label={t.notebooks}
                 icon={<NotebookIcon className="size-7 shrink-0 p-0.5" />}
                 current={current === "notebooks"}
+                onClick={onDrawerClose}
+              />
+            </li>
+            {/* Where each ingredient is bought (spec 070 FR-011). */}
+            <li className="min-w-0">
+              <SidePanelEntry
+                href="/ingredients"
+                label={t.ingredients}
+                icon={<BoxIcon className="size-7 shrink-0 p-0.5" />}
+                current={current === "ingredients"}
                 onClick={onDrawerClose}
               />
             </li>

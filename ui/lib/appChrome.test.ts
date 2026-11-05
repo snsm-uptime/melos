@@ -31,6 +31,10 @@ describe("showsAppChrome", () => {
 });
 
 describe("panelEntryFromPath", () => {
+  it("marks the Ingredients page (spec 070)", () => {
+    expect(panelEntryFromPath("/ingredients")).toBe("ingredients");
+  });
+
   it("marks nothing on /home and the kitchen under any kitchen path", () => {
     expect(panelEntryFromPath("/home")).toBeUndefined();
     expect(panelEntryFromPath("/kitchens/k1/cart")).toBe("kitchen:k1");

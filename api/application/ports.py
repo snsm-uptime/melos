@@ -12,6 +12,7 @@ from uuid import UUID
 from domain.cart import CartAction
 from domain.default_kitchen import MemberKitchen
 from domain.notebook import Notebook, NotebookRole
+from domain.places import CustomPlace, PlaceRef
 from domain.recipe import EditedRecipe, NewRecipe
 from domain.recipe_page import PageRecipe
 from domain.recipe_search import SearchFilters
@@ -593,6 +594,14 @@ class ShoppingListRepository(Protocol):
         """False when the list holds no such item added by hand."""
         ...
 
+    def set_bought(self, list_id: UUID, item_id: UUID, bought: bool) -> SavedLine | None:
+        """Set the flag on an item of an active list; None when it holds no such item (070)."""
+        ...
+
+    def is_closed_item(self, kitchen_id: UUID, item_id: UUID) -> bool:
+        """True when the item belongs to one of the kitchen's closed lists (spec 070)."""
+        ...
+
     def close(self, list_id: UUID, closing_date: date) -> bool:
         """Set the closing date if still active; False when it was already closed."""
         ...
@@ -811,6 +820,57 @@ class SidePanelRepository(Protocol):
     def count_notebooks(self, user_id: UUID) -> int: ...
 
     def is_admin(self, user_id: UUID) -> bool: ...
+
+
+# --- Places to buy things (spec 070) -----------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class PlaceSource:
+    """Someone who shares a kitchen or a personal notebook with the caller (spec 070 R8)."""
+
+    user_id: UUID
+    alias: str
+
+
+class PlaceRepository(Protocol):
+    """One person's custom places and their place per ingredient name (spec 070 R5)."""
+
+    def list_custom(self, user_id: UUID) -> Sequence[CustomPlace]:
+        """The person's places, sorted by name."""
+        ...
+
+    def name_keys(self, user_id: UUID, *, except_id: UUID | None = None) -> set[str]:
+        """Folded names of the person's places, one place left out when renaming."""
+        ...
+
+    def add(self, user_id: UUID, name: str, name_key: str) -> CustomPlace: ...
+
+    def rename(self, user_id: UUID, place_id: UUID, name: str, name_key: str) -> CustomPlace | None:
+        """None when the place is not the person's."""
+        ...
+
+    def delete(self, user_id: UUID, place_id: UUID) -> bool:
+        """False when the place is not the person's; its ingredient choices go with it."""
+        ...
+
+    def choices(self, user_id: UUID) -> dict[str, PlaceRef]:
+        """Every stored choice of the person, by normalized ingredient name."""
+        ...
+
+    def set_choice(self, user_id: UUID, name: str, place: PlaceRef) -> None:
+        """Store the person's place for a normalized name, replacing any earlier choice."""
+        ...
+
+    def catalog_names(self, user_id: UUID) -> Sequence[str]:
+        """Names of the catalogs the person can read plus their chosen names (research R7)."""
+        ...
+
+    def sources(self, user_id: UUID) -> Sequence[PlaceSource]: ...
+
+    def replace_with_copy(self, target_id: UUID, source_id: UUID) -> None:
+        """Replace all the target's places and choices with a copy of the source's (R8)."""
+        ...
 
 
 # --- Recipe embeddings and search (spec 019) --------------------------------------------------

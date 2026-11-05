@@ -47,6 +47,58 @@ describe("HandItems", () => {
     );
   }
 
+  it("sends an optional place, offering defaults and my own places (spec 070)", async () => {
+    client.addShoppingItem.mockResolvedValue({ ok: true, value: {} });
+    view.render(
+      <HandItems
+        kitchenId="k1"
+        locale="en"
+        items={[]}
+        readOnly={false}
+        onChange={onChange}
+        customPlaces={[{ id: "p1", name: "Asian market" }]}
+      />,
+    );
+    const select = view.container.querySelectorAll("select")[1] as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.textContent)).toEqual([
+      "Choose later",
+      "Supermarket",
+      "Farmers market",
+      "Butcher",
+      "Fish market",
+      "Bakery",
+      "Pharmacy or drugstore",
+      "Other",
+      "Asian market",
+    ]);
+    type(view.container.querySelector("input") as HTMLInputElement, "Dish soap");
+    act(() => {
+      select.value = "default:pharmacy";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await submit(view.container.querySelector("form") as HTMLFormElement);
+    expect(client.addShoppingItem).toHaveBeenCalledWith("k1", {
+      name: "Dish soap",
+      place: { kind: "default", key: "pharmacy" },
+    });
+  });
+
+  it("toggles bought on an item added by hand", () => {
+    const onToggle = vi.fn();
+    view.render(
+      <HandItems
+        kitchenId="k1"
+        locale="en"
+        items={[SOAP]}
+        readOnly={false}
+        onChange={onChange}
+        onToggle={onToggle}
+      />,
+    );
+    act(() => (view.container.querySelector('input[type="checkbox"]') as HTMLElement).click());
+    expect(onToggle).toHaveBeenCalledWith("i1", true);
+  });
+
   it("adds an item with only a name and clears the form", async () => {
     client.addShoppingItem.mockResolvedValue({ ok: true, value: { is_empty: false } });
     render();

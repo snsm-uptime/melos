@@ -32,6 +32,17 @@ describe("saved shopping list BFF routes (spec 025)", () => {
     expect(init.body).toBe('{"name":"soap"}');
   });
 
+  it("PATCH an item forwards bought (spec 070)", async () => {
+    const { PATCH } = await import("./items/[itemId]/route");
+    await PATCH(request("PATCH", { bought: true }), {
+      params: Promise.resolve({ kitchenId: "k1", itemId: "i1" }),
+    });
+    const [url, init] = sent();
+    expect(url).toBe("http://api.test:8000/kitchens/k1/shopping-list/items/i1");
+    expect(init.method).toBe("PATCH");
+    expect(init.body).toBe('{"bought":true}');
+  });
+
   it("DELETE an item encodes its id", async () => {
     const { DELETE } = await import("./items/[itemId]/route");
     await DELETE(request("DELETE"), {

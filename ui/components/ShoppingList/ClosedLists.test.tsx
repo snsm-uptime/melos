@@ -88,4 +88,55 @@ describe("closed lists", () => {
     expect(view.container.textContent).toContain("jabón");
     expect(view.container.querySelector("button")).toBeNull();
   });
+
+  it("shows the saved bought state read only, under store tabs (spec 070)", async () => {
+    client.fetchClosedList.mockResolvedValue({
+      ok: true,
+      value: {
+        id: "l1",
+        closing_date: "2026-11-05",
+        lines: [
+          {
+            id: "a",
+            bought: true,
+            place: { kind: "default", key: "farmers_market" },
+            name: "tomato",
+            kind: "count",
+            size: null,
+            amounts: [{ quantity: "2", unit: "unit" }],
+            recipes: [],
+          },
+        ],
+        your_call: [],
+        hand_items: [
+          {
+            id: "b",
+            bought: false,
+            place: { kind: "default", key: "pharmacy" },
+            name: "soap",
+            quantity: null,
+            unit: null,
+            size: null,
+          },
+        ],
+      },
+    });
+    view.render(<ClosedListDetail kitchenId="k1" listId="l1" locale="en" />);
+    await settle();
+    const boxes = Array.from(
+      view.container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
+    );
+    expect(boxes.map((b) => [b.checked, b.disabled])).toEqual([
+      [true, true],
+      [false, true],
+    ]);
+    const tabs = Array.from(view.container.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+    expect(tabs.map((t) => t.textContent)).toEqual([
+      "All",
+      "Farmers market 0",
+      "Pharmacy or drugstore 1",
+    ]);
+    act(() => tabs[2].click());
+    expect(view.container.textContent).not.toContain("tomato");
+  });
 });

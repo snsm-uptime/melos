@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from fractions import Fraction
 from typing import Literal
@@ -28,13 +28,16 @@ from domain.cart import (
     scale_factor,
 )
 from domain.errors import (
+    InvalidPlaceError,
     KitchenArchivedError,
     KitchenNotFoundError,
     ShoppingItemNotFoundError,
+    ShoppingListClosedError,
     ShoppingListEmptyError,
     ShoppingListNotActiveError,
     ShoppingListNotFoundError,
 )
+from domain.places import CustomPlace, PlaceRef, ingredient_key
 from domain.shopping_list import (
     SavedLine,
     SavedList,
@@ -47,6 +50,7 @@ from domain.shopping_list import (
 )
 
 from application.kitchens import KitchenRepository
+from application.places import checked_place
 from application.ports import (
     CartActivityLog,
     CartDraft,
@@ -54,6 +58,7 @@ from application.ports import (
     CartRepository,
     EditLockRepository,
     IngredientLineReader,
+    PlaceRepository,
     SessionRef,
     ShoppingListRepository,
 )
@@ -138,6 +143,20 @@ class ActiveListSync:
 
 
 @dataclass(frozen=True, slots=True)
+class PlaceChoices:
+    """The viewer's place per normalized name and their own places (spec 070 R9)."""
+
+    choices: dict[str, PlaceRef]
+    custom: tuple[CustomPlace, ...]
+
+
+def viewer_places(places: PlaceRepository | None, user_id: UUID) -> PlaceChoices | None:
+    if places is None:
+        return None
+    return PlaceChoices(places.choices(user_id), tuple(places.list_custom(user_id)))
+
+
+@dataclass(frozen=True, slots=True)
 class ShoppingListView:
     # True when there is nothing at all: no cart recipes and no saved items.
     is_empty: bool
@@ -148,6 +167,10 @@ class ShoppingListView:
     # Saved chips whose recipe is gone; they show as plain text (spec 025 R6).
     missing_recipe_ids: frozenset[UUID] = frozenset()
     kitchen_is_archived: bool = False
+    # The stored cart lines, in list order, when status is "active" (spec 070 R3).
+    cart_items: tuple[SavedLine, ...] = ()
+    # The viewer's places (spec 070 FR-010): their choices and their own places.
+    places: PlaceChoices | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,6 +179,11 @@ class ClosedListView:
     shopping_list: ShoppingList
     hand_items: tuple[SavedLine, ...]
     missing_recipe_ids: frozenset[UUID]
+    places: PlaceChoices | None = None
+
+    @property
+    def cart_items(self) -> tuple[SavedLine, ...]:
+        return tuple(item for item in self.saved.items if item.origin == "cart")
 
 
 def _missing(carts: CartRepository, saved: Sequence[SavedList]) -> frozenset[UUID]:
@@ -180,14 +208,20 @@ class GetShoppingListService:
         locks: EditLockRepository,
         lines: IngredientLineReader,
         lists: ShoppingListRepository,
+        places: PlaceRepository | None = None,
     ) -> None:
         self._kitchens = kitchens
         self._carts = carts
         self._locks = locks
         self._lines = lines
         self._lists = lists
+        self._places = places
 
     def execute(self, ref: SessionRef, kitchen_id: UUID) -> ShoppingListView:
+        view = self._read(ref, kitchen_id)
+        return replace(view, places=viewer_places(self._places, ref.user_id))
+
+    def _read(self, ref: SessionRef, kitchen_id: UUID) -> ShoppingListView:
         kitchen = _member_kitchen(self._kitchens, ref, kitchen_id)
         archived = kitchen.is_archived
         active = self._lists.active(kitchen_id)
@@ -214,6 +248,7 @@ class GetShoppingListService:
                 hand_items=hand,
                 missing_recipe_ids=_missing(self._carts, [active]),
                 kitchen_is_archived=archived,
+                cart_items=tuple(item for item in active.items if item.origin == "cart"),
             )
         items = self._carts.read(kitchen_id).items
         if not items:
@@ -249,11 +284,13 @@ class _ListChange:
         carts: CartRepository,
         lists: ShoppingListRepository,
         sync: ActiveListSync,
+        places: PlaceRepository | None = None,
     ) -> None:
         self._kitchens = kitchens
         self._carts = carts
         self._lists = lists
         self._sync = sync
+        self._places = places
 
     def _writable(self, ref: SessionRef, kitchen_id: UUID) -> None:
         """Access, archive check, then the cart row lock that serializes list writes."""
@@ -271,12 +308,36 @@ class AddShoppingItemService(_ListChange):
         quantity: object = None,
         unit: object = None,
         size: object = None,
+        place: PlaceRef | None = None,
     ) -> None:
         item = hand_item(name, quantity, unit, size)
+        stored = None
+        if place is not None:
+            # Checked before any write, so a bad place adds nothing (spec 070 FR-016a).
+            if self._places is None:
+                raise InvalidPlaceError()
+            stored = checked_place(self._places, ref.user_id, place)
         self._writable(ref, kitchen_id)
         active = self._sync.ensure_active(kitchen_id)
         self._lists.add_item(active.id, item)
+        if stored is not None and self._places is not None:
+            self._places.set_choice(ref.user_id, ingredient_key(item.name), stored)
         logger.info("shopping item outcome=added")
+
+
+class SetItemBoughtService(_ListChange):
+    """Mark an item of the active list bought or not bought (spec 070 FR-001, R10)."""
+
+    def execute(self, ref: SessionRef, kitchen_id: UUID, item_id: UUID, bought: bool) -> SavedLine:
+        self._writable(ref, kitchen_id)
+        active = self._lists.active(kitchen_id)
+        item = None if active is None else self._lists.set_bought(active.id, item_id, bought)
+        if item is None:
+            if self._lists.is_closed_item(kitchen_id, item_id):
+                raise ShoppingListClosedError()
+            raise ShoppingItemNotFoundError()
+        logger.info("shopping item outcome=%s", "bought" if bought else "unbought")
+        return item
 
 
 class RemoveShoppingItemService(_ListChange):
@@ -303,8 +364,9 @@ class CloseShoppingListService(_ListChange):
         sync: ActiveListSync,
         *,
         activity: CartActivityLog,
+        places: PlaceRepository | None = None,
     ) -> None:
-        super().__init__(kitchens, carts, lists, sync)
+        super().__init__(kitchens, carts, lists, sync, places)
         self._activity = activity
 
     def execute(
@@ -328,7 +390,8 @@ class CloseShoppingListService(_ListChange):
         closed = self._lists.closed_by_id(kitchen_id, list_id)
         assert closed is not None
         logger.info("shopping list outcome=closed items=%d", len(closed.items))
-        return _closed_view(closed, _missing(self._carts, [closed]))
+        view = _closed_view(closed, _missing(self._carts, [closed]))
+        return replace(view, places=viewer_places(self._places, ref.user_id))
 
 
 def _closed_view(saved: SavedList, missing: frozenset[UUID]) -> ClosedListView:
@@ -348,10 +411,12 @@ class ClosedShoppingListsService:
         kitchens: KitchenRepository,
         carts: CartRepository,
         lists: ShoppingListRepository,
+        places: PlaceRepository | None = None,
     ) -> None:
         self._kitchens = kitchens
         self._carts = carts
         self._lists = lists
+        self._places = places
 
     def list(self, ref: SessionRef, kitchen_id: UUID) -> tuple[ClosedListSummary, ...]:
         _member_kitchen(self._kitchens, ref, kitchen_id)
@@ -365,4 +430,5 @@ class ClosedShoppingListsService:
         saved = self._lists.closed_by_id(kitchen_id, list_id)
         if saved is None:
             raise ShoppingListNotFoundError()
-        return _closed_view(saved, _missing(self._carts, [saved]))
+        view = _closed_view(saved, _missing(self._carts, [saved]))
+        return replace(view, places=viewer_places(self._places, ref.user_id))

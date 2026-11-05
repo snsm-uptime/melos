@@ -8,7 +8,7 @@ from datetime import date
 from uuid import UUID
 
 from domain.cart import Amount, RecipeRef
-from domain.shopping_list import SavedLine, SavedList
+from domain.shopping_list import SavedLine, SavedList, carry_bought
 from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
@@ -29,6 +29,7 @@ def _row(list_id: uuid.UUID, item: SavedLine, position: int) -> dict[str, object
         "notes": list(item.notes),
         "recipes": [{"recipe_id": str(r.recipe_id), "title": r.title} for r in item.recipes],
         "position": position,
+        "bought": item.bought,
     }
 
 
@@ -43,6 +44,7 @@ def _line(row: ShoppingListItemModel) -> SavedLine:
         notes=tuple(row.notes),
         recipes=tuple(RecipeRef(UUID(r["recipe_id"]), r["title"]) for r in row.recipes),
         id=row.id,
+        bought=row.bought,
     )
 
 
@@ -91,6 +93,14 @@ class SqlAlchemyShoppingListRepository:
         return active
 
     def replace_cart_lines(self, list_id: UUID, lines: Sequence[SavedLine]) -> None:
+        old = self._db.scalars(
+            select(ShoppingListItemModel).where(
+                ShoppingListItemModel.shopping_list_id == list_id,
+                ShoppingListItemModel.origin == "cart",
+                ShoppingListItemModel.bought.is_(True),
+            )
+        ).all()
+        lines = carry_bought([_line(row) for row in old], lines)
         self._db.execute(
             delete(ShoppingListItemModel).where(
                 ShoppingListItemModel.shopping_list_id == list_id,
@@ -122,6 +132,36 @@ class SqlAlchemyShoppingListRepository:
             )
         )
         return result.rowcount > 0
+
+    def set_bought(self, list_id: UUID, item_id: UUID, bought: bool) -> SavedLine | None:
+        """Set the flag on an item of an active list; None when the list holds no such item."""
+        active = select(ShoppingListModel.id).where(
+            ShoppingListModel.id == list_id, ShoppingListModel.closing_date.is_(None)
+        )
+        row = self._db.scalar(
+            update(ShoppingListItemModel)
+            .where(
+                ShoppingListItemModel.id == item_id,
+                ShoppingListItemModel.shopping_list_id == list_id,
+                ShoppingListItemModel.shopping_list_id.in_(active),
+            )
+            .values(bought=bought)
+            .returning(ShoppingListItemModel)
+        )
+        return None if row is None else _line(row)
+
+    def is_closed_item(self, kitchen_id: UUID, item_id: UUID) -> bool:
+        """True when the item belongs to one of the kitchen's closed lists."""
+        found = self._db.scalar(
+            select(ShoppingListItemModel.id)
+            .join(ShoppingListModel, ShoppingListModel.id == ShoppingListItemModel.shopping_list_id)
+            .where(
+                ShoppingListItemModel.id == item_id,
+                ShoppingListModel.kitchen_id == kitchen_id,
+                ShoppingListModel.closing_date.is_not(None),
+            )
+        )
+        return found is not None
 
     def close(self, list_id: UUID, closing_date: date) -> bool:
         result = self._db.execute(

@@ -12,6 +12,7 @@ import { landingMessages } from "./landing";
 import { loaderMessages } from "./loader";
 import { notebooksMessages } from "./notebooks";
 import { passwordResetMessages } from "./password-reset";
+import { placesMessages } from "./places";
 import { recipeDetailMessages } from "./recipeDetail";
 import { recipeListMessages } from "./recipeLists";
 import { shoppingListMessages } from "./shoppingList";
@@ -38,6 +39,7 @@ const SETS: Record<string, { en: unknown; es: unknown }> = {
   loader: loaderMessages,
   notebookInvite: notebookInviteMessages,
   notebooks: notebooksMessages,
+  places: placesMessages,
   passwordReset: passwordResetMessages,
   recipeDetail: recipeDetailMessages,
   recipeLists: recipeListMessages,

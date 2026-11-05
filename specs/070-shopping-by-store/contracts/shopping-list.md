@@ -23,7 +23,7 @@ Added to every cart line (`lines[]`), `your_call[]` entry and `hand_items[]` ent
 
 ## PATCH /kitchens/{kitchen_id}/shopping-list/items/{item_id}   (new)
 
-Body `{"bought": true}` → 200 with the item as above. Works for cart and hand items of the **active** list.
+Body `{"bought": true}` → 200 with the whole list, like the other list writes (S-025). Works for cart and hand items of the **active** list. The value sent is set, never flipped (research R10).
 
 | Case | Answer |
 |---|---|
