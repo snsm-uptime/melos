@@ -81,6 +81,19 @@ const SECTIONS: Record<string, unknown> = {
       },
     ],
   },
+  "refused-sites": {
+    refused_sites: [
+      {
+        domain: "allrecipes.com",
+        total_refusals: 12,
+        distinct_members: 4,
+        first_seen_at: "2026-11-04T22:38:05Z",
+        last_seen_at: "2026-11-06T10:02:11Z",
+        last_status: 402,
+        last_message: "<img src=x onerror=alert(1)>",
+      },
+    ],
+  },
 };
 
 describe("AdminDashboard", () => {
@@ -226,6 +239,35 @@ describe("AdminDashboard", () => {
     await open("Recetas");
     expect(container.textContent).toContain("Sopa");
     expect(container.textContent).toContain("Cocina");
+  });
+
+  it("shows the refused sites, with the site's message as plain text (spec 067)", async () => {
+    await render();
+    await open("Refused sites");
+    expect(urls).toContain("/api/admin/refused-sites");
+    const headers = Array.from(container.querySelectorAll("th")).map(
+      (th) => th.textContent,
+    );
+    expect(headers).toEqual([
+      "Domain",
+      "Total",
+      "Members",
+      "First seen",
+      "Last seen",
+      "Status",
+      "Message",
+    ]);
+    expect(container.textContent).toContain("allrecipes.com");
+    expect(container.textContent).toContain("402");
+    expect(container.textContent).toContain("<img src=x onerror=alert(1)>");
+    expect(container.querySelector("img")).toBeNull();
+  });
+
+  it("names the refused sites tab in Spanish", async () => {
+    await render("es");
+    await open("Sitios rechazados");
+    expect(container.textContent).toContain("Dominio");
+    expect(container.textContent).toContain("allrecipes.com");
   });
 
   it("shows a dash for a missing date and a label for a missing alias", async () => {

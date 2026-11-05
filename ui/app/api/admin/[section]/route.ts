@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getApiInternalUrl } from "@/lib/api";
 
-const SECTIONS = new Set(["units", "ingredients", "recipes", "users"]);
+const SECTIONS = new Set(["units", "ingredients", "recipes", "users", "refused-sites"]);
 
 type RouteContext = { params: Promise<{ section: string }> };
 
-/** Same-origin BFF: the four dashboard sections and nothing else (spec 055 contracts/admin-api). */
+/** Same-origin BFF: the dashboard sections and nothing else (specs 055, 067 contracts/admin-api). */
 export async function GET(request: NextRequest, context: RouteContext) {
   const { section } = await context.params;
   if (!SECTIONS.has(section)) {
