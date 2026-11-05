@@ -147,7 +147,9 @@ Stops and starts the stack in one command, with consistent file selection.
 
 **Flags:**
 - `-d`, `--detach` — Start in background.
-- `--wipe` — Remove named volumes on the way down (keeps Postgres bind data).
+- `--wipe` — Destructive, asks first (`-y`/`--yes` skips the prompt). Deletes this checkout's
+  Postgres data (`compose-wipe-db.sh`) and the named volumes. The dev seed then runs on the
+  way up, including the real recipes from `SEED_RECIPES_SOURCE_URL` (`api/scripts/README.md`).
 - `--help` — Show help text.
 
 **Examples:**

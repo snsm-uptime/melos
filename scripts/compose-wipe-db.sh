@@ -70,7 +70,17 @@ compose_run "$ROOT" down
 
 if [[ -d "$PGDATA_DIR" ]]; then
   echo "==> Removing $PGDATA_DIR"
-  rm -rf -- "$PGDATA_DIR"
+  # Postgres owns the files (uid 999 in its container), so the host user usually cannot
+  # delete them. Fall back to a throwaway root container over the parent directory.
+  if ! rm -rf -- "$PGDATA_DIR" 2>/dev/null; then
+    docker run --rm -v "$DATA_ROOT:/data" pgvector/pgvector:pg16 rm -rf /data/pgdata
+  fi
+  if [[ -e "$PGDATA_DIR" ]]; then
+    echo "ERROR: could not remove $PGDATA_DIR" >&2
+    exit 1
+  fi
+  # Empty again for the bind mount; Postgres initializes it on the next start.
+  mkdir -p "$PGDATA_DIR"
 else
   echo "==> $PGDATA_DIR does not exist, nothing to remove"
 fi

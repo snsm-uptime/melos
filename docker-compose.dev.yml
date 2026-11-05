@@ -33,6 +33,8 @@ services:
       # Set SEED_DEV_USER=0 in .env to opt out.
       SEED_DEV_USER: ${SEED_DEV_USER:-1}
       SEED_DEV_USER_KITCHEN: ${SEED_DEV_USER_KITCHEN:-Dev's Kitchen}
+      # Dev default: the seeded owner is an admin, so /admin is testable. 0 opts out.
+      SEED_DEV_USER_ADMIN: ${SEED_DEV_USER_ADMIN:-1}
     volumes:
       - ./api/domain:/app/domain
       - ./api/application:/app/application

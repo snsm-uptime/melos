@@ -202,7 +202,8 @@ Then check:
 
 With `SEED_DEV_USER=1` (dev only) the API seeds two verified users (owner and
 member) sharing one kitchen, with one recipe from each of them, ready for testing auth,
-kitchen membership and the recipe lists.
+kitchen membership and the recipe lists. Under the dev overlay the owner is also an admin
+(`SEED_DEV_USER_ADMIN`, default `1`; set `0` to opt out), so `/admin` works on a fresh stack.
 
 **The admin dashboard**
 
@@ -212,6 +213,8 @@ set it, so the owner sets it once on the server:
 ```sql
 UPDATE users SET is_admin = true WHERE email = '<address>';
 ```
+
+In dev the seeded owner gets the flag from `SEED_DEV_USER_ADMIN` instead (see above).
 
 **Recipe embeddings and search**
 
