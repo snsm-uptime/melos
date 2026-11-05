@@ -21,6 +21,7 @@ from domain.errors import AdminNotFoundError
 from application.ports import (
     AdminIngredientRow,
     AdminRecipeRow,
+    AdminRefusedSiteRow,
     AdminReportRepository,
     AdminUnitRow,
     AdminUserRow,
@@ -50,6 +51,10 @@ class AdminDashboard:
     def users(self, user_id: UUID | None) -> Sequence[AdminUserRow]:
         self._require_admin(user_id)
         return self._reports.users()
+
+    def refused_sites(self, user_id: UUID | None) -> Sequence[AdminRefusedSiteRow]:
+        self._require_admin(user_id)
+        return self._reports.refused_sites()
 
     def delete_recipe(self, user_id: UUID | None, recipe_id: UUID) -> None:
         self._require_admin(user_id)

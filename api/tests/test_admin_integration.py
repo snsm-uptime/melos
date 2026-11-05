@@ -95,7 +95,7 @@ def _one(rows: list[dict], key: str, value: object) -> dict:
     return next(row for row in rows if row[key] == value)
 
 
-@pytest.mark.parametrize("section", SECTIONS)
+@pytest.mark.parametrize("section", (*SECTIONS, "refused-sites"))
 def test_signed_out_and_non_admin_answers_equal_an_unknown_path(
     client: TestClient, section: str
 ) -> None:
@@ -325,3 +325,47 @@ def test_users_come_by_alias_with_null_aliases_last(
     assert aliases[-1] is None
     named = [alias for alias in aliases if alias is not None]
     assert named == sorted(named)
+
+
+# --- refused sites (spec 067) ---
+
+REFUSED_KEYS = {
+    "domain",
+    "total_refusals",
+    "distinct_members",
+    "first_seen_at",
+    "last_seen_at",
+    "last_status",
+    "last_message",
+}
+
+
+def test_refused_sites_are_empty_then_sorted_by_total(
+    client: TestClient, db_session: Session
+) -> None:
+    people = People(client)
+    people.register("ana")
+    ana = people.as_("ana")
+    _admin(db_session, people.ids["ana"])
+    db_session.execute(text("DELETE FROM refused_site"))
+    db_session.flush()
+
+    empty = ana.get("/admin/refused-sites")
+    assert empty.status_code == 200
+    assert empty.json() == {"refused_sites": []}
+
+    db_session.execute(
+        text(
+            "INSERT INTO refused_site VALUES "
+            "('b.test', 2, 1, now(), now(), 403, ''), "
+            "('a.test', 2, 2, now(), now(), 402, '<img src=x onerror=alert(1)>'), "
+            "('c.test', 9, 3, now(), now(), 451, 'legal')"
+        )
+    )
+    db_session.flush()
+
+    rows = ana.get("/admin/refused-sites").json()["refused_sites"]
+    assert [row["domain"] for row in rows] == ["c.test", "a.test", "b.test"]
+    assert {key for row in rows for key in row} == REFUSED_KEYS
+    assert rows[1]["last_message"] == "<img src=x onerror=alert(1)>"
+    assert rows[0]["last_status"] == 451
