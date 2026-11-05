@@ -1,0 +1,28 @@
+import { useId, type SVGProps } from "react";
+
+import { RecipeShape } from "./RecipeIcon";
+
+/** Add a recipe: the recipe's card with a circled plus over its lower-right corner. */
+export function AddRecipeIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
+  // Each icon on a page needs its own mask id.
+  const mask = useId();
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      {...props}
+    >
+      <mask id={mask}>
+        <rect width="24" height="24" fill="white" />
+        {/* The card stops a gap short of the circle. */}
+        <circle cx="18" cy="18" r="6.25" fill="black" />
+      </mask>
+      <RecipeShape mask={`url(#${mask})`} />
+      <circle cx="18" cy="18" r="4.75" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M18 15.75v4.5M15.75 18h4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}

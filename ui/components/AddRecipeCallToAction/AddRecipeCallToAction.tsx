@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { PlusIcon } from "@/app/icons";
+import { AddRecipeIcon, PlusIcon } from "@/app/icons";
 import { AddItemCard } from "@/components/Card";
 import { IconButton } from "@/components/IconButton";
 import { SidePanelEntry } from "@/components/SidePanel/SidePanelEntry";
@@ -153,7 +153,7 @@ export function AddRecipeCallToAction({
       {variant === "panel" ? (
         <SidePanelEntry
           label={t.addRecipeButton}
-          icon={<PlusIcon className="size-7 shrink-0 p-0.5" />}
+          icon={<AddRecipeIcon className="size-7 shrink-0 p-0.5" />}
           disabled={!preselected}
           onClick={() => setOptionsOpen(true)}
         />

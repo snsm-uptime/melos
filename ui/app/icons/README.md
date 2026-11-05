@@ -14,6 +14,8 @@ Centralized location for all custom SVG icon components used throughout the UI. 
 | `CartIcon` | Open the kitchen's cart | Empty cart, same shape as `CartPlusIcon` |
 | `CartPlusIcon` | Add/remove a recipe from the cart | `inCart` turns the + into × |
 | `HistoryIcon` | Open the kitchen's past lists | Clock inside a counterclockwise arrow |
+| `RecipeIcon` | A recipe | Solid frame around a lined sheet |
+| `AddRecipeIcon` | Add a recipe | `RecipeIcon` with a circled plus |
 | `BookmarkIcon` | The default notebook | Outline bookmark |
 | `DotsIcon` | Menu triggers | Vertical dots, 16×16 viewBox |
 | `ShareIcon` | Invite/share actions | Connected circles |
@@ -25,6 +27,22 @@ Centralized location for all custom SVG icon components used throughout the UI. 
 Full descriptions for each icon are under [Icons](#icons).
 
 ## Icons
+
+### RecipeIcon
+
+A solid frame, thick at the top, around a sheet of three lines (the last shorter). Used to stand for a recipe.
+
+- ViewBox: `0 0 24 24`
+- Style: Filled frame, stroked lines
+- Accepts: className, SVG element props
+
+### AddRecipeIcon
+
+`RecipeIcon`'s shape (`RecipeShape`) with a circled plus over its lower-right corner; the card is masked a gap short of the circle. Used for add-a-recipe actions.
+
+- ViewBox: `0 0 24 24`
+- Style: Filled frame, stroked lines and plus
+- Accepts: className, SVG element props
 
 ### SaveIcon
 
