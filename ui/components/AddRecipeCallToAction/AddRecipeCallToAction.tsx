@@ -22,7 +22,7 @@ import { useLocale } from "@/lib/i18n/useLocale";
 import type { CopiedRecipe } from "@/lib/notebooksClient";
 
 import { AddRecipeOptionsDialog } from "./AddRecipeOptionsDialog";
-import { captureTarget } from "./captureNotebook";
+import { captureTarget, pickerOptions } from "./captureNotebook";
 import { RecipeFromNotebookSheet, type KitchenChoice } from "./RecipeFromNotebookSheet";
 import { TextCaptureSheet } from "./TextCaptureSheet";
 import { UrlCaptureSheet } from "./UrlCaptureSheet";
@@ -124,7 +124,16 @@ export function AddRecipeCallToAction({
       failSubmit({ code: target.code });
       return;
     }
-    startManualDraft(target.notebook, locale);
+    startManualDraft(
+      target.notebook,
+      locale,
+      pickerOptions(candidates, target.notebook).map(({ id, kind, name, kitchenId }) => ({
+        id,
+        kind,
+        name,
+        kitchenId,
+      })),
+    );
     goToDraft();
   }
 

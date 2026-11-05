@@ -96,8 +96,13 @@ export type CaptureSource = { kind: "text" } | { kind: "url"; link: string };
 /** The match-control value that means "new ingredient". Not a catalog entry name. */
 export const NEW_CHOICE = "__new__";
 
+/** A notebook the manual draft may move to (the add-recipe picker's choices). */
+export type CaptureNotebookChoice = Pick<CaptureNotebook, "id" | "kind" | "name" | "kitchenId">;
+
 export type CaptureState = {
   notebook: CaptureNotebook | null;
+  /** The manual draft's notebook choices; empty for a captured draft. */
+  notebookChoices: CaptureNotebookChoice[];
   text: string;
   /** Which sheet is open, and the link on the link sheet (spec 026). */
   source: CaptureSource;
@@ -116,6 +121,7 @@ export type CaptureState = {
 
 const EMPTY: CaptureState = {
   notebook: null,
+  notebookChoices: [],
   text: "",
   source: { kind: "text" },
   sheetOpen: false,
@@ -165,7 +171,7 @@ export function openSheet(
   kind?: CaptureSource["kind"],
 ): void {
   // Always the caller's notebook: each page's sheet opens only for its own returnPath.
-  update({ notebook, sheetOpen: true, source: sourceFor(kind) });
+  update({ notebook, notebookChoices: [], sheetOpen: true, source: sourceFor(kind) });
 }
 
 function sourceFor(kind: CaptureSource["kind"] | undefined): CaptureSource {
@@ -206,9 +212,24 @@ export function emptyDraft(): DraftView {
 export function startManualDraft(
   notebook: CaptureNotebook,
   language: "en" | "es",
+  notebookChoices: CaptureNotebookChoice[] = [],
 ): void {
-  update({ notebook, text: "", source: { kind: "text" } });
+  update({ notebook, notebookChoices, text: "", source: { kind: "text" } });
   showDraft(emptyDraft(), language);
+}
+
+/** The member moved the draft to another notebook; Back and Discard still return where they were. */
+export function setDraftNotebook(choice: CaptureNotebookChoice): void {
+  if (!state.notebook) return;
+  update({
+    notebook: { ...state.notebook, ...choice },
+    // The "My own notebook (new)" row becomes the notebook made for it.
+    notebookChoices: state.notebookChoices.some((item) => item.id === choice.id)
+      ? state.notebookChoices
+      : state.notebookChoices.map((item) =>
+          item.id === OWN_NEW_NOTEBOOK_ID && item.kitchenId === choice.kitchenId ? choice : item,
+        ),
+  });
 }
 
 export function closeSheet(): void {

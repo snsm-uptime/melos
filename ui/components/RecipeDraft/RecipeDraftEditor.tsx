@@ -1,5 +1,6 @@
 "use client";
 
+import { NotebookPicker } from "@/components/NotebookPicker";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -28,7 +29,9 @@ import {
   failSave,
   getCaptureState,
   markSaved,
+  OWN_NEW_NOTEBOOK_ID,
   savedReturnPath,
+  setDraftNotebook,
   setPreviewImage,
   startSave,
   undoChange,
@@ -41,6 +44,7 @@ import { nameChanges } from "@/lib/capture/nameChanges";
 import { messageForCode } from "@/lib/i18n/capture";
 import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
 import { useLocale } from "@/lib/i18n/useLocale";
+import { resolveCaptureNotebook } from "@/lib/notebooksClient";
 import { checkUnitWord } from "@/lib/recipesClient";
 
 // MVP-OUT: import { CategoryChips } from "./CategoryChips";
@@ -180,6 +184,24 @@ export function RecipeDraftEditor() {
     router.push(savedPath);
   }
 
+  /** The picked notebook; a kitchen's "My own notebook (new)" is made first, as capture does. */
+  async function moveToNotebook(id: string) {
+    const picked = capture.notebookChoices.find((item) => item.id === id);
+    if (!picked) return;
+    if (picked.id !== OWN_NEW_NOTEBOOK_ID || !picked.kitchenId) {
+      setDraftNotebook(picked);
+      return;
+    }
+    setMovingNotebook(true);
+    const own = await resolveCaptureNotebook(picked.kitchenId);
+    setMovingNotebook(false);
+    if (!own.ok) {
+      failSave({ code: own.code ?? "unavailable" });
+      return;
+    }
+    setDraftNotebook({ ...picked, id: own.value.id, name: own.value.name });
+  }
+
   function discard() {
     discardDraft();
     router.push(notebook!.returnPath);
@@ -212,14 +234,29 @@ export function RecipeDraftEditor() {
               onChange={(event) => update({ title: event.target.value })}
             />
           </h1>
-          <h4 className="m-0 px-1 text-[0.9rem] font-normal text-muted">
-            {notebook.name}
-          </h4>
           {errors.title ? (
             <span role="alert" className="px-1 text-[0.8rem] text-error">
               {t.errors[errors.title]}
             </span>
           ) : null}
+          {capture.notebookChoices.length > 1 ? (
+            // The manual draft can move to another notebook before it is saved.
+            <h4 className="m-0 px-1 text-[0.9rem] font-normal text-muted">
+              <NotebookPicker
+                locale={locale}
+                variant="inline"
+                label={t.notebookPicker}
+                value={notebook.id}
+                disabled={capture.saving || movingNotebook}
+                notebooks={capture.notebookChoices}
+                onChange={(id) => void moveToNotebook(id)}
+              />
+            </h4>
+          ) : (
+            <h4 className="m-0 px-1 text-[0.9rem] font-normal text-muted">
+              {notebook.name}
+            </h4>
+          )}
         </div>
         <HeaderActions>
           <HeaderAction

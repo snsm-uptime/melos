@@ -17,6 +17,7 @@ function state(overrides: Partial<CaptureState> = {}): CaptureState {
       kitchenId: null,
       returnPath: "/notebooks",
     },
+    notebookChoices: [],
     text: "  2 large onions.  ",
     source: { kind: "text" },
     sheetOpen: false,
