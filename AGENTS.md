@@ -183,6 +183,16 @@ which story a spec is for; it does not say the order to build them in (see
 `dev/docs/backlog.yaml`). A spec for a story that has no backlog entry yet needs
 that entry added first.
 
+### Backlog files
+
+`dev/docs/backlog.yaml` holds only pending work (`backlog`, `in_design`,
+`in_progress`, `verification`). When a story is done, set `status: done`, write
+its `verification` note (tests run, migrations checked, checks still open), and
+move the whole entry, unchanged otherwise, to the end of
+`dev/docs/backlog-done.yaml` in the same change. Story numbers are unique across
+both files: before adding a story, check both for the next free number. A check
+still open on a done story is recorded in its note in `backlog-done.yaml`.
+
 ## Development environment
 
 Prerequisites: Docker with Compose v2, `uv`, Node/`npm`.

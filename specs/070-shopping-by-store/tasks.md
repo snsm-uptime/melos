@@ -154,7 +154,7 @@ Story map (spec.md): **US1** mark items bought (P1), **US2** Ingredients page wi
 
 - [X] T040 Run `ruff`, the api suite in the Compose test overlay, and the ui `vitest`, lint and typecheck. Record the counts and any failures already known before this story in `specs/070-shopping-by-store/notes.md`.
 - [ ] T041 Do the browser walk in `specs/070-shopping-by-store/quickstart.md`, steps 1 to 10, at 360 px and 1280 px, in English and Spanish, and once by keyboard only, on an isolated stack. Record the results and the SC-001 and SC-005 timings in `notes.md`.
-- [ ] T042 Update `dev/docs/backlog.yaml`: set S-070 to `in_progress` and then `done`, and write the verification text. Ask the owner to review the Spanish strings in `ui/lib/i18n/places.ts`.
+- [ ] T042 Update `dev/docs/backlog.yaml`: set S-070 to `in_progress` and then `done`, write the verification text, and move the entry to `dev/docs/backlog-done.yaml` (AGENTS.md, Backlog files). Ask the owner to review the Spanish strings in `ui/lib/i18n/places.ts`.
 - [ ] T043 Update `dev/docs/prd.md` J5 (Saved list), adding bought, places per person and store tabs, and its Appendix A entries (ShoppingListItem.bought, Place, IngredientPlace)
 
 ---
