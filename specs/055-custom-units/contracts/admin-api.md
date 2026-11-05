@@ -74,3 +74,7 @@ Conversations, recipe ingredients or steps, password data, session tokens, email
 - BFF: `app/api/admin/[section]/route.ts` passes the four sections through and answers 404 to anything else. `app/api/admin/recipes/[recipeId]/route.ts` passes the delete through.
 - Recipes tab: a delete column (trash button, confirmed in a dialog through the shared `DeleteItemButton`). The people column shows the count, then the aliases as a scrolling row of chips.
 - All text exists in English and Spanish, and the page works at 360px.
+
+## `GET /admin/refused-sites` (spec 067)
+
+A fifth section, "Refused sites" / "Sitios rechazados": one row per registrable domain that refused a link capture, sorted by total refusals. Same access rule as above. See `specs/067-refused-site-registry/contracts/admin-api.md`.
