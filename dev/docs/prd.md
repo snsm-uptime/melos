@@ -613,7 +613,7 @@ steps[3]: "Fry the garlic in oil.","Add the tomato and cook 5 minutes.","Add the
 
 ## Appendix C · Scope and schedule (delivery 02/11/2026)
 
-**MVP closed (2026-11-04).** The MVP is what was built up to 2026-11-04 (backlog S-001 to S-065, as recorded that day). The tables below are the MVP plan, kept for history. Work after that date is post-MVP: the owner picks stories from `dev/docs/backlog.yaml` by priority, *Should* and *Later* items no longer wait for *Must* items, and MVP-era descopes (such as Appendix E) may be restored by their story. New post-MVP stories so far: URL capture with the page's recipe photo (S-026, in design), recipe image (S-067), cart receipts (S-068).
+**MVP closed (2026-11-04).** The MVP is what was built up to 2026-11-04 (backlog S-001 to S-065, as recorded that day). The tables below are the MVP plan, kept for history. Work after that date is post-MVP: the owner picks stories from `dev/docs/backlog.yaml` by priority, *Should* and *Later* items no longer wait for *Must* items, and MVP-era descopes (such as Appendix E) may be restored by their story. New post-MVP stories so far: URL capture with the page's recipe photo (S-026, in design), recipe image (S-067), cart receipts (S-068), and the refused site registry (S-069, spec 067: a site refusal → the license message, recorded for the admin).
 
 | Priority | Items |
 |---|---|

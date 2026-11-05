@@ -1,15 +1,18 @@
-/** Admin dashboard text, EN/ES (spec 055, contracts/admin-api.md). */
+/** Admin dashboard text, EN/ES (spec 055, 067 contracts/admin-api.md). */
 
 export const adminMessages = {
   en: {
     entry: "Dashboard",
     title: "Dashboard",
     tabsLabel: "Dashboard sections",
+    previousTab: "Previous section",
+    nextTab: "Next section",
     tabs: {
       units: "Units",
       ingredients: "Ingredients",
       recipes: "Recipes",
       users: "Users",
+      "refused-sites": "Refused sites",
     },
     empty: "Nothing here yet.",
     loadFailed: "We couldn't load this section. Try again.",
@@ -58,17 +61,29 @@ export const adminMessages = {
         cartsClosed: "Carts closed",
         latestCartActionAt: "Latest cart action",
       },
+      refusedSites: {
+        domain: "Domain",
+        totalRefusals: "Total",
+        distinctMembers: "Members",
+        firstSeenAt: "First seen",
+        lastSeenAt: "Last seen",
+        lastStatus: "Status",
+        lastMessage: "Message",
+      },
     },
   },
   es: {
     entry: "Panel de control",
     title: "Panel de control",
     tabsLabel: "Secciones del panel",
+    previousTab: "Sección anterior",
+    nextTab: "Sección siguiente",
     tabs: {
       units: "Unidades",
       ingredients: "Ingredientes",
       recipes: "Recetas",
       users: "Usuarios",
+      "refused-sites": "Sitios rechazados",
     },
     empty: "Aún no hay nada aquí.",
     loadFailed: "No pudimos cargar esta sección. Inténtalo de nuevo.",
@@ -116,6 +131,15 @@ export const adminMessages = {
         cartsEdited: "Carritos editados",
         cartsClosed: "Carritos cerrados",
         latestCartActionAt: "Última acción de carrito",
+      },
+      refusedSites: {
+        domain: "Dominio",
+        totalRefusals: "Total",
+        distinctMembers: "Personas",
+        firstSeenAt: "Primera vez",
+        lastSeenAt: "Última vez",
+        lastStatus: "Estado",
+        lastMessage: "Mensaje",
       },
     },
   },

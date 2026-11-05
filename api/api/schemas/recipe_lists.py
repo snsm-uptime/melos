@@ -16,6 +16,7 @@ class RecipeCardResponse(BaseModel):
     notebook_id: UUID
     notebook_name: str
     created_at: datetime
+    preview_image: str | None = None
 
 
 class RecipePageResponse(BaseModel):

@@ -73,6 +73,7 @@ class SqlAlchemyRecipeListRepository:
                 RecipeModel.notebook_id,
                 NotebookModel.name,
                 RecipeModel.created_at,
+                RecipeModel.preview_image_base64,
             )
             .join(NotebookModel, NotebookModel.id == RecipeModel.notebook_id)
             .outerjoin(UserModel, UserModel.id == RecipeModel.author_id)
@@ -90,6 +91,7 @@ class SqlAlchemyRecipeListRepository:
                 notebook_id=row[4],
                 notebook_name=row[5],
                 created_at=row[6],
+                preview_image=row[7],
             )
             for row in rows
         ]

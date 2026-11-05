@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-import { AddRecipeCallToAction, type CaptureCandidate } from "@/components/AddRecipeCallToAction";
+import type { CaptureCandidate } from "@/components/AddRecipeCallToAction";
 import { CauldronLoader } from "@/components/CauldronLoader";
 import { useCartIdleToasts } from "@/components/Cart/useCartIdleToasts";
 import { useToast } from "@/components/Toast";
@@ -239,8 +239,9 @@ export function KitchenNotebooksSection({
           layout="wrap"
           cardCart={cardCart}
           initialPage={initialRecipes}
-          filterAction={canAdd ? <AddRecipeCallToAction variant="button" {...addProps} /> : undefined}
-          emptyAction={canAdd ? <AddRecipeCallToAction {...addProps} /> : undefined}
+          // The notebook page's add card, first in the grid (and alone when the list is empty).
+          addCandidates={canAdd ? candidates : undefined}
+          addDefaultId={ownNotebook?.id ?? OWN_NEW_NOTEBOOK_ID}
         />
       ) : null}
     </section>

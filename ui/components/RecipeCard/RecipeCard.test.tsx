@@ -47,6 +47,16 @@ describe("RecipeCard", () => {
     expect(container.textContent).toContain("7 ingredients");
   });
 
+  it("stands upright with the recipe image, at most 200px wide, in place of the pot", () => {
+    render({ recipe: { ...recipe, preview_image: "data:image/jpeg;base64,AAAA" } });
+    const img = container.querySelector("[data-testid=recipe-card-image]") as HTMLImageElement;
+    expect(img.getAttribute("src")).toBe("data:image/jpeg;base64,AAAA");
+    expect(container.querySelector("article")?.className).toContain("max-w-[200px]");
+    expect(img.className).toContain("object-cover");
+    expect(container.querySelector("[data-testid=recipe-pot-icon]")).toBeNull();
+    expect(container.querySelector("article")?.className).toContain("flex-col");
+  });
+
   it("keeps its raised controls inside the card, under the app's open menus", () => {
     render();
     expect((container.querySelector("article") as HTMLElement).className).toContain("isolate");

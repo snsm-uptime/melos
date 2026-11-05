@@ -411,6 +411,8 @@ class RecipeCardRow:
     notebook_id: UUID
     notebook_name: str
     created_at: datetime
+    # The recipe image as a data URI (spec 026), or None.
+    preview_image: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -759,6 +761,17 @@ class AdminUserRow:
     latest_cart_action_at: datetime | None
 
 
+@dataclass(frozen=True, slots=True)
+class AdminRefusedSiteRow:
+    domain: str
+    total_refusals: int
+    distinct_members: int
+    first_seen_at: datetime
+    last_seen_at: datetime
+    last_status: int
+    last_message: str
+
+
 class AdminReportRepository(Protocol):
     """Figures across every account (spec 055 R17) and the admin's recipe delete.
 
@@ -774,6 +787,10 @@ class AdminReportRepository(Protocol):
     def recipes(self) -> Sequence[AdminRecipeRow]: ...
 
     def users(self) -> Sequence[AdminUserRow]: ...
+
+    def refused_sites(self) -> Sequence[AdminRefusedSiteRow]:
+        """Sorted by total_refusals DESC, then domain (spec 067)."""
+        ...
 
     def delete_recipe(self, recipe_id: UUID) -> None:
         """Remove a recipe in any notebook. Raises RecipeNotFoundError when it is gone."""
@@ -983,7 +1000,7 @@ class SearchRecords(Protocol):
 # --- Link capture (spec 026, contracts/ports.md) ---
 
 PageFetchFailureKind = Literal[
-    "blocked", "dns", "timeout", "connect", "redirect", "status", "not_html", "too_large"
+    "blocked", "dns", "timeout", "connect", "redirect", "status", "not_html", "too_large", "refused"
 ]
 ImageMediaType = Literal["image/jpeg", "image/png", "image/webp"]
 
@@ -998,9 +1015,24 @@ class FetchedPage:
 
 @dataclass(frozen=True, slots=True)
 class PageFetchFailed:
-    """The page could not be fetched. Every kind shows the member the same message (R10)."""
+    """The page could not be fetched.
+
+    Every kind except `refused` shows the member the same message (spec 026 R10). `refused` means
+    the site itself answered 401/402/403/451 (spec 067 R1); only it sets `status` and `message`
+    (the refusal page's plain text, at most 1,000 characters).
+    """
 
     kind: PageFetchFailureKind
+    status: int | None = None
+    message: str = ""
+
+
+class RefusedSiteLog(Protocol):
+    """Port: count one site refusal per registrable domain (spec 067)."""
+
+    def record(self, host: str, actor_user_id: UUID, status: int, message: str) -> None:
+        """Count one refusal for host's registrable domain. May raise; callers swallow."""
+        ...
 
 
 @dataclass(frozen=True, slots=True)

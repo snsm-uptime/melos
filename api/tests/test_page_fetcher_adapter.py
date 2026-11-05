@@ -210,11 +210,105 @@ def test_a_redirect_without_location_fails() -> None:
     assert fetcher.fetch_page("https://example.test/") == PageFetchFailed("redirect")
 
 
-@pytest.mark.parametrize("status", [404, 403, 402, 401, 410, 429, 500, 503, 304, 100])
+@pytest.mark.parametrize("status", [404, 410, 429, 500, 503, 304, 100])
 def test_other_status_codes_fail(status: int) -> None:
     fetcher, _ = _fetcher(lambda request: httpx.Response(status, headers={"content-type": HTML}))
 
-    assert fetcher.fetch_page("https://example.test/") == PageFetchFailed("status")
+    result = fetcher.fetch_page("https://example.test/")
+    assert result == PageFetchFailed("status")
+    assert isinstance(result, PageFetchFailed) and result.status is None
+
+
+_LICENSE_PAGE = (
+    "<html><head><style>p{}</style><script>var x=1;</script></head><body>"
+    "<p>Access denied. Contact <a href='mailto:licensing@site.test'>us</a>.</p></body></html>"
+)
+
+
+@pytest.mark.parametrize("status", [401, 402, 403, 451])
+def test_a_site_refusal_carries_status_and_message(status: int) -> None:
+    fetcher, _ = _fetcher(
+        lambda request: httpx.Response(
+            status, headers={"content-type": HTML}, content=_LICENSE_PAGE.encode()
+        )
+    )
+
+    result = fetcher.fetch_page("https://example.test/")
+
+    assert isinstance(result, PageFetchFailed)
+    assert result.kind == "refused" and result.status == status
+    assert "Access denied." in result.message and "licensing@site.test" in result.message
+    assert "var x" not in result.message
+
+
+def test_a_large_refusal_body_is_read_only_to_64_kb() -> None:
+    body = b"<p>Licensed only.</p><p>" + b"x " * (200 * 1024) + b"</p>"
+    served: list[int] = []
+
+    class Stream(httpx.SyncByteStream):
+        def __iter__(self) -> Iterator[bytes]:
+            for start in range(0, len(body), 4096):
+                served.append(start)
+                yield body[start : start + 4096]
+
+    fetcher, _ = _fetcher(
+        lambda request: httpx.Response(402, headers={"content-type": HTML}, stream=Stream())
+    )
+
+    result = fetcher.fetch_page("https://example.test/")
+
+    assert isinstance(result, PageFetchFailed) and result.kind == "refused"
+    assert result.message.startswith("Licensed only.")
+    assert len(served) * 4096 <= page_fetcher.REFUSAL_MAX_BYTES + 4096
+
+
+def test_a_refusal_after_a_redirect_is_refused() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/":
+            return _redirect("/wall")
+        return httpx.Response(403, headers={"content-type": HTML}, content=b"<p>No bots</p>")
+
+    fetcher, _ = _fetcher(handler)
+
+    assert fetcher.fetch_page("https://example.test/") == PageFetchFailed(
+        "refused", status=403, message="No bots"
+    )
+
+
+def test_a_refusal_with_a_non_html_body_has_no_message() -> None:
+    fetcher, _ = _fetcher(
+        lambda request: httpx.Response(
+            402, headers={"content-type": "application/json"}, content=b'{"a":1}'
+        )
+    )
+
+    assert fetcher.fetch_page("https://example.test/") == PageFetchFailed(
+        "refused", status=402, message=""
+    )
+
+
+def test_a_refused_photo_is_none() -> None:
+    fetcher, _ = _fetcher(lambda request: httpx.Response(403, content=b"<p>no</p>"))
+
+    assert fetcher.fetch_image("https://photos.example.test/a.jpg") is None
+
+
+def test_logs_a_refusal_without_message_or_path(
+    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(page_fetcher.logger, "disabled", False)
+    fetcher, _ = _fetcher(
+        lambda request: httpx.Response(
+            402, headers={"content-type": HTML}, content=b"<p>SecretWallText</p>"
+        )
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        fetcher.fetch_page("https://example.test/private/path?token=s3cret")
+
+    text = caplog.text
+    assert "kind=refused" in text and "status=402" in text and "example.test" in text
+    assert "SecretWallText" not in text and "private" not in text and "s3cret" not in text
 
 
 @pytest.mark.parametrize(

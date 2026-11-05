@@ -51,6 +51,7 @@ from application.ports import (
     PageFetcher,
     PageFetchFailed,
     PageReader,
+    RefusedSiteLog,
     UnitRepository,
 )
 from application.recipe_extraction import (
@@ -126,6 +127,7 @@ class CaptureRecipeUrl:
         timeout_s: float,
         batch_chars: int,
         max_batches: int,
+        refused_sites: RefusedSiteLog,
     ) -> None:
         self._notebooks = notebooks
         self._catalog = catalog
@@ -136,6 +138,7 @@ class CaptureRecipeUrl:
         self._timeout_s = timeout_s
         self._batch_chars = batch_chars
         self._max_batches = max_batches
+        self._refused_sites = refused_sites
 
     def execute(self, command: CaptureRecipeUrlCommand) -> CaptureUrlOutcome:
         link = normalize_link(command.url)
@@ -150,6 +153,8 @@ class CaptureRecipeUrl:
         page = self._fetcher.fetch_page(link.url)
         if isinstance(page, PageFetchFailed):
             self._log("PageFetchFailed", link.host, kind=page.kind)
+            if page.kind == "refused":
+                self._record_refusal(link.host, command.actor_user_id, page)
             return page
         content = self._reader.read(page.html, page.final_url)
         host = _host(page.final_url)
@@ -201,6 +206,13 @@ class CaptureRecipeUrl:
         finally:
             # Futures still running (after a failed part) finish on their own and are dropped.
             pool.shutdown(wait=False)
+
+    def _record_refusal(self, host: str, actor_user_id: UUID, page: PageFetchFailed) -> None:
+        """Count the refusal for the admin; never changes the member's answer (spec 067 R6)."""
+        try:
+            self._refused_sites.record(host, actor_user_id, page.status or 0, page.message)
+        except Exception:
+            logger.warning("refused site record failed: host=%s", host)
 
     def _draft(
         self,

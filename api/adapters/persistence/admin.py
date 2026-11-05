@@ -8,6 +8,7 @@ from uuid import UUID
 from application.ports import (
     AdminIngredientRow,
     AdminRecipeRow,
+    AdminRefusedSiteRow,
     AdminUnitRow,
     AdminUserRow,
 )
@@ -16,6 +17,15 @@ from sqlalchemy.orm import Session
 
 from adapters.persistence.models import UnitModel, UserModel
 from adapters.persistence.recipes import SqlAlchemyRecipeRepository
+
+_REFUSED_SITES = text(
+    """
+    SELECT domain, total_refusals, distinct_members, first_seen_at, last_seen_at,
+           last_status, last_message
+    FROM refused_site
+    ORDER BY total_refusals DESC, domain
+    """
+)
 
 _INGREDIENTS = text(
     """
@@ -153,6 +163,11 @@ class SqlAlchemyAdminReports:
 
     def users(self) -> Sequence[AdminUserRow]:
         return [AdminUserRow(**row._mapping) for row in self._session.execute(_USERS)]
+
+    def refused_sites(self) -> Sequence[AdminRefusedSiteRow]:
+        return [
+            AdminRefusedSiteRow(**row._mapping) for row in self._session.execute(_REFUSED_SITES)
+        ]
 
     def delete_recipe(self, recipe_id: UUID) -> None:
         # Lines, steps, source, cart entries, locks and search data leave with it (see

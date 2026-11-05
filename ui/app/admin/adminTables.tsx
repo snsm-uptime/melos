@@ -1,4 +1,4 @@
-/** The dashboard's four table schemas (spec 066 research R7), over spec 055's admin API rows. */
+/** The dashboard's five table schemas (spec 066 research R7), over spec 055's admin API rows. */
 
 import { CheckIcon, CloseIcon } from "@/app/icons";
 import { Chip } from "@/components/Chip";
@@ -42,6 +42,16 @@ export type UserRow = {
   carts_edited: number;
   carts_closed: number;
   latest_cart_action_at: string | null;
+};
+
+export type RefusedSiteRow = {
+  domain: string;
+  total_refusals: number;
+  distinct_members: number;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
+  last_status: number | null;
+  last_message: string | null;
 };
 
 export type AdminActions = { deleteRecipe: (id: string) => Promise<boolean> };
@@ -234,6 +244,44 @@ export function usersTable(t: Messages, locale: Locale): TableSchema<UserRow> {
         locale,
       ),
       { key: "id", label: c.id, sort: "text", searchable: true },
+    ],
+  };
+}
+
+export function refusedSitesTable(
+  t: Messages,
+  locale: Locale,
+): TableSchema<RefusedSiteRow> {
+  const c = t.columns.refusedSites;
+  return {
+    search: true,
+    rowKey: (row) => row.domain,
+    columns: [
+      { key: "domain", label: c.domain, sort: "text", searchable: true },
+      { key: "total_refusals", label: c.totalRefusals, sort: "number" },
+      { key: "distinct_members", label: c.distinctMembers, sort: "number" },
+      dateColumn<RefusedSiteRow>("first_seen_at", c.firstSeenAt, t, locale),
+      dateColumn<RefusedSiteRow>("last_seen_at", c.lastSeenAt, t, locale),
+      {
+        key: "last_status",
+        label: c.lastStatus,
+        sort: "number",
+        cell: (row) =>
+          row.last_status === null ? t.none : String(row.last_status),
+      },
+      {
+        key: "last_message",
+        label: c.lastMessage,
+        sort: false,
+        searchable: true,
+        wrap: true,
+        // The site's own text: a React text node, so it is never read as HTML (spec 067 R7).
+        cell: (row) => (
+          <span className="block max-w-[28rem] min-w-[12rem] break-words whitespace-normal">
+            {row.last_message ? row.last_message : t.none}
+          </span>
+        ),
+      },
     ],
   };
 }

@@ -59,6 +59,7 @@ const en = {
   linkTooLong: "That link is too long.",
   submittingLink: "Reading the page…",
   pageFetchFailed: "We couldn't open that page. Paste the recipe text instead.",
+  siteRequiresLicense: "This website requires a license, it's not supported yet.",
   pageNoRecipe: "We couldn't find a recipe on that page. Paste the recipe text instead.",
   pageCut: "This page was long, so part of it was not read. Check the ingredients and steps.",
   unavailableLink: "The assistant isn't responding. Your link is kept — try again.",
@@ -193,6 +194,7 @@ const es: CaptureMessages = {
   linkTooLong: "Ese enlace es demasiado largo.",
   submittingLink: "Leyendo la página…",
   pageFetchFailed: "No pudimos abrir esa página. Pega el texto de la receta.",
+  siteRequiresLicense: "Este sitio web requiere una licencia, aún no es compatible.",
   pageNoRecipe: "No encontramos una receta en esa página. Pega el texto de la receta.",
   pageCut: "Esta página era larga y no se leyó entera. Revisa los ingredientes y los pasos.",
   unavailableLink: "El asistente no responde. Tu enlace se conserva: inténtalo de nuevo.",
@@ -349,6 +351,8 @@ export function messageForCode(
       return t.linkTooLong;
     case "page_fetch_failed":
       return t.pageFetchFailed;
+    case "site_requires_license":
+      return t.siteRequiresLicense;
     case "page_no_recipe":
       return t.pageNoRecipe;
     case "draft_incomplete":

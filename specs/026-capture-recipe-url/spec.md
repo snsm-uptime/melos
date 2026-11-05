@@ -151,7 +151,7 @@ Whatever a member pastes, the app opens only public web pages. A link to the app
 - **FR-021a**: A page that opens but holds no recipe (no schema.org Recipe item with ingredients, and the assistant reports the page's Markdown is not a recipe) MUST show "We couldn't find a recipe on that page. Paste the recipe text instead." in place of the not-a-recipe message of spec 017, and MUST NOT show a draft or create data.
 - **FR-022**: The assistant failure messages of spec 016 (FR-016, FR-017, FR-018, FR-028) and the missing-part messages of spec 017 MUST be shown for a link capture too, with "Your text is kept" worded as "Your link is kept" where it appears.
 - **FR-023**: After every refused or failed capture, the link MUST stay in the field unchanged.
-- **FR-024**: No message MAY contain raw service errors, site error pages, resolved addresses, keys or technical traces.
+- **FR-024**: No message MAY contain raw service errors, site error pages, resolved addresses, keys or technical traces. (Spec 067 adds `site_requires_license` for a site's own 401/402/403/451 refusal; its message holds none of these either.)
 - **FR-025**: Every text of this feature (link sheet, buttons, messages) MUST exist in English and Spanish and follow the account language (spec 063).
 
 **Other channels**

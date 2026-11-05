@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { BoxIcon, HashtagIcon, NotebookIcon, UsersIcon } from "@/app/icons";
+import {
+  AlertIcon,
+  BoxIcon,
+  HashtagIcon,
+  NotebookIcon,
+  UsersIcon,
+} from "@/app/icons";
 import { useChromeHeader } from "@/components/ChromeBack";
 import { CauldronLoader } from "@/components/CauldronLoader";
 import { DataTable } from "@/components/DataTable";
@@ -15,15 +21,23 @@ import { withMinimumLoading } from "@/lib/minimumLoading";
 import {
   ingredientsTable,
   recipesTable,
+  refusedSitesTable,
   unitsTable,
   usersTable,
   type IngredientRow,
   type RecipeRow,
+  type RefusedSiteRow,
   type UnitRow,
   type UserRow,
 } from "./adminTables";
 
-const SECTIONS = ["units", "ingredients", "recipes", "users"] as const;
+const SECTIONS = [
+  "units",
+  "ingredients",
+  "recipes",
+  "users",
+  "refused-sites",
+] as const;
 type Section = (typeof SECTIONS)[number];
 
 const TAB_ICONS: Record<Section, typeof BoxIcon> = {
@@ -31,6 +45,16 @@ const TAB_ICONS: Record<Section, typeof BoxIcon> = {
   ingredients: BoxIcon,
   recipes: NotebookIcon,
   users: UsersIcon,
+  "refused-sites": AlertIcon,
+};
+
+/** The response key for each section's rows. */
+const ROWS_KEY: Record<Section, string> = {
+  units: "units",
+  ingredients: "ingredients",
+  recipes: "recipes",
+  users: "users",
+  "refused-sites": "refused_sites",
 };
 
 type Row = Record<string, unknown>;
@@ -44,7 +68,9 @@ async function loadSection(section: Section): Promise<Loaded> {
       cache: "no-store",
     });
     if (!response.ok) return { state: "failed" };
-    const rows = ((await response.json()) as Record<string, unknown>)[section];
+    const rows = ((await response.json()) as Record<string, unknown>)[
+      ROWS_KEY[section]
+    ];
     return Array.isArray(rows)
       ? { state: "ready", rows: rows as Row[] }
       : { state: "failed" };
@@ -118,10 +144,18 @@ function SectionTable({
           {...common}
         />
       );
+    case "refused-sites":
+      return (
+        <DataTable
+          schema={refusedSitesTable(t, locale)}
+          rows={rows as RefusedSiteRow[]}
+          {...common}
+        />
+      );
   }
 }
 
-/** Four tabs, each loaded the first time it opens (spec 055 contracts/admin-api.md). */
+/** Five tabs, each loaded the first time it opens (spec 055 contracts/admin-api.md). */
 export function AdminDashboard({ locale }: { locale: Locale }) {
   const t = adminMessages[locale];
   const [section, setSection] = useState<Section>("units");
@@ -178,7 +212,10 @@ export function AdminDashboard({ locale }: { locale: Locale }) {
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4 p-4">
-      <TabList label={t.tabsLabel}>
+      <TabList
+        label={t.tabsLabel}
+        cycle={{ previousLabel: t.previousTab, nextLabel: t.nextTab }}
+      >
         {SECTIONS.map((name) => {
           const Icon = TAB_ICONS[name];
           return (

@@ -102,6 +102,8 @@ The ui runs the same rules in `ui/lib/capture/linkRules.ts` only to enable the b
 
 **Decision**: New codes on `POST /notebooks/{id}/captures/url`: `link_empty`, `link_invalid`, `link_too_long` (422, before any work); `page_fetch_failed` (422, every fetch failure including blocked addresses, so a member cannot probe the network by message); `page_no_recipe` (422, FR-021a). Existing codes keep their meaning: `one_recipe_at_a_time`, `draft_incomplete`, `ingredient_line_problem`, `ai_invalid_output`, `ai_limit_reached` (429), `ai_unavailable`, `ai_misconfigured` (503), `notebook_not_found` (404), `kitchen_archived` (409). `not_a_recipe` is never sent by this route: a whole-mode `NotARecipe` other than multiple recipes becomes `page_no_recipe`.
 
+**Narrowed by spec 067 (2026-11-04)**: when the public site itself answers 401, 402, 403 or 451, the route answers `422 site_requires_license` ("This website requires a license, it's not supported yet."), still with no status, domain or site text. A real answer from a host that passed the address checks reveals nothing about the network; every other failure, blocked addresses included, stays `page_fetch_failed`. See `specs/067-refused-site-registry/`.
+
 UI messages live in `ui/lib/i18n/capture.ts` (English and Spanish; parity test). The assistant messages get link variants ("Your link is kept" / "Tu enlace se conserva"). Spanish wording is drafted and needs the owner's review, as in spec 063.
 
 ## R11. Timing (SC-002)

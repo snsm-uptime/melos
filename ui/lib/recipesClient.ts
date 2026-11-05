@@ -10,6 +10,8 @@ export type RecipeCard = {
   notebook_id: string;
   notebook_name: string;
   created_at: string;
+  /** The recipe image as a data URI (spec 026), or null. Absent from older answers. */
+  preview_image?: string | null;
 };
 
 export type RecipePage = {
