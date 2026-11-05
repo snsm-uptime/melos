@@ -32,4 +32,7 @@
 ## Notes
 
 - Validation run 1: all items pass. No clarification questions were needed; the defaults are listed in Assumptions.
+- Validation run 2 (2026-11-04): User Story 1 scenario 6 offered two outcomes; it now states the reset that Assumptions already chose.
+- Clarify 2026-11-04: multi-level sort added (FR-002, FR-002a); all items still pass.
+- Analyze 2026-11-04: fixes for I1, I2, T1, U1, U2, E1, C1 applied to spec, research, tasks and plan; all items still pass.
 - The spec was created by `.specify/scripts/bash/create-new-feature.sh --number 66`, and backlog entry S-066 was added first, as AGENTS.md requires.

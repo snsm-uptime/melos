@@ -18,6 +18,7 @@ import { shoppingListMessages } from "./shoppingList";
 import { sidePanelMessages } from "./sidePanel";
 import { signInMessages } from "./signin";
 import { signupMessages } from "./signup";
+import { tableMessages } from "./table";
 import { verifyMessages } from "./verify";
 
 /**
@@ -44,6 +45,7 @@ const SETS: Record<string, { en: unknown; es: unknown }> = {
   sidePanel: sidePanelMessages,
   signIn: signInMessages,
   signup: signupMessages,
+  table: tableMessages,
   verify: verifyMessages,
 };
 
@@ -57,6 +59,7 @@ const SAME_ON_PURPOSE = new Set<string>([
   "admin.no", // "No" is the same word in Spanish
   "admin.none", // the dash shown for an empty value
   "admin.kinds.personal", // "Personal" is the same word in Spanish
+  "notebooks.tabPersonal", // "Personal", as above
   "admin.columns.users.alias", // "Alias" is the same word in Spanish
   "account.photoCropZoom", // "Zoom" is the word used in Spanish too
   "alias.photoCropZoom", // "Zoom", as above

@@ -304,6 +304,125 @@ describe("AdminDashboard", () => {
     expect(chips).toEqual(["ana", "No alias"]);
   });
 
+  const firstCells = () =>
+    Array.from(container.querySelectorAll("tbody tr td:first-child")).map(
+      (td) => td.textContent,
+    );
+  const search = () => container.querySelector<HTMLInputElement>("input");
+  function type(text: string) {
+    const setter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )!.set!;
+    act(() => {
+      setter.call(search()!, text);
+      search()!.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  }
+
+  describe("sort and search (spec 066)", () => {
+    beforeEach(() => {
+      (SECTIONS.units as { units: unknown[] }).units.push({
+        name: "taza",
+        user_references: [],
+        user_aliases: [],
+        reference_count: 2,
+        is_default: false,
+        created_at: null,
+      });
+      (SECTIONS.ingredients as { ingredients: unknown[] }).ingredients.push({
+        name: "ajo",
+        recipes: 9,
+        people: 1,
+      });
+      (SECTIONS.users as { users: unknown[] }).users.push({
+        id: "u-2",
+        alias: "ben",
+        open_sessions: 10,
+        newest_session_at: null,
+        recipes_authored: 0,
+        latest_recipe_at: "2026-10-01T00:00:00Z",
+        carts_created: 0,
+        carts_edited: 0,
+        carts_closed: 0,
+        latest_cart_action_at: null,
+      });
+    });
+
+    afterEach(() => {
+      (SECTIONS.units as { units: unknown[] }).units.pop();
+      (SECTIONS.ingredients as { ingredients: unknown[] }).ingredients.pop();
+      (SECTIONS.users as { users: unknown[] }).users.pop();
+    });
+
+    it("sorts each tab by a numeric heading, asc then desc, with no request", async () => {
+      await render();
+      const numeric = async (col: number) => {
+        await act(async () =>
+          container.querySelectorAll<HTMLButtonElement>("th button")[col].click(),
+        );
+        const asc = firstCells();
+        await act(async () =>
+          container.querySelectorAll<HTMLButtonElement>("th button")[col].click(),
+        );
+        return [asc, firstCells()];
+      };
+      expect(await numeric(1)).toEqual([
+        ["lata", "taza", "cup"],
+        ["cup", "lata", "taza"],
+      ]);
+      await open("Ingredients");
+      expect(await numeric(1)).toEqual([
+        ["tomate", "ajo"],
+        ["ajo", "tomate"],
+      ]);
+      await open("Recipes");
+      expect(await numeric(1)).toEqual([
+        ["Pan", "Sopa"],
+        ["Sopa", "Pan"],
+      ]);
+      await open("Users");
+      expect(await numeric(1)).toEqual([
+        ["No alias", "ben"],
+        ["ben", "No alias"],
+      ]);
+      expect(urls).toHaveLength(4);
+    });
+
+    it("sorts Units by Count then Name", async () => {
+      await render();
+      const buttons = () =>
+        container.querySelectorAll<HTMLButtonElement>("th button");
+      await act(async () => buttons()[1].click());
+      await act(async () => buttons()[0].click());
+      await act(async () => buttons()[0].click());
+      expect(firstCells()).toEqual(["taza", "lata", "cup"]);
+    });
+
+    it("restores the default order and an empty search when the tab changes", async () => {
+      await render();
+      await act(async () =>
+        container.querySelectorAll<HTMLButtonElement>("th button")[1].click(),
+      );
+      type("a");
+      await open("Ingredients");
+      await act(async () => tab("Units").click());
+      expect(firstCells()).toEqual(["lata", "cup", "taza"]);
+      expect(search()!.value).toBe("");
+    });
+
+    it("filters Recipes as the admin types, and Users has no search bar", async () => {
+      await render();
+      await open("Recipes");
+      type("sop");
+      expect(firstCells()).toEqual(["Sopa"]);
+      type("BEN");
+      expect(firstCells()).toEqual(["Sopa", "Pan"]);
+      await open("Users");
+      expect(search()).toBeNull();
+    });
+  });
+
   it("says so when a section fails, and tries again", async () => {
     failing = true;
     await render();
