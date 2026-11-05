@@ -264,6 +264,12 @@ body {
   a {
     color: inherit;
   }
+
+  /* Every field takes the primary (accent) colour on focus; a utility still overrides it. */
+  :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]), select, textarea):focus {
+    border-color: var(--accent);
+    outline: none;
+  }
 }
 
 .box-icon-lid {
