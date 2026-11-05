@@ -61,20 +61,10 @@ function PotIcon() {
 export function RecipeCard({ recipe, locale, showNotebook = false, from, cart }: RecipeCardProps) {
   const t = recipeListMessages[locale];
   const c = cartMessages[locale];
-  return (
-    // `isolate` keeps the z-10 of the link and cart control inside the card; they only need to
-    // clear the title link's overlay, and must not paint over the app's open menus.
-    <article
-      className={`relative isolate flex min-w-0 items-center gap-[var(--space-3)] rounded-[var(--radius-md)] border border-border ${
-        cart?.inCart ? "bg-[var(--card-selected)]" : "bg-surface"
-      } p-[var(--space-3)]${
-        // The title link's overlay makes the whole card the target; show that it is one.
-        from ? ` ${linkCardClassName}` : ""
-      }`}
-    >
-      <span className="flex flex-shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-background p-[var(--space-4)] text-muted">
-        <PotIcon />
-      </span>
+  // With an image the card stands upright: the photo on top, the text under it.
+  const image = recipe.preview_image ?? null;
+  const details = (
+    <>
       <div className="flex min-w-0 flex-1 flex-col gap-[var(--space-1)]">
         <h3
           className="m-0 truncate text-[1rem] font-[550] leading-normal text-foreground"
@@ -129,6 +119,44 @@ export function RecipeCard({ recipe, locale, showNotebook = false, from, cart }:
           />
         </div>
       ) : null}
+    </>
+  );
+  return (
+    // `isolate` keeps the z-10 of the link and cart control inside the card; they only need to
+    // clear the title link's overlay, and must not paint over the app's open menus.
+    <article
+      className={`relative isolate flex min-w-0 rounded-[var(--radius-md)] border border-border ${
+        image
+          ? // Two parts: the photo on top, the metadata under it; as wide as the photo at most.
+            "h-full w-full max-w-[200px] flex-col overflow-hidden"
+          : "items-center gap-[var(--space-3)] p-[var(--space-3)]"
+      } ${cart?.inCart ? "bg-[var(--card-selected)]" : "bg-surface"}${
+        // The title link's overlay makes the whole card the target; show that it is one.
+        from ? ` ${linkCardClassName}` : ""
+      }`}
+    >
+      {image ? (
+        // Fills the card's width; the ratio keeps the photo in proportion. The card clips its corners.
+        // eslint-disable-next-line @next/next/no-img-element -- a data URI, not a site address
+        <img
+          src={image}
+          alt=""
+          loading="lazy"
+          data-testid="recipe-card-image"
+          className="block aspect-[4/3] w-full flex-shrink-0 bg-background object-cover"
+        />
+      ) : (
+        <span className="flex flex-shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-background p-[var(--space-4)] text-muted">
+          <PotIcon />
+        </span>
+      )}
+      {image ? (
+        <div className="flex min-w-0 items-start gap-[var(--space-2)] p-[var(--space-3)]">
+          {details}
+        </div>
+      ) : (
+        details
+      )}
     </article>
   );
 }
