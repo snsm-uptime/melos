@@ -106,7 +106,9 @@ export function RecipeDetailView({
                 label={cartAction.inCart ? c.removeFromCart : c.addToCart}
                 aria-pressed={cartAction.inCart}
                 tone={cartAction.inCart ? "danger" : "default"}
-                icon={<CartPlusIcon inCart={cartAction.inCart} className="size-6" />}
+                icon={
+                  <CartPlusIcon inCart={cartAction.inCart} className="size-6" />
+                }
                 onClick={cartAction.onToggle}
               />
             </div>
@@ -138,65 +140,69 @@ export function RecipeDetailView({
           ) : null}
         </header>
 
-        {recipe.preview_image ? (
+        {lockedBy ? (
           <div className="px-4">
-            {/* eslint-disable-next-line @next/next/no-img-element -- a stored data URI */}
-            <img
-              src={recipe.preview_image}
-              alt={recipe.title}
-              className="block max-h-72 max-w-full rounded-[0.75rem] object-cover"
+            <EditorNotice
+              alias={lockedBy.alias}
+              kind="recipe"
+              locale={locale}
             />
           </div>
         ) : null}
 
-        {lockedBy ? (
-          <div className="px-4">
-            <EditorNotice alias={lockedBy.alias} kind="recipe" locale={locale} />
-          </div>
-        ) : null}
-
         <div className="flex flex-col gap-6 px-4 md:min-h-0 md:flex-1 md:flex-row">
-          <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:max-w-[450px] md:flex-1 md:overflow-hidden">
-            <div className="flex shrink-0 items-center justify-between gap-2">
-              <h2 className="m-0 text-[1rem] font-[550] text-foreground">
-                {t.ingredientsTitle}
-              </h2>
-              <ServingsControl
-                value={servings}
-                onChange={setServings}
-                locale={locale}
+          {/* The image over the ingredients, one column beside the steps; on mobile the image comes first. */}
+          <div className="flex min-w-0 flex-col gap-6 md:min-h-0 md:max-w-[450px] md:flex-1">
+            {recipe.preview_image ? (
+              // eslint-disable-next-line @next/next/no-img-element -- a stored data URI
+              <img
+                src={recipe.preview_image}
+                alt={recipe.title}
+                className="block max-h-72 w-full shrink-0 rounded-[0.75rem] object-cover"
               />
-            </div>
-            {scaled || recipe.servings_estimated ? (
-              <div className="flex flex-wrap items-center justify-end gap-2 text-[0.85rem] text-muted">
-                {scaled ? <span>{t.makes(recipe.base_servings)}</span> : null}
-                {recipe.servings_estimated ? (
-                  <Chip tone="warning">{t.estimated}</Chip>
-                ) : null}
-                {scaled ? (
-                  <button
-                    type="button"
-                    className="text-[0.85rem] text-accent underline underline-offset-2"
-                    onClick={() => setServings(recipe.base_servings)}
-                  >
-                    {t.resetServings}
-                  </button>
-                ) : null}
-              </div>
             ) : null}
-            <div className="flex flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
-              <ul className="m-0 flex list-none flex-col gap-2 p-0">
-                {lines.map((line, index) => (
-                  <IngredientLineRow
-                    key={`${index}-${line.name}`}
-                    line={line}
-                    readOnly
-                    locale={locale}
-                  />
-                ))}
-              </ul>
-            </div>
-          </section>
+            <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-hidden">
+              <div className="flex shrink-0 items-center justify-between gap-2">
+                <h2 className="m-0 text-[1rem] font-[550] text-foreground">
+                  {t.ingredientsTitle}
+                </h2>
+                <ServingsControl
+                  value={servings}
+                  onChange={setServings}
+                  locale={locale}
+                />
+              </div>
+              {scaled || recipe.servings_estimated ? (
+                <div className="flex flex-wrap items-center justify-end gap-2 text-[0.85rem] text-muted">
+                  {scaled ? <span>{t.makes(recipe.base_servings)}</span> : null}
+                  {recipe.servings_estimated ? (
+                    <Chip tone="warning">{t.estimated}</Chip>
+                  ) : null}
+                  {scaled ? (
+                    <button
+                      type="button"
+                      className="text-[0.85rem] text-accent underline underline-offset-2"
+                      onClick={() => setServings(recipe.base_servings)}
+                    >
+                      {t.resetServings}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+              <div className="flex flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-y-auto">
+                <ul className="m-0 flex list-none flex-col gap-2 p-0">
+                  {lines.map((line, index) => (
+                    <IngredientLineRow
+                      key={`${index}-${line.name}`}
+                      line={line}
+                      readOnly
+                      locale={locale}
+                    />
+                  ))}
+                </ul>
+              </div>
+            </section>
+          </div>
 
           <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-hidden">
             <h2 className="m-0 shrink-0 text-[1rem] font-[550] text-foreground">

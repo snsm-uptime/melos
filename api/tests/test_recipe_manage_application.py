@@ -100,6 +100,7 @@ class FakeRecipes:
             title=recipe.title,
             base_servings=recipe.base_servings,
             servings_estimated=recipe.servings_estimated,
+            preview_image=recipe.preview_image if recipe.change_image else current.preview_image,
             lines=tuple(
                 RecipeLineDetail(
                     name=line.name,

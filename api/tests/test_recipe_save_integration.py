@@ -491,12 +491,35 @@ def test_a_text_save_has_no_image(client: TestClient):
     assert detail["preview_image"] is None
 
 
+def test_a_text_save_keeps_a_picked_image(client: TestClient):
+    """S-067: the person's own picture comes with any save, not only a link capture."""
+    _register(client, "text_img@example.com")
+    response = client.post(
+        "/recipes", json=_body(_personal_notebook(client), preview_image=PREVIEW)
+    )
+
+    assert response.status_code == 201, response.text
+    detail = client.get(f"/recipes/{response.json()['recipe']['id']}").json()
+    assert detail["preview_image"] == PREVIEW
+
+
+def test_a_recipe_written_by_hand_saves_with_no_source(client: TestClient, db_session: Session):
+    """A recipe typed into the empty form: no pasted text and no link."""
+    _register(client, "manual@example.com")
+    response = client.post("/recipes", json=_body(_personal_notebook(client), source_text=""))
+
+    assert response.status_code == 201, response.text
+    detail = client.get(f"/recipes/{response.json()['recipe']['id']}").json()
+    assert detail["title"] == "Onion soup"
+    assert detail["preview_image"] is None
+
+
 @pytest.mark.parametrize(
     ("overrides", "code"),
     [
         ({"source_text": "", "source_url": "javascript:alert(1)"}, "invalid_recipe"),
         ({"source_url": "https://example.test/soup"}, "invalid_recipe"),
-        ({"preview_image": PREVIEW}, "invalid_preview_image"),
+        ({"preview_image": "data:image/gif;base64,R0lGOD=="}, "invalid_preview_image"),
         (
             {
                 "source_text": "",

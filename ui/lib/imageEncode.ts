@@ -31,18 +31,35 @@ export function loadImage(file: File): Promise<HTMLImageElement> {
   });
 }
 
-function drawCroppedSquare(img: HTMLImageElement, area: Area): HTMLCanvasElement {
+function drawCroppedSquare(
+  img: HTMLImageElement,
+  area: Area,
+): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = AVATAR_SIZE;
   canvas.height = AVATAR_SIZE;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D context unavailable.");
 
-  ctx.drawImage(img, area.x, area.y, area.width, area.height, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
+  ctx.drawImage(
+    img,
+    area.x,
+    area.y,
+    area.width,
+    area.height,
+    0,
+    0,
+    AVATAR_SIZE,
+    AVATAR_SIZE,
+  );
   return canvas;
 }
 
-function canvasToDataUri(canvas: HTMLCanvasElement, mimeType: string, quality?: number): string {
+function canvasToDataUri(
+  canvas: HTMLCanvasElement,
+  mimeType: string,
+  quality?: number,
+): string {
   return canvas.toDataURL(mimeType, quality);
 }
 
@@ -68,7 +85,10 @@ function encodeCanvas(canvas: HTMLCanvasElement, mimeType: string): string {
 
   let quality = 0.9;
   let dataUri = canvasToDataUri(canvas, "image/jpeg", quality);
-  while (decodedByteLength(dataUri) > TARGET_MAX_BYTES && quality > MIN_JPEG_QUALITY) {
+  while (
+    decodedByteLength(dataUri) > TARGET_MAX_BYTES &&
+    quality > MIN_JPEG_QUALITY
+  ) {
     quality -= 0.1;
     dataUri = canvasToDataUri(canvas, "image/jpeg", quality);
   }
@@ -108,7 +128,9 @@ function loadDataUri(dataUri: string): Promise<HTMLImageElement> {
  * JPEG, quality stepped down from 0.85 to 0.4 until it fits 300 KB (the api's limit).
  * Returns null when the photo cannot be read or cannot fit; the recipe is then saved without it.
  */
-export async function encodeRecipePreview(dataUri: string): Promise<string | null> {
+export async function encodeRecipePreview(
+  dataUri: string,
+): Promise<string | null> {
   let img: HTMLImageElement;
   try {
     img = await loadDataUri(dataUri);
@@ -117,6 +139,26 @@ export async function encodeRecipePreview(dataUri: string): Promise<string | nul
   }
   const width = img.naturalWidth || img.width;
   const height = img.naturalHeight || img.height;
+  if (!width || !height) return null;
+  return encodePreviewArea(img, { x: 0, y: 0, width, height });
+}
+
+/**
+ * The person's own recipe photo (S-067): the cropped part of `img`, then the same rules as a
+ * page photo (longest side 800 px, JPEG, under 300 KB). Throws when it cannot fit, so the
+ * picker can say so.
+ */
+export async function encodeCroppedRecipeImage(
+  img: HTMLImageElement,
+  area: Area,
+): Promise<string> {
+  const encoded = encodePreviewArea(img, area);
+  if (encoded === null) throw new Error("Could not encode the recipe image.");
+  return encoded;
+}
+
+function encodePreviewArea(img: HTMLImageElement, area: Area): string | null {
+  const { width, height } = area;
   if (!width || !height) return null;
   const scale = Math.min(1, PREVIEW_LONGEST_SIDE / Math.max(width, height));
 
@@ -128,7 +170,17 @@ export async function encodeRecipePreview(dataUri: string): Promise<string | nul
   // JPEG has no transparency: a white background instead of black.
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  ctx.drawImage(
+    img,
+    area.x,
+    area.y,
+    width,
+    height,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+  );
 
   for (const quality of PREVIEW_QUALITIES) {
     const encoded = canvasToDataUri(canvas, "image/jpeg", quality);

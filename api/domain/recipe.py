@@ -44,6 +44,10 @@ class EditedRecipe:
     servings_estimated: bool
     lines: tuple[IngredientLine, ...]
     steps: tuple[str, ...]
+    # The image (S-067): change_image False keeps the stored one; True stores preview_image,
+    # where None removes it. preview_image is a data URI already checked by recipe_preview.
+    change_image: bool = False
+    preview_image: str | None = None
 
 
 def resolve_line_names(

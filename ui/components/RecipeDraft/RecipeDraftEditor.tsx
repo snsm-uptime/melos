@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { BackIcon, SaveIcon, TrashIcon } from "@/app/icons";
 import { CauldronLoader } from "@/components/CauldronLoader";
 import { IconButton } from "@/components/IconButton";
+import { RecipeImagePicker } from "@/components/RecipeImagePicker";
 import {
   fetchVocabulary,
   type VocabularyResponse,
@@ -26,8 +27,8 @@ import {
   failSave,
   getCaptureState,
   markSaved,
-  removePreviewImage,
   savedReturnPath,
+  setPreviewImage,
   startSave,
   undoChange,
   useCaptureState,
@@ -266,34 +267,20 @@ export function RecipeDraftEditor() {
       />
       */}
 
-      {draft.previewImage || draft.pageCut ? (
-        <div className="flex flex-col gap-3 px-4">
-          {draft.previewImage ? (
-            <figure className="relative m-0 self-start">
-              {/* eslint-disable-next-line @next/next/no-img-element -- a data URI, not a site address */}
-              <img
-                src={draft.previewImage}
-                alt={t.pagePhotoAlt}
-                className="block max-h-56 max-w-full rounded-[0.75rem] object-cover"
-              />
-              <span className="absolute top-2 right-2">
-                <IconButton
-                  variant="ghost"
-                  label={t.removePhoto}
-                  icon={<TrashIcon className="size-5" />}
-                  onClick={removePreviewImage}
-                  className="bg-background/80"
-                />
-              </span>
-            </figure>
-          ) : null}
-          {draft.pageCut ? (
-            <p role="note" className="m-0 text-[0.9rem] text-muted">
-              {t.pageCut}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
+      <div className="flex flex-col gap-3 px-4">
+        {/* The page's photo, or the member's own (S-067): add, change or remove it. */}
+        <RecipeImagePicker
+          value={draft.previewImage ?? null}
+          onChange={setPreviewImage}
+          locale={locale}
+          disabled={capture.saving}
+        />
+        {draft.pageCut ? (
+          <p role="note" className="m-0 text-[0.9rem] text-muted">
+            {t.pageCut}
+          </p>
+        ) : null}
+      </div>
 
       <div className="flex flex-col gap-6 px-4 md:min-h-0 md:flex-1 md:flex-row">
         <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:max-w-[450px] md:flex-1 md:overflow-hidden">

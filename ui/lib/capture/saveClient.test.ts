@@ -222,11 +222,11 @@ describe("a draft from a link (spec 026)", () => {
     }
   });
 
-  it("a text draft never sends a link or a photo", () => {
+  it("a text draft never sends a link, but sends its photo when it has one (S-067)", () => {
     const body = buildSaveBody(state(), "data:image/jpeg;base64,SMALL");
 
     expect(body).not.toHaveProperty("source_url");
-    expect(body).not.toHaveProperty("preview_image");
+    expect(body?.preview_image).toBe("data:image/jpeg;base64,SMALL");
     expect(body?.source_text).toBe("2 large onions.");
   });
 });

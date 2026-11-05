@@ -190,6 +190,8 @@ class SqlAlchemyRecipeRepository:
         row.title = recipe.title
         row.base_servings = recipe.base_servings
         row.servings_estimated = recipe.servings_estimated
+        if recipe.change_image:
+            row.preview_image_base64 = recipe.preview_image
         # clock_timestamp, not now(): the token must move even inside one long transaction.
         row.updated_at = func.clock_timestamp()
         self._session.flush()

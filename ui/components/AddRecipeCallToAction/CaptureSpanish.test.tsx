@@ -4,26 +4,52 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { clearCapture, getCaptureState, openSheet } from "@/lib/capture/captureStore";
+import {
+  clearCapture,
+  getCaptureState,
+  openSheet,
+} from "@/lib/capture/captureStore";
 
 import { AddRecipeOptionsDialog } from "./AddRecipeOptionsDialog";
 import { TextCaptureSheet } from "./TextCaptureSheet";
 
-const prefs = vi.hoisted(() => ({ value: { locale: "es" } as { locale: "en" | "es" } | null }));
-vi.mock("@/components/PreferencesProvider", () => ({ useOptionalPreferences: () => prefs.value }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
+const prefs = vi.hoisted(() => ({
+  value: { locale: "es" } as { locale: "en" | "es" } | null,
+}));
+vi.mock("@/components/PreferencesProvider", () => ({
+  useOptionalPreferences: () => prefs.value,
+}));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}));
 
 const candidates = [
-  { id: "nb-1", name: "Cuaderno de ana", kind: "personal" as const, kitchenId: null },
-  { id: "nb-2", name: "Lista familiar", kind: "personal" as const, kitchenId: null },
+  {
+    id: "nb-1",
+    name: "Cuaderno de ana",
+    kind: "personal" as const,
+    kitchenId: null,
+  },
+  {
+    id: "nb-2",
+    name: "Lista familiar",
+    kind: "personal" as const,
+    kitchenId: null,
+  },
 ];
 
 function json(status: number, body: unknown) {
-  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 function setValue(element: HTMLTextAreaElement, value: string) {
-  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+  const setter = Object.getOwnPropertyDescriptor(
+    HTMLTextAreaElement.prototype,
+    "value",
+  )!.set!;
   act(() => {
     setter.call(element, value);
     element.dispatchEvent(new Event("input", { bubbles: true }));
@@ -40,7 +66,10 @@ describe("the add-recipe entry points in Spanish (spec 063)", () => {
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json(200, { max_text_chars: 5000 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(json(200, { max_text_chars: 5000 })),
+    );
   });
 
   afterEach(() => {
@@ -50,7 +79,17 @@ describe("the add-recipe entry points in Spanish (spec 063)", () => {
   });
 
   it("the options dialog names its options in Spanish", () => {
-    act(() => root.render(<AddRecipeOptionsDialog open onClose={() => {}} onChooseUrl={() => {}} onChooseText={() => {}} />));
+    act(() =>
+      root.render(
+        <AddRecipeOptionsDialog
+          open
+          onClose={() => {}}
+          onChooseUrl={() => {}}
+          onChooseText={() => {}}
+          onChooseManual={() => {}}
+        />,
+      ),
+    );
     const text = document.body.textContent ?? "";
     expect(text).toContain("Agregar una receta");
     expect(text).toContain("Texto");
@@ -61,8 +100,22 @@ describe("the add-recipe entry points in Spanish (spec 063)", () => {
   });
 
   it("the text sheet labels, counter and submit are Spanish", () => {
-    openSheet({ id: "nb-1", kind: "personal", name: "Cuaderno de ana", kitchenId: null, returnPath: "/notebooks" });
-    act(() => root.render(<TextCaptureSheet open candidates={candidates} onDraftReady={() => {}} />));
+    openSheet({
+      id: "nb-1",
+      kind: "personal",
+      name: "Cuaderno de ana",
+      kitchenId: null,
+      returnPath: "/notebooks",
+    });
+    act(() =>
+      root.render(
+        <TextCaptureSheet
+          open
+          candidates={candidates}
+          onDraftReady={() => {}}
+        />,
+      ),
+    );
     setValue(document.querySelector("textarea")!, "2 cebollas");
     const text = document.body.textContent ?? "";
     expect(text).toContain("Texto de la receta");
@@ -77,10 +130,26 @@ describe("the add-recipe entry points in Spanish (spec 063)", () => {
       vi
         .fn()
         .mockResolvedValueOnce(json(200, { max_text_chars: 5000 }))
-        .mockResolvedValueOnce(json(422, { code: "not_a_recipe", detail: "not_food" })),
+        .mockResolvedValueOnce(
+          json(422, { code: "not_a_recipe", detail: "not_food" }),
+        ),
     );
-    openSheet({ id: "nb-1", kind: "personal", name: "Cuaderno de ana", kitchenId: null, returnPath: "/notebooks" });
-    act(() => root.render(<TextCaptureSheet open candidates={candidates} onDraftReady={() => {}} />));
+    openSheet({
+      id: "nb-1",
+      kind: "personal",
+      name: "Cuaderno de ana",
+      kitchenId: null,
+      returnPath: "/notebooks",
+    });
+    act(() =>
+      root.render(
+        <TextCaptureSheet
+          open
+          candidates={candidates}
+          onDraftReady={() => {}}
+        />,
+      ),
+    );
     setValue(document.querySelector("textarea")!, "¿Qué tiempo hará mañana?");
 
     const submit = Array.from(document.querySelectorAll("button")).find(
@@ -91,20 +160,50 @@ describe("the add-recipe entry points in Spanish (spec 063)", () => {
     expect(document.querySelector("[role='alert']")?.textContent).toBe(
       "Eso no parece una receta. No trata de comida. Pega la receta completa, con sus ingredientes y pasos.",
     );
-    expect(document.querySelector("textarea")!.value).toBe("¿Qué tiempo hará mañana?");
+    expect(document.querySelector("textarea")!.value).toBe(
+      "¿Qué tiempo hará mañana?",
+    );
     expect(getCaptureState().draft).toBeNull();
   });
 
   it("the length counter near the limit is Spanish", () => {
-    openSheet({ id: "nb-1", kind: "personal", name: "Cuaderno de ana", kitchenId: null, returnPath: "/notebooks" });
-    act(() => root.render(<TextCaptureSheet open candidates={candidates} onDraftReady={() => {}} />));
+    openSheet({
+      id: "nb-1",
+      kind: "personal",
+      name: "Cuaderno de ana",
+      kitchenId: null,
+      returnPath: "/notebooks",
+    });
+    act(() =>
+      root.render(
+        <TextCaptureSheet
+          open
+          candidates={candidates}
+          onDraftReady={() => {}}
+        />,
+      ),
+    );
     setValue(document.querySelector("textarea")!, "x".repeat(4900));
     expect(document.body.textContent).toContain("4900 de 5000 caracteres");
   });
 
   it("the too-long message is Spanish", () => {
-    openSheet({ id: "nb-1", kind: "personal", name: "Cuaderno de ana", kitchenId: null, returnPath: "/notebooks" });
-    act(() => root.render(<TextCaptureSheet open candidates={candidates} onDraftReady={() => {}} />));
+    openSheet({
+      id: "nb-1",
+      kind: "personal",
+      name: "Cuaderno de ana",
+      kitchenId: null,
+      returnPath: "/notebooks",
+    });
+    act(() =>
+      root.render(
+        <TextCaptureSheet
+          open
+          candidates={candidates}
+          onDraftReady={() => {}}
+        />,
+      ),
+    );
     setValue(document.querySelector("textarea")!, "x".repeat(5001));
     expect(document.querySelector("[role='alert']")?.textContent).toBe(
       "Ese texto es demasiado largo. Pega hasta 5000 caracteres.",

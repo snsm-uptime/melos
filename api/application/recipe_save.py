@@ -20,7 +20,7 @@ import logging
 from dataclasses import dataclass
 from uuid import UUID
 
-from domain.errors import InvalidPreviewImageError, KitchenArchivedError, NotebookNotFoundError
+from domain.errors import KitchenArchivedError, NotebookNotFoundError
 from domain.page_link import PageLinkRefused, check_link
 from domain.recipe import MAX_LINES, MAX_STEPS, NewRecipe, resolve_line_names
 from domain.recipe_draft import DraftRecipe, IngredientLine, InvalidDraftError, check_edited_draft
@@ -62,8 +62,9 @@ class SaveRecipeCommand:
     kitchen_id: UUID | None = None
     # Words the person said yes to; those a saved line uses join their list (spec 055 R10).
     keep_units: tuple[str, ...] = ()
-    # Link capture (spec 026): the page address, with no pasted text, and the page's photo.
+    # Link capture (spec 026): the page address, with no pasted text.
     source_url: str | None = None
+    # The recipe image: the page's photo, or one the person picked (S-067).
     preview_image: str | None = None
 
 
@@ -105,8 +106,6 @@ class SaveRecipeDraft:
         if len(command.lines) > MAX_LINES or len(command.steps) > MAX_STEPS:
             raise InvalidDraftError("too long")
         source_url = self._source_url(command, source_text)
-        if command.preview_image is not None and source_url is None:
-            raise InvalidPreviewImageError("A recipe image comes only with a link capture.")
         preview_image = validate_preview_image(command.preview_image)
 
         stored = self._recipes.find_by_save_key(command.actor_user_id, command.save_key)

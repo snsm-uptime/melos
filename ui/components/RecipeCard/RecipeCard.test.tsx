@@ -41,25 +41,48 @@ describe("RecipeCard", () => {
 
   it("shows the pot icon, title, author chip and ingredient count", () => {
     render();
-    expect(container.querySelector("[data-testid=recipe-pot-icon]")).not.toBeNull();
+    expect(
+      container.querySelector("[data-testid=recipe-pot-icon]"),
+    ).not.toBeNull();
     expect(container.textContent).toContain("Lentil soup");
     expect(container.textContent).toContain("ana");
     expect(container.textContent).toContain("7 ingredients");
   });
 
   it("stands upright with the recipe image, at most 200px wide, in place of the pot", () => {
-    render({ recipe: { ...recipe, preview_image: "data:image/jpeg;base64,AAAA" } });
-    const img = container.querySelector("[data-testid=recipe-card-image]") as HTMLImageElement;
+    render({
+      recipe: { ...recipe, preview_image: "data:image/jpeg;base64,AAAA" },
+    });
+    const img = container.querySelector(
+      "[data-testid=recipe-card-image]",
+    ) as HTMLImageElement;
     expect(img.getAttribute("src")).toBe("data:image/jpeg;base64,AAAA");
-    expect(container.querySelector("article")?.className).toContain("max-w-[200px]");
+    expect(container.querySelector("article")?.className).toContain(
+      "max-w-[200px]",
+    );
     expect(img.className).toContain("object-cover");
     expect(container.querySelector("[data-testid=recipe-pot-icon]")).toBeNull();
     expect(container.querySelector("article")?.className).toContain("flex-col");
   });
 
+  it("stands upright without an image when asked, the pot icon in the photo's 4:3 place", () => {
+    render({ upright: true });
+    const slot = container.querySelector(
+      "[data-testid=recipe-card-placeholder]",
+    );
+    expect(slot?.className).toContain("aspect-[4/3]");
+    expect(slot?.querySelector("[data-testid=recipe-pot-icon]")).not.toBeNull();
+    expect(container.querySelector("article")?.className).toContain(
+      "max-w-[200px]",
+    );
+    expect(container.querySelector("article")?.className).toContain("flex-col");
+  });
+
   it("keeps its raised controls inside the card, under the app's open menus", () => {
     render();
-    expect((container.querySelector("article") as HTMLElement).className).toContain("isolate");
+    expect(
+      (container.querySelector("article") as HTMLElement).className,
+    ).toContain("isolate");
   });
 
   it("has no link, button or checkbox", () => {
@@ -71,7 +94,9 @@ describe("RecipeCard", () => {
     render({ cart: { inCart: true, onToggle: () => {} } });
     const card = () => container.querySelector("article") as HTMLElement;
     expect(card().className).toContain("bg-[var(--card-selected)]");
-    expect(container.querySelector('button[aria-pressed="true"]')).not.toBeNull();
+    expect(
+      container.querySelector('button[aria-pressed="true"]'),
+    ).not.toBeNull();
     render({ cart: { inCart: false, onToggle: () => {} } });
     expect(card().className).not.toContain("card-selected");
     render();
@@ -94,7 +119,9 @@ describe("RecipeCard", () => {
 
   it("keeps the full title in the tooltip", () => {
     render({ recipe: { ...recipe, title: "A very long title ".repeat(10) } });
-    expect(container.querySelector("h3")?.getAttribute("title")).toContain("A very long title");
+    expect(container.querySelector("h3")?.getAttribute("title")).toContain(
+      "A very long title",
+    );
   });
 
   it("links to the recipe detail with the list it is on", () => {
@@ -109,9 +136,14 @@ describe("RecipeCard", () => {
   it("links the notebook name to its notebook, apart from the card's own link", () => {
     render({ showNotebook: true, from: "/kitchens/k1" });
     const links = Array.from(container.querySelectorAll("a"));
-    expect(links.map((a) => a.textContent)).toEqual(["Lentil soup", "ana's (Home) Notebook"]);
+    expect(links.map((a) => a.textContent)).toEqual([
+      "Lentil soup",
+      "ana's (Home) Notebook",
+    ]);
     // The list the card is on travels along, so the notebook's Back returns to it.
-    expect(links[1].getAttribute("href")).toBe(`/notebooks/n1?from=${encodeURIComponent("/kitchens/k1")}`);
+    expect(links[1].getAttribute("href")).toBe(
+      `/notebooks/n1?from=${encodeURIComponent("/kitchens/k1")}`,
+    );
     // Always underlined, accent colour on hover.
     expect(links[1].className).toContain("underline");
     expect(links[1].className).not.toContain("hover:underline");
@@ -131,10 +163,14 @@ describe("RecipeCard", () => {
     expect(article.className).toContain("hover:border-accent");
     // The title link's overlay covers the card (its ::after is positioned against the article).
     expect(article.className).toContain("relative");
-    expect(container.querySelector("h3 a")?.className).toContain("after:inset-0");
+    expect(container.querySelector("h3 a")?.className).toContain(
+      "after:inset-0",
+    );
 
     render();
-    expect((container.querySelector("article") as HTMLElement).className).not.toContain("cursor-pointer");
+    expect(
+      (container.querySelector("article") as HTMLElement).className,
+    ).not.toContain("cursor-pointer");
   });
 
   it("is not a link without a list to return to", () => {
@@ -143,7 +179,10 @@ describe("RecipeCard", () => {
   });
 
   it("in Spanish the interface words change and the recipe's own words do not (spec 063 FR-008)", () => {
-    render({ locale: "es", recipe: { ...recipe, author_alias: null, ingredient_count: 1 } });
+    render({
+      locale: "es",
+      recipe: { ...recipe, author_alias: null, ingredient_count: 1 },
+    });
     const text = container.textContent ?? "";
     expect(text).toContain("desconocido");
     expect(text).toContain("1 ingrediente");
@@ -167,7 +206,9 @@ describe("RecipeCard", () => {
     const button = container.querySelector<HTMLButtonElement>("button")!;
     expect(button.getAttribute("aria-label")).toBe("Remove from cart");
     expect(button.getAttribute("aria-pressed")).toBe("true");
-    const mark = container.querySelector<SVGGElement>("[data-testid=cart-plus-mark]")!;
+    const mark = container.querySelector<SVGGElement>(
+      "[data-testid=cart-plus-mark]",
+    )!;
     expect(mark.style.transform).toBe("rotate(45deg)");
   });
 });

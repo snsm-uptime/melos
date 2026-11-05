@@ -8,8 +8,8 @@ export type SaveResult = { ok: true } | { ok: false; message: CaptureMessage };
 
 /**
  * The body of POST /recipes for the draft on screen, or null when there is nothing to save.
- * A link draft sends its page address instead of pasted text, and `previewImage`, the photo
- * already shrunk for Save, when there is one (spec 026).
+ * A link draft sends its page address instead of pasted text. Any draft sends `previewImage`,
+ * the photo already shrunk for Save, when there is one (specs 026, S-067).
  */
 export function buildSaveBody(
   capture: CaptureState,
@@ -23,7 +23,7 @@ export function buildSaveBody(
     notebook_id: notebook.id,
     source_text: sourceUrl ? "" : text.trim(),
     ...(sourceUrl ? { source_url: sourceUrl } : {}),
-    ...(sourceUrl && previewImage ? { preview_image: previewImage } : {}),
+    ...(previewImage ? { preview_image: previewImage } : {}),
     title: draft.title,
     base_servings: draft.baseServings,
     servings_estimated: draft.servingsEstimated,
@@ -52,13 +52,15 @@ function readLineProblems(value: unknown): CaptureMessage["lineProblems"] {
     if (!item || typeof item !== "object") return [];
     const row = item as { name?: unknown; kind?: unknown };
     if (typeof row.kind !== "string") return [];
-    return [{ name: typeof row.name === "string" ? row.name : null, kind: row.kind }];
+    return [
+      { name: typeof row.name === "string" ? row.name : null, kind: row.kind },
+    ];
   });
 }
 
 /** Save the draft once. The same key is sent on a retry, so a repeat never makes a second recipe. */
 export async function submitSave(capture: CaptureState): Promise<SaveResult> {
-  const photo = capture.draft?.sourceUrl ? capture.draft.previewImage : null;
+  const photo = capture.draft?.previewImage ?? null;
   // Shrunk here, so the api never needs an image library; a photo that cannot fit is left out.
   const previewImage = photo ? await encodeRecipePreview(photo) : null;
   const body = buildSaveBody(capture, previewImage);
@@ -68,7 +70,10 @@ export async function submitSave(capture: CaptureState): Promise<SaveResult> {
   try {
     response = await fetch("/api/recipes", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
       credentials: "same-origin",
       body: JSON.stringify(body),
     });

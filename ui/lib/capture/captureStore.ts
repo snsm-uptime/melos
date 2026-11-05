@@ -76,8 +76,13 @@ export type DraftView = {
   declinedUnits?: string[];
   /** Link capture (spec 026): the page address after redirects, which Save stores. */
   sourceUrl?: string;
-  /** The page's photo as a data URI; null after the member removes it, or when there is none. */
+  /**
+   * The recipe photo as a data URI: the page's photo, or one the member picked (S-067); null
+   * after the member removes it, or when there is none.
+   */
   previewImage?: string | null;
+  /** Written by hand from an empty form (no text, no link, no assistant): Back leaves the page. */
+  manual?: boolean;
   /** The page was long and part of it was not read: the draft shows the long-page note. */
   pageCut?: boolean;
 };
@@ -155,7 +160,10 @@ export function isDraftEdited(current: CaptureState): boolean {
  * Open the sheet for a notebook. With `kind`, the text or the link sheet; without it (the
  * notebook picker), the sheet already shown. A link already typed is kept.
  */
-export function openSheet(notebook: CaptureNotebook, kind?: CaptureSource["kind"]): void {
+export function openSheet(
+  notebook: CaptureNotebook,
+  kind?: CaptureSource["kind"],
+): void {
   // Always the caller's notebook: each page's sheet opens only for its own returnPath.
   update({ notebook, sheetOpen: true, source: sourceFor(kind) });
 }
@@ -169,10 +177,38 @@ export function setLink(link: string): void {
   update({ source: { kind: "url", link }, message: null });
 }
 
-/** The member removed the page's photo from the draft; Save then stores none. */
-export function removePreviewImage(): void {
+/** The member picked, replaced or removed (null) the draft's photo. */
+export function setPreviewImage(previewImage: string | null): void {
   if (!state.draft) return;
-  update({ draft: { ...state.draft, previewImage: null } });
+  update({ draft: { ...state.draft, previewImage } });
+}
+
+/** The member removed the draft's photo; Save then stores none. */
+export function removePreviewImage(): void {
+  setPreviewImage(null);
+}
+
+/** An empty draft to write by hand (the "Write it myself" option): no capture, no assistant. */
+export function emptyDraft(): DraftView {
+  return {
+    title: "",
+    baseServings: 4,
+    servingsEstimated: false,
+    lines: [],
+    steps: [],
+    catalog: [],
+    previewImage: null,
+    manual: true,
+  };
+}
+
+/** Open the draft page with an empty recipe for `notebook`; no sheet is shown. */
+export function startManualDraft(
+  notebook: CaptureNotebook,
+  language: "en" | "es",
+): void {
+  update({ notebook, text: "", source: { kind: "text" } });
+  showDraft(emptyDraft(), language);
 }
 
 export function closeSheet(): void {
@@ -223,7 +259,9 @@ export function failSave(message: CaptureMessage): void {
  * capture returns to the kitchen page, which lists the kitchen's recipes.
  */
 export function savedReturnPath(notebook: CaptureNotebook): string {
-  return notebook.kind === "personal" ? `/notebooks/${notebook.id}` : notebook.returnPath;
+  return notebook.kind === "personal"
+    ? `/notebooks/${notebook.id}`
+    : notebook.returnPath;
 }
 
 /** A successful Save: the draft and text are gone, and the notebook page shows the notice. */
@@ -264,9 +302,14 @@ export function chooseLineMatch(line: LineView, choice: string): LineView {
   return { ...line, name: choice, match: { kind: "matched", entry: choice } };
 }
 
-function mapDraftLine(index: number, change: (line: LineView) => LineView): void {
+function mapDraftLine(
+  index: number,
+  change: (line: LineView) => LineView,
+): void {
   if (!state.draft) return;
-  const lines = state.draft.lines.map((line, i) => (i === index ? change(line) : line));
+  const lines = state.draft.lines.map((line, i) =>
+    i === index ? change(line) : line,
+  );
   update({ draft: { ...state.draft, lines } });
 }
 
@@ -284,7 +327,8 @@ export function backToSheet(): void {
     phase: "idle",
     draft: null,
     originalHash: null,
-    sheetOpen: true,
+    // A hand-written draft came from no sheet, so Back reopens none.
+    sheetOpen: !state.draft?.manual,
     message: null,
     saveKey: null,
     saving: false,
@@ -298,8 +342,11 @@ export function discardDraft(): void {
     draft: null,
     originalHash: null,
     text: "",
-    source: state.source.kind === "url" ? { kind: "url", link: "" } : { kind: "text" },
-    sheetOpen: true,
+    source:
+      state.source.kind === "url"
+        ? { kind: "url", link: "" }
+        : { kind: "text" },
+    sheetOpen: !state.draft?.manual,
     message: null,
     saveKey: null,
     saving: false,

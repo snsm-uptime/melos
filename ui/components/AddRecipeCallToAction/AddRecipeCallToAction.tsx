@@ -9,15 +9,19 @@ import { IconButton } from "@/components/IconButton";
 import { useToast } from "@/components/Toast";
 import { AccentButton } from "@/components/soft-ledger/AccentButton";
 import {
+  failSubmit,
   openSheet,
+  startManualDraft,
   useCaptureState,
   type CaptureNotebook,
   type CaptureSource,
 } from "@/lib/capture/captureStore";
 import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
+import { useLocale } from "@/lib/i18n/useLocale";
 import type { CopiedRecipe } from "@/lib/notebooksClient";
 
 import { AddRecipeOptionsDialog } from "./AddRecipeOptionsDialog";
+import { captureTarget } from "./captureNotebook";
 import { RecipeFromNotebookSheet, type KitchenChoice } from "./RecipeFromNotebookSheet";
 import { TextCaptureSheet } from "./TextCaptureSheet";
 import { UrlCaptureSheet } from "./UrlCaptureSheet";
@@ -73,6 +77,7 @@ export function AddRecipeCallToAction({
   opener,
 }: AddRecipeCallToActionProps) {
   const t = useCaptureMessages();
+  const locale = useLocale();
   const router = useRouter();
   const toast = useToast();
   const capture = useCaptureState();
@@ -88,10 +93,9 @@ export function AddRecipeCallToAction({
     capture.notebook?.opener === opener;
   const goToDraft = () => router.push("/notebooks/draft");
 
-  function choose(kind: CaptureSource["kind"]) {
-    setOptionsOpen(false);
-    if (!preselected) return;
-    const notebook: CaptureNotebook = {
+  function preselectedNotebook(): CaptureNotebook | null {
+    if (!preselected) return null;
+    return {
       id: preselected.id,
       kind: preselected.kind,
       name: preselected.name,
@@ -99,7 +103,28 @@ export function AddRecipeCallToAction({
       returnPath,
       opener,
     };
-    openSheet(notebook, kind);
+  }
+
+  function choose(kind: CaptureSource["kind"]) {
+    setOptionsOpen(false);
+    const notebook = preselectedNotebook();
+    if (notebook) openSheet(notebook, kind);
+  }
+
+  /** The empty form: into the preselected notebook, the kitchen's own made first if needed. */
+  async function chooseManual() {
+    setOptionsOpen(false);
+    const notebook = preselectedNotebook();
+    if (!notebook) return;
+    const target = await captureTarget(notebook);
+    if (!target.ok) {
+      // Shown on the text sheet, as for a capture whose notebook cannot be made.
+      openSheet(notebook, "text");
+      failSubmit({ code: target.code });
+      return;
+    }
+    startManualDraft(target.notebook, locale);
+    goToDraft();
   }
 
   function copied(result: CopiedRecipe, kitchenId: string) {
@@ -149,6 +174,7 @@ export function AddRecipeCallToAction({
         onClose={() => setOptionsOpen(false)}
         onChooseUrl={() => choose("url")}
         onChooseText={() => choose("text")}
+        onChooseManual={() => void chooseManual()}
         onChooseFromNotebook={
           fromNotebook
             ? () => {

@@ -488,6 +488,17 @@ def test_a_link_capture_without_an_image_stores_none() -> None:
     assert h.recipes.stored[0].preview_image is None
 
 
+def test_a_text_capture_keeps_a_picked_image() -> None:
+    """S-067: a picked image comes with any save, not only a link capture."""
+    h = Harness()
+    fact, nid = personal()
+    h.add(fact)
+
+    h.run(nid, preview_image=JPEG_URI)
+
+    assert h.recipes.stored[0].preview_image == JPEG_URI
+
+
 def test_a_text_capture_is_unchanged() -> None:
     h = Harness()
     fact, nid = personal()
@@ -522,7 +533,7 @@ def test_a_bad_source_address_is_refused_and_stores_nothing(overrides: dict) -> 
 @pytest.mark.parametrize(
     "overrides",
     [
-        {"preview_image": JPEG_URI},  # an image without a link
+        {"preview_image": "data:image/gif;base64,R0lGOD=="},  # not JPEG, PNG or WebP
         {"source_text": "", "source_url": "https://example.test/", "preview_image": "data:x"},
         {
             "source_text": "",

@@ -385,7 +385,7 @@ describe("a draft from a link (spec 026)", () => {
 
     const img = document.querySelector("img") as HTMLImageElement;
     expect(img.getAttribute("src")).toBe(PHOTO);
-    expect(img.getAttribute("alt")).toBe("Photo from the recipe page");
+    expect(img.getAttribute("alt")).toBe("Recipe photo");
     expect(document.querySelector("[role='note']")).toBeNull();
 
     act(() => buttonByText("Remove photo").click());

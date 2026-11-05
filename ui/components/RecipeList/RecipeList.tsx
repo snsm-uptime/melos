@@ -2,13 +2,19 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 
-import { AddRecipeCallToAction, type CaptureCandidate } from "@/components/AddRecipeCallToAction";
+import {
+  AddRecipeCallToAction,
+  type CaptureCandidate,
+} from "@/components/AddRecipeCallToAction";
 import { RecipeCard, type CardCart } from "@/components/RecipeCard/RecipeCard";
 import { listAddress } from "@/lib/listAddress";
 import type { Locale } from "@/lib/i18n/locale";
 import { recipeListMessages } from "@/lib/i18n/recipeLists";
 import type { NotebookResult } from "@/lib/notebooksClient";
-import type { RecipeCard as RecipeCardData, RecipePage } from "@/lib/recipesClient";
+import type {
+  RecipeCard as RecipeCardData,
+  RecipePage,
+} from "@/lib/recipesClient";
 
 import { CauldronLoader } from "@/components/CauldronLoader";
 import styles from "@/app/notebooks/notebooks.module.scss";
@@ -75,13 +81,21 @@ export function RecipeList({
   const [attempt, setAttempt] = useState(0);
   // The answer to one request. Loading is derived: no answer yet for the current request.
   const requestKey = `${page}|${q}|${attempt}`;
-  const [answer, setAnswer] = useState<{ key: string; state: ListState } | null>(
-    initialPage ? { key: requestKey, state: { status: "ready", page: initialPage } } : null,
+  const [answer, setAnswer] = useState<{
+    key: string;
+    state: ListState;
+  } | null>(
+    initialPage
+      ? { key: requestKey, state: { status: "ready", page: initialPage } }
+      : null,
   );
   // Text typed since the address last matched; it is dropped when the address changes (Back).
-  const [typed, setTyped] = useState<{ from: string; text: string } | null>(null);
+  const [typed, setTyped] = useState<{ from: string; text: string } | null>(
+    null,
+  );
   const text = typed && typed.from === q ? typed.text : q;
-  const state: ListState = answer?.key === requestKey ? answer.state : { status: "loading" };
+  const state: ListState =
+    answer?.key === requestKey ? answer.state : { status: "loading" };
 
   // Apply the typed text after a pause; a new filter starts at page 1.
   useEffect(() => {
@@ -108,7 +122,12 @@ export function RecipeList({
 
   const filtering = q.trim().length > 0;
   const emptyText = scope === "kitchen" ? t.emptyKitchen : t.emptyNotebook;
-  const empty = !filtering && state.status === "ready" && state.page.items.length === 0;
+  const empty =
+    !filtering && state.status === "ready" && state.page.items.length === 0;
+  // One image on the page stands every card upright, the pot icon in place of a missing photo.
+  const uprightCards =
+    state.status === "ready" &&
+    state.page.items.some((recipe) => recipe.preview_image);
   // Also hidden until the first answer, so an empty list never flashes the filter. Later loads
   // keep it, because the person may be typing in it.
   const showFilter = !empty && (filtering || answer !== null);
@@ -166,7 +185,11 @@ export function RecipeList({
           <p className={styles.copy} role="alert">
             {t.loadError}
           </p>
-          <button type="button" className={styles.retry} onClick={() => setAttempt((n) => n + 1)}>
+          <button
+            type="button"
+            className={styles.retry}
+            onClick={() => setAttempt((n) => n + 1)}
+          >
             {t.retry}
           </button>
         </div>
@@ -175,7 +198,11 @@ export function RecipeList({
         filtering ? (
           <div className={styles.state}>
             <p className={styles.copy}>{t.noMatch(q.trim())}</p>
-            <button type="button" className={styles.retry} onClick={clearFilter}>
+            <button
+              type="button"
+              className={styles.retry}
+              onClick={clearFilter}
+            >
               {t.clearFilter}
             </button>
           </div>
@@ -192,7 +219,7 @@ export function RecipeList({
             className={
               // With image cards every card, the add card included, is one image wide (200px)
               // and the row's height, so they all match.
-              state.page.items.some((recipe) => recipe.preview_image)
+              uprightCards
                 ? "m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(0,200px))] gap-[var(--space-2)] p-0"
                 : layout === "wrap"
                   ? "m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-[var(--space-2)] p-0"
@@ -216,6 +243,7 @@ export function RecipeList({
                   showNotebook={scope === "kitchen"}
                   from={listAddress(returnPath, page, q)}
                   cart={cardCart?.(recipe)}
+                  upright={uprightCards}
                 />
               </li>
             ))}
@@ -248,8 +276,16 @@ function Pager({
   const t = recipeListMessages[locale];
   const numbers = Array.from({ length: totalPages }, (_, index) => index + 1);
   return (
-    <nav aria-label={t.pageOf(page, totalPages)} className="flex flex-wrap items-center gap-[var(--space-1)]">
-      <button type="button" className={styles.retry} disabled={page <= 1} onClick={() => onGo(page - 1)}>
+    <nav
+      aria-label={t.pageOf(page, totalPages)}
+      className="flex flex-wrap items-center gap-[var(--space-1)]"
+    >
+      <button
+        type="button"
+        className={styles.retry}
+        disabled={page <= 1}
+        onClick={() => onGo(page - 1)}
+      >
         {t.previous}
       </button>
       {numbers.map((number) => (
@@ -272,7 +308,9 @@ function Pager({
       >
         {t.next}
       </button>
-      <span className="text-[0.85rem] text-muted">{t.pageOf(page, totalPages)}</span>
+      <span className="text-[0.85rem] text-muted">
+        {t.pageOf(page, totalPages)}
+      </span>
     </nav>
   );
 }

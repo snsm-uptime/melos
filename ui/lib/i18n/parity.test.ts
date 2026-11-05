@@ -64,6 +64,7 @@ const SAME_ON_PURPOSE = new Set<string>([
   "admin.columns.refusedSites.totalRefusals", // "Total" is the same word in Spanish
   "account.photoCropZoom", // "Zoom" is the word used in Spanish too
   "alias.photoCropZoom", // "Zoom", as above
+  "capture.photoCropZoom", // "Zoom", as above
   "alias.label", // "Alias" is the same word in Spanish
   "capture.optionUrl", // "URL"
   "capture.linkPlaceholder", // "https://…", a link has no language

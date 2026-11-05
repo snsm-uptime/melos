@@ -271,6 +271,45 @@ def test_edit_changes_content_and_keeps_the_rest(client: TestClient, db_session:
     assert step_positions == [0, 1]
 
 
+PREVIEW = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ=="
+OTHER = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg=="
+
+
+def test_an_edit_keeps_replaces_or_removes_the_image(client: TestClient):
+    """S-067: preview_image left out keeps it, a data URI replaces it, null removes it."""
+    _register(client, "img_edit@example.com")
+    recipe_id = _save(client, _personal_notebook(client), preview_image=PREVIEW)
+
+    recipe = client.get(f"/recipes/{recipe_id}").json()
+    kept = _put(client, recipe_id, _edit_body(recipe, title="Kept"))
+    assert kept.status_code == 200, kept.text
+    assert kept.json()["preview_image"] == PREVIEW
+
+    replaced = _put(client, recipe_id, _edit_body(kept.json(), preview_image=OTHER))
+    assert replaced.status_code == 200, replaced.text
+    assert replaced.json()["preview_image"] == OTHER
+
+    removed = _put(client, recipe_id, _edit_body(replaced.json(), preview_image=None))
+    assert removed.status_code == 200, removed.text
+    assert removed.json()["preview_image"] is None
+
+
+def test_an_edit_with_a_bad_image_changes_nothing(client: TestClient):
+    _register(client, "img_bad@example.com")
+    recipe_id = _save(client, _personal_notebook(client))
+    recipe = client.get(f"/recipes/{recipe_id}").json()
+
+    response = _put(
+        client,
+        recipe_id,
+        _edit_body(recipe, title="Nope", preview_image="data:image/gif;base64,R0lGOD=="),
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json()["code"] == "invalid_preview_image"
+    assert client.get(f"/recipes/{recipe_id}").json()["title"] == "Tomato rice"
+
+
 def test_lines_can_be_added_removed_and_reordered(client: TestClient, db_session: Session):
     _register(client, "ana_order@example.com")
     recipe_id = _save(client, _personal_notebook(client))

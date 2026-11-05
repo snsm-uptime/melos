@@ -97,7 +97,12 @@ export type RecipeDetail = {
   created_at: string;
   /** Sent back on save; the api refuses the save if the recipe changed since (FR-011). */
   version: string;
-  notebook: { id: string; name: string; kind: "personal" | "kitchen"; kitchen_id: string | null };
+  notebook: {
+    id: string;
+    name: string;
+    kind: "personal" | "kitchen";
+    kitchen_id: string | null;
+  };
   can_write: boolean;
   ingredient_lines: RecipeLine[];
   steps: string[];
@@ -113,7 +118,11 @@ export type RecipeDetail = {
 };
 
 /** The holder of an edit lock (spec 022). `idle_expires_at` is set only for my own lock. */
-export type LockEditor = { alias: string | null; is_me: boolean; idle_expires_at: string | null };
+export type LockEditor = {
+  alias: string | null;
+  is_me: boolean;
+  idle_expires_at: string | null;
+};
 
 export type NameMatch = { name: string; entry: string | null };
 
@@ -138,6 +147,8 @@ export type RecipeUpdateBody = {
   ingredient_lines: RecipeLine[];
   steps: string[];
   keep_units: string[];
+  /** Left out keeps the photo; null removes it; a data URI replaces it (S-067). */
+  preview_image?: string | null;
 };
 
 /** The answer to a word typed by hand (spec 055, contracts/units-api.md). */
@@ -180,8 +191,12 @@ function asMatches(data: unknown): NameMatch[] | null {
 }
 
 async function failure(response: Response): Promise<RecipeFailure> {
-  let data: { code?: unknown; missing?: unknown; line_problems?: unknown; editor_alias?: unknown } =
-    {};
+  let data: {
+    code?: unknown;
+    missing?: unknown;
+    line_problems?: unknown;
+    editor_alias?: unknown;
+  } = {};
   try {
     data = (await response.json()) as typeof data;
   } catch {
@@ -195,7 +210,12 @@ async function failure(response: Response): Promise<RecipeFailure> {
         if (!item || typeof item !== "object") return [];
         const row = item as { name?: unknown; kind?: unknown };
         if (typeof row.kind !== "string") return [];
-        return [{ name: typeof row.name === "string" ? row.name : null, kind: row.kind }];
+        return [
+          {
+            name: typeof row.name === "string" ? row.name : null,
+            kind: row.kind,
+          },
+        ];
       })
     : undefined;
   const result: RecipeFailure = {
@@ -206,7 +226,8 @@ async function failure(response: Response): Promise<RecipeFailure> {
     lineProblems,
   };
   if ("editor_alias" in data) {
-    result.editorAlias = typeof data.editor_alias === "string" ? data.editor_alias : null;
+    result.editorAlias =
+      typeof data.editor_alias === "string" ? data.editor_alias : null;
   }
   return result;
 }
@@ -221,7 +242,10 @@ async function send<T>(
   try {
     response = await fetch(path, {
       method,
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
       credentials: "same-origin",
       body: body === undefined ? undefined : JSON.stringify(body),
     });
@@ -247,7 +271,12 @@ export function matchRecipeNames(
   id: string,
   names: string[],
 ): Promise<RecipeResult<NameMatch[]>> {
-  return send("POST", `/api/recipes/${encodeURIComponent(id)}/name-matches`, { names }, asMatches);
+  return send(
+    "POST",
+    `/api/recipes/${encodeURIComponent(id)}/name-matches`,
+    { names },
+    asMatches,
+  );
 }
 
 function asUnitCheck(data: unknown): UnitCheck | null {
@@ -258,7 +287,12 @@ function asUnitCheck(data: unknown): UnitCheck | null {
 }
 
 export function checkUnitWord(word: string): Promise<RecipeResult<UnitCheck>> {
-  return send("POST", "/api/recipe-vocabulary/unit-check", { word }, asUnitCheck);
+  return send(
+    "POST",
+    "/api/recipe-vocabulary/unit-check",
+    { word },
+    asUnitCheck,
+  );
 }
 
 export function updateRecipe(
@@ -269,8 +303,11 @@ export function updateRecipe(
 }
 
 export function deleteRecipe(id: string): Promise<RecipeResult<true>> {
-  return send("DELETE", `/api/recipes/${encodeURIComponent(id)}`, undefined, (data) =>
-    data === true ? true : null,
+  return send(
+    "DELETE",
+    `/api/recipes/${encodeURIComponent(id)}`,
+    undefined,
+    (data) => (data === true ? true : null),
   );
 }
 
@@ -280,19 +317,31 @@ function asLock(data: unknown): LockEditor | null {
   if (!data || typeof data !== "object") return null;
   const editor = (data as { editor?: unknown }).editor;
   if (!editor || typeof editor !== "object") return null;
-  return typeof (editor as { is_me?: unknown }).is_me === "boolean" ? (editor as LockEditor) : null;
+  return typeof (editor as { is_me?: unknown }).is_me === "boolean"
+    ? (editor as LockEditor)
+    : null;
 }
 
 /** Take the recipe lock, or keep it alive for its holder. A 409 carries `editorAlias`. */
-export function acquireRecipeLock(id: string): Promise<RecipeResult<LockEditor>> {
-  return send("POST", `/api/recipes/${encodeURIComponent(id)}/edit-lock`, undefined, asLock);
+export function acquireRecipeLock(
+  id: string,
+): Promise<RecipeResult<LockEditor>> {
+  return send(
+    "POST",
+    `/api/recipes/${encodeURIComponent(id)}/edit-lock`,
+    undefined,
+    asLock,
+  );
 }
 
 /**
  * Free the recipe. `leaving` sends it with `keepalive`, so it still goes out while the page
  * closes; the session-scoped lock covers what is lost (research R8).
  */
-export async function releaseRecipeLock(id: string, leaving = false): Promise<void> {
+export async function releaseRecipeLock(
+  id: string,
+  leaving = false,
+): Promise<void> {
   try {
     await fetch(`/api/recipes/${encodeURIComponent(id)}/edit-lock`, {
       method: "DELETE",

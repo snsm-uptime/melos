@@ -24,6 +24,11 @@ type RecipeCardProps = {
    * nothing, so their cards have none.
    */
   cart?: CardCart;
+  /**
+   * Stand upright even without an image, the pot icon in the photo's place, so the card matches
+   * image cards on the same list.
+   */
+  upright?: boolean;
 };
 
 export type CardCart = {
@@ -58,11 +63,19 @@ function PotIcon() {
  * Recipe card: links to the detail; no categories (spec 021 FR-014, spec 027). Kitchen cards
  * have the cart-icon button (spec 022).
  */
-export function RecipeCard({ recipe, locale, showNotebook = false, from, cart }: RecipeCardProps) {
+export function RecipeCard({
+  recipe,
+  locale,
+  showNotebook = false,
+  from,
+  cart,
+  upright = false,
+}: RecipeCardProps) {
   const t = recipeListMessages[locale];
   const c = cartMessages[locale];
   // With an image the card stands upright: the photo on top, the text under it.
   const image = recipe.preview_image ?? null;
+  const tall = image !== null || upright;
   const details = (
     <>
       <div className="flex min-w-0 flex-1 flex-col gap-[var(--space-1)]">
@@ -126,7 +139,7 @@ export function RecipeCard({ recipe, locale, showNotebook = false, from, cart }:
     // clear the title link's overlay, and must not paint over the app's open menus.
     <article
       className={`relative isolate flex min-w-0 rounded-[var(--radius-md)] border border-border ${
-        image
+        tall
           ? // Two parts: the photo on top, the metadata under it; as wide as the photo at most.
             "h-full w-full max-w-[200px] flex-col overflow-hidden"
           : "items-center gap-[var(--space-3)] p-[var(--space-3)]"
@@ -145,12 +158,20 @@ export function RecipeCard({ recipe, locale, showNotebook = false, from, cart }:
           data-testid="recipe-card-image"
           className="block aspect-[4/3] w-full flex-shrink-0 bg-background object-cover"
         />
+      ) : tall ? (
+        // The photo's place, same ratio, so this card has the image cards' shape.
+        <span
+          data-testid="recipe-card-placeholder"
+          className="flex aspect-[4/3] w-full flex-shrink-0 items-center justify-center bg-background text-muted"
+        >
+          <PotIcon />
+        </span>
       ) : (
         <span className="flex flex-shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-background p-[var(--space-4)] text-muted">
           <PotIcon />
         </span>
       )}
-      {image ? (
+      {tall ? (
         <div className="flex min-w-0 items-start gap-[var(--space-2)] p-[var(--space-3)]">
           {details}
         </div>

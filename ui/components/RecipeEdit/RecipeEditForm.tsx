@@ -14,6 +14,7 @@ import { IngredientLineRow } from "@/components/RecipeDraft/IngredientLineRow";
 import { UnknownUnitQuestion } from "@/components/RecipeDraft/UnknownUnitQuestion";
 import { AddItemCard } from "@/components/Card";
 import { StepCard } from "@/components/RecipeDraft/StepCard";
+import { RecipeImagePicker } from "@/components/RecipeImagePicker";
 import { fetchVocabulary } from "@/lib/capture/captureClient";
 import { chooseLineMatch, type LineView } from "@/lib/capture/captureStore";
 import {
@@ -116,7 +117,9 @@ export function RecipeEditForm({
   }
 
   // A unit already on the recipe stays allowed for any member, on any line (spec 055 R11).
-  const storedUnits = recipe.ingredient_lines.flatMap((line) => (line.unit ? [line.unit] : []));
+  const storedUnits = recipe.ingredient_lines.flatMap((line) =>
+    line.unit ? [line.unit] : [],
+  );
   const allowedUnits = [...myUnits, ...storedUnits];
   const errors = checkDraft(
     {
@@ -296,6 +299,17 @@ export function RecipeEditForm({
           />
         </HeaderActions>
       </header>
+
+      <div className="px-4">
+        <RecipeImagePicker
+          value={state.previewImage}
+          onChange={(previewImage) =>
+            commit({ ...stateRef.current, previewImage, imageChanged: true })
+          }
+          locale={locale}
+          disabled={saving}
+        />
+      </div>
 
       <div className="flex flex-col gap-6 px-4 md:min-h-0 md:flex-1 md:flex-row">
         <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:max-w-[450px] md:flex-1 md:overflow-hidden">

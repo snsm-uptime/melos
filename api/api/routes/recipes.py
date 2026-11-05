@@ -328,6 +328,8 @@ def update_recipe(
         ),
         steps=tuple(body.steps),
         keep_units=tuple(body.keep_units),
+        change_image="preview_image" in body.model_fields_set,
+        preview_image=body.preview_image,
     )
     try:
         updated: UpdatedRecipe = service.execute(command)
@@ -343,6 +345,12 @@ def update_recipe(
         return _error(status.HTTP_409_CONFLICT, RecipeChangedError.CODE, RecipeChangedError.MESSAGE)
     except DraftProblems as exc:
         return _problems(exc)
+    except InvalidPreviewImageError:
+        return _error(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            InvalidPreviewImageError.CODE,
+            InvalidPreviewImageError.MESSAGE,
+        )
     except InvalidDraftError as exc:
         return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "invalid_recipe", str(exc))
     wake_embedding_worker(request.app)

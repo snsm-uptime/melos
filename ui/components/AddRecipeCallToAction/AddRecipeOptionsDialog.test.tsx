@@ -23,6 +23,7 @@ function render(props: Partial<Parameters<typeof AddRecipeOptionsDialog>[0]> = {
         onClose={vi.fn()}
         onChooseUrl={vi.fn()}
         onChooseText={vi.fn()}
+        onChooseManual={vi.fn()}
         {...props}
       />,
     );
@@ -43,13 +44,13 @@ afterEach(() => {
 describe("AddRecipeOptionsDialog (spec 069)", () => {
   it("has no 'Recipe from another notebook' without the prop (personal notebooks)", () => {
     render();
-    expect(labels()).toEqual(["URL", "Picture", "Text"]);
+    expect(labels()).toEqual(["URL", "Picture", "Text", "Write it myself"]);
   });
 
-  it("lists it last, after URL, Picture and Text, and calls back on a tap", () => {
+  it("lists it last, after URL, Picture, Text and Write it myself, and calls back on a tap", () => {
     const onChooseFromNotebook = vi.fn();
     render({ onChooseFromNotebook });
-    expect(labels()).toEqual(["URL", "Picture", "Text", "Recipe from another notebook"]);
+    expect(labels()).toEqual(["URL", "Picture", "Text", "Write it myself", "Recipe from another notebook"]);
 
     const option = Array.from(document.querySelectorAll("[role='list'] button")).at(-1) as HTMLButtonElement;
     act(() => option.click());

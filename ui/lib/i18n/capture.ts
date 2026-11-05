@@ -16,6 +16,8 @@ const en = {
   optionPicture: "Picture",
   optionPictureNote: "Coming soon",
   optionText: "Text",
+  optionManual: "Write it myself",
+  optionManualNote: "An empty recipe, no assistant",
   optionFromNotebook: "Recipe from another notebook",
   fromNotebookNoKitchen: "Join or create a kitchen first.",
   fromNotebookKitchen: "Kitchen",
@@ -45,7 +47,8 @@ const en = {
   counterNear: (count: number, max: number) => `${count} of ${max} characters`,
   submit: "Read recipe",
   submitting: "Reading your recipe…",
-  tooLong: (max: number) => `That text is too long. Paste up to ${max} characters.`,
+  tooLong: (max: number) =>
+    `That text is too long. Paste up to ${max} characters.`,
   notARecipe: "That doesn't look like a recipe.",
   oneRecipe: "Only one recipe can be added at a time. Paste them one by one.",
   unavailable: "The assistant isn't responding. Your text is kept — try again.",
@@ -59,18 +62,32 @@ const en = {
   linkTooLong: "That link is too long.",
   submittingLink: "Reading the page…",
   pageFetchFailed: "We couldn't open that page. Paste the recipe text instead.",
-  siteRequiresLicense: "This website requires a license, it's not supported yet.",
-  pageNoRecipe: "We couldn't find a recipe on that page. Paste the recipe text instead.",
-  pageCut: "This page was long, so part of it was not read. Check the ingredients and steps.",
-  unavailableLink: "The assistant isn't responding. Your link is kept — try again.",
+  siteRequiresLicense:
+    "This website requires a license, it's not supported yet.",
+  pageNoRecipe:
+    "We couldn't find a recipe on that page. Paste the recipe text instead.",
+  pageCut:
+    "This page was long, so part of it was not read. Check the ingredients and steps.",
+  unavailableLink:
+    "The assistant isn't responding. Your link is kept — try again.",
   misconfiguredLink: "Assistant misconfigured. Your link is kept",
   pagePhotoAlt: "Photo from the recipe page",
   removePhoto: "Remove photo",
+  addPhoto: "Add a photo",
+  changePhoto: "Change photo",
+  recipePhotoAlt: "Recipe photo",
+  photoCropTitle: "Crop the photo",
+  photoCropSave: "Use photo",
+  photoCropZoom: "Zoom",
+  photoFailed: "That photo could not be used. Try another one.",
   archived: "This kitchen is archived, so recipes can't be added.",
   notFound: "This kitchen is unavailable.",
-  notebookGone: "This notebook no longer exists, or you no longer have access to it.",
-  invalidRecipe: "The recipe breaks a rule. Check the ingredient lines and try again.",
-  saveUnavailable: "We couldn't save the recipe. Your changes are kept. Try again.",
+  notebookGone:
+    "This notebook no longer exists, or you no longer have access to it.",
+  invalidRecipe:
+    "The recipe breaks a rule. Check the ingredient lines and try again.",
+  saveUnavailable:
+    "We couldn't save the recipe. Your changes are kept. Try again.",
   newNotebook: "a new notebook, created when the recipe is saved",
   reviewTitle: "Review recipe",
   forNotebook: (name: string) => `For: ${name}`,
@@ -115,7 +132,8 @@ const en = {
   missingSteps: "Add the steps of the recipe.",
   thisIngredient: "this ingredient",
   lineQuantity: (name: string) => `Add a quantity to ${name}.`,
-  lineUnit: (name: string) => `Add a unit to ${name}, such as grams, cups or units.`,
+  lineUnit: (name: string) =>
+    `Add a unit to ${name}, such as grams, cups or units.`,
   lineUnitUnknown: (name: string) =>
     `${name} uses a unit the app does not know. Use a common unit, such as grams, cups or spoons.`,
   moreLines: "and more ingredients need a change.",
@@ -133,7 +151,7 @@ const en = {
     servingsInvalid: "Servings must be a whole number of at least 1.",
     amountAndUnit: "Add an amount and a unit, or mark it as vague.",
     vagueHasAmount: "A vague amount has no number or unit.",
-    vagueNeedsNote: "Write the amount in words, for example \"to taste\".",
+    vagueNeedsNote: 'Write the amount in words, for example "to taste".',
     sizeOnlyForUnit: "Size is only for counted items.",
     sizeInvalid: "Choose small, medium or large.",
     stepsRequired: "Add at least one step.",
@@ -151,6 +169,8 @@ const es: CaptureMessages = {
   optionPicture: "Imagen",
   optionPictureNote: "Próximamente",
   optionText: "Texto",
+  optionManual: "Escribirla yo",
+  optionManualNote: "Una receta vacía, sin asistente",
   optionFromNotebook: "Receta de otro cuaderno",
   fromNotebookNoKitchen: "Primero únete a una cocina o crea una.",
   fromNotebookKitchen: "Cocina",
@@ -180,10 +200,12 @@ const es: CaptureMessages = {
   counterNear: (count: number, max: number) => `${count} de ${max} caracteres`,
   submit: "Leer receta",
   submitting: "Leyendo tu receta…",
-  tooLong: (max: number) => `Ese texto es demasiado largo. Pega hasta ${max} caracteres.`,
+  tooLong: (max: number) =>
+    `Ese texto es demasiado largo. Pega hasta ${max} caracteres.`,
   notARecipe: "Eso no parece una receta.",
   oneRecipe: "Solo se puede agregar una receta a la vez. Pégalas una por una.",
-  unavailable: "El asistente no responde. Tu texto se conserva: inténtalo de nuevo.",
+  unavailable:
+    "El asistente no responde. Tu texto se conserva: inténtalo de nuevo.",
   limit: "Llegamos al límite del asistente. Inténtalo de nuevo en un minuto.",
   invalidOutput:
     "La app no pudo armar una receta con este texto. Inténtalo de nuevo o acórtalo a una sola receta.",
@@ -194,18 +216,32 @@ const es: CaptureMessages = {
   linkTooLong: "Ese enlace es demasiado largo.",
   submittingLink: "Leyendo la página…",
   pageFetchFailed: "No pudimos abrir esa página. Pega el texto de la receta.",
-  siteRequiresLicense: "Este sitio web requiere una licencia, aún no es compatible.",
-  pageNoRecipe: "No encontramos una receta en esa página. Pega el texto de la receta.",
-  pageCut: "Esta página era larga y no se leyó entera. Revisa los ingredientes y los pasos.",
-  unavailableLink: "El asistente no responde. Tu enlace se conserva: inténtalo de nuevo.",
-  misconfiguredLink: "El asistente está mal configurado. Tu enlace se conserva.",
+  siteRequiresLicense:
+    "Este sitio web requiere una licencia, aún no es compatible.",
+  pageNoRecipe:
+    "No encontramos una receta en esa página. Pega el texto de la receta.",
+  pageCut:
+    "Esta página era larga y no se leyó entera. Revisa los ingredientes y los pasos.",
+  unavailableLink:
+    "El asistente no responde. Tu enlace se conserva: inténtalo de nuevo.",
+  misconfiguredLink:
+    "El asistente está mal configurado. Tu enlace se conserva.",
   pagePhotoAlt: "Foto de la página de la receta",
   removePhoto: "Quitar foto",
+  addPhoto: "Agregar una foto",
+  changePhoto: "Cambiar foto",
+  recipePhotoAlt: "Foto de la receta",
+  photoCropTitle: "Recortar la foto",
+  photoCropSave: "Usar foto",
+  photoCropZoom: "Zoom",
+  photoFailed: "No se pudo usar esa foto. Prueba con otra.",
   archived: "Esta cocina está archivada, así que no se pueden agregar recetas.",
   notFound: "Esta cocina no está disponible.",
   notebookGone: "Este cuaderno ya no existe, o ya no tienes acceso a él.",
-  invalidRecipe: "La receta incumple una regla. Revisa los ingredientes e inténtalo de nuevo.",
-  saveUnavailable: "No pudimos guardar la receta. Tus cambios se conservan. Inténtalo de nuevo.",
+  invalidRecipe:
+    "La receta incumple una regla. Revisa los ingredientes e inténtalo de nuevo.",
+  saveUnavailable:
+    "No pudimos guardar la receta. Tus cambios se conservan. Inténtalo de nuevo.",
   newNotebook: "un cuaderno nuevo, que se crea al guardar la receta",
   reviewTitle: "Revisar receta",
   forNotebook: (name: string) => `Para: ${name}`,
@@ -245,7 +281,8 @@ const es: CaptureMessages = {
   missingSteps: "Agrega los pasos de la receta.",
   thisIngredient: "este ingrediente",
   lineQuantity: (name: string) => `Agrega una cantidad a ${name}.`,
-  lineUnit: (name: string) => `Agrega una unidad a ${name}, como gramos, tazas o unidades.`,
+  lineUnit: (name: string) =>
+    `Agrega una unidad a ${name}, como gramos, tazas o unidades.`,
   lineUnitUnknown: (name: string) =>
     `${name} usa una unidad que la app no conoce. Usa una unidad común, como gramos, tazas o cucharas.`,
   moreLines: "y otros ingredientes necesitan un cambio.",
@@ -261,9 +298,10 @@ const es: CaptureMessages = {
     titleRequired: "Agrega un título.",
     titleTooLong: "Mantén el título por debajo de 200 caracteres.",
     servingsInvalid: "Las porciones deben ser un número entero de al menos 1.",
-    amountAndUnit: "Agrega una cantidad y una unidad, o márcala como imprecisa.",
+    amountAndUnit:
+      "Agrega una cantidad y una unidad, o márcala como imprecisa.",
     vagueHasAmount: "Una cantidad imprecisa no lleva número ni unidad.",
-    vagueNeedsNote: "Escribe la cantidad con palabras, por ejemplo \"al gusto\".",
+    vagueNeedsNote: 'Escribe la cantidad con palabras, por ejemplo "al gusto".',
     sizeOnlyForUnit: "El tamaño es solo para artículos que se cuentan.",
     sizeInvalid: "Elige pequeño, mediano o grande.",
     stepsRequired: "Agrega al menos un paso.",
@@ -316,7 +354,10 @@ function draftSentences(t: CaptureMessages, message: CaptureMessage): string {
 }
 
 /** The sentence for a not_a_recipe reason, with the ingredient when the reason is about one. */
-function notARecipeSentence(t: CaptureMessages, message: CaptureMessage): string {
+function notARecipeSentence(
+  t: CaptureMessages,
+  message: CaptureMessage,
+): string {
   const ingredient = message.ingredient;
   switch (message.reason) {
     case "question_or_request":

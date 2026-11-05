@@ -52,6 +52,8 @@ class UpdateRecipeBody(BaseModel):
     ingredient_lines: list[SaveIngredientLine] = Field(max_length=MAX_LINES + 1)
     steps: list[str] = Field(max_length=MAX_STEPS + 1)
     keep_units: list[str] = Field(default_factory=list, max_length=MAX_LINES + 1)
+    # The image (S-067): left out keeps it, null removes it, a data URI replaces it.
+    preview_image: str | None = None
 
 
 class NameMatchesBody(BaseModel):

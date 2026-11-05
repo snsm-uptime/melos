@@ -5,14 +5,27 @@ import Cropper, { type Area, type Point } from "react-easy-crop";
 
 import { Sheet } from "@/app/kitchens/Sheet";
 import { FormIconSubmit } from "@/components/FormIconSubmit/FormIconSubmit";
-import { encodeCroppedAvatar, loadImage } from "@/lib/imageEncode";
+import {
+  encodeCroppedAvatar,
+  loadImage,
+  type Area as EncodeArea,
+} from "@/lib/imageEncode";
+
+function encodeAvatar(
+  img: HTMLImageElement,
+  area: EncodeArea,
+  file: File,
+): Promise<string> {
+  const mimeType = file.type === "image/png" ? "image/png" : "image/jpeg";
+  return encodeCroppedAvatar(img, area, mimeType);
+}
 
 type Props = {
   /** The file the user just picked — drives the object URL fed to the cropper. */
   file: File | null;
   open: boolean;
   onClose: () => void;
-  /** Called with the cropped/encoded 256x256 data URI once the user confirms. */
+  /** Called with the cropped, encoded data URI once the user confirms. */
   onConfirm: (dataUri: string) => void;
   /** Called if reading/encoding the image throws — caller shows its own copy. */
   onError: () => void;
@@ -20,19 +33,16 @@ type Props = {
   saveLabel: string;
   closeLabel: string;
   zoomLabel: string;
+  /** Width over height of the crop; the avatar's square by default. */
+  aspect?: number;
+  cropShape?: "round" | "rect";
+  /** Turns the cropped area into the data URI; the 256x256 avatar by default. */
+  encode?: (img: HTMLImageElement, area: Area, file: File) => Promise<string>;
 };
 
-type CropEditorProps = {
+type CropEditorProps = Omit<Props, "file"> & {
   file: File;
   objectUrl: string;
-  open: boolean;
-  onClose: () => void;
-  onConfirm: (dataUri: string) => void;
-  onError: () => void;
-  title: string;
-  saveLabel: string;
-  closeLabel: string;
-  zoomLabel: string;
 };
 
 /**
@@ -50,6 +60,9 @@ function CropEditor({
   saveLabel,
   closeLabel,
   zoomLabel,
+  aspect = 1,
+  cropShape = "round",
+  encode = encodeAvatar,
 }: CropEditorProps) {
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -61,8 +74,7 @@ function CropEditor({
     setConfirming(true);
     try {
       const img = await loadImage(file);
-      const mimeType = file.type === "image/png" ? "image/png" : "image/jpeg";
-      const dataUri = await encodeCroppedAvatar(img, croppedAreaPixels, mimeType);
+      const dataUri = await encode(img, croppedAreaPixels, file);
       onConfirm(dataUri);
       onClose();
     } catch {
@@ -94,11 +106,13 @@ function CropEditor({
               image={objectUrl}
               crop={crop}
               zoom={zoom}
-              cropShape="round"
-              aspect={1}
+              cropShape={cropShape}
+              aspect={aspect}
               onCropChange={setCrop}
               onZoomChange={setZoom}
-              onCropComplete={(_, areaPixels) => setCroppedAreaPixels(areaPixels)}
+              onCropComplete={(_, areaPixels) =>
+                setCroppedAreaPixels(areaPixels)
+              }
             />
           </div>
           <input
@@ -118,10 +132,15 @@ function CropEditor({
 }
 
 /**
- * Shared crop/zoom sheet for the avatar upload flow — built once, imported by
- * both SidePanelIdentity and AliasSetupForm (they must not duplicate this wiring).
+ * Shared crop/zoom sheet: the avatar (SidePanelIdentity, AliasSetupForm) and, with a
+ * rectangle and its own encoder, the recipe photo (RecipeImagePicker, S-067).
  */
-export function AvatarCropSheet({ file, open, onClose, ...editorProps }: Props) {
+export function AvatarCropSheet({
+  file,
+  open,
+  onClose,
+  ...editorProps
+}: Props) {
   const objectUrl = useMemo(() => {
     if (!file) return null;
     return URL.createObjectURL(file);

@@ -27,6 +27,7 @@ from domain.recipe_draft import (
     InvalidDraftError,
     check_edited_draft,
 )
+from domain.recipe_preview import validate_preview_image
 
 from application.carts import EditorView, RecipeCartStatus, recipe_cart_status
 from application.notebooks import NotebookView, notebook_view
@@ -163,6 +164,9 @@ class UpdateRecipeCommand:
     session_id: UUID | None = None
     # Words the person said yes to; those a saved line uses join their list (spec 055 R10).
     keep_units: tuple[str, ...] = ()
+    # The image (S-067): change_image False keeps it; True sets preview_image (None removes).
+    change_image: bool = False
+    preview_image: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -203,6 +207,9 @@ class UpdateRecipeService:
     def execute(self, command: UpdateRecipeCommand) -> UpdatedRecipe:
         if len(command.lines) > MAX_LINES or len(command.steps) > MAX_STEPS:
             raise InvalidDraftError("too long")
+        preview_image = (
+            validate_preview_image(command.preview_image) if command.change_image else None
+        )
         current = _recipe_for(
             self._recipes, self._notebooks, command.actor_user_id, command.recipe_id, write=True
         )
@@ -243,6 +250,8 @@ class UpdateRecipeService:
                 servings_estimated=checked.servings_estimated,
                 lines=lines,
                 steps=checked.steps,
+                change_image=command.change_image,
+                preview_image=preview_image,
             ),
         )
         self._catalog.add_names(current.notebook.id, new_names)

@@ -4,9 +4,17 @@
  * `LineView`, so the same rows are reused (research R9).
  */
 
-import { chooseLineMatch, type LineView, type StepView } from "./capture/captureStore";
+import {
+  chooseLineMatch,
+  type LineView,
+  type StepView,
+} from "./capture/captureStore";
 import { sameSpelling } from "./capture/nameChanges";
-import type { NameMatch, RecipeDetail, RecipeUpdateBody } from "./recipesClient";
+import type {
+  NameMatch,
+  RecipeDetail,
+  RecipeUpdateBody,
+} from "./recipesClient";
 
 export type EditState = {
   title: string;
@@ -18,6 +26,10 @@ export type EditState = {
   keptUnits: string[];
   /** Words the person said no to on this screen. Never remembered (FR-006). */
   declinedUnits: string[];
+  /** The recipe photo as a data URI, or null (S-067). */
+  previewImage: string | null;
+  /** True once the member picks or removes the photo; only then is it sent on update. */
+  imageChanged: boolean;
 };
 
 let counter = 0;
@@ -47,10 +59,15 @@ export function toEditState(recipe: RecipeDetail): EditState {
     steps: recipe.steps.map((text) => ({ key: nextKey("edit-step"), text })),
     keptUnits: [],
     declinedUnits: [],
+    previewImage: recipe.preview_image ?? null,
+    imageChanged: false,
   };
 }
 
-export function toUpdateBody(state: EditState, version: string): RecipeUpdateBody {
+export function toUpdateBody(
+  state: EditState,
+  version: string,
+): RecipeUpdateBody {
   return {
     version,
     title: state.title,
@@ -67,6 +84,8 @@ export function toUpdateBody(state: EditState, version: string): RecipeUpdateBod
     })),
     steps: state.steps.map((step) => step.text),
     keep_units: state.keptUnits,
+    // Left out keeps the stored photo; null removes it; a data URI replaces it (S-067).
+    ...(state.imageChanged ? { preview_image: state.previewImage } : {}),
   };
 }
 
@@ -87,15 +106,25 @@ export function isEdited(state: EditState, original: RecipeDetail): boolean {
  */
 export function applyLineChange(previous: LineView, next: LineView): LineView {
   if (next.name !== previous.name && next.match === previous.match) {
-    return { ...next, textName: next.name, match: { kind: "new", entry: null } };
+    return {
+      ...next,
+      textName: next.name,
+      match: { kind: "new", entry: null },
+    };
   }
   return next;
 }
 
 /** Lines whose typed name was not checked yet: new, named, and not checked under this name. */
-export function pendingChecks(lines: LineView[], checked: Map<string, string>): LineView[] {
+export function pendingChecks(
+  lines: LineView[],
+  checked: Map<string, string>,
+): LineView[] {
   return lines.filter(
-    (line) => line.match.kind === "new" && line.name.trim() !== "" && checked.get(line.key) !== line.name,
+    (line) =>
+      line.match.kind === "new" &&
+      line.name.trim() !== "" &&
+      checked.get(line.key) !== line.name,
   );
 }
 
@@ -108,10 +137,17 @@ export function applyMatches(
   checkedNames: Map<string, string>,
   matches: NameMatch[],
 ): LineView[] {
-  const entryByName = new Map(matches.map((match) => [match.name, match.entry]));
+  const entryByName = new Map(
+    matches.map((match) => [match.name, match.entry]),
+  );
   return lines.map((line) => {
     const entry = entryByName.get(checkedNames.get(line.key) ?? "\u0000");
-    if (!entry || line.match.kind !== "new" || line.name !== checkedNames.get(line.key)) return line;
+    if (
+      !entry ||
+      line.match.kind !== "new" ||
+      line.name !== checkedNames.get(line.key)
+    )
+      return line;
     if (sameSpelling(entry, line.name)) return line;
     return chooseLineMatch(line, entry);
   });
