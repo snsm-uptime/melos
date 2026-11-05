@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
 
+import { notebookChoices, pickedNotebook } from "@/components/NotebookPicker/testHelpers";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -498,7 +499,7 @@ describe("KitchenNotebooksSection", () => {
 
       await openSheet();
 
-      expect(document.querySelector("select")?.value).toBe(own.id);
+      expect(pickedNotebook()).toBe(own.name);
     });
 
     it("offers a new notebook of their own when they have none", async () => {
@@ -508,9 +509,8 @@ describe("KitchenNotebooksSection", () => {
 
       await openSheet();
 
-      const select = document.querySelector("select") as HTMLSelectElement;
-      expect(select.value).toBe("own-new");
-      expect(Array.from(select.options).map((option) => option.textContent)).toEqual([
+      expect(pickedNotebook()).toBe("My own notebook (new)");
+      expect(notebookChoices()).toEqual([
         "My own notebook (new)",
         homeNotebook.name,
       ]);

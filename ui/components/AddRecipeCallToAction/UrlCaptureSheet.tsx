@@ -1,5 +1,6 @@
 "use client";
 
+import { NotebookPicker } from "@/components/NotebookPicker";
 import { Sheet } from "@/app/kitchens/Sheet";
 import { CauldronLoader } from "@/components/CauldronLoader";
 import { submitLinkCapture } from "@/lib/capture/captureClient";
@@ -17,7 +18,11 @@ import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
 import { useLocale } from "@/lib/i18n/useLocale";
 
 import type { CaptureCandidate } from "./AddRecipeCallToAction";
-import { captureTarget, chooseNotebook, pickerOptions } from "./captureNotebook";
+import {
+  captureTarget,
+  chooseNotebook,
+  pickerOptions,
+} from "./captureNotebook";
 import { toDraftView } from "./TextCaptureSheet";
 
 type UrlCaptureSheetProps = {
@@ -34,7 +39,11 @@ const fieldClassName =
  * picker, and Read recipe. The link stays in the store, so a refusal or Back keeps it unchanged.
  * One submission at a time; the api opens the page, never the browser.
  */
-export function UrlCaptureSheet({ open, candidates, onDraftReady }: UrlCaptureSheetProps) {
+export function UrlCaptureSheet({
+  open,
+  candidates,
+  onDraftReady,
+}: UrlCaptureSheetProps) {
   const t = useCaptureMessages();
   const locale = useLocale();
   const capture = useCaptureState();
@@ -86,21 +95,17 @@ export function UrlCaptureSheet({ open, candidates, onDraftReady }: UrlCaptureSh
       }}
     >
       {candidates.length > 1 && notebook ? (
-        <label className="flex flex-col gap-1 text-[0.85rem] text-muted">
-          {t.notebookPicker}
-          <select
-            className={fieldClassName}
+        <div className="flex flex-col gap-1 text-[0.85rem] text-muted">
+          <span aria-hidden="true">{t.notebookPicker}</span>
+          <NotebookPicker
+            locale={locale}
+            label={t.notebookPicker}
             value={notebook.id}
             disabled={submitting}
-            onChange={(event) => chooseNotebook(options, event.target.value, notebook)}
-          >
-            {options.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
+            notebooks={options}
+            onChange={(id) => chooseNotebook(options, id, notebook)}
+          />
+        </div>
       ) : null}
       <label className="flex flex-col gap-1 text-[0.85rem] text-muted">
         {t.linkLabel}
@@ -117,7 +122,9 @@ export function UrlCaptureSheet({ open, candidates, onDraftReady }: UrlCaptureSh
           onChange={(event) => setLink(event.target.value)}
         />
       </label>
-      {submitting ? <CauldronLoader label={t.submittingLink} size="6rem" /> : null}
+      {submitting ? (
+        <CauldronLoader label={t.submittingLink} size="6rem" />
+      ) : null}
       {message && !submitting ? (
         <p role="alert" className="m-0 text-[0.9rem] text-error">
           {message}

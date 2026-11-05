@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
 
+import { notebookPicker, pickedNotebook } from "@/components/NotebookPicker/testHelpers";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -127,7 +128,7 @@ describe("AddRecipeCallToAction", () => {
     render([candidates[0]]);
     act(() => button("Add a recipe")!.click());
     act(() => button("Text")!.click());
-    expect(document.querySelector("select")).toBeNull();
+    expect(notebookPicker()).toBeNull();
   });
 
   it("shows the picker for the new-notebook row and one other notebook", () => {
@@ -143,6 +144,6 @@ describe("AddRecipeCallToAction", () => {
     act(() => button("Add a recipe")!.click());
     act(() => button("Text")!.click());
 
-    expect(document.querySelector("select")?.value).toBe("own-new");
+    expect(pickedNotebook()).toBe("My own notebook (new)");
   });
 });

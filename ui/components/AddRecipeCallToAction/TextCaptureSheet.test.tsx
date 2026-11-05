@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
 
+import { notebookChoices, pickedNotebook, pickNotebook } from "@/components/NotebookPicker/testHelpers";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -244,8 +245,7 @@ describe("TextCaptureSheet", () => {
 
   it("shows the notebook picker with the choices when there is more than one", () => {
     render();
-    const options = Array.from(document.querySelectorAll("select option")).map((o) => o.textContent);
-    expect(options).toEqual(["ana's Notebook", "Family list"]);
+    expect(notebookChoices()).toEqual(["ana's Notebook", "Family list"]);
   });
 
   describe("my own notebook (new), spec 035 research R6", () => {
@@ -327,19 +327,14 @@ describe("TextCaptureSheet", () => {
 
       await submit();
 
-      const select = document.querySelector("select") as HTMLSelectElement;
-      expect(select.value).toBe("nb-own");
-      expect(select.options[0].textContent).toBe("ana's (Home) Notebook");
+      expect(pickedNotebook()).toBe("ana's (Home) Notebook");
+      expect(notebookChoices()[0]).toBe("ana's (Home) Notebook");
     });
 
     it("sends an explicit pick straight to it and makes no notebook", async () => {
       const calls = stubRoutes(() => json(200, okResponse));
       renderKitchen();
-      const select = document.querySelector("select") as HTMLSelectElement;
-      act(() => {
-        select.value = "nb-ben";
-        select.dispatchEvent(new Event("change", { bubbles: true }));
-      });
+      pickNotebook("ben's Notebook");
 
       await submit();
 

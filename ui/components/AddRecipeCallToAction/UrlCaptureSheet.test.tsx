@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
 
+import { pickNotebook } from "@/components/NotebookPicker/testHelpers";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -165,11 +166,7 @@ describe("UrlCaptureSheet", () => {
     const fetchMock = vi.fn().mockResolvedValue(json(422, { code: "page_no_recipe", detail: "" }));
     vi.stubGlobal("fetch", fetchMock);
     render();
-    const select = document.querySelector("select") as HTMLSelectElement;
-    act(() => {
-      select.value = "nb-2";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    pickNotebook("Family list");
     type(LINK);
 
     await act(async () => submitButton().click());

@@ -1,10 +1,12 @@
 "use client";
 
+import { NotebookPicker } from "@/components/NotebookPicker";
 import { useEffect, useId, useState } from "react";
 
 import { Sheet } from "@/app/kitchens/Sheet";
 import { CauldronLoader } from "@/components/CauldronLoader";
 import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
+import { useLocale } from "@/lib/i18n/useLocale";
 import {
   copyRecipeToKitchen,
   fetchPersonalNotebooks,
@@ -37,7 +39,10 @@ type Notebooks =
   | { status: "error" }
   | { status: "ready"; notebooks: NotebookResponse[] };
 
-type Recipes = { status: "loading" } | { status: "error" } | { status: "ready"; page: RecipePage };
+type Recipes =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "ready"; page: RecipePage };
 
 const fieldClassName =
   "w-full rounded-[0.75rem] border border-border bg-background px-3 py-2 text-[0.95rem] text-foreground";
@@ -59,28 +64,39 @@ export function RecipeFromNotebookSheet({
   onDone,
 }: RecipeFromNotebookSheetProps) {
   const t = useCaptureMessages();
+  const locale = useLocale();
   const listName = useId();
   // Each answer keeps the request it answers, so a newer request reads as loading (no reset).
-  const [notebooksAnswer, setNotebooksAnswer] = useState<{ key: number; value: Notebooks } | null>(
-    null,
-  );
+  const [notebooksAnswer, setNotebooksAnswer] = useState<{
+    key: number;
+    value: Notebooks;
+  } | null>(null);
   const [notebookId, setNotebookId] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
-  const [recipesAnswer, setRecipesAnswer] = useState<{ key: string; value: Recipes } | null>(null);
+  const [recipesAnswer, setRecipesAnswer] = useState<{
+    key: string;
+    value: Recipes;
+  } | null>(null);
   const [recipeId, setRecipeId] = useState<string | null>(null);
   const [chosenKitchen, setChosenKitchen] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [attempt, setAttempt] = useState(0);
   const [recipesAttempt, setRecipesAttempt] = useState(0);
   const notebooks: Notebooks =
-    notebooksAnswer?.key === attempt ? notebooksAnswer.value : { status: "loading" };
+    notebooksAnswer?.key === attempt
+      ? notebooksAnswer.value
+      : { status: "loading" };
   const recipesKey = `${notebookId}|${page}|${q}|${recipesAttempt}`;
   const recipes: Recipes =
-    recipesAnswer?.key === recipesKey ? recipesAnswer.value : { status: "loading" };
+    recipesAnswer?.key === recipesKey
+      ? recipesAnswer.value
+      : { status: "loading" };
 
   const targetKitchen =
-    kitchenId ?? chosenKitchen ?? (kitchens && kitchens.length === 1 ? kitchens[0].id : null);
+    kitchenId ??
+    chosenKitchen ??
+    (kitchens && kitchens.length === 1 ? kitchens[0].id : null);
 
   // The caller remounts the sheet each time it opens, so every open starts fresh.
   useEffect(() => {
@@ -92,10 +108,17 @@ export function RecipeFromNotebookSheet({
         setNotebooksAnswer({ key: attempt, value: { status: "error" } });
         return;
       }
-      const personal = result.value.filter((notebook) => notebook.kind === "personal");
-      setNotebooksAnswer({ key: attempt, value: { status: "ready", notebooks: personal } });
+      const personal = result.value.filter(
+        (notebook) => notebook.kind === "personal",
+      );
+      setNotebooksAnswer({
+        key: attempt,
+        value: { status: "ready", notebooks: personal },
+      });
       const first =
-        personal.find((notebook) => notebook.is_default && notebook.recipe_count > 0) ??
+        personal.find(
+          (notebook) => notebook.is_default && notebook.recipe_count > 0,
+        ) ??
         personal.find((notebook) => notebook.recipe_count > 0) ??
         personal[0];
       setNotebookId(first?.id ?? null);
@@ -112,7 +135,9 @@ export function RecipeFromNotebookSheet({
       if (!current) return;
       setRecipesAnswer({
         key: recipesKey,
-        value: result.ok ? { status: "ready", page: result.value } : { status: "error" },
+        value: result.ok
+          ? { status: "ready", page: result.value }
+          : { status: "error" },
       });
     });
     return () => {
@@ -122,9 +147,13 @@ export function RecipeFromNotebookSheet({
 
   const personal = notebooks.status === "ready" ? notebooks.notebooks : [];
   const noRecipes =
-    notebooks.status === "ready" && personal.every((notebook) => notebook.recipe_count === 0);
+    notebooks.status === "ready" &&
+    personal.every((notebook) => notebook.recipe_count === 0);
   const submitting = phase.kind === "submitting";
-  const canConfirm = Boolean(recipeId && targetKitchen) && !submitting && phase.kind !== "repeat";
+  const canConfirm =
+    Boolean(recipeId && targetKitchen) &&
+    !submitting &&
+    phase.kind !== "repeat";
 
   async function submit(onRepeat: RecipeCopyRepeat) {
     if (!recipeId || !targetKitchen) return;
@@ -146,7 +175,10 @@ export function RecipeFromNotebookSheet({
       return;
     }
     if (result.code === "recipe_locked") {
-      setPhase({ kind: "error", message: t.fromNotebookLocked(result.editorAlias ?? "?") });
+      setPhase({
+        kind: "error",
+        message: t.fromNotebookLocked(result.editorAlias ?? "?"),
+      });
       return;
     }
     if (result.code === "kitchen_archived") {
@@ -161,7 +193,8 @@ export function RecipeFromNotebookSheet({
   }
 
   function recipeList() {
-    if (recipes.status === "loading") return <CauldronLoader label={t.fromNotebookLoading} size="4rem" />;
+    if (recipes.status === "loading")
+      return <CauldronLoader label={t.fromNotebookLoading} size="4rem" />;
     if (recipes.status === "error") {
       return (
         <p role="alert" className="m-0 text-[0.9rem] text-error">
@@ -171,11 +204,17 @@ export function RecipeFromNotebookSheet({
     }
     const { items, total_pages: totalPages } = recipes.page;
     if (items.length === 0) {
-      return <p className="m-0 text-[0.9rem] text-muted">{t.fromNotebookNoMatch}</p>;
+      return (
+        <p className="m-0 text-[0.9rem] text-muted">{t.fromNotebookNoMatch}</p>
+      );
     }
     return (
       <>
-        <ul role="radiogroup" aria-label={t.fromNotebookSearch} className="m-0 flex list-none flex-col divide-y divide-border p-0">
+        <ul
+          role="radiogroup"
+          aria-label={t.fromNotebookSearch}
+          className="m-0 flex list-none flex-col divide-y divide-border p-0"
+        >
           {items.map((recipe) => (
             <li key={recipe.id}>
               <label className="flex cursor-pointer items-center gap-3 py-2 text-[0.95rem] text-foreground">
@@ -231,13 +270,19 @@ export function RecipeFromNotebookSheet({
         <p role="alert" className="m-0 text-[0.9rem] text-error">
           {t.fromNotebookLoadError}
         </p>
-        <button type="button" className={secondaryClassName} onClick={() => setAttempt((v) => v + 1)}>
+        <button
+          type="button"
+          className={secondaryClassName}
+          onClick={() => setAttempt((v) => v + 1)}
+        >
           {t.fromNotebookRetry}
         </button>
       </div>
     );
   } else if (noRecipes) {
-    body = <p className="m-0 text-[0.95rem] text-muted">{t.fromNotebookEmpty}</p>;
+    body = (
+      <p className="m-0 text-[0.95rem] text-muted">{t.fromNotebookEmpty}</p>
+    );
   } else {
     body = (
       <form
@@ -272,26 +317,22 @@ export function RecipeFromNotebookSheet({
           </label>
         ) : null}
         {personal.length > 1 ? (
-          <label className="flex flex-col gap-1 text-[0.85rem] text-muted">
-            {t.notebookPicker}
-            <select
-              className={fieldClassName}
+          <div className="flex flex-col gap-1 text-[0.85rem] text-muted">
+            <span aria-hidden="true">{t.notebookPicker}</span>
+            <NotebookPicker
+              locale={locale}
+              label={t.notebookPicker}
               value={notebookId ?? ""}
               disabled={submitting}
-              onChange={(event) => {
-                setNotebookId(event.target.value);
+              notebooks={personal}
+              onChange={(id) => {
+                setNotebookId(id);
                 setRecipeId(null);
                 setPage(1);
                 setPhase({ kind: "idle" });
               }}
-            >
-              {personal.map((notebook) => (
-                <option key={notebook.id} value={notebook.id}>
-                  {notebook.name}
-                </option>
-              ))}
-            </select>
-          </label>
+            />
+          </div>
         ) : null}
         <label className="flex flex-col gap-1 text-[0.85rem] text-muted">
           {t.fromNotebookSearch}
@@ -313,9 +354,14 @@ export function RecipeFromNotebookSheet({
           </p>
         ) : null}
         {phase.kind === "repeat" ? (
-          <div role="alert" className="flex flex-col gap-3 rounded-[0.75rem] border border-border p-3">
+          <div
+            role="alert"
+            className="flex flex-col gap-3 rounded-[0.75rem] border border-border p-3"
+          >
             <p className="m-0 font-[550] text-foreground">{t.repeatTitle}</p>
-            <p className="m-0 text-[0.9rem] text-muted">{t.repeatBody(phase.notebookName)}</p>
+            <p className="m-0 text-[0.9rem] text-muted">
+              {t.repeatBody(phase.notebookName)}
+            </p>
             <div className="flex flex-wrap justify-end gap-2">
               <button
                 type="button"
@@ -324,16 +370,28 @@ export function RecipeFromNotebookSheet({
               >
                 {t.repeatCancel}
               </button>
-              <button type="button" className={secondaryClassName} onClick={() => void submit("overwrite")}>
+              <button
+                type="button"
+                className={secondaryClassName}
+                onClick={() => void submit("overwrite")}
+              >
                 {t.repeatOverwrite}
               </button>
-              <button type="button" className={primaryClassName} onClick={() => void submit("add")}>
+              <button
+                type="button"
+                className={primaryClassName}
+                onClick={() => void submit("add")}
+              >
                 {t.repeatAddAnother}
               </button>
             </div>
           </div>
         ) : (
-          <button type="submit" disabled={!canConfirm} className={`self-end ${primaryClassName}`}>
+          <button
+            type="submit"
+            disabled={!canConfirm}
+            className={`self-end ${primaryClassName}`}
+          >
             {submitting ? t.fromNotebookAdding : t.fromNotebookConfirm}
           </button>
         )}

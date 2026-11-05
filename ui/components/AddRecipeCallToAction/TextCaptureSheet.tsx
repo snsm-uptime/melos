@@ -1,5 +1,6 @@
 "use client";
 
+import { NotebookPicker } from "@/components/NotebookPicker";
 import { useEffect, useState } from "react";
 
 import { Sheet } from "@/app/kitchens/Sheet";
@@ -22,7 +23,11 @@ import { useLocale } from "@/lib/i18n/useLocale";
 import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
 
 import type { CaptureCandidate } from "./AddRecipeCallToAction";
-import { captureTarget, chooseNotebook, pickerOptions } from "./captureNotebook";
+import {
+  captureTarget,
+  chooseNotebook,
+  pickerOptions,
+} from "./captureNotebook";
 
 /** The api's default paste limit, used until the controlled lists load (RECIPE_TEXT_MAX_CHARS). */
 const DEFAULT_MAX_CHARS = 5000;
@@ -84,7 +89,11 @@ const fieldClassName =
  * The text sheet (spec 016 FR-002, FR-003, FR-004, FR-016 to FR-018). The pasted text stays
  * in the store, so a failure or Back keeps it. One submission at a time; no automatic retry.
  */
-export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCaptureSheetProps) {
+export function TextCaptureSheet({
+  open,
+  candidates,
+  onDraftReady,
+}: TextCaptureSheetProps) {
   const t = useCaptureMessages();
   const locale = useLocale();
   const capture = useCaptureState();
@@ -107,7 +116,8 @@ export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCapture
   const trimmed = text.trim();
   const tooLong = trimmed.length > max;
   const submitting = capture.phase === "submitting";
-  const disabled = trimmed.length === 0 || tooLong || submitting || notebook === null;
+  const disabled =
+    trimmed.length === 0 || tooLong || submitting || notebook === null;
 
   async function submit() {
     if (!notebook || disabled) return;
@@ -138,21 +148,17 @@ export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCapture
   const body = (
     <div className="flex flex-col gap-4">
       {candidates.length > 1 && notebook ? (
-        <label className="flex flex-col gap-1 text-[0.85rem] text-muted">
-          {t.notebookPicker}
-          <select
-            className={fieldClassName}
+        <div className="flex flex-col gap-1 text-[0.85rem] text-muted">
+          <span aria-hidden="true">{t.notebookPicker}</span>
+          <NotebookPicker
+            locale={locale}
+            label={t.notebookPicker}
             value={notebook.id}
             disabled={submitting}
-            onChange={(event) => chooseNotebook(options, event.target.value, notebook)}
-          >
-            {options.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
+            notebooks={options}
+            onChange={(id) => chooseNotebook(options, id, notebook)}
+          />
+        </div>
       ) : null}
       <label className="flex flex-col gap-1 text-[0.85rem] text-muted">
         {t.recipeText}
@@ -164,7 +170,9 @@ export function TextCaptureSheet({ open, candidates, onDraftReady }: TextCapture
         />
       </label>
       {text.length > max * COUNTER_FROM_RATIO ? (
-        <p className="m-0 text-[0.8rem] text-muted">{t.counterNear(text.length, max)}</p>
+        <p className="m-0 text-[0.8rem] text-muted">
+          {t.counterNear(text.length, max)}
+        </p>
       ) : null}
       {message ? (
         <p role="alert" className="m-0 text-[0.9rem] text-error">
