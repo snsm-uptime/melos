@@ -64,7 +64,7 @@ stories:
     title: Share a recipe with a person from the recipe page (share icon, searchable alias list, co-members first, copy to their default notebook)
     epic: Recipes
     priority: must
-    status: backlog
+    status: in_progress
     journey: J3
     source: owner request 2026-11-05 (post-MVP; not in prd.md; extends J3 and J1a); specs/071-share-recipe-to-user
     notes: >
@@ -74,6 +74,14 @@ stories:
       notebook; the popup then shows a success message in place of the list. Depends on the S-048 copy
       step, which is still backlog. Open for the owner: the list is assumed to hold co-members only, not
       every account.
+    verification: >
+      Built 2026-11-05 on main, not committed. API: co-member SQL (adapters/persistence/co_members.py),
+      ShareRecipeService (application/recipe_share.py), GET /recipes/share-candidates and
+      POST /recipes/{id}/share. UI: ShareRecipeDialog, share icon in RecipeDetailView, BFF routes.
+      Research R-1: join times exist (created_at on kitchen_memberships and notebook_membership), so the
+      order is recent shared activity, then alias. R-4 gap: no server dedupe of a repeated request.
+      Not yet done: quickstart browser walk (T034); archived-kitchen co-members are included by default
+      (owner answer pending, T004). Stays in_progress until T034 passes.
 
   - id: S-025
     title: Saved shopping list from the cart and hand-added items, closed with Done (closing_date)
@@ -236,7 +244,9 @@ stories:
       Any recipe the person can read, into a notebook they can write to. Names are
       normalized against the target's catalog with the S-018 matcher; the target's names win and
       the person sees every change before confirming. The person is the copy's author. The copy
-      has no link to the original; the two drift apart. S-035 built the shared step first:
+      has no link to the original; the two drift apart. Note (2026-11-05): the single-recipe copy with
+      name matching is built under S-071 (ShareRecipeService), so S-048 needs only its confirmation
+      step. S-035 built the shared step first:
       SqlAlchemyRecipeRepository.copy_all copies a whole notebook and keeps authors, so a single
       recipe copy reuses its parts and adds the name matching. Copied recipes need embeddings
       (S-019).
