@@ -147,6 +147,13 @@
      a single wide blur reads as a glow. These are M3's standard shadow colours,
      in both themes. Shared by any control that lifts on activation (UploadButton,
      IconButton's ghost `active` state, the review screen's keycap legend) so
+
+  /* Frosted chrome (spec 072 R4). 88% is the lowest page-colour opacity at which quiet text
+     passes 4.5:1 over pure black and pure white in both themes; 80% (the portfolio's) does not. */
+  --frost-alpha: 86%;
+  --frost-blur: 8px;
+  --frost-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --frost-fade: 300ms;
      they all cast the same shadow rather than each re-deriving it. */
   --lift-key: rgb(0 0 0 / 0.3);
   --lift-ambient: rgb(0 0 0 / 0.15);
@@ -306,6 +313,64 @@ body {
 }
 *::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
+}
+
+/* Frosted sticky bars (spec 072, contracts/frost-surface.md §2). The frost lives on ::before so the
+   bar itself never gets backdrop-filter: a menu opened from the bar can still blur the page. */
+.frost-bar {
+  isolation: isolate;
+}
+
+.frost-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: transparent;
+  box-shadow: none;
+  transition:
+    background-color var(--frost-fade) ease,
+    box-shadow var(--frost-fade) ease,
+    backdrop-filter var(--frost-fade) ease,
+    -webkit-backdrop-filter var(--frost-fade) ease;
+}
+
+.frost-bar[data-frosted="true"]::before {
+  background: color-mix(in srgb, var(--background) var(--frost-alpha), transparent);
+  -webkit-backdrop-filter: blur(var(--frost-blur));
+  backdrop-filter: blur(var(--frost-blur));
+  box-shadow: var(--frost-shadow);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .frost-bar[data-frosted="true"]::before {
+    background: color-mix(in srgb, var(--background) 97%, transparent);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .frost-bar[data-frosted="true"]::before {
+    background: var(--background);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frost-bar::before {
+    transition: none;
+  }
+}
+
+/* Phone-only sticky headers: from md up they are not sticky and never frost. */
+@media (width >= 48rem) {
+  .frost-bar.frost-bar-phone[data-frosted="true"]::before {
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
+  }
 }
 
 /* Side panel: the slide speed and the sizes its absolute offsets depend on. */

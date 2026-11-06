@@ -1,13 +1,31 @@
-/* Shared dropdown chrome. Mix accent into --surface so --foreground stays readable
-   in light and dark. Hover is a lighter tint than the selected/active row. */
+/* Shared dropdown chrome. Mix the accent into --surface so --foreground stays readable
+   in light and dark. Hover is a lighter tint than the selected/active row.
+   The panel is always frosted (spec 072 FR-017, contracts/frost-surface.md §3): the page
+   behind it blurs through the surface at --frost-alpha. Rows stay opaque tints. */
 
 .panel {
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) var(--frost-alpha), transparent);
+  -webkit-backdrop-filter: blur(var(--frost-blur));
+  backdrop-filter: blur(var(--frost-blur));
   border: 1px solid var(--border);
   border-radius: var(--rounded-sm);
   box-shadow: 0 8px 20px color-mix(in srgb, var(--foreground) 12%, transparent);
   color: var(--foreground);
   overflow: auto;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .panel {
+    background: color-mix(in srgb, var(--surface) 97%, transparent);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .panel {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
 .item {

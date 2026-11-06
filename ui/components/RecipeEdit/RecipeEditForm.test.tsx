@@ -60,6 +60,9 @@ async function flush() {
   });
 }
 
+const chrome = vi.hoisted(() => ({ scrolled: false }));
+vi.mock("@/components/ChromeScroll", () => ({ useChromeScrolled: () => chrome.scrolled }));
+
 describe("RecipeEditForm", () => {
   let container: HTMLDivElement;
   let root: Root;
@@ -121,6 +124,25 @@ describe("RecipeEditForm", () => {
     });
     await flush();
   }
+
+  it("the page header is a frosted phone bar with no solid background", async () => {
+    render();
+    const header = container.querySelector("header") as HTMLElement;
+    expect(header.classList.contains("frost-bar")).toBe(true);
+    expect(header.classList.contains("frost-bar-phone")).toBe(true);
+    expect(header.classList.contains("bg-background")).toBe(false);
+    expect(header.getAttribute("data-frosted")).toBe("false");
+  });
+
+  it("frosts the page header once the main scroller has been scrolled", async () => {
+    chrome.scrolled = true;
+    try {
+      render();
+      expect(container.querySelector("header")?.getAttribute("data-frosted")).toBe("true");
+    } finally {
+      chrome.scrolled = false;
+    }
+  });
 
   it("has no English interface text in Spanish, and keeps the recipe's own words (spec 063)", async () => {
     act(() => {

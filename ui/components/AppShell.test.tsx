@@ -288,7 +288,7 @@ describe("AppShell chrome header", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it("renders the opted-in progressBar outside the scrollable content area", async () => {
+  it("keeps the opted-in progressBar in the sticky frosted bar with the header", async () => {
     await act(async () => {
       root.render(
         <AppShell>
@@ -302,11 +302,55 @@ describe("AppShell chrome header", () => {
     });
 
     const strip = container.querySelector('[data-testid="progress-strip"]');
+    const header = container.querySelector('header[data-app-chrome="header"]');
     expect(strip).toBeTruthy();
-    // Not inside the scrollable children region, which is the sibling after
-    // the (possible) header row — the strip sits before it.
-    const scrollable = container.querySelector(".overflow-y-auto");
-    expect(scrollable?.contains(strip)).toBe(false);
+    // Same sticky wrapper as the header, so the strip stays at the very top while content scrolls.
+    expect(header?.parentElement?.contains(strip)).toBe(true);
+    expect(header?.parentElement?.classList.contains("frost-bar")).toBe(true);
+  });
+
+  it("puts the header in the main scroller as a sticky frosted bar", async () => {
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <EnableHeader href="/budgets/b1" title="Groceries" />
+        </AppShell>,
+      );
+    });
+
+    const header = container.querySelector('header[data-app-chrome="header"]') as HTMLElement;
+    const bar = header.parentElement as HTMLElement;
+    const scroller = container.querySelector(".overflow-y-auto") as HTMLElement;
+    expect(scroller.contains(header)).toBe(true);
+    expect(bar.classList.contains("frost-bar")).toBe(true);
+    expect(bar.classList.contains("sticky")).toBe(true);
+    expect(bar.classList.contains("top-0")).toBe(true);
+    expect(bar.getAttribute("data-frosted")).toBe("false");
+  });
+
+  it("frosts the header once the main scroller has been scrolled, and clears it at the top", async () => {
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <EnableHeader href="/budgets/b1" title="Groceries" />
+        </AppShell>,
+      );
+    });
+
+    const scroller = container.querySelector(".overflow-y-auto") as HTMLElement;
+    const bar = container.querySelector('header[data-app-chrome="header"]')?.parentElement as HTMLElement;
+
+    await act(async () => {
+      scroller.scrollTop = 1;
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+    expect(bar.getAttribute("data-frosted")).toBe("true");
+
+    await act(async () => {
+      scroller.scrollTop = 0;
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+    expect(bar.getAttribute("data-frosted")).toBe("false");
   });
 
   it("omits the progressBar strip when not opted in", async () => {

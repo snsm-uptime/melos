@@ -99,7 +99,33 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+const chrome = vi.hoisted(() => ({ scrolled: false }));
+vi.mock("@/components/ChromeScroll", () => ({ useChromeScrolled: () => chrome.scrolled }));
+
 describe("RecipeDraftEditor", () => {
+  it("the page header is a frosted phone bar with no solid background", async () => {
+    await act(async () => {
+      root.render(<RecipeDraftEditor />);
+    });
+    const header = container.querySelector("header") as HTMLElement;
+    expect(header.classList.contains("frost-bar")).toBe(true);
+    expect(header.classList.contains("frost-bar-phone")).toBe(true);
+    expect(header.classList.contains("bg-background")).toBe(false);
+    expect(header.getAttribute("data-frosted")).toBe("false");
+  });
+
+  it("frosts the page header once the main scroller has been scrolled", async () => {
+    chrome.scrolled = true;
+    try {
+      await act(async () => {
+      root.render(<RecipeDraftEditor />);
+    });
+      expect(container.querySelector("header")?.getAttribute("data-frosted")).toBe("true");
+    } finally {
+      chrome.scrolled = false;
+    }
+  });
+
   it("shows the notebook line, the title and the ingredient row", async () => {
     await act(async () => {
       root.render(<RecipeDraftEditor />);

@@ -2,7 +2,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useLayoutEffect, useState, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import {
   AnalyticsIcon,
@@ -17,6 +17,7 @@ import {
   chromeHeaderIsActive,
   useChromeHeaderState,
 } from "@/components/ChromeBack";
+import { ChromeScrollProvider, useChromeScrolled } from "@/components/ChromeScroll";
 import { IconButton } from "@/components/IconButton";
 import { usePreferences } from "@/components/PreferencesProvider";
 import { SidePanel } from "@/components/SidePanel";
@@ -56,8 +57,22 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * The sticky top of the main scroller: progress bar and header. Frosted once the scroller has left
+ * its top (spec 072); the frost is painted by `.frost-bar::before`, so this box stays unblurred.
+ */
+function FrostedChromeBar({ children }: { children: ReactNode }) {
+  const scrolled = useChromeScrolled();
+  return (
+    <div className="frost-bar sticky top-0 z-10 shrink-0" data-frosted={scrolled ? "true" : "false"}>
+      {children}
+    </div>
+  );
+}
+
 function AppShellFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "";
+  const scrollerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { locale } = usePreferences();
   const t = kitchensMessages[locale];
@@ -123,81 +138,92 @@ function AppShellFrame({ children }: { children: ReactNode }) {
       {showPanel ? <SidePanel drawerOpen={drawerOpen} onDrawerClose={closeDrawer} /> : null}
       <div className="relative flex min-w-0 flex-col flex-1 min-h-0">
         {languageSwitch}
-        {header.progressBar ? <div className="shrink-0">{header.progressBar}</div> : null}
-        {showHeader || showPanel ? (
-          <header
-            data-app-chrome="header"
-            className={`flex shrink-0 items-center gap-2 ${showHeader ? "" : "md:hidden "}${header.progressBar
-                ? "pt-[max(1rem,env(safe-area-inset-top))]"
-                : "pt-[max(0.5rem,env(safe-area-inset-top))]"
-              } pr-[max(var(--page-gutter),env(safe-area-inset-right))] pb-1 ${headerInset}`}
-          >
-            {showPanel ? (
-              <span className="inline-flex shrink-0 md:hidden">
-                <IconButton
-                  variant="ghost"
-                  className="size-11"
-                  label={sidePanelMessages[locale].open}
-                  aria-haspopup="dialog"
-                  icon={<MenuIcon className="size-6" />}
-                  onClick={() => setDrawerOpen(true)}
-                />
-              </span>
-            ) : null}
-            <div className="flex w-10 shrink-0 items-center justify-start self-center empty:hidden">
-              {header.onBack || header.backHref ? (
-                <IconButton
-                  variant="ghost"
-                  label={t.chromeBack}
-                  icon={<BackIcon className="size-6" />}
-                  onClick={() => {
-                    if (header.onBack) {
-                      header.onBack();
-                      return;
-                    }
-                    if (header.backHref) router.push(header.backHref);
-                  }}
-                />
-              ) : header.leading ? (
-                header.leading
-              ) : null}
-            </div>
-            <div
-              className={`flex min-w-0 flex-1 items-center justify-start gap-2 self-center ${
-                header.titleAside ? "flex-wrap md:flex-nowrap" : ""
-              }`}
-            >
-              {header.title && titleIcon ? (
-                <span className="inline-flex shrink-0" data-app-chrome="title-icon">
-                  {titleIcon}
-                </span>
-              ) : null}
-              {header.title ? (
-                <h1
-                  className={`m-0 min-w-0 truncate text-[1.5rem] font-[550] leading-normal text-foreground ${
-                    header.titleAside ? "shrink-0" : ""
-                  }`}
+        {/* The scroller is the page's scroll container: the sticky header is its first child, so
+            content passes under it (spec 072 FR-004). */}
+        <div
+          ref={scrollerRef}
+          className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto"
+        >
+          <ChromeScrollProvider scrollerRef={scrollerRef}>
+            <FrostedChromeBar>
+              {header.progressBar ? <div className="shrink-0">{header.progressBar}</div> : null}
+              {showHeader || showPanel ? (
+                <header
+                  data-app-chrome="header"
+                  className={`flex shrink-0 items-center gap-2 ${showHeader ? "" : "md:hidden "}${header.progressBar
+                      ? "pt-[max(1rem,env(safe-area-inset-top))]"
+                      : "pt-[max(0.5rem,env(safe-area-inset-top))]"
+                    } pr-[max(var(--page-gutter),env(safe-area-inset-right))] pb-1 ${headerInset}`}
                 >
-                  {header.title}
-                </h1>
+                  {showPanel ? (
+                    <span className="inline-flex shrink-0 md:hidden">
+                      <IconButton
+                        variant="ghost"
+                        className="size-11"
+                        label={sidePanelMessages[locale].open}
+                        aria-haspopup="dialog"
+                        icon={<MenuIcon className="size-6" />}
+                        onClick={() => setDrawerOpen(true)}
+                      />
+                    </span>
+                  ) : null}
+                  <div className="flex w-10 shrink-0 items-center justify-start self-center empty:hidden">
+                    {header.onBack || header.backHref ? (
+                      <IconButton
+                        variant="ghost"
+                        label={t.chromeBack}
+                        icon={<BackIcon className="size-6" />}
+                        onClick={() => {
+                          if (header.onBack) {
+                            header.onBack();
+                            return;
+                          }
+                          if (header.backHref) router.push(header.backHref);
+                        }}
+                      />
+                    ) : header.leading ? (
+                      header.leading
+                    ) : null}
+                  </div>
+                  <div
+                    className={`flex min-w-0 flex-1 items-center justify-start gap-2 self-center ${
+                      header.titleAside ? "flex-wrap md:flex-nowrap" : ""
+                    }`}
+                  >
+                    {header.title && titleIcon ? (
+                      <span className="inline-flex shrink-0" data-app-chrome="title-icon">
+                        {titleIcon}
+                      </span>
+                    ) : null}
+                    {header.title ? (
+                      <h1
+                        className={`m-0 min-w-0 truncate text-[1.5rem] font-[550] leading-normal text-foreground ${
+                          header.titleAside ? "shrink-0" : ""
+                        }`}
+                      >
+                        {header.title}
+                      </h1>
+                    ) : null}
+                    {header.details ? (
+                      <Chip className={header.detailsClassName}>
+                        <span className="shrink-0 text-[0.85rem] text-muted">{header.details}</span>
+                      </Chip>
+                    ) : null}
+                    {header.titleAside ? (
+                      <div className="min-w-0 flex-1 basis-full overflow-x-auto md:basis-0">{header.titleAside}</div>
+                    ) : null}
+                  </div>
+                  {header.trailing ? (
+                    <div className="flex shrink-0 items-center gap-1 self-center">
+                      {header.trailing}
+                    </div>
+                  ) : null}
+                </header>
               ) : null}
-              {header.details ? (
-                <Chip className={header.detailsClassName}>
-                  <span className="shrink-0 text-[0.85rem] text-muted">{header.details}</span>
-                </Chip>
-              ) : null}
-              {header.titleAside ? (
-                <div className="min-w-0 flex-1 basis-full overflow-x-auto md:basis-0">{header.titleAside}</div>
-              ) : null}
-            </div>
-            {header.trailing ? (
-              <div className="flex shrink-0 items-center gap-1 self-center">
-                {header.trailing}
-              </div>
-            ) : null}
-          </header>
-        ) : null}
-        <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">{children}</div>
+            </FrostedChromeBar>
+            {children}
+          </ChromeScrollProvider>
+        </div>
         {/* Toasts sit at the bottom of the content area (spec 064 R12). */}
         <ToastViewport
           dismissLabel={dismissLabel}
