@@ -11,7 +11,7 @@ these roles (through Tailwind `--color-*` utilities or `var(--role)`), never raw
 | `--background` | `#f7f5fa` | `#141218` |
 | `--surface` | `#ffffff` | `#201d27` |
 | `--foreground` | `#1d1a24` | `#e5e7eb` |
-| `--muted` | `#5f596b` | `#9ca3af` |
+| `--muted` | `#5f596b` | `#a5adba` |
 | `--border` | `#e4e0ea` | `#36313f` |
 | `--field-border` | `#8b8497` | `#756e82` |
 | `--accent` | `#ab5a00` | `#fd9c21` |
@@ -52,7 +52,7 @@ Tailwind exposure added to `@theme`: `--color-primary`, `--color-on-primary`,
 ## Contrast check (SC-003)
 
 Frosted rows assume the worst content beneath: pure black or pure white, with the frost at
-`--frost-alpha` (88%). All 70 pairs pass (the two "Text on danger fill" rows were added after the plan: `kitchens.module.scss` `.primaryDanger` puts white text on `--danger-strong`, which rules out `#ef4444` in dark at 3.76:1).
+`--frost-alpha` (86%). All 70 pairs pass (the two "Text on danger fill" rows were added after the plan: `kitchens.module.scss` `.primaryDanger` puts white text on `--danger-strong`, which rules out `#ef4444` in dark at 3.76:1).
 
 ### dark
 
@@ -60,8 +60,8 @@ Frosted rows assume the worst content beneath: pure black or pure white, with th
 |---|---|---|---|---|---|---|
 | Text on page | `--foreground` | `--background` | `#e5e7eb` on `#141218` | 15.02 | 4.5 | pass |
 | Text on surface | `--foreground` | `--surface` | `#e5e7eb` on `#201d27` | 13.39 | 4.5 | pass |
-| Quiet text on page | `--muted` | `--background` | `#9ca3af` on `#141218` | 7.32 | 4.5 | pass |
-| Quiet text on surface | `--muted` | `--surface` | `#9ca3af` on `#201d27` | 6.53 | 4.5 | pass |
+| Quiet text on page | `--muted` | `--background` | `#a5adba` on `#141218` | 8.22 | 4.5 | pass |
+| Quiet text on surface | `--muted` | `--surface` | `#a5adba` on `#201d27` | 7.33 | 4.5 | pass |
 | Main colour text/icon on page | `--accent` | `--background` | `#fd9c21` on `#141218` | 8.81 | 4.5 | pass |
 | Main colour text/icon on surface | `--accent` | `--surface` | `#fd9c21` on `#201d27` | 7.86 | 4.5 | pass |
 | Text on orange fill | `--on-accent` | `--accent-fill` | `#141218` on `#fd9c21` | 8.81 | 4.5 | pass |
@@ -82,17 +82,17 @@ Frosted rows assume the worst content beneath: pure black or pure white, with th
 | Text on hovered menu row | `--foreground` | `--menu-item-hover` | `#e5e7eb` on `#362a26` | 11.19 | 4.5 | pass |
 | Text on selected menu row | `--foreground` | `--menu-item-selected` | `#e5e7eb` on `#513926` | 8.64 | 4.5 | pass |
 | Text on selected card | `--foreground` | `--card-selected` | `#e5e7eb` on `#3b2c26` | 10.77 | 4.5 | pass |
-| Quiet text on selected card | `--muted` | `--card-selected` | `#9ca3af` on `#3b2c26` | 5.25 | 4.5 | pass |
+| Quiet text on selected card | `--muted` | `--card-selected` | `#a5adba` on `#3b2c26` | 5.90 | 4.5 | pass |
 | Text on frosted bar over black | `--foreground` | `bar/black` | `#e5e7eb` on `#121015` | 15.27 | 4.5 | pass |
 | Text on frosted bar over white | `--foreground` | `bar/white` | `#e5e7eb` on `#302e34` | 10.83 | 4.5 | pass |
-| Quiet text on frosted bar over black | `--muted` | `bar/black` | `#9ca3af` on `#121015` | 7.45 | 4.5 | pass |
-| Quiet text on frosted bar over white | `--muted` | `bar/white` | `#9ca3af` on `#302e34` | 5.28 | 4.5 | pass |
+| Quiet text on frosted bar over black | `--muted` | `bar/black` | `#a5adba` on `#110f15` | 8.40 | 4.5 | pass |
+| Quiet text on frosted bar over white | `--muted` | `bar/white` | `#a5adba` on `#353338` | 5.51 | 4.5 | pass |
 | Icon (main colour) on frosted bar over black | `--accent` | `bar/black` | `#fd9c21` on `#121015` | 8.96 | 3 | pass |
 | Icon (main colour) on frosted bar over white | `--accent` | `bar/white` | `#fd9c21` on `#302e34` | 6.36 | 3 | pass |
 | Text on frosted menu over black | `--foreground` | `menu/black` | `#e5e7eb` on `#1c1a22` | 13.90 | 4.5 | pass |
 | Text on frosted menu over white | `--foreground` | `menu/white` | `#e5e7eb` on `#3b3841` | 9.28 | 4.5 | pass |
-| Quiet text on frosted menu over black | `--muted` | `menu/black` | `#9ca3af` on `#1c1a22` | 6.78 | 4.5 | pass |
-| Quiet text on frosted menu over white | `--muted` | `menu/white` | `#9ca3af` on `#3b3841` | 4.52 | 4.5 | pass |
+| Quiet text on frosted menu over black | `--muted` | `menu/black` | `#a5adba` on `#1c1922` | 7.68 | 4.5 | pass |
+| Quiet text on frosted menu over white | `--muted` | `menu/white` | `#a5adba` on `#3f3d45` | 4.74 | 4.5 | pass |
 
 ### light
 
