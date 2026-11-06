@@ -400,6 +400,7 @@ The user signs up, signs in, signs out, resets their password by email and edits
 - **Add to a kitchen** (*Must*): any member of a kitchen adds one of their personal notebooks to it as a snapshot (flow H). The kitchen notebook is an independent copy, labelled with the notebook it came from; the two never sync.
 - **Copy to notebook** (*Should*): a person copies any recipe they can read into a notebook they can write to (flow G). Names are normalized against the target's catalog, the target's names win, and the person sees every change before confirming. The person is the copy's author. The copy has no link to the original.
 - **Catalog management** (*Should*): for each notebook's catalog, those who can write to the notebook get a page listing ingredients with rename and **merge** ("red pepper" → "pepper"). Deleting an ingredient that is still used is blocked; merge it instead.
+  - *Built in spec 043 (2026-11-06):* the Ingredients page picks a notebook and shows its catalog. Names in two languages merge into one ingredient with a name per language ("cebolla" under "onion"); one merge reaches every notebook the person can write to that has both names. A recipe has a language, and its lines show the name in that language; the shopping list shows each viewer the name in their interface language. Other names can be split back out. "Suggest pairs" asks the model for likely English and Spanish pairs, and the person confirms each one.
 - **AC3.1** The recipe PDF shows á, é, ñ, ¿, ½ and ⅓ correctly.
 - **AC3.2** Deleting a recipe leaves its copies in other notebooks, and the carts and past chat citations that use those copies, unchanged.
 - **AC3.3** Copying a recipe into another notebook creates an independent copy; editing either one does not change the other.
@@ -522,11 +523,11 @@ Every entity has full CRUD in the API. The UI only exposes what the journey need
 | NotebookInvite | notebook owner | notebook owner | resend | revoke | ✓ | — | Reuses the kitchen invite flow |
 | Notebook snapshot (action) | any kitchen member, `POST /notebooks/kitchens/{id}/snapshots` | — | — | — | ✓ | — | Not stored as such: creates a kitchen notebook copied from a personal notebook, labelled with its origin (flow H) |
 | Capture notebook (action) | `POST /notebooks/kitchens/{id}/capture-notebook` | — | — | — | ✓ | — | Not stored as such: returns the member's own kitchen notebook, created if needed, when they submit a capture (spec 035) |
-| Recipe | via draft confirm, a copy or a snapshot | ✓ | those who can write to its notebook | same as update | ✓ | capture (✓), read (✓), update (—), delete (—) | In exactly one notebook. Records its author. Update re-embeds. Copies drift apart |
+| Recipe | via draft confirm, a copy or a snapshot | ✓ | those who can write to its notebook | same as update | ✓ | capture (✓), read (✓), update (—), delete (—) | In exactly one notebook. Records its author. Update re-embeds. Copies drift apart. Has a language, `en` or `es` (spec 043) |
 | Recipe copy (action) | Copy to notebook | — | — | — | ✓ | — | Not stored: creates a new Recipe in the target notebook (flow G) |
 | Draft | `POST /drafts` | — | — | — | ✓ | ✓ | Not stored; the response holds the draft |
 | RecipeIngredient, Step | nested in Recipe | ✓ | ✓ | ✓ | inside recipe edit | — | Also addressable at `/recipes/{id}/ingredients`, `/steps` |
-| Ingredient | ✓ | ✓ | rename, merge | only if unused | *Should* | — | `409` if used. A unique normalized name in one notebook's catalog |
+| Ingredient | ✓ | ✓ | rename, merge, split | only if unused | *Should* | — | `409` if used. A unique normalized kept name in one notebook's catalog, with other names: at most one variant per language and any spellings (spec 043) |
 | Source | with recipe | ✓ | ✓ | ✓ | link on detail | — | Deleting keeps the recipe (`source_id` set to null) |
 | Cart | with kitchen | ✓ | — | clear | ✓ | — | One per kitchen |
 | CartItem | ✓ | ✓ | servings | ✓ | ✓ | ✓ (add/remove/servings) | |

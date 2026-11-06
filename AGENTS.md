@@ -86,6 +86,23 @@ Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
   snapshot copies the catalog; when someone joins a personal notebook, their
   names are matched against it, the notebook's names win, and the rest are
   added.
+- A catalog ingredient has a **kept name** (`ingredient.name`) and may have
+  **other names** (`ingredient_name`, spec 043): at most one **variant** per
+  language ("cebolla" for Spanish under "onion") and any number of same-language
+  **spellings**. Recipe lines always carry the kept name; merge, rename and
+  split rewrite them. Matching (capture, edit, copy, notebook join) goes through
+  `domain.ingredient_catalog.CatalogIndex`, so an other name and its plurals
+  match the ingredient. People who can write to a notebook rename, merge,
+  delete (unused only) and split names on the Ingredients page; one merge
+  reaches every notebook they can write to that has both names.
+- A recipe has a **language** (`recipe.language`, `en` or `es`), set at capture
+  and editable. Each line shows its ingredient's variant in that language, else
+  the kept name. Recipes saved before spec 043 got a fallback; the model's
+  one-time proposal (`scripts.recipe_languages detect`) waits in
+  `recipe.proposed_language` until a person applies or dismisses it.
+- The shopping list adds an ingredient's names up on one line, keyed by the
+  kept name, and shows each viewer the variant in their interface language.
+  A person's place for an ingredient applies under any of its names.
 - Recipes move between notebooks only by copying (PRD §1.5 flow G): "Copy to
   notebook", from any recipe the person can read into a notebook they can
   write to, and snapshots of a whole personal notebook into a kitchen. A copy
