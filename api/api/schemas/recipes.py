@@ -120,3 +120,22 @@ class RecipeLockResponse(BaseModel):
 
 class UpdateRecipeResponse(RecipeDetailResponse):
     created_catalog_names: list[str]
+
+
+class ShareCandidate(BaseModel):
+    user_id: UUID
+    alias: str
+
+
+class ShareCandidatesResponse(BaseModel):
+    candidates: list[ShareCandidate]
+
+
+class ShareRequest(BaseModel):
+    recipient_user_id: UUID
+
+
+class ShareResponse(BaseModel):
+    recipe_id: UUID
+    recipient_alias: str
+    notebook_id: UUID

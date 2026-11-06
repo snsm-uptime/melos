@@ -25,7 +25,13 @@ from application.recipe_manage import (
     UpdateRecipeService,
 )
 from application.recipe_save import SavedRecipe, SaveRecipeCommand, SaveRecipeDraft
+from application.recipe_share import (
+    ListShareCandidatesService,
+    ShareRecipeCommand,
+    ShareRecipeService,
+)
 from domain.errors import (
+    DomainError,
     InvalidPreviewImageError,
     KitchenArchivedError,
     KitchenNotFoundError,
@@ -37,6 +43,9 @@ from domain.errors import (
     RecipeLockedError,
     RecipeNotFoundError,
     RecipeReadOnlyError,
+    ShareRecipientNoDefaultNotebookError,
+    ShareRecipientNotFoundError,
+    ShareSelfError,
 )
 from domain.recipe_draft import (
     DraftProblems,
@@ -51,9 +60,11 @@ from api.deps import (
     get_acquire_recipe_lock,
     get_delete_recipe,
     get_get_recipe,
+    get_list_share_candidates,
     get_match_recipe_names,
     get_release_recipe_lock,
     get_save_recipe_draft,
+    get_share_recipe,
     get_update_recipe,
     require_session_ref,
     require_user_alias,
@@ -69,6 +80,10 @@ from api.schemas.recipes import (
     RecipeNotebookResponse,
     RecipeSourceResponse,
     SaveRecipeBody,
+    ShareCandidate,
+    ShareCandidatesResponse,
+    ShareRequest,
+    ShareResponse,
     UpdateRecipeBody,
     UpdateRecipeResponse,
 )
@@ -256,6 +271,65 @@ def _locked(exc: RecipeLockedError) -> JSONResponse:
 
 def _not_editing() -> JSONResponse:
     return _error(status.HTTP_409_CONFLICT, NotEditingError.CODE, NotEditingError.MESSAGE)
+
+
+@router.get("/recipes/share-candidates", response_model=ShareCandidatesResponse)
+def list_share_candidates(
+    user_id: uuid.UUID = Depends(require_user_alias),
+    service: ListShareCandidatesService = Depends(get_list_share_candidates),
+) -> ShareCandidatesResponse:
+    """The people the caller may share a recipe with: co-members only (spec 071 FR-002)."""
+    candidates = service.execute(user_id)
+    return ShareCandidatesResponse(
+        candidates=[
+            ShareCandidate(user_id=candidate.user_id, alias=candidate.alias)
+            for candidate in candidates
+        ]
+    )
+
+
+@router.post(
+    "/recipes/{recipe_id}/share",
+    response_model=ShareResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def share_recipe(
+    request: Request,
+    recipe_id: uuid.UUID,
+    body: ShareRequest,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    service: ShareRecipeService = Depends(get_share_recipe),
+) -> ShareResponse | JSONResponse:
+    """Copy a readable recipe into a co-member's default notebook (spec 071 FR-008, FR-011)."""
+    try:
+        shared = service.execute(
+            ShareRecipeCommand(
+                actor_id=user_id,
+                recipe_id=recipe_id,
+                recipient_id=body.recipient_user_id,
+            )
+        )
+    except RecipeNotFoundError as exc:
+        return _share_error(status.HTTP_404_NOT_FOUND, exc)
+    except ShareRecipientNotFoundError as exc:
+        return _share_error(status.HTTP_404_NOT_FOUND, exc)
+    except ShareSelfError as exc:
+        return _share_error(status.HTTP_409_CONFLICT, exc)
+    except ShareRecipientNoDefaultNotebookError as exc:
+        return _share_error(status.HTTP_422_UNPROCESSABLE_CONTENT, exc)
+    wake_embedding_worker(request.app)
+    return ShareResponse(
+        recipe_id=shared.recipe_id,
+        recipient_alias=shared.recipient_alias,
+        notebook_id=shared.notebook_id,
+    )
+
+
+def _share_error(status_code: int, exc: DomainError) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={"detail": exc.MESSAGE, "code": exc.CODE},
+    )
 
 
 @router.get("/recipes/{recipe_id}")

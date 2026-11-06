@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
@@ -17,7 +17,7 @@ from application.ports import (
 from domain.errors import NotebookNotFoundError, RecipeChangedError, RecipeNotFoundError
 from domain.recipe import EditedRecipe, NewRecipe
 from domain.recipe_draft import IngredientLine
-from sqlalchemy import Select, delete, func, insert, select
+from sqlalchemy import Select, delete, func, insert, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -231,7 +231,12 @@ class SqlAlchemyRecipeRepository:
         return len(recipes)
 
     def copy_one(
-        self, source_recipe_id: UUID, target_notebook_id: UUID, author_id: UUID
+        self,
+        source_recipe_id: UUID,
+        target_notebook_id: UUID,
+        author_id: UUID,
+        *,
+        link_source: bool = True,
     ) -> UUID | None:
         source = self._session.execute(
             _recipe_columns().where(RecipeModel.id == source_recipe_id).with_for_update(read=True)
@@ -253,7 +258,7 @@ class SqlAlchemyRecipeRepository:
                     "base_servings": source.base_servings,
                     "servings_estimated": source.servings_estimated,
                     "preview_image_base64": source.preview_image_base64,
-                    "copied_from_recipe_id": source.id,
+                    "copied_from_recipe_id": source.id if link_source else None,
                     "created_at": func.clock_timestamp(),
                     "updated_at": func.clock_timestamp(),
                 }
@@ -261,6 +266,17 @@ class SqlAlchemyRecipeRepository:
         )
         self._copy_content({source.id: new_id})
         return new_id
+
+    def rename_line_names(self, recipe_id: UUID, renames: Mapping[str, str]) -> None:
+        for old_name, new_name in renames.items():
+            self._session.execute(
+                update(RecipeIngredientModel)
+                .where(
+                    RecipeIngredientModel.recipe_id == recipe_id,
+                    RecipeIngredientModel.name == old_name,
+                )
+                .values(name=new_name)
+            )
 
     def overwrite_from(
         self, target_recipe_id: UUID, source_recipe_id: UUID, author_id: UUID

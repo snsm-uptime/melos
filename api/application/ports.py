@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -366,14 +366,24 @@ class RecipeRepository(Protocol):
         ...
 
     def copy_one(
-        self, source_recipe_id: UUID, target_notebook_id: UUID, author_id: UUID
+        self,
+        source_recipe_id: UUID,
+        target_notebook_id: UUID,
+        author_id: UUID,
+        *,
+        link_source: bool = True,
     ) -> UUID | None:
         """Copy one recipe into the target notebook as last saved; returns the copy's id.
 
         The copy has its own lines, steps and source row, the given author, a creation time of
-        now, and records the source in its hidden copied_from_recipe_id (spec 069). The source
-        is read FOR SHARE. Returns None when the source is gone.
+        now, and records the source in its hidden copied_from_recipe_id (spec 069). With
+        link_source False (spec 071 share) that column stays empty: the copy has no link back.
+        The source is read FOR SHARE. Returns None when the source is gone.
         """
+        ...
+
+    def rename_line_names(self, recipe_id: UUID, renames: Mapping[str, str]) -> None:
+        """Set each line of the recipe whose name is a key to the mapped name (spec 071 R-3)."""
         ...
 
     def overwrite_from(
@@ -1130,3 +1140,24 @@ class PageReader(Protocol):
     """Port: HTML in, schema.org recipes, main photo address and Markdown out. Never raises."""
 
     def read(self, html: str, base_url: str) -> PageContent: ...
+
+
+@dataclass(frozen=True, slots=True)
+class CoMemberRecord:
+    """A person who shares a kitchen or a notebook with the caller (spec 071).
+
+    `shared_at` is the latest join time over the shared contexts, or None when no join time
+    is stored; it is used only for ordering.
+    """
+
+    user_id: UUID
+    alias: str
+    shared_at: datetime | None
+
+
+class CoMemberDirectory(Protocol):
+    def list_co_members(self, user_id: UUID) -> list[CoMemberRecord]:
+        """Co-members of the user, most recent shared activity first, then alias (FR-004)."""
+        ...
+
+    def is_co_member(self, user_id: UUID, other_id: UUID) -> bool: ...

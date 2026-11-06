@@ -10,6 +10,7 @@ from adapters.llm.gemini_extractor import GeminiRecipeExtractor
 from adapters.persistence.admin import SqlAlchemyAdminReports
 from adapters.persistence.cart_activity import SqlAlchemyCartActivityLog
 from adapters.persistence.carts import SqlAlchemyCartRepository, SqlAlchemyIngredientLineReader
+from adapters.persistence.co_members import SqlAlchemyCoMemberDirectory
 
 # MVP-OUT: from adapters.llm.vocabulary import load_vocabulary, load_vocabulary_documents
 from adapters.persistence.db import get_session_factory
@@ -76,6 +77,7 @@ from application.recipe_manage import (
 )
 from application.recipe_save import SaveRecipeDraft
 from application.recipe_search import MarkSearchResultUsed, SearchRecipesService
+from application.recipe_share import ListShareCandidatesService, ShareRecipeService
 from application.recipe_vocabulary import vocabulary_answer
 from application.shopping_list import (
     ActiveListSync,
@@ -332,6 +334,22 @@ def get_get_recipe(db: Session = Depends(get_db)) -> GetRecipeService:
         SqlAlchemyNotebookRepository(db),
         SqlAlchemyEditLockRepository(db),
         SqlAlchemyCartRepository(db),
+    )
+
+
+def get_list_share_candidates(db: Session = Depends(get_db)) -> ListShareCandidatesService:
+    return ListShareCandidatesService(SqlAlchemyCoMemberDirectory(db))
+
+
+def get_share_recipe(db: Session = Depends(get_db)) -> ShareRecipeService:
+    return ShareRecipeService(
+        SqlAlchemyRecipeRepository(db),
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyIngredientCatalog(db),
+        SqlAlchemyAuthUserRepository(db),
+        SqlAlchemyCoMemberDirectory(db),
+        SqlAlchemyUserDefaultNotebook(db),
+        embedding_jobs=SqlAlchemyEmbeddingJobs(db),
     )
 
 

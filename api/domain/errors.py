@@ -634,3 +634,36 @@ class IngredientNameInvalidError(DomainError):
 
     def __init__(self) -> None:
         super().__init__(self.MESSAGE)
+
+
+class ShareRecipientNotFoundError(DomainError):
+    """The recipient is not a co-member of the caller, or does not exist (spec 071 FR-006).
+
+    One error for both cases, so the response never says whether an alias exists.
+    """
+
+    MESSAGE = "That person can't be found."
+    CODE = "recipient_not_found"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class ShareSelfError(DomainError):
+    """Raised when someone tries to share a recipe with themselves (spec 071)."""
+
+    MESSAGE = "You can't share a recipe with yourself."
+    CODE = "share_self"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class ShareRecipientNoDefaultNotebookError(DomainError):
+    """The recipient's default notebook cannot be resolved; nothing is copied (spec 071)."""
+
+    MESSAGE = "That person's recipe book isn't ready yet. Try again later."
+    CODE = "recipient_no_default_notebook"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
