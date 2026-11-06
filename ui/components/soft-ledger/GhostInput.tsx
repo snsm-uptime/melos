@@ -14,7 +14,7 @@ export const GhostInput = forwardRef<HTMLInputElement, GhostInputProps>(function
 ) {
   return (
     <div
-      className={`flex items-center gap-2 rounded-[8px] border-2 border-border bg-background px-[0.65rem] py-[0.5rem] ${wrapperClassName ?? ""}`}
+      className={`flex items-center gap-2 rounded-[8px] border-2 border-field-border bg-background px-[0.65rem] py-[0.5rem] ${wrapperClassName ?? ""}`}
     >
       <input
         ref={ref}

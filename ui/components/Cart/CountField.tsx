@@ -43,7 +43,7 @@ export function CountField({ label, value, onChange, locale, disabled }: CountFi
         disabled={disabled}
         aria-invalid={invalid}
         aria-describedby={invalid ? `${id}-error` : undefined}
-        className="w-16 rounded-[var(--radius-sm,6px)] border border-border bg-background px-2 py-1 text-foreground"
+        className="w-16 rounded-[var(--radius-sm,6px)] border border-field-border bg-background px-2 py-1 text-foreground"
         onChange={(event) => {
           // Digits only: anything else never reaches the field.
           if (/\D/.test(event.target.value)) return;

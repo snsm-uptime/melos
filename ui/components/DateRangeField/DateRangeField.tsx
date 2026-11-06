@@ -225,7 +225,7 @@ export function DateRangeField({
         /* eslint-disable-next-line react-hooks/refs */
         renderTrigger({ open: openPopover, disabled, popoverOpen: open })
       ) : (
-        <div className="flex items-center gap-2 rounded-[8px] border-2 border-border bg-background px-[0.65rem] py-[0.5rem]">
+        <div className="flex items-center gap-2 rounded-[8px] border-2 border-field-border bg-background px-[0.65rem] py-[0.5rem]">
           <button
             type="button"
             disabled={disabled}

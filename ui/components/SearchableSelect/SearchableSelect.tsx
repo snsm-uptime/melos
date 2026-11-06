@@ -269,7 +269,7 @@ export function SearchableSelect({
                 }
                 placeholder={searchLabel}
                 // 1rem: a smaller field makes iOS zoom the page when it takes focus.
-                className="mb-1 box-border w-full rounded-[var(--rounded-sm)] border border-border bg-background px-2 py-1 text-[1rem] text-foreground outline-none"
+                className="mb-1 box-border w-full rounded-[var(--rounded-sm)] border border-field-border bg-background px-2 py-1 text-[1rem] text-foreground outline-none"
                 value={query}
                 onChange={(event) => {
                   setQuery(event.target.value);

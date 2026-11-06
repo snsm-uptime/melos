@@ -39,7 +39,7 @@ const UNITS = [
 ] as const;
 
 const FIELD =
-  "min-h-11 rounded-[var(--radius-md)] border border-border bg-background px-3 text-[1rem] text-foreground";
+  "min-h-11 rounded-[var(--radius-md)] border border-field-border bg-background px-3 text-[1rem] text-foreground";
 
 /** A SearchableSelect trigger that looks like the text fields beside it. */
 const PICKER = `${FIELD} w-full justify-between focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`;

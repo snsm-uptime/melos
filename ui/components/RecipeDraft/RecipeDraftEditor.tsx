@@ -346,7 +346,7 @@ export function RecipeDraftEditor() {
                     type="number"
                     min="1"
                     step="1"
-                    className="w-20 rounded-[0.75rem] border border-border bg-background px-3 py-1 text-[1rem] text-foreground"
+                    className="w-20 rounded-[0.75rem] border border-field-border bg-background px-3 py-1 text-[1rem] text-foreground"
                     value={draft.baseServings}
                     onChange={(event) =>
                       update({

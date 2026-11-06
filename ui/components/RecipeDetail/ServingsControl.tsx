@@ -74,7 +74,7 @@ export function ServingsControl({ value, onChange, locale }: ServingsControlProp
           type="text"
           inputMode="numeric"
           autoComplete="off"
-          className="w-16 rounded-[0.75rem] border border-border bg-background px-2 py-1 text-center text-[1rem] text-foreground"
+          className="w-16 rounded-[0.75rem] border border-field-border bg-background px-2 py-1 text-center text-[1rem] text-foreground"
           value={text}
           aria-invalid={invalid || undefined}
           onChange={(event) => type(event.target.value)}

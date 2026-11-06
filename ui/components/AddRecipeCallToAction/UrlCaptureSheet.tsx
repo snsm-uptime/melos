@@ -32,7 +32,7 @@ type UrlCaptureSheetProps = {
 };
 
 const fieldClassName =
-  "w-full rounded-[0.75rem] border border-border bg-background px-3 py-2 text-[0.95rem] text-foreground";
+  "w-full rounded-[0.75rem] border border-field-border bg-background px-3 py-2 text-[0.95rem] text-foreground";
 
 /**
  * The link sheet (spec 026 FR-001 to FR-004, FR-018, FR-023): one link field, the notebook

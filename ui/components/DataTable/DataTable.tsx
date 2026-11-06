@@ -75,7 +75,7 @@ export function DataTable<T>({
                 value={query}
                 placeholder={labels.searchPlaceholder}
                 onChange={(event) => setQuery(event.target.value)}
-                className="min-h-10 min-w-0 flex-1 rounded-[0.75rem] border border-border bg-transparent px-3 py-1 text-[0.9rem] text-foreground outline-none placeholder:text-muted focus:border-accent"
+                className="min-h-10 min-w-0 flex-1 rounded-[0.75rem] border border-field-border bg-transparent px-3 py-1 text-[0.9rem] text-foreground outline-none placeholder:text-muted focus:border-accent"
               />
               <p role="status" className="sr-only">
                 {visible.length === 0

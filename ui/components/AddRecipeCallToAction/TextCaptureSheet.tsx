@@ -83,7 +83,7 @@ type TextCaptureSheetProps = {
 };
 
 const fieldClassName =
-  "w-full rounded-[0.75rem] border border-border bg-background px-3 py-2 text-[0.95rem] text-foreground";
+  "w-full rounded-[0.75rem] border border-field-border bg-background px-3 py-2 text-[0.95rem] text-foreground";
 
 /**
  * The text sheet (spec 016 FR-002, FR-003, FR-004, FR-016 to FR-018). The pasted text stays
