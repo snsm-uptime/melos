@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -11,6 +12,7 @@ from uuid import UUID
 
 from domain.cart import CartAction
 from domain.default_kitchen import MemberKitchen
+from domain.ingredient_catalog import CatalogIndex, MergePlan, SplitPlan
 from domain.notebook import Notebook, NotebookRole
 from domain.places import CustomPlace, PlaceRef
 from domain.recipe import EditedRecipe, NewRecipe
@@ -261,10 +263,19 @@ class NotebookInviteRepository(Protocol):
 
 
 class IngredientCatalog(Protocol):
-    def names_for_notebook(self, notebook_id: UUID) -> list[str]: ...
+    def names_for_notebook(self, notebook_id: UUID) -> list[str]:
+        """The catalog's kept names only, sorted (admin and places readers)."""
+        ...
+
+    def index_for_notebook(self, notebook_id: UUID) -> CatalogIndex:
+        """Every kept and other name of the catalog, for matching and display (spec 043 R4)."""
+        ...
 
     def copy_names(self, source_id: UUID, target_id: UUID) -> None:
-        """Copy every name of the source's catalog to the target's, unchanged (spec 035 FR-011)."""
+        """Copy the source's catalog to the target's, unchanged (spec 035 FR-011).
+
+        Kept names, their languages and their other names all travel (spec 043).
+        """
         ...
 
     def names_for_person(self, user_id: UUID) -> list[str]:
@@ -277,6 +288,56 @@ class IngredientCatalog(Protocol):
 
     def add_names(self, notebook_id: UUID, names: Sequence[str]) -> None:
         """Add names the catalog lacks; a name already there is left as it is (spec 020)."""
+        ...
+
+    # --- catalog management (spec 043); no commit inside, the request's transaction decides ---
+
+    def savepoint(self) -> AbstractContextManager[object]:
+        """A savepoint: an error inside rolls back only its writes.
+
+        A database conflict inside raises CatalogNameChangedError (FR-015).
+        """
+        ...
+
+    def lock_entries(self, notebook_id: UUID, names: Sequence[str]) -> None:
+        """Lock the ingredient rows of these kept names (FOR UPDATE), so two writes serialize."""
+        ...
+
+    def recipe_counts(self, notebook_id: UUID) -> dict[str, int]:
+        """For each line name used in the notebook, how many of its recipes use it."""
+        ...
+
+    def language_counts(self, notebook_id: UUID, name: str) -> dict[str, int]:
+        """How many of the notebook's recipes using the name are in each language."""
+        ...
+
+    def apply_merge(self, notebook_id: UUID, plan: MergePlan) -> list[UUID]:
+        """Write one notebook's merge; the ids of recipes whose lines changed."""
+        ...
+
+    def apply_rename(self, notebook_id: UUID, old: str, new: str) -> list[UUID]:
+        """Rename a kept name, its lines and its dismissals; the ids of recipes changed."""
+        ...
+
+    def set_language(self, notebook_id: UUID, name: str, language: str | None) -> None:
+        """Set a kept name's language; no line changes (FR-012)."""
+        ...
+
+    def delete_unused(self, notebook_id: UUID, name: str) -> int:
+        """Delete the name with its other names when no recipe uses it, and return 0.
+
+        When recipes use it, delete nothing and return how many do (FR-013).
+        """
+        ...
+
+    def apply_split(self, notebook_id: UUID, kept: str, plan: SplitPlan) -> list[UUID]:
+        """Make an other name its own ingredient; the ids of recipes whose lines moved."""
+        ...
+
+    def dismissed_pairs(self, notebook_id: UUID) -> list[tuple[str, str]]: ...
+
+    def dismiss_pair(self, notebook_id: UUID, first: str, second: str, user_id: UUID) -> None:
+        """Remember a pair as not the same ingredient in this notebook (FR-009d)."""
         ...
 
 
@@ -318,6 +379,9 @@ class RecipeDetail:
     updated_at: datetime
     # The recipe image as a data URI, or None (spec 026).
     preview_image: str | None = None
+    # The recipe's language, and the model's differing proposal awaiting a person (spec 043).
+    language: str = "es"
+    proposed_language: str | None = None
 
 
 class DuplicateSaveKeyError(Exception):
@@ -384,6 +448,10 @@ class RecipeRepository(Protocol):
 
     def rename_line_names(self, recipe_id: UUID, renames: Mapping[str, str]) -> None:
         """Set each line of the recipe whose name is a key to the mapped name (spec 071 R-3)."""
+        ...
+
+    def set_language(self, recipe_id: UUID, language: str | None) -> None:
+        """Store the language and clear the proposal; with None only clear it (spec 043)."""
         ...
 
     def overwrite_from(
@@ -715,6 +783,14 @@ class IngredientLineReader(Protocol):
         ...
 
 
+class ListNameSource(Protocol):
+    """Read only: each ingredient's word per language for a set of recipes (spec 043 R7)."""
+
+    def names_for(self, recipe_ids: Sequence[UUID]) -> dict[str, dict[str, str]]:
+        """Kept name -> {language: word}; an ingredient with no variant is absent."""
+        ...
+
+
 class UnitRepository(Protocol):
     """The unit table (spec 055). A person's other units; the ten defaults live in the domain."""
 
@@ -891,6 +967,37 @@ class PlaceRepository(Protocol):
         ...
 
     def sources(self, user_id: UUID) -> Sequence[PlaceSource]: ...
+
+    def other_names(self, user_id: UUID) -> Sequence[tuple[str, str]]:
+        """(kept name, other name) pairs of the catalogs the person can read (spec 043 R8)."""
+        ...
+
+    def move_choices(self, old_name: str, new_name: str) -> None:
+        """Move every person's choice for a name to another name (spec 043 R8, FR-009).
+
+        A person with a choice for the new name keeps it, and their old-name row stays.
+        """
+        ...
+
+
+class IngredientPairSuggester(Protocol):
+    """Port: likely English and Spanish pairs of one catalog's names (spec 043 R9).
+
+    Only names and their languages are sent, never recipe text. Raises AIUnavailableError when
+    the model gives no usable answer.
+    """
+
+    def suggest(self, names: Sequence[tuple[str, str | None]]) -> list[tuple[str, str]]:
+        """(english, spanish) pairs the model thinks are one ingredient; not yet filtered."""
+        ...
+
+
+class LanguageDetector(Protocol):
+    """Port: the language most of a recipe is in (spec 043 FR-005a)."""
+
+    def detect(self, text: str) -> str | None:
+        """'en' or 'es', or None when unsure or on a model error."""
+        ...
 
 
 # --- Recipe embeddings and search (spec 019) --------------------------------------------------

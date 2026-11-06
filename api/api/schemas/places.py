@@ -35,6 +35,8 @@ class IngredientPlaceResponse(BaseModel):
     place: PlaceResponse
     recipes: list[IngredientRecipeResponse] = []
     last_used_at: datetime | None = None
+    # Spec 043: the ingredient's other names, shown under it.
+    other_names: list[str] = []
 
 
 class IngredientPlacesResponse(BaseModel):
@@ -72,4 +74,5 @@ def ingredient_place_response(item: IngredientPlace) -> IngredientPlaceResponse:
         place=place_response(item.place),
         recipes=[IngredientRecipeResponse(id=r.id, title=r.title) for r in item.recipes],
         last_used_at=item.last_used_at,
+        other_names=list(item.other_names),
     )

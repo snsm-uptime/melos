@@ -7,12 +7,16 @@ import time
 import pytest
 from domain.ingredient_catalog import (
     NEW,
+    CatalogEntry,
+    CatalogIndex,
     LineMatch,
     match_line,
+    name_taken,
     names_to_add,
     normalize_name,
     propose_entry,
     same_spelling,
+    shown_name,
     singular_forms,
 )
 
@@ -175,3 +179,51 @@ def test_merge_of_500_by_500_names_is_quick() -> None:
     started = time.perf_counter()
     assert len(names_to_add(incoming, existing)) == 500
     assert time.perf_counter() - started < 2
+
+
+# --- spec 043: other names ------------------------------------------------------------------
+
+ONION = CatalogEntry(
+    name="onion", language="en", variants={"es": "cebolla"}, spellings=("yellow onion",)
+)
+INDEX = CatalogIndex.build([ONION, CatalogEntry(name="garlic")])
+
+
+def test_a_plural_of_a_variant_matches_its_ingredient() -> None:
+    match = match_line("cebollas", "cebollas", "cebolla", INDEX)
+    assert match == LineMatch(kind="matched", entry="onion")
+    assert INDEX.kept_for("Cebollas") == "onion"
+
+
+def test_a_spelling_matches_its_ingredient() -> None:
+    assert match_line(None, "yellow onions", "yellow onion", INDEX).entry == "onion"
+    assert propose_entry("yellow onions", INDEX) == "onion"
+
+
+def test_shown_name_by_language() -> None:
+    plain = CatalogEntry(name="garlic")
+    assert shown_name(plain, "es") == "garlic"
+    assert shown_name(ONION, "en") == "onion"
+    assert shown_name(ONION, "es") == "cebolla"
+    assert shown_name(ONION, None) == "onion"
+    no_spanish = CatalogEntry(name="flour", language="en")
+    assert shown_name(no_spanish, "es") == "flour"
+
+
+def test_names_to_add_skips_other_names() -> None:
+    assert names_to_add(["cebollas", "tomato", "garlic"], INDEX) == ["tomato"]
+
+
+def test_name_taken_covers_kept_and_other_names() -> None:
+    assert name_taken(INDEX, "Cebolla")
+    assert name_taken(INDEX, "garlic")
+    assert not name_taken(INDEX, "tomato")
+
+
+def test_a_plain_index_answers_like_a_list_of_names() -> None:
+    names = ["tomato", "red pepper"]
+    plain = CatalogIndex.of_names(names)
+    assert not plain.has_other_names()
+    for text in ("tomatoes", "Red Peppers", "basil"):
+        assert propose_entry(text, plain) == propose_entry(text, names)
+        assert match_line(None, text, "tomato", plain) == match_line(None, text, "tomato", names)

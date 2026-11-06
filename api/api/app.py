@@ -18,6 +18,7 @@ from api.deps import require_user_alias
 from api.routes.admin import router as admin_router
 from api.routes.auth import router as auth_router
 from api.routes.carts import router as carts_router
+from api.routes.catalog import router as catalog_router
 from api.routes.health import router as health_router
 from api.routes.invites import router as invites_router
 from api.routes.kitchens import router as kitchens_router
@@ -91,6 +92,7 @@ def create_app() -> FastAPI:
     application.include_router(shopping_list_router, dependencies=[Depends(require_user_alias)])
     application.include_router(side_panel_router, dependencies=[Depends(require_user_alias)])
     application.include_router(places_router, dependencies=[Depends(require_user_alias)])
+    application.include_router(catalog_router, dependencies=[Depends(require_user_alias)])
     application.include_router(invites_router)
     # Not behind require_user_alias: anyone who is not an admin gets the same 404 (spec 055 R16).
     application.include_router(admin_router)

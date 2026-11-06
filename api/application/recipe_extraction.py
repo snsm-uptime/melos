@@ -17,6 +17,7 @@ from enum import StrEnum
 from typing import Protocol
 
 from domain.errors import DomainError
+from domain.ingredient_catalog import CatalogIndex, CatalogLike
 from domain.recipe_draft import (
     DraftProblems,
     DraftRecipe,
@@ -144,6 +145,11 @@ def _flight_key(
     return hashlib.sha256(parts.encode("utf-8")).hexdigest()
 
 
+def _all_names(catalog: CatalogLike) -> list[str]:
+    """Every name the model may propose: kept and other names of an index (spec 043 R4)."""
+    return catalog.all_names() if isinstance(catalog, CatalogIndex) else list(catalog)
+
+
 class RecipeExtraction:
     """Use case: text in, one checked ExtractionResult out."""
 
@@ -156,7 +162,7 @@ class RecipeExtraction:
     def extract(
         self,
         text: str,
-        ingredient_names: Sequence[str],
+        ingredient_names: CatalogLike,
         timeout_s: float,
         available_units: Sequence[str] = (),
         *,
@@ -169,7 +175,7 @@ class RecipeExtraction:
         if len(trimmed) > MAX_TEXT_CHARS:
             raise RecipeTextRefusedError(RecipeTextRefusedError.TOO_LONG)
 
-        key = _flight_key(trimmed, ingredient_names, available_units, mode, part)
+        key = _flight_key(trimmed, _all_names(ingredient_names), available_units, mode, part)
         with self._lock:
             flight = self._in_flight.get(key)
             owner = flight is None
@@ -200,7 +206,7 @@ class RecipeExtraction:
     def _evaluate(
         self,
         trimmed: str,
-        ingredient_names: Sequence[str],
+        ingredient_names: CatalogLike,
         timeout_s: float,
         available_units: Sequence[str],
         mode: ExtractionMode,
@@ -210,10 +216,10 @@ class RecipeExtraction:
         if mode is ExtractionMode.PAGE_PART:
             # A part may hold only steps or only lines: the merged draft is checked instead.
             return self._extractor.extract(
-                trimmed, ingredient_names, timeout_s, mode=mode, part=part
+                trimmed, _all_names(ingredient_names), timeout_s, mode=mode, part=part
             )
         # Whole mode calls the port exactly as before spec 026.
-        result = self._extractor.extract(trimmed, ingredient_names, timeout_s)
+        result = self._extractor.extract(trimmed, _all_names(ingredient_names), timeout_s)
         if not isinstance(result, Draft):
             return result
         try:

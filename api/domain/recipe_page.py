@@ -18,6 +18,7 @@ import unicodedata
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, replace
 
+from domain.ingredient_catalog import Language
 from domain.recipe_draft import MAX_TITLE_CHARS, DraftRecipe, IngredientLine
 
 
@@ -40,6 +41,7 @@ class DraftPart:
     base_servings: int | None
     ingredient_lines: tuple[IngredientLine, ...]
     steps: tuple[str, ...]
+    language: Language | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -340,4 +342,15 @@ def merge_parts(
         servings_estimated=False,
         ingredient_lines=tuple(lines),
         steps=tuple(steps),
+        language=_most_common_language(found),
     )
+
+
+def _most_common_language(parts: Sequence[DraftPart]) -> Language | None:
+    """The language most parts give, weighted by their lines and steps; the first wins ties."""
+    weights: dict[Language, int] = {}
+    for part in parts:
+        if part.language is not None:
+            weight = len(part.ingredient_lines) + len(part.steps) + 1
+            weights[part.language] = weights.get(part.language, 0) + weight
+    return max(weights, key=lambda lang: weights[lang]) if weights else None

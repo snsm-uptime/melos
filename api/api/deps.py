@@ -7,9 +7,14 @@ from collections.abc import Iterator
 
 from adapters.llm.gemini_embedder import GeminiEmbedder
 from adapters.llm.gemini_extractor import GeminiRecipeExtractor
+from adapters.llm.gemini_pair_suggester import GeminiPairSuggester
 from adapters.persistence.admin import SqlAlchemyAdminReports
 from adapters.persistence.cart_activity import SqlAlchemyCartActivityLog
-from adapters.persistence.carts import SqlAlchemyCartRepository, SqlAlchemyIngredientLineReader
+from adapters.persistence.carts import (
+    SqlAlchemyCartRepository,
+    SqlAlchemyIngredientLineReader,
+    SqlAlchemyListNameSource,
+)
 from adapters.persistence.co_members import SqlAlchemyCoMemberDirectory
 
 # MVP-OUT: from adapters.llm.vocabulary import load_vocabulary, load_vocabulary_documents
@@ -51,9 +56,20 @@ from application.carts import (
     SaveCartService,
     StartCartEditService,
 )
+from application.catalog_manage import (
+    DeleteNameService,
+    DismissPairService,
+    GetCatalogService,
+    MergePreviewService,
+    MergeService,
+    RenameService,
+    SplitService,
+    SuggestPairsService,
+)
 from application.notebooks import ResolveCaptureNotebookService
 from application.ports import (
     Embedder,
+    IngredientPairSuggester,
     PageFetcher,
     PageReader,
     PasswordHasher,
@@ -73,6 +89,7 @@ from application.recipe_manage import (
     DeleteRecipeService,
     GetRecipeService,
     MatchRecipeNamesService,
+    SetRecipeLanguageService,
     UpdateRecipeService,
 )
 from application.recipe_save import SaveRecipeDraft
@@ -334,6 +351,16 @@ def get_get_recipe(db: Session = Depends(get_db)) -> GetRecipeService:
         SqlAlchemyNotebookRepository(db),
         SqlAlchemyEditLockRepository(db),
         SqlAlchemyCartRepository(db),
+        catalog=SqlAlchemyIngredientCatalog(db),
+    )
+
+
+def get_set_recipe_language(db: Session = Depends(get_db)) -> SetRecipeLanguageService:
+    return SetRecipeLanguageService(
+        SqlAlchemyRecipeRepository(db),
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyIngredientCatalog(db),
+        SqlAlchemyEditLockRepository(db),
     )
 
 
@@ -439,6 +466,7 @@ def _shopping_list_sync(db: Session) -> ActiveListSync:
         SqlAlchemyCartRepository(db),
         SqlAlchemyIngredientLineReader(db),
         SqlAlchemyShoppingListRepository(db),
+        names=SqlAlchemyListNameSource(db),
     )
 
 
@@ -464,6 +492,8 @@ def get_get_shopping_list(db: Session = Depends(get_db)) -> GetShoppingListServi
         SqlAlchemyIngredientLineReader(db),
         SqlAlchemyShoppingListRepository(db),
         SqlAlchemyPlaceRepository(db),
+        names=SqlAlchemyListNameSource(db),
+        prefs=SqlAlchemyAuthUserRepository(db),
     )
 
 
@@ -497,6 +527,7 @@ def get_close_shopping_list(db: Session = Depends(get_db)) -> CloseShoppingListS
         _shopping_list_sync(db),
         activity=SqlAlchemyCartActivityLog(db),
         places=SqlAlchemyPlaceRepository(db),
+        prefs=SqlAlchemyAuthUserRepository(db),
     )
 
 
@@ -506,6 +537,7 @@ def get_closed_shopping_lists(db: Session = Depends(get_db)) -> ClosedShoppingLi
         SqlAlchemyCartRepository(db),
         SqlAlchemyShoppingListRepository(db),
         SqlAlchemyPlaceRepository(db),
+        prefs=SqlAlchemyAuthUserRepository(db),
     )
 
 
@@ -541,3 +573,71 @@ def get_search_recipes(
 
 def get_mark_search_result_used(db: Session = Depends(get_db)) -> MarkSearchResultUsed:
     return MarkSearchResultUsed(SqlAlchemySearchRecords(db))
+
+
+# --- catalog management (spec 043) ------------------------------------------------------------
+
+
+def get_get_catalog(db: Session = Depends(get_db)) -> GetCatalogService:
+    return GetCatalogService(SqlAlchemyNotebookRepository(db), SqlAlchemyIngredientCatalog(db))
+
+
+def get_catalog_merge_preview(db: Session = Depends(get_db)) -> MergePreviewService:
+    return MergePreviewService(SqlAlchemyNotebookRepository(db), SqlAlchemyIngredientCatalog(db))
+
+
+def get_catalog_merge(db: Session = Depends(get_db)) -> MergeService:
+    return MergeService(
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyIngredientCatalog(db),
+        SqlAlchemyPlaceRepository(db),
+        embedding_jobs=SqlAlchemyEmbeddingJobs(db),
+    )
+
+
+def get_catalog_rename(db: Session = Depends(get_db)) -> RenameService:
+    return RenameService(
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyIngredientCatalog(db),
+        SqlAlchemyPlaceRepository(db),
+        embedding_jobs=SqlAlchemyEmbeddingJobs(db),
+    )
+
+
+def get_catalog_delete(db: Session = Depends(get_db)) -> DeleteNameService:
+    return DeleteNameService(SqlAlchemyNotebookRepository(db), SqlAlchemyIngredientCatalog(db))
+
+
+def get_catalog_split(db: Session = Depends(get_db)) -> SplitService:
+    return SplitService(
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyIngredientCatalog(db),
+        embedding_jobs=SqlAlchemyEmbeddingJobs(db),
+    )
+
+
+def get_pair_suggester(request: Request) -> IngredientPairSuggester:
+    """One per process, like the extractor; tests override this dependency."""
+    cached = getattr(request.app.state, "pair_suggester", None)
+    if cached is None:
+        settings = load_gemini_settings()
+        cached = GeminiPairSuggester(
+            api_key=settings.api_key,
+            model=settings.chat_model,
+            timeout_s=settings.text_timeout_s,
+        )
+        request.app.state.pair_suggester = cached
+    return cached
+
+
+def get_catalog_suggest_pairs(
+    db: Session = Depends(get_db),
+    suggester: IngredientPairSuggester = Depends(get_pair_suggester),
+) -> SuggestPairsService:
+    return SuggestPairsService(
+        SqlAlchemyNotebookRepository(db), SqlAlchemyIngredientCatalog(db), suggester
+    )
+
+
+def get_catalog_dismiss_pair(db: Session = Depends(get_db)) -> DismissPairService:
+    return DismissPairService(SqlAlchemyNotebookRepository(db), SqlAlchemyIngredientCatalog(db))

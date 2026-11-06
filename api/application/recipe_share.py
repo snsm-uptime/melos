@@ -18,8 +18,8 @@ from domain.errors import (
     ShareRecipientNotFoundError,
     ShareSelfError,
 )
-from domain.ingredient_catalog import propose_entry
 
+from application.catalog_manage import match_copied_names
 from application.notebooks import _naming_profile, ensure_default_notebook
 from application.ports import (
     CoMemberDirectory,
@@ -116,16 +116,8 @@ class ShareRecipeService:
         if recipe_id is None:
             raise RecipeNotFoundError()
 
-        names = list(dict.fromkeys(line.name for line in source.detail.lines))
-        entries = self._catalog.names_for_notebook(notebook_id)
-        renames: dict[str, str] = {}
-        for name in names:
-            entry = propose_entry(name, entries)
-            if entry is not None and entry != name:
-                renames[name] = entry
-        if renames:
-            self._recipes.rename_line_names(recipe_id, renames)
-        self._catalog.add_names(notebook_id, [renames.get(name, name) for name in names])
+        names = [line.name for line in source.detail.lines]
+        match_copied_names(self._recipes, self._catalog, recipe_id, notebook_id, names)
         self._enqueue(recipe_id)
         return SharedRecipe(
             recipe_id=recipe_id,

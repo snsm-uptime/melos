@@ -17,7 +17,7 @@ from datetime import datetime
 from uuid import UUID
 
 from domain.errors import NotebookNotFoundError, RecipeNotFoundError, RecipeReadOnlyError
-from domain.ingredient_catalog import propose_entry
+from domain.ingredient_catalog import as_language, propose_entry, shown_for
 from domain.notebook import can_write_recipes
 from domain.recipe import MAX_LINES, MAX_STEPS, EditedRecipe, resolve_line_names
 from domain.recipe_draft import (
@@ -59,6 +59,18 @@ class RecipeView:
     editor: EditorView | None = None
     # Kitchen recipes only: in the cart as the caller sees it, and who edits the cart.
     cart: RecipeCartStatus | None = None
+    # Each line's name in the recipe's language (spec 043 FR-006); empty when not read.
+    shown_names: tuple[str, ...] = ()
+
+
+def with_shown_names(view: RecipeView, catalog: IngredientCatalog | None) -> RecipeView:
+    """The view with each line's shown name: the variant in the recipe's language, or kept."""
+    if catalog is None:
+        return view
+    index = catalog.index_for_notebook(view.detail.notebook_id)
+    language = view.detail.language
+    shown = tuple(shown_for(index, line.name, language) for line in view.detail.lines)
+    return replace(view, shown_names=shown)
 
 
 def _recipe_for(
@@ -102,16 +114,20 @@ class GetRecipeService:
         notebooks: NotebookRepository,
         locks: EditLockRepository | None = None,
         carts: CartRepository | None = None,
+        *,
+        catalog: IngredientCatalog | None = None,
     ) -> None:
         self._recipes = recipes
         self._notebooks = notebooks
         self._locks = locks
         self._carts = carts
+        self._catalog = catalog
 
     def execute(self, command: GetRecipeCommand) -> RecipeView:
         view = _recipe_for(
             self._recipes, self._notebooks, command.actor_user_id, command.recipe_id, write=False
         )
+        view = with_shown_names(view, self._catalog)
         ref = command.session
         if ref is None or self._locks is None:
             return view
@@ -146,8 +162,14 @@ class MatchRecipeNamesService:
         view = _recipe_for(
             self._recipes, self._notebooks, command.actor_user_id, command.recipe_id, write=True
         )
-        entries = self._catalog.names_for_notebook(view.notebook.id)
-        return [(name, propose_entry(name, entries)) for name in command.names]
+        index = self._catalog.index_for_notebook(view.notebook.id)
+        language = view.detail.language
+        # The proposal is the name the line will show in the recipe's language (spec 043).
+        proposals = [(name, propose_entry(name, index)) for name in command.names]
+        return [
+            (name, None if kept is None else shown_for(index, kept, language))
+            for name, kept in proposals
+        ]
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,6 +189,10 @@ class UpdateRecipeCommand:
     # The image (S-067): change_image False keeps it; True sets preview_image (None removes).
     change_image: bool = False
     preview_image: str | None = None
+    # A new language (spec 043), which also clears a pending proposal; None keeps it.
+    language: str | None = None
+    # True drops the proposal and keeps the language (FR-005a dismiss).
+    dismiss_proposal: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -238,7 +264,7 @@ class UpdateRecipeService:
         if no_lines:
             raise DraftProblems(missing=("ingredients",))
         lines, new_names = resolve_line_names(
-            checked.ingredient_lines, self._catalog.names_for_notebook(current.notebook.id)
+            checked.ingredient_lines, self._catalog.index_for_notebook(current.notebook.id)
         )
         assert checked.base_servings is not None
         stored = self._recipes.replace(
@@ -252,6 +278,8 @@ class UpdateRecipeService:
                 steps=checked.steps,
                 change_image=command.change_image,
                 preview_image=preview_image,
+                language=as_language(command.language),
+                dismiss_proposal=command.dismiss_proposal,
             ),
         )
         self._catalog.add_names(current.notebook.id, new_names)
@@ -269,10 +297,56 @@ class UpdateRecipeService:
             len(checked.steps),
             len(new_names),
         )
+        view = RecipeView(detail=stored, notebook=current.notebook, can_write=True)
         return UpdatedRecipe(
-            view=RecipeView(detail=stored, notebook=current.notebook, can_write=True),
+            view=with_shown_names(view, self._catalog),
             created_catalog_names=new_names,
         )
+
+
+@dataclass(frozen=True, slots=True)
+class SetRecipeLanguageCommand:
+    """Apply a language (which clears the proposal), or with `language` None dismiss it."""
+
+    actor_user_id: UUID
+    recipe_id: UUID
+    language: str | None
+    session_id: UUID | None = None
+
+
+class SetRecipeLanguageService:
+    """Apply or dismiss the model's language proposal from the recipe page (FR-005a).
+
+    Anyone who can edit the recipe may; a recipe another person is editing is refused, so
+    their form's lines do not change language under them.
+    """
+
+    def __init__(
+        self,
+        recipes: RecipeRepository,
+        notebooks: NotebookRepository,
+        catalog: IngredientCatalog,
+        locks: EditLockRepository | None = None,
+    ) -> None:
+        self._recipes = recipes
+        self._notebooks = notebooks
+        self._catalog = catalog
+        self._locks = locks
+
+    def execute(self, command: SetRecipeLanguageCommand) -> RecipeView:
+        language = as_language(command.language)
+        if command.language is not None and language is None:
+            raise InvalidDraftError("language")
+        _recipe_for(
+            self._recipes, self._notebooks, command.actor_user_id, command.recipe_id, write=True
+        )
+        if self._locks is not None:
+            refuse_if_locked_by_other(self._locks, command.recipe_id, command.session_id)
+        self._recipes.set_language(command.recipe_id, language)
+        view = _recipe_for(
+            self._recipes, self._notebooks, command.actor_user_id, command.recipe_id, write=True
+        )
+        return with_shown_names(view, self._catalog)
 
 
 @dataclass(frozen=True, slots=True)

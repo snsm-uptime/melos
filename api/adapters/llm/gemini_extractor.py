@@ -24,6 +24,7 @@ from application.recipe_extraction import (
     NotARecipe,
     NotRecipeReason,
 )
+from domain.ingredient_catalog import as_language
 from domain.recipe_draft import (
     DraftRecipe,
     IngredientLine,
@@ -55,6 +56,8 @@ RESPONSE_SCHEMA: dict[str, Any] = {
             "properties": {
                 "title": {"type": "string"},
                 "base_servings": {"type": "integer"},
+                # The language most of the text is in (spec 043 FR-005a).
+                "language": {"type": "string", "enum": ["en", "es"]},
                 # MVP-OUT: "main_ingredients": {"type": "array", "items": {"type": "string"}},
                 "ingredient_lines": {
                     "type": "array",
@@ -96,6 +99,7 @@ PAGE_PART_RESPONSE_SCHEMA: dict[str, Any] = {
             "properties": {
                 "title": {"type": "string"},
                 "base_servings": {"type": "integer"},
+                "language": {"type": "string", "enum": ["en", "es"]},
                 "ingredient_lines": RESPONSE_SCHEMA["properties"]["recipe"]["properties"][
                     "ingredient_lines"
                 ],
@@ -122,6 +126,7 @@ class _LinePayload(BaseModel):
 class _RecipePayload(BaseModel):
     title: str
     base_servings: int | None = None
+    language: str | None = None
     # MVP-OUT: main_ingredients: list[str] = []
     ingredient_lines: list[_LinePayload]
     steps: list[str]
@@ -137,6 +142,7 @@ class _ExtractionPayload(BaseModel):
 class _PartRecipePayload(BaseModel):
     title: str | None = None
     base_servings: int | None = None
+    language: str | None = None
     ingredient_lines: list[_LinePayload] = []
     steps: list[str] = []
 
@@ -180,6 +186,7 @@ def _payload_to_result(payload: _ExtractionPayload) -> ExtractionResult:
             # MVP-OUT: cuisines=(),
             ingredient_lines=tuple(_line(line) for line in recipe.ingredient_lines),
             steps=tuple(recipe.steps),
+            language=as_language(recipe.language),
         )
     )
 
@@ -213,6 +220,7 @@ def _part_payload_to_result(payload: _PartPayload) -> ExtractionResult:
         base_servings=recipe.base_servings,
         ingredient_lines=tuple(_line(line) for line in recipe.ingredient_lines),
         steps=steps,
+        language=as_language(recipe.language),
     )
 
 

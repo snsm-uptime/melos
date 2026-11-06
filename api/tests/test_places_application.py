@@ -35,6 +35,7 @@ class FakePlaces:
         self.catalog: dict[UUID, list[str]] = {}
         self.shared: dict[UUID, list[PlaceSource]] = {}
         self.uses: dict[UUID, list[RecipeUse]] = {}
+        self.others: dict[UUID, list[tuple[str, str]]] = {}
 
     def list_custom(self, user_id: UUID) -> Sequence[CustomPlace]:
         mine = [p for owner, p in self.places.values() if owner == user_id]
@@ -84,6 +85,9 @@ class FakePlaces:
 
     def sources(self, user_id: UUID) -> Sequence[PlaceSource]:
         return self.shared.get(user_id, [])
+
+    def other_names(self, user_id: UUID) -> Sequence[tuple[str, str]]:
+        return self.others.get(user_id, [])
 
 
 ANA = uuid.uuid4()
@@ -213,3 +217,15 @@ def test_copy_stops_at_the_place_limit_and_skips_choices_of_places_not_added() -
     # Only the place that fit is used; the other's choice is skipped, not pointed elsewhere.
     assert len(added) == 1
     assert {chosen[n].name for n in chosen} == added
+
+
+def test_other_names_show_under_their_ingredient() -> None:
+    """Spec 043 R8: the places view lists kept names, with their other names under each."""
+    places = FakePlaces()
+    places.catalog[ANA] = ["onion", "garlic", "ajo"]
+    places.others[ANA] = [("onion", "cebolla"), ("onion", "yellow onion"), ("garlic", "ajo")]
+    items = {i.name: i for i in IngredientPlacesService(places).execute(ANA)}
+    assert items["onion"].other_names == ("cebolla", "yellow onion")
+    # "ajo" is still its own entry in another catalog, so it is not hidden under "garlic".
+    assert items["garlic"].other_names == ()
+    assert "ajo" in items

@@ -20,6 +20,7 @@ from application.recipe_manage import (
     _recipe_for,
 )
 from domain.errors import RecipeChangedError, RecipeNotFoundError, RecipeReadOnlyError
+from domain.ingredient_catalog import CatalogIndex
 from domain.recipe import EditedRecipe
 from domain.recipe_draft import (
     DraftProblems,
@@ -133,6 +134,9 @@ class FakeCatalog:
 
     world: World
     added: list[tuple[UUID, tuple[str, ...]]] = field(default_factory=list)
+
+    def index_for_notebook(self, notebook_id: UUID) -> CatalogIndex:
+        return CatalogIndex.of_names(self.names_for_notebook(notebook_id))
 
     def names_for_notebook(self, notebook_id: UUID) -> list[str]:
         return self.world.catalog.names_for_notebook(notebook_id)

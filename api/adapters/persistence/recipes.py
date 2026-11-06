@@ -41,6 +41,7 @@ def _recipe_columns() -> Select[Any]:
         RecipeModel.servings_estimated,
         RecipeModel.created_at,
         RecipeModel.preview_image_base64,
+        RecipeModel.language,
     )
 
 
@@ -84,6 +85,7 @@ class SqlAlchemyRecipeRepository:
                     servings_estimated=recipe.servings_estimated,
                     save_key=recipe.save_key,
                     preview_image_base64=recipe.preview_image,
+                    language=recipe.language,
                 )
                 self._session.add(row)
                 self._session.flush()
@@ -164,6 +166,8 @@ class SqlAlchemyRecipeRepository:
             created_at=row.created_at,
             updated_at=row.updated_at,
             preview_image=row.preview_image_base64,
+            language=row.language,
+            proposed_language=row.proposed_language,
         )
 
     def _lock(self, recipe_id: UUID) -> RecipeModel:
@@ -192,6 +196,11 @@ class SqlAlchemyRecipeRepository:
         row.servings_estimated = recipe.servings_estimated
         if recipe.change_image:
             row.preview_image_base64 = recipe.preview_image
+        if recipe.language is not None:
+            row.language = recipe.language
+            row.proposed_language = None
+        elif recipe.dismiss_proposal:
+            row.proposed_language = None
         # clock_timestamp, not now(): the token must move even inside one long transaction.
         row.updated_at = func.clock_timestamp()
         self._session.flush()
@@ -223,6 +232,7 @@ class SqlAlchemyRecipeRepository:
                     # Kept, because the kitchen list sorts by it (research R5).
                     "created_at": recipe.created_at,
                     "preview_image_base64": recipe.preview_image_base64,
+                    "language": recipe.language,
                 }
                 for recipe in recipes
             ],
@@ -258,6 +268,7 @@ class SqlAlchemyRecipeRepository:
                     "base_servings": source.base_servings,
                     "servings_estimated": source.servings_estimated,
                     "preview_image_base64": source.preview_image_base64,
+                    "language": source.language,
                     "copied_from_recipe_id": source.id if link_source else None,
                     "created_at": func.clock_timestamp(),
                     "updated_at": func.clock_timestamp(),
@@ -277,6 +288,15 @@ class SqlAlchemyRecipeRepository:
                 )
                 .values(name=new_name)
             )
+
+    def set_language(self, recipe_id: UUID, language: str | None) -> None:
+        row = self._lock(recipe_id)
+        if language is not None and language != row.language:
+            row.language = language
+            # Lines now show other variants: an open edit form must reload (spec 027 token).
+            row.updated_at = func.clock_timestamp()
+        row.proposed_language = None
+        self._session.flush()
 
     def overwrite_from(
         self, target_recipe_id: UUID, source_recipe_id: UUID, author_id: UUID
@@ -301,6 +321,7 @@ class SqlAlchemyRecipeRepository:
         row.base_servings = source.base_servings
         row.servings_estimated = source.servings_estimated
         row.preview_image_base64 = source.preview_image_base64
+        row.language = source.language
         row.author_id = author_id
         row.updated_at = func.clock_timestamp()
         self._session.flush()

@@ -7,7 +7,7 @@ here. Pure: no I/O, no FastAPI, no SQLAlchemy.
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -54,6 +54,24 @@ class SavedLine:
     id: UUID | None = None
     # Shared by the kitchen (spec 070 FR-001).
     bought: bool = False
+    # The ingredient's word per language, (language, name) pairs; () for hand items (spec 043).
+    names: tuple[tuple[str, str], ...] = ()
+
+
+# Kept name -> its word per language, for the lines of one list (spec 043 R7).
+ListNames = Mapping[str, Mapping[str, str]]
+
+
+def shown_list_name(kept: str, names: ListNames, language: str | None) -> str:
+    """The word a viewer sees for a line: theirs when the ingredient has one, else kept."""
+    if language is None:
+        return kept
+    return names.get(kept, {}).get(language, kept)
+
+
+def line_names(lines: Sequence[SavedLine]) -> dict[str, dict[str, str]]:
+    """The stored words of a list's cart lines, by kept name (closed lists keep theirs)."""
+    return {line.name: dict(line.names) for line in lines if line.names}
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,14 +85,31 @@ class SavedList:
     items: tuple[SavedLine, ...]
 
 
-def cart_lines(shopping_list: ShoppingList) -> tuple[SavedLine, ...]:
-    """A built list as stored lines, keeping its order."""
+def cart_lines(
+    shopping_list: ShoppingList, names: ListNames | None = None
+) -> tuple[SavedLine, ...]:
+    """A built list as stored lines, keeping its order, each with its words (spec 043)."""
+    words = names or {}
+
+    def of(name: str) -> tuple[tuple[str, str], ...]:
+        return tuple(sorted(words.get(name, {}).items()))
+
     measured = tuple(
-        SavedLine("cart", "measured", ln.name, ln.kind, ln.size, ln.amounts, (), ln.recipes)
+        SavedLine(
+            "cart",
+            "measured",
+            ln.name,
+            ln.kind,
+            ln.size,
+            ln.amounts,
+            (),
+            ln.recipes,
+            names=of(ln.name),
+        )
         for ln in shopping_list.lines
     )
     your_call = tuple(
-        SavedLine("cart", "your_call", e.name, None, None, (), e.notes, e.recipes)
+        SavedLine("cart", "your_call", e.name, None, None, (), e.notes, e.recipes, names=of(e.name))
         for e in shopping_list.your_call
     )
     return measured + your_call

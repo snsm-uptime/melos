@@ -591,7 +591,7 @@ def _finish(factory: sessionmaker[Session], notebook_id: UUID, *users: UUID) -> 
 
 
 @pytest.mark.parametrize(
-    "step", ["names_for_person", "names_for_notebook", "add_names", "add_member", "commit"]
+    "step", ["names_for_person", "index_for_notebook", "add_names", "add_member", "commit"]
 )
 def test_a_failure_at_any_step_leaves_nothing_and_the_invite_usable(
     engine: Engine, step: str
@@ -623,7 +623,7 @@ def test_a_failure_at_any_step_leaves_nothing_and_the_invite_usable(
             catalog = SqlAlchemyIngredientCatalog(session)
             notebooks = SqlAlchemyNotebookRepository(session)
             committer = SqlAlchemyTransactionCommitter(session)
-            if step in ("names_for_person", "names_for_notebook", "add_names"):
+            if step in ("names_for_person", "index_for_notebook", "add_names"):
                 catalog = failing(catalog, step)
             elif step == "add_member":
                 notebooks = failing(notebooks, step)

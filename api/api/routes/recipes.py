@@ -20,6 +20,8 @@ from application.recipe_manage import (
     MatchRecipeNamesCommand,
     MatchRecipeNamesService,
     RecipeView,
+    SetRecipeLanguageCommand,
+    SetRecipeLanguageService,
     UpdatedRecipe,
     UpdateRecipeCommand,
     UpdateRecipeService,
@@ -64,6 +66,7 @@ from api.deps import (
     get_match_recipe_names,
     get_release_recipe_lock,
     get_save_recipe_draft,
+    get_set_recipe_language,
     get_share_recipe,
     get_update_recipe,
     require_session_ref,
@@ -80,6 +83,7 @@ from api.schemas.recipes import (
     RecipeNotebookResponse,
     RecipeSourceResponse,
     SaveRecipeBody,
+    SetRecipeLanguageBody,
     ShareCandidate,
     ShareCandidatesResponse,
     ShareRequest,
@@ -171,6 +175,7 @@ def save_recipe(
         keep_units=tuple(body.keep_units),
         source_url=body.source_url,
         preview_image=body.preview_image,
+        language=body.language,
     )
     try:
         saved = save.execute(command)
@@ -228,6 +233,9 @@ def _detail(view: RecipeView) -> RecipeDetailResponse:
         ingredient_lines=[
             RecipeLineResponse(
                 name=line.name,
+                shown_name=(
+                    view.shown_names[index] if index < len(view.shown_names) else line.name
+                ),
                 vague=line.vague,
                 quantity=line.quantity,
                 unit=line.unit,
@@ -235,7 +243,7 @@ def _detail(view: RecipeView) -> RecipeDetailResponse:
                 preparation=line.preparation,
                 note=line.note,
             )
-            for line in detail.lines
+            for index, line in enumerate(detail.lines)
         ],
         steps=list(detail.steps),
         source=(
@@ -244,6 +252,8 @@ def _detail(view: RecipeView) -> RecipeDetailResponse:
             else None
         ),
         preview_image=detail.preview_image,
+        language=detail.language,
+        proposed_language=detail.proposed_language,
         editor=editor_response(view.editor),
         in_cart=view.cart.in_cart if view.cart is not None else None,
         cart_editor=editor_response(view.cart.editor) if view.cart is not None else None,
@@ -372,6 +382,32 @@ def match_recipe_names(
     return JSONResponse(content=response.model_dump(mode="json"))
 
 
+@router.patch("/recipes/{recipe_id}/language")
+def set_recipe_language(
+    recipe_id: uuid.UUID,
+    body: SetRecipeLanguageBody,
+    ref: SessionRef = Depends(require_session_ref),
+    service: SetRecipeLanguageService = Depends(get_set_recipe_language),
+) -> JSONResponse:
+    """Apply or dismiss the detected language from the recipe page (spec 043 FR-005a)."""
+    try:
+        view = service.execute(
+            SetRecipeLanguageCommand(
+                actor_user_id=ref.user_id,
+                recipe_id=recipe_id,
+                language=body.language,
+                session_id=ref.session_id,
+            )
+        )
+    except RecipeNotFoundError:
+        return _not_found()
+    except RecipeReadOnlyError:
+        return _read_only()
+    except RecipeLockedError as exc:
+        return _locked(exc)
+    return JSONResponse(content=_detail(view).model_dump(mode="json"))
+
+
 @router.put("/recipes/{recipe_id}")
 def update_recipe(
     request: Request,
@@ -404,6 +440,8 @@ def update_recipe(
         keep_units=tuple(body.keep_units),
         change_image="preview_image" in body.model_fields_set,
         preview_image=body.preview_image,
+        language=body.language,
+        dismiss_proposal="proposed_language" in body.model_fields_set,
     )
     try:
         updated: UpdatedRecipe = service.execute(command)

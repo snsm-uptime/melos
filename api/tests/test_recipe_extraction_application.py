@@ -307,7 +307,8 @@ def test_stand_in_returns_each_of_the_six_results_in_order() -> None:
         InvalidOutput(),
         AIProviderError(),
     ]
-    fake = FakeRecipeExtractor(script)
+    # No default language, so each result comes back exactly as scripted.
+    fake = FakeRecipeExtractor(script, language=None)
 
     results = [fake.extract("text", [], 10.0) for _ in script]
 

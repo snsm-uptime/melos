@@ -667,3 +667,68 @@ class ShareRecipientNoDefaultNotebookError(DomainError):
 
     def __init__(self) -> None:
         super().__init__(self.MESSAGE)
+
+
+# --- catalog management (spec 043) ------------------------------------------------------------
+
+
+class CatalogNameUnknownError(DomainError):
+    """A name to merge, rename, delete or split is not in the notebook's catalog."""
+
+    CODE = "unknown_name"
+
+
+class SameIngredientError(DomainError):
+    """The two names of a merge are already one ingredient."""
+
+    CODE = "same_ingredient"
+
+
+class CatalogNameChangedError(DomainError):
+    """The name was changed by someone else first; the person reloads (FR-015)."""
+
+    CODE = "name_changed"
+
+
+class CatalogNameBlankError(DomainError):
+    """A new name that is empty after trimming (User Story 2, scenario 3)."""
+
+    CODE = "name_blank"
+
+
+class CatalogNameExistsError(DomainError):
+    """The new name is already a name of the catalog; the ui offers a merge (FR-011)."""
+
+    CODE = "name_exists"
+
+    def __init__(self, existing: str) -> None:
+        super().__init__(existing)
+        self.existing = existing
+
+
+class CatalogReadOnlyError(DomainError):
+    """The person may read the notebook's catalog but not change it (FR-001)."""
+
+    CODE = "catalog_read_only"
+
+
+class AIUnavailableError(DomainError):
+    """The model gave no usable answer; manual merge still works (User Story 5, scenario 4)."""
+
+    CODE = "ai_unavailable"
+
+
+class CatalogNameOwnOtherError(DomainError):
+    """The new name is already one of this ingredient's own other names (spec 043 T063)."""
+
+    CODE = "name_is_own_other_name"
+
+
+class CatalogNameInUseError(DomainError):
+    """Recipes still use the name, so it cannot be deleted (FR-013)."""
+
+    CODE = "name_in_use"
+
+    def __init__(self, recipe_count: int) -> None:
+        super().__init__(str(recipe_count))
+        self.recipe_count = recipe_count

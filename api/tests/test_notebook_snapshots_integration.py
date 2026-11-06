@@ -18,6 +18,7 @@ from adapters.persistence.models import (
     CartItemModel,
     EmbeddingJobModel,
     IngredientModel,
+    IngredientNameModel,
     KitchenMembershipModel,
     KitchenModel,
     NotebookMembershipModel,
@@ -279,6 +280,40 @@ def test_every_field_matches_the_original(
     assert set(copies) == {"Linked", "Pasted"}
     assert _content(db_session, copies["Linked"]) == _content(db_session, linked)
     assert _content(db_session, copies["Pasted"]) == _content(db_session, pasted)
+
+
+def test_a_snapshot_copies_other_names_and_languages(
+    client: TestClient, db_session: Session, ana: tuple[UUID, str]
+) -> None:
+    """Spec 043: the snapshot's catalog has the same other names, and recipes keep a language."""
+    ana_id, token = ana
+    kitchen = _kitchen(db_session, ana_id)
+    source = _personal(db_session, ana_id)
+    onion = IngredientModel(notebook_id=source, name="onion", language="en")
+    db_session.add(onion)
+    db_session.flush()
+    db_session.add(
+        IngredientNameModel(
+            ingredient_id=onion.id,
+            notebook_id=source,
+            name="cebolla",
+            kind="variant",
+            language="es",
+        )
+    )
+    recipe_id = _recipe(db_session, source, ana_id, "Sopa")
+    db_session.execute(update(RecipeModel).where(RecipeModel.id == recipe_id).values(language="en"))
+    db_session.flush()
+
+    _use(client, token)
+    snapshot = _added(client, kitchen, source)
+
+    index = SqlAlchemyIngredientCatalog(db_session).index_for_notebook(snapshot)
+    entry = index.entry("onion")
+    assert entry is not None
+    assert entry.language == "en" and dict(entry.variants) == {"es": "cebolla"}
+    assert index.kept_for("cebollas") == "onion"
+    assert [row.language for row in _recipes_of(db_session, snapshot)] == ["en"]
 
 
 def test_a_snapshot_keeps_a_custom_unit_and_changes_nobody_s_list(

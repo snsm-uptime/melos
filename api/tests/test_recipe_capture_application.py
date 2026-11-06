@@ -27,6 +27,7 @@ from application.recipe_extraction import (
     Unavailable,
 )
 from domain.errors import KitchenArchivedError, NotebookNotFoundError
+from domain.ingredient_catalog import CatalogIndex
 from domain.notebook import Notebook
 from domain.recipe_draft import DraftRecipe, IngredientLine
 from tests.unit_fakes import FakeUnits
@@ -68,6 +69,9 @@ class FakeNotebooks:
 class FakeCatalog:
     names: dict[UUID, list[str]] = field(default_factory=dict)
     reads: list[UUID] = field(default_factory=list)
+
+    def index_for_notebook(self, notebook_id: UUID) -> CatalogIndex:
+        return CatalogIndex.of_names(self.names_for_notebook(notebook_id))
 
     def names_for_notebook(self, notebook_id: UUID) -> list[str]:
         self.reads.append(notebook_id)

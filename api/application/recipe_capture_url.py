@@ -24,6 +24,7 @@ from urllib.parse import urlsplit
 from uuid import UUID
 
 from domain.errors import KitchenArchivedError, NotebookNotFoundError
+from domain.ingredient_catalog import CatalogIndex
 from domain.page_link import normalize_link
 from domain.recipe_draft import (
     DEFAULT_SERVINGS,
@@ -168,7 +169,7 @@ class CaptureRecipeUrl:
             self._log("PageNoRecipe", host, page_bytes=page.byte_count, markdown_chars=0)
             return PageNoRecipe()
 
-        names = self._catalog.names_for_notebook(command.notebook_id)
+        names = self._catalog.index_for_notebook(command.notebook_id)
         units = available_units(self._units.extras_for(command.actor_user_id))
         pool = ThreadPoolExecutor(
             max_workers=len(batches.batches) + 1, thread_name_prefix="page-capture"
@@ -198,7 +199,7 @@ class CaptureRecipeUrl:
                 recipe=result.recipe,
                 notebook=view,
                 language=command.language,
-                catalog=tuple(names),
+                catalog=tuple(names.all_names()),
                 source_url=page.final_url,
                 preview_image=_data_uri(photo),
                 page_cut=batches.cut,
@@ -218,7 +219,7 @@ class CaptureRecipeUrl:
         self,
         pool: ThreadPoolExecutor,
         batches: tuple[str, ...],
-        names: list[str],
+        names: CatalogIndex,
         units: tuple[str, ...],
     ) -> ExtractionResult | PageNoRecipe:
         if len(batches) == 1:

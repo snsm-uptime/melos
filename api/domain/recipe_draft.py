@@ -16,7 +16,16 @@ from enum import StrEnum
 from functools import cache  # MVP-OUT: lru_cache; also `from typing import Any`
 
 from domain.errors import DomainError
-from domain.ingredient_catalog import LineMatch, NameChange, match_line, same_spelling
+from domain.ingredient_catalog import (
+    CatalogIndex,
+    CatalogLike,
+    Language,
+    LineMatch,
+    NameChange,
+    match_line,
+    same_spelling,
+    shown_for,
+)
 
 ALLOWED_UNITS = ("g", "kg", "oz", "lb", "ml", "l", "cup", "tbsp", "tsp", "unit")
 SIZES = ("small", "medium", "large")
@@ -162,6 +171,8 @@ class DraftRecipe:
     changes: tuple[NameChange, ...] = ()
     # Empty in the raw value and after an edit check.
     unknown_units: tuple[UnknownUnit, ...] = ()
+    # The language most of the text is in, from the extractor (spec 043); None when unknown.
+    language: Language | None = None
 
 
 # ── units ───────────────────────────────────────────────────────────────────
@@ -626,12 +637,15 @@ def _clean_size(raw: str | None) -> str | None:
 def _match_lines(
     raw_lines: Sequence[IngredientLine],
     checked_lines: Sequence[IngredientLine],
-    catalog: Sequence[str],
+    catalog: CatalogIndex,
+    language: Language | None = None,
 ) -> tuple[tuple[IngredientLine, ...], tuple[LineMatch, ...], tuple[NameChange, ...]]:
     """Confirm each line's catalog proposal (spec 018) and list the name changes.
 
-    A matched line shows the catalog entry as its name. A change is listed only when the
-    text's name differs from that entry in more than letter case or spaces.
+    A matched line shows its ingredient's name in the draft's language (spec 043 FR-008): the
+    variant in that language, else the kept name. Save resolves it to the kept name. A change
+    is listed only when the text's name differs from the shown name in more than letter case
+    or spaces.
     """
     lines: list[IngredientLine] = []
     matches: list[LineMatch] = []
@@ -642,9 +656,10 @@ def _match_lines(
         match = match_line(raw.text_name, line.name, raw.catalog_match, catalog)
         matches.append(match)
         if match.kind == "matched" and match.entry is not None:
-            if not same_spelling(written, match.entry):
-                changes.append(NameChange(line=index, from_name=written, to=match.entry))
-            line = replace(line, name=match.entry)
+            shown = shown_for(catalog, match.entry, language)
+            if not same_spelling(written, shown):
+                changes.append(NameChange(line=index, from_name=written, to=shown))
+            line = replace(line, name=shown)
         lines.append(replace(line, text_name=written, catalog_match=raw.catalog_match))
     return tuple(lines), tuple(matches), tuple(changes)
 
@@ -702,12 +717,13 @@ def check_edited_draft(draft: DraftRecipe, allowed_units: Iterable[str] = ()) ->
         servings_estimated=draft.servings_estimated or estimated,
         ingredient_lines=lines,
         steps=_check_steps(draft.steps),
+        language=draft.language,
     )
 
 
 def check_draft(
     draft: DraftRecipe,
-    catalog_names: Iterable[str],
+    catalog_names: CatalogLike,
     # MVP-OUT: vocabulary: Vocabulary,
     available_units: Iterable[str] = (),
 ) -> DraftRecipe:
@@ -722,7 +738,11 @@ def check_draft(
     A word outside the defaults and `available_units` that can be offered as a unit keeps its
     line and is listed in `unknown_units`, so the draft can ask about it (spec 055 R7).
     """
-    catalog = tuple[str, ...](n.strip() for n in catalog_names if n and n.strip())
+    catalog = (
+        catalog_names
+        if isinstance(catalog_names, CatalogIndex)
+        else CatalogIndex.of_names(n.strip() for n in catalog_names if n)
+    )
     available = tuple(available_units)
     raw_lines, unknown_units = _ask_about_units(draft.ingredient_lines, available)
     units = (*available, *(unknown.word for unknown in unknown_units))
@@ -737,7 +757,7 @@ def check_draft(
     steps = _check_steps(draft.steps)
     servings, estimated = _check_servings(draft.base_servings)
     checked = tuple(_check_line(line, units) for line in raw_lines)
-    lines, matches, changes = _match_lines(raw_lines, checked, catalog)
+    lines, matches, changes = _match_lines(raw_lines, checked, catalog, draft.language)
     return DraftRecipe(
         title=title,
         base_servings=servings,
@@ -749,4 +769,5 @@ def check_draft(
         matches=matches,
         changes=changes,
         unknown_units=unknown_units,
+        language=draft.language,
     )
