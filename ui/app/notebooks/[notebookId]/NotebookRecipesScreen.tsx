@@ -179,6 +179,8 @@ export function NotebookRecipesScreen({
           onChange={onChange}
           load={load}
           returnPath={listPath}
+          addKitchenId={state.notebook.kitchen_id}
+          addSourceNotebookId={state.notebook.kind === "personal" ? state.notebook.id : null}
           addCandidates={
             archived
               ? undefined

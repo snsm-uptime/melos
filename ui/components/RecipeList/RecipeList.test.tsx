@@ -10,7 +10,11 @@ import type { RecipeCard, RecipePage } from "@/lib/recipesClient";
 import { RecipeList } from "./RecipeList";
 
 vi.mock("@/components/AddRecipeCallToAction", () => ({
-  AddRecipeCallToAction: () => <button type="button">Add a recipe</button>,
+  AddRecipeCallToAction: ({ kitchenId }: { kitchenId?: string | null }) => (
+    <button type="button" data-kitchen={kitchenId ?? "none"}>
+      Add a recipe
+    </button>
+  ),
 }));
 
 function card(title: string): RecipeCard {
@@ -251,6 +255,14 @@ describe("RecipeList", () => {
     expect(cells).toHaveLength(3);
     expect(cells[0].textContent).toBe("Add a recipe");
     expect(cells[0].querySelector("h3")).toBeNull();
+  });
+
+  it("passes the kitchen for a copy from another notebook to the add card, when given", async () => {
+    await render(async () => page(["Soup"]), {
+      addCandidates: [{ id: "n1", name: "Mine", kind: "personal", kitchenId: null }],
+      addKitchenId: "k1",
+    });
+    expect(container.querySelector("button")?.dataset.kitchen).toBe("k1");
   });
 
   it("shows not found for a 404", async () => {

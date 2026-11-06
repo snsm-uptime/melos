@@ -1,17 +1,16 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useMembershipKitchens } from "@/app/kitchens/membershipKitchensStore";
 import {
   AddRecipeCallToAction,
   type CaptureCandidate,
-  type FromNotebookTarget,
 } from "@/components/AddRecipeCallToAction";
+import { kitchenFromPath } from "@/components/AddRecipeCallToAction/useFromNotebookTarget";
 import { OWN_NEW_NOTEBOOK_ID } from "@/lib/capture/captureStore";
 import { notebooksMessages } from "@/lib/i18n/notebooks";
-import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
 import { useLocale } from "@/lib/i18n/useLocale";
 import {
   fetchDefaultNotebook,
@@ -21,11 +20,7 @@ import {
 
 type Target = { candidates: CaptureCandidate[]; defaultId: string | null };
 
-/** The open kitchen of a `/kitchens/{id}…` address, or null elsewhere. */
-export function kitchenFromPath(pathname: string): string | null {
-  const match = /^\/kitchens\/([^/?#]+)/.exec(pathname);
-  return match ? decodeURIComponent(match[1]) : null;
-}
+export { kitchenFromPath };
 
 /**
  * The side panel's quick add (spec 069 US2): the add-recipe options from any signed-in page, plus
@@ -36,13 +31,11 @@ export function kitchenFromPath(pathname: string): string | null {
 export function QuickAddRecipe() {
   const pathname = usePathname() ?? "";
   const locale = useLocale();
-  const t = useCaptureMessages();
   const kitchens = useMembershipKitchens();
   const pathKitchen = kitchenFromPath(pathname);
   const kitchen = pathKitchen ? kitchens?.find((item) => item.id === pathKitchen) : undefined;
   // An archived kitchen takes no recipes: quick add acts as it does outside a kitchen there.
   const kitchenId = pathKitchen && !kitchen?.is_archived ? pathKitchen : null;
-  const archivedHere = Boolean(pathKitchen && kitchen?.is_archived);
   // Keyed by what it was read for, so a newer kitchen reads as not loaded yet (no reset).
   const targetKey = `${kitchenId}|${locale}`;
   const [answer, setAnswer] = useState<{ key: string; value: Target | null } | null>(null);
@@ -96,18 +89,6 @@ export function QuickAddRecipe() {
     };
   }, [kitchenId, locale, targetKey]);
 
-  const fromNotebook = useMemo<FromNotebookTarget | undefined>(() => {
-    if (archivedHere) return undefined;
-    if (kitchenId) return { kitchenId };
-    const active = (kitchens ?? [])
-      .filter((item) => !item.is_archived)
-      .map((item) => ({ id: item.id, name: item.name }));
-    return {
-      kitchens: active,
-      disabledReason: active.length === 0 ? t.fromNotebookNoKitchen : null,
-    };
-  }, [archivedHere, kitchenId, kitchens, t.fromNotebookNoKitchen]);
-
   return (
     <AddRecipeCallToAction
       variant="panel"
@@ -115,7 +96,6 @@ export function QuickAddRecipe() {
       candidates={target?.candidates ?? []}
       defaultId={target?.defaultId ?? null}
       returnPath={pathname}
-      fromNotebook={fromNotebook}
     />
   );
 }

@@ -191,19 +191,6 @@ export function KitchenNotebooksSection({
   }
 
   const canAdd = notebooks.length > 0 && !isArchived;
-  const addProps = {
-    candidates,
-    defaultId: ownNotebook?.id ?? OWN_NEW_NOTEBOOK_ID,
-    returnPath: `/kitchens/${kitchenId}`,
-    // "Recipe from another notebook" targets this kitchen (spec 069 FR-003, FR-009).
-    fromNotebook: {
-      kitchenId,
-      onCopied: () => {
-        setListVersion((value) => value + 1);
-        setAttempt((value) => value + 1);
-      },
-    },
-  };
 
   return (
     <section className={`${styles.section} flex-1`}>
@@ -242,6 +229,12 @@ export function KitchenNotebooksSection({
           // The notebook page's add card, first in the grid (and alone when the list is empty).
           addCandidates={canAdd ? candidates : undefined}
           addDefaultId={ownNotebook?.id ?? OWN_NEW_NOTEBOOK_ID}
+          // "Recipe from another notebook" targets this kitchen (spec 069 FR-003, FR-009).
+          addKitchenId={kitchenId}
+          onAddCopied={() => {
+            setListVersion((value) => value + 1);
+            setAttempt((value) => value + 1);
+          }}
         />
       ) : null}
     </section>

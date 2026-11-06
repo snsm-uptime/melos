@@ -6,8 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RecipeFromNotebookSheet } from "./RecipeFromNotebookSheet";
 
-const prefs = vi.hoisted(() => ({ value: null as { locale: "en" | "es" } | null }));
-vi.mock("@/components/PreferencesProvider", () => ({ useOptionalPreferences: () => prefs.value }));
+const prefs = vi.hoisted(() => ({
+  value: null as { locale: "en" | "es" } | null,
+}));
+vi.mock("@/components/PreferencesProvider", () => ({
+  useOptionalPreferences: () => prefs.value,
+}));
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -16,7 +20,13 @@ function json(status: number, body: unknown): Response {
   });
 }
 
-function notebook(id: string, name: string, kind: "personal" | "kitchen", count: number, isDefault = false) {
+function notebook(
+  id: string,
+  name: string,
+  kind: "personal" | "kitchen",
+  count: number,
+  isDefault = false,
+) {
   return {
     id,
     name,
@@ -57,16 +67,29 @@ let container: HTMLDivElement;
 let root: Root;
 let notebooks: unknown[];
 let copies: Copy[];
-let posted: { url: string; body: { source_recipe_id: string; on_repeat: string } }[];
+let posted: {
+  url: string;
+  body: { source_recipe_id: string; on_repeat: string };
+}[];
 let recipeQueries: string[];
 
-function fetchMock(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+function fetchMock(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
   const url = String(input);
-  if (url === "/api/notebooks") return Promise.resolve(json(200, { notebooks }));
-  if (url.startsWith("/api/notebooks/p1/recipes")) {
+  if (url === "/api/notebooks")
+    return Promise.resolve(json(200, { notebooks }));
+  if (
+    url.startsWith("/api/notebooks/p1/recipes") ||
+    url.startsWith("/api/notebooks/p2/recipes")
+  ) {
     recipeQueries.push(url);
     const q = new URL(url, "http://x").searchParams.get("q") ?? "";
-    const titles = ["Lentil soup", "Pea soup"].filter((title) =>
+    const all = url.includes("/p2/")
+      ? ["Carrot cake"]
+      : ["Lentil soup", "Pea soup"];
+    const titles = all.filter((title) =>
       title.toLowerCase().includes(q.toLowerCase()),
     );
     return Promise.resolve(json(200, page(titles)));
@@ -81,15 +104,23 @@ function fetchMock(input: RequestInfo | URL, init?: RequestInit): Promise<Respon
 
 async function flush() {
   await act(async () => {
-    for (let i = 0; i < 5; i += 1) await Promise.resolve();
+    for (let i = 0; i < 20; i += 1) await Promise.resolve();
   });
 }
 
-async function render(props: Partial<Parameters<typeof RecipeFromNotebookSheet>[0]> = {}) {
+async function render(
+  props: Partial<Parameters<typeof RecipeFromNotebookSheet>[0]> = {},
+) {
   const onDone = props.onDone ?? vi.fn();
   await act(async () => {
     root.render(
-      <RecipeFromNotebookSheet open onClose={vi.fn()} kitchenId="k1" {...props} onDone={onDone} />,
+      <RecipeFromNotebookSheet
+        open
+        onClose={vi.fn()}
+        kitchenId="k1"
+        {...props}
+        onDone={onDone}
+      />,
     );
   });
   await flush();
@@ -104,18 +135,36 @@ function byText(text: string): HTMLButtonElement | null {
   );
 }
 
-function radios(): HTMLInputElement[] {
-  return Array.from(document.querySelectorAll("input[type='radio']"));
+function byLabel(label: string): HTMLButtonElement | null {
+  return document.querySelector(
+    `button[aria-label='${label}']`,
+  ) as HTMLButtonElement | null;
 }
 
-async function pick(index: number) {
-  await act(async () => radios()[index].click());
+/** The save button at the bottom of the pop-up. */
+function saveButton(): HTMLButtonElement {
+  return byText("Save")!;
 }
 
 async function click(text: string) {
   await act(async () => byText(text)!.click());
   await flush();
 }
+
+/** Opens a searchable select by its label and chooses the option with this text. */
+async function choose(label: string, option: string) {
+  await act(async () => byLabel(label)!.click());
+  await act(async () => {
+    const match = Array.from(document.querySelectorAll("[role='option']")).find(
+      (el) => el.textContent?.trim() === option,
+    ) as HTMLElement | undefined;
+    match!.click();
+  });
+  await flush();
+}
+
+const ORIGINAL = "Original notebook";
+const RECIPES = "Search recipes";
 
 const copied = {
   recipe_id: "c1",
@@ -128,6 +177,7 @@ beforeEach(() => {
   prefs.value = null;
   notebooks = [
     notebook("p1", "ana's Notebook", "personal", 2, true),
+    notebook("p2", "Family list", "personal", 1),
     notebook("kn", "Home notebook", "kitchen", 4),
   ];
   copies = [];
@@ -146,40 +196,52 @@ afterEach(() => {
 });
 
 describe("RecipeFromNotebookSheet (spec 069)", () => {
-  it("lists only personal notebooks and their recipes", async () => {
-    await render();
-    expect(document.querySelector("select")).toBeNull(); // one personal notebook: no picker
-    expect(radios().map((el) => el.parentElement?.textContent)).toEqual(["Lentil soup", "Pea soup"]);
+  it("quick add: the recipe select stays disabled until an original notebook is chosen", async () => {
+    await render({ kitchenId: "k1" });
+    expect(byLabel(ORIGINAL)!.textContent).toContain("Choose a notebook");
+    expect(byLabel(RECIPES)!.disabled).toBe(true);
+    expect(recipeQueries).toEqual([]);
+
+    await choose(ORIGINAL, "Family list");
+    expect(recipeQueries[0]).toContain("/api/notebooks/p2/recipes");
+    expect(byLabel(RECIPES)!.disabled).toBe(false);
+  });
+
+  it("quick add: the original notebook lists every readable notebook, kitchens included", async () => {
+    await render({ kitchenId: "k1" });
+    await act(async () => byLabel(ORIGINAL)!.click());
+    const names = Array.from(document.querySelectorAll("[role='option']")).map(
+      (el) => el.textContent,
+    );
+    expect(names).toEqual(["ana's Notebook", "Family list", "Home notebook"]);
+  });
+
+  it("on a personal notebook page the original notebook is fixed and its recipes load at once", async () => {
+    await render({ kitchenId: "k1", sourceNotebookId: "p1" });
+    expect(byLabel(ORIGINAL)).toBeNull();
+    expect(document.body.textContent).toContain("ana's Notebook");
     expect(recipeQueries[0]).toContain("/api/notebooks/p1/recipes");
+    expect(byLabel(RECIPES)!.disabled).toBe(false);
   });
 
-  it("searches by recipe name", async () => {
-    await render();
-    const search = document.querySelector("input[type='search']") as HTMLInputElement;
-    await act(async () => {
-      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
-      setter.call(search, "pea");
-      search.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    await flush();
-    expect(radios().map((el) => el.parentElement?.textContent)).toEqual(["Pea soup"]);
-    expect(recipeQueries.at(-1)).toContain("q=pea");
-  });
-
-  it("says so and offers no confirm when the personal notebooks have no recipes", async () => {
+  it("says so and offers no recipe select when the personal notebooks have no recipes", async () => {
     notebooks = [notebook("p1", "ana's Notebook", "personal", 0, true)];
     await render();
-    expect(document.body.textContent).toContain("Your personal notebooks have no recipes yet.");
-    expect(byText("Add to kitchen")).toBeNull();
+    expect(document.body.textContent).toContain(
+      "Your personal notebooks have no recipes yet.",
+    );
+    expect(byLabel(RECIPES)).toBeNull();
   });
 
-  it("copies the picked recipe into the open kitchen", async () => {
+  it("the save icon stays disabled until a recipe is chosen, then copies it into the open kitchen", async () => {
     copies = [{ status: 201, body: copied }];
-    const onDone = await render();
-    expect(byText("Add to kitchen")!.disabled).toBe(true);
+    const onDone = await render({ kitchenId: "k1", sourceNotebookId: "p1" });
+    expect(saveButton().disabled).toBe(true);
 
-    await pick(0);
-    await click("Add to kitchen");
+    await choose(RECIPES, "Lentil soup");
+    expect(saveButton().disabled).toBe(false);
+    await act(async () => saveButton().click());
+    await flush();
 
     expect(posted).toEqual([
       {
@@ -188,6 +250,35 @@ describe("RecipeFromNotebookSheet (spec 069)", () => {
       },
     ]);
     expect(onDone).toHaveBeenCalledWith(copied, "k1");
+  });
+
+  it("the recipe select lists every recipe of the notebook, and searching narrows it", async () => {
+    await render({ kitchenId: "k1", sourceNotebookId: "p1" });
+    await act(async () => byLabel(RECIPES)!.click());
+    const names = () =>
+      Array.from(document.querySelectorAll("[role='option']")).map(
+        (el) => el.textContent,
+      );
+    expect(names()).toEqual(["Lentil soup", "Pea soup"]);
+    const search = document.querySelector("input") as HTMLInputElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )!.set!.call(search, "pea");
+      search.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(names()).toEqual(["Pea soup"]);
+  });
+
+  it("the target kitchen is shown, not chosen, when the add is inside a kitchen", async () => {
+    await render({
+      kitchenId: "k1",
+      kitchenName: "Home",
+      sourceNotebookId: "p1",
+    });
+    expect(byLabel("Target kitchen")).toBeNull();
+    expect(document.body.textContent).toContain("Home");
   });
 
   it.each([
@@ -203,11 +294,15 @@ describe("RecipeFromNotebookSheet (spec 069)", () => {
           notebook_name: "ana's (Home) Notebook",
         },
       },
-      { status: onRepeat === "add" ? 201 : 200, body: { ...copied, overwritten: onRepeat === "overwrite" } },
+      {
+        status: onRepeat === "add" ? 201 : 200,
+        body: { ...copied, overwritten: onRepeat === "overwrite" },
+      },
     ];
-    const onDone = await render();
-    await pick(0);
-    await click("Add to kitchen");
+    const onDone = await render({ kitchenId: "k1", sourceNotebookId: "p1" });
+    await choose(RECIPES, "Lentil soup");
+    await act(async () => saveButton().click());
+    await flush();
 
     expect(document.body.textContent).toContain("Already in this kitchen");
     expect(document.body.textContent).toContain("ana's (Home) Notebook");
@@ -218,22 +313,29 @@ describe("RecipeFromNotebookSheet (spec 069)", () => {
   });
 
   it("on a repeat, Cancel posts nothing more", async () => {
-    copies = [{ status: 409, body: { code: "recipe_already_in_kitchen", notebook_name: "N" } }];
-    const onDone = await render();
-    await pick(0);
-    await click("Add to kitchen");
+    copies = [
+      {
+        status: 409,
+        body: { code: "recipe_already_in_kitchen", notebook_name: "N" },
+      },
+    ];
+    const onDone = await render({ kitchenId: "k1", sourceNotebookId: "p1" });
+    await choose(RECIPES, "Lentil soup");
+    await act(async () => saveButton().click());
+    await flush();
     await click("Cancel");
 
     expect(posted).toHaveLength(1);
     expect(onDone).not.toHaveBeenCalled();
-    expect(byText("Add to kitchen")).not.toBeNull();
+    expect(saveButton()).not.toBeNull();
   });
 
-  it("explains a recipe deleted while the picker was open", async () => {
+  it("explains a recipe deleted while the select was open", async () => {
     copies = [{ status: 404, body: { code: "recipe_not_found" } }];
-    await render();
-    await pick(0);
-    await click("Add to kitchen");
+    await render({ kitchenId: "k1", sourceNotebookId: "p1" });
+    await choose(RECIPES, "Lentil soup");
+    await act(async () => saveButton().click());
+    await flush();
     expect(document.querySelector("[role='alert']")?.textContent).toBe(
       "That recipe is no longer available. Pick another one.",
     );
@@ -243,37 +345,40 @@ describe("RecipeFromNotebookSheet (spec 069)", () => {
     copies = [{ status: 201, body: copied }];
     const onDone = await render({
       kitchenId: null,
+      sourceNotebookId: "p1",
       kitchens: [
         { id: "k1", name: "Home" },
         { id: "k2", name: "Cabin" },
       ],
     });
-    const select = document.querySelector("select") as HTMLSelectElement;
-    expect(Array.from(select.options).map((o) => o.textContent)).toEqual(["Kitchen", "Home", "Cabin"]);
-    await pick(0);
-    expect(byText("Add to kitchen")!.disabled).toBe(true);
+    expect(byLabel("Target kitchen")).not.toBeNull();
+    await choose(RECIPES, "Lentil soup");
+    expect(saveButton().disabled).toBe(true);
 
-    await act(async () => {
-      select.value = "k2";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-    await click("Add to kitchen");
+    await choose("Target kitchen", "Cabin");
+    await act(async () => saveButton().click());
+    await flush();
 
     expect(posted[0].url).toBe("/api/notebooks/kitchens/k2/recipe-copies");
     expect(onDone).toHaveBeenCalledWith(copied, "k2");
   });
 
-  it("outside a kitchen preselects the only kitchen", async () => {
-    await render({ kitchenId: null, kitchens: [{ id: "k1", name: "Home" }] });
-    expect(document.querySelector("select")).toBeNull();
-    await pick(0);
-    expect(byText("Add to kitchen")!.disabled).toBe(false);
+  it("outside a kitchen shows the only kitchen without a choice", async () => {
+    await render({
+      kitchenId: null,
+      sourceNotebookId: "p1",
+      kitchens: [{ id: "k1", name: "Home" }],
+    });
+    expect(byLabel("Target kitchen")).toBeNull();
+    await choose(RECIPES, "Lentil soup");
+    expect(saveButton().disabled).toBe(false);
   });
 
   it("reads in Spanish", async () => {
     prefs.value = { locale: "es" };
-    await render();
+    await render({ kitchenId: "k1", sourceNotebookId: "p1" });
     expect(document.body.textContent).toContain("Receta de otro cuaderno");
-    expect(byText("Agregar a la cocina")).not.toBeNull();
+    expect(document.body.textContent).toContain("Cuaderno original");
+    expect(document.body.textContent).toContain("Guardar");
   });
 });

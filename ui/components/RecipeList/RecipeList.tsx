@@ -10,7 +10,7 @@ import { RecipeCard, type CardCart } from "@/components/RecipeCard/RecipeCard";
 import { listAddress } from "@/lib/listAddress";
 import type { Locale } from "@/lib/i18n/locale";
 import { recipeListMessages } from "@/lib/i18n/recipeLists";
-import type { NotebookResult } from "@/lib/notebooksClient";
+import type { CopiedRecipe, NotebookResult } from "@/lib/notebooksClient";
 import type {
   RecipeCard as RecipeCardData,
   RecipePage,
@@ -44,6 +44,12 @@ type RecipeListProps = {
   addCandidates?: CaptureCandidate[];
   /** The notebook the add card preselects; the first candidate when absent. */
   addDefaultId?: string;
+  /** The kitchen a "Recipe from another notebook" copy goes to (spec 069); omit for the address's. */
+  addKitchenId?: string | null;
+  /** The personal notebook this page shows: the copy's original notebook (spec 069). */
+  addSourceNotebookId?: string | null;
+  /** After a copy from the add card, for example to reload this list. */
+  onAddCopied?: (copied: CopiedRecipe, kitchenId: string) => void;
   returnPath: string;
   /** Sits beside the filter (e.g. the add-recipe button). */
   filterAction?: ReactNode;
@@ -70,6 +76,9 @@ export function RecipeList({
   load,
   addCandidates,
   addDefaultId,
+  addKitchenId,
+  addSourceNotebookId,
+  onAddCopied,
   returnPath,
   filterAction,
   emptyAction,
@@ -137,6 +146,9 @@ export function RecipeList({
         candidates={addCandidates}
         defaultId={addDefaultId ?? addCandidates[0]?.id ?? null}
         returnPath={returnPath}
+        kitchenId={addKitchenId}
+        sourceNotebookId={addSourceNotebookId}
+        onCopied={onAddCopied}
       />
     ) : (
       emptyAction
@@ -232,6 +244,9 @@ export function RecipeList({
                   candidates={addCandidates}
                   defaultId={addDefaultId ?? addCandidates[0]?.id ?? null}
                   returnPath={returnPath}
+                  kitchenId={addKitchenId}
+        sourceNotebookId={addSourceNotebookId}
+        onCopied={onAddCopied}
                 />
               </li>
             ) : null}

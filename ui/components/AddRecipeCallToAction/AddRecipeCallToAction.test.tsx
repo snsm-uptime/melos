@@ -10,7 +10,10 @@ import { clearCapture } from "@/lib/capture/captureStore";
 import { AddRecipeCallToAction, type CaptureCandidate } from "./AddRecipeCallToAction";
 
 const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push, replace: vi.fn() }) }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push, replace: vi.fn() }),
+  usePathname: () => "/notebooks",
+}));
 
 const candidates: CaptureCandidate[] = [
   { id: "nb-default", name: "ana's Notebook", kind: "personal", kitchenId: null },
@@ -73,7 +76,7 @@ describe("AddRecipeCallToAction", () => {
     expect(button("Text")).not.toBeNull();
   });
 
-  it("opens the options dialog with URL, Picture, Text and Write it myself in order, and no confirm or cancel", () => {
+  it("opens the options dialog with URL, Picture, Text, Write it myself and Recipe from another notebook in order, and no confirm or cancel", () => {
     render();
 
     act(() => button("Add a recipe")!.click());
@@ -87,6 +90,7 @@ describe("AddRecipeCallToAction", () => {
       { text: "PictureComing soon", disabled: "true" },
       { text: "Text", disabled: null },
       { text: "Write it myselfAn empty recipe, no assistant", disabled: null },
+      { text: "Recipe from another notebook", disabled: null },
     ]);
     expect(button("Cancel")).toBeNull();
     expect(button("Confirm")).toBeNull();

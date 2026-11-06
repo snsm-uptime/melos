@@ -173,10 +173,9 @@ describe("QuickAddRecipe (spec 069 US2)", () => {
       for (let i = 0; i < 6; i += 1) await Promise.resolve();
     });
 
-    const select = Array.from(document.querySelectorAll("select")).find((el) =>
-      Array.from(el.options).some((o) => o.textContent === "Cabin"),
-    );
-    expect(select).toBeTruthy();
+    // The target kitchen is a searchable select, labelled "Target kitchen" (en) or "Cocina destino".
+    const target = document.querySelector("button[aria-label='Target kitchen']");
+    expect(target).toBeTruthy();
   });
 
   it("with no active kitchen, the option is disabled with a reason", async () => {
@@ -190,11 +189,11 @@ describe("QuickAddRecipe (spec 069 US2)", () => {
     expect(option.textContent).toContain("Join or create a kitchen first.");
   });
 
-  it("inside an archived kitchen, the option is not shown", async () => {
+  it("inside an archived kitchen, the option is shown but disabled", async () => {
     replaceMembershipKitchens([kitchen("k1", "Home", true)]);
     await render();
     await open();
-    expect(options()).toEqual(["URL", "Picture", "Text", "Write it myself"]);
+    expect(options()).toEqual(["URL", "Picture", "Text", "Write it myself", "Recipe from another notebook"]);
   });
 
   it("is labelled in Spanish", async () => {

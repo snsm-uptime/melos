@@ -23,27 +23,18 @@ import type { CopiedRecipe } from "@/lib/notebooksClient";
 
 import { AddRecipeOptionsDialog } from "./AddRecipeOptionsDialog";
 import { captureTarget, pickerOptions } from "./captureNotebook";
-import { RecipeFromNotebookSheet, type KitchenChoice } from "./RecipeFromNotebookSheet";
+import { RecipeFromNotebookSheet } from "./RecipeFromNotebookSheet";
 import { TextCaptureSheet } from "./TextCaptureSheet";
 import { UrlCaptureSheet } from "./UrlCaptureSheet";
+import { useFromNotebookTarget } from "./useFromNotebookTarget";
+
+export type { FromNotebookTarget } from "./useFromNotebookTarget";
 
 export type CaptureCandidate = {
   id: string;
   name: string;
   kind: "personal" | "kitchen";
   kitchenId: string | null;
-};
-
-/** "Recipe from another notebook" (spec 069): where the copy goes. */
-export type FromNotebookTarget = {
-  /** The open kitchen; used without asking. */
-  kitchenId?: string | null;
-  /** Outside a kitchen: the active kitchens to choose from. */
-  kitchens?: KitchenChoice[];
-  /** Shows the option disabled with this reason (no active kitchen). */
-  disabledReason?: string | null;
-  /** After a copy, for example to reload the kitchen's list. */
-  onCopied?: (copied: CopiedRecipe, kitchenId: string) => void;
 };
 
 type AddRecipeCallToActionProps = {
@@ -58,8 +49,18 @@ type AddRecipeCallToActionProps = {
    * beside a list's filter; "icon" is a plus icon button; "panel" is a side panel row (quick add).
    */
   variant?: "placeholder" | "button" | "icon" | "panel";
-  /** Adds "Recipe from another notebook" to the options; absent on personal notebooks. */
-  fromNotebook?: FromNotebookTarget;
+  /**
+   * The kitchen a "Recipe from another notebook" copy goes to. Omit it to use the open kitchen
+   * of the address, or the member's kitchens to choose from.
+   */
+  kitchenId?: string | null;
+  /**
+   * The personal notebook whose page this add is on: the copy's original notebook, fixed.
+   * Omit it (quick add, kitchen pages) and the person picks the original notebook.
+   */
+  sourceNotebookId?: string | null;
+  /** After a copy, for example to reload the kitchen's list. */
+  onCopied?: (copied: CopiedRecipe, kitchenId: string) => void;
   /** Tells this action's captures apart from another one on the same page (quick add). */
   opener?: string;
 };
@@ -74,7 +75,9 @@ export function AddRecipeCallToAction({
   defaultId,
   returnPath,
   variant = "placeholder",
-  fromNotebook,
+  kitchenId,
+  sourceNotebookId,
+  onCopied,
   opener,
 }: AddRecipeCallToActionProps) {
   const t = useCaptureMessages();
@@ -82,6 +85,7 @@ export function AddRecipeCallToAction({
   const router = useRouter();
   const toast = useToast();
   const capture = useCaptureState();
+  const fromNotebook = useFromNotebookTarget(kitchenId);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [fromNotebookOpen, setFromNotebookOpen] = useState(false);
   // A new key per open, so the picker starts fresh each time.
@@ -145,7 +149,7 @@ export function AddRecipeCallToAction({
         ? t.fromNotebookOverwritten(result.notebook_name)
         : t.fromNotebookAdded(result.notebook_name),
     });
-    fromNotebook?.onCopied?.(result, kitchenId);
+    onCopied?.(result, kitchenId);
   }
 
   return (
@@ -192,27 +196,23 @@ export function AddRecipeCallToAction({
         onChooseUrl={() => choose("url")}
         onChooseText={() => choose("text")}
         onChooseManual={() => void chooseManual()}
-        onChooseFromNotebook={
-          fromNotebook
-            ? () => {
-                setOptionsOpen(false);
-                setFromNotebookKey((value) => value + 1);
-                setFromNotebookOpen(true);
-              }
-            : undefined
-        }
-        fromNotebookDisabledReason={fromNotebook?.disabledReason}
+        onChooseFromNotebook={() => {
+          setOptionsOpen(false);
+          setFromNotebookKey((value) => value + 1);
+          setFromNotebookOpen(true);
+        }}
+        fromNotebookDisabledReason={fromNotebook.disabledReason}
       />
-      {fromNotebook ? (
-        <RecipeFromNotebookSheet
-          key={fromNotebookKey}
-          open={fromNotebookOpen}
-          onClose={() => setFromNotebookOpen(false)}
-          kitchenId={fromNotebook.kitchenId}
-          kitchens={fromNotebook.kitchens}
-          onDone={copied}
-        />
-      ) : null}
+      <RecipeFromNotebookSheet
+        key={fromNotebookKey}
+        open={fromNotebookOpen}
+        onClose={() => setFromNotebookOpen(false)}
+        sourceNotebookId={sourceNotebookId}
+        kitchenId={fromNotebook.kitchenId}
+        kitchenName={fromNotebook.kitchenName}
+        kitchens={fromNotebook.kitchens}
+        onDone={copied}
+      />
       <TextCaptureSheet
         open={sheetOpen && capture.source.kind === "text"}
         candidates={candidates}
