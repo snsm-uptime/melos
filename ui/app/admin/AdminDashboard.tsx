@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   AlertIcon,
-  BoxIcon,
+  BasketIcon,
   HashtagIcon,
-  NotebookIcon,
+  NotebookBaseIcon,
   UsersIcon,
 } from "@/app/icons";
 import { useChromeHeader } from "@/components/ChromeBack";
@@ -40,10 +40,10 @@ const SECTIONS = [
 ] as const;
 type Section = (typeof SECTIONS)[number];
 
-const TAB_ICONS: Record<Section, typeof BoxIcon> = {
+const TAB_ICONS: Record<Section, typeof BasketIcon> = {
   units: HashtagIcon,
-  ingredients: BoxIcon,
-  recipes: NotebookIcon,
+  ingredients: BasketIcon,
+  recipes: NotebookBaseIcon,
   users: UsersIcon,
   "refused-sites": AlertIcon,
 };

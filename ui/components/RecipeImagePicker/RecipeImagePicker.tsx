@@ -55,6 +55,9 @@ export function RecipeImagePicker({
   }
 
   const pick = () => input.current?.click();
+  // The edit page's slot is one height with or without a photo, so adding or removing one does
+  // not move the form below it. The draft keeps its own sizes.
+  const fixedSlot = empty === "add";
 
   return (
     <div className="flex flex-col gap-2">
@@ -74,7 +77,7 @@ export function RecipeImagePicker({
           <img
             src={value}
             alt={t.recipePhotoAlt}
-            className="block max-h-72 w-full rounded-[0.75rem] object-cover"
+            className={`block w-full rounded-[0.75rem] object-cover ${fixedSlot ? "h-72" : "max-h-72"}`}
           />
           <span className="absolute top-2 right-2 flex gap-1">
             <IconButton
@@ -96,7 +99,7 @@ export function RecipeImagePicker({
           </span>
         </figure>
       ) : empty === "add" ? (
-        <AddItemCard label={t.addPhoto} onClick={pick} disabled={disabled} className="min-h-40" />
+        <AddItemCard label={t.addPhoto} onClick={pick} disabled={disabled} className="h-72" />
       ) : (
         // The cards' placeholder, at the detail image's size.
         <div className="relative">

@@ -15,6 +15,7 @@ export { EyeIcon } from "./EyeIcon";
 export { CopyIcon } from "./CopyIcon";
 export { NotebookIcon } from "./NotebookIcon";
 export { AddRecipeIcon } from "./AddRecipeIcon";
+export { NotebookBaseIcon } from "./NotebookBaseIcon";
 export { NotebookAddIcon } from "./NotebookAddIcon";
 export { NotebookImportIcon } from "./NotebookImportIcon";
 export { RecipeIcon } from "./RecipeIcon";

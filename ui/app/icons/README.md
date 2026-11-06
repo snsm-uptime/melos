@@ -13,7 +13,7 @@ Centralized location for all custom SVG icon components used throughout the UI. 
 | `PlusIcon` | Add/create actions | Plus sign |
 | `CartIcon` | Open the kitchen's cart | Empty cart, same shape as `CartPlusIcon` |
 | `CartPlusIcon` | Add/remove a recipe from the cart | `inCart` turns the + into × |
-| `BasketIcon` | The Ingredients entry in the side panel | Peaked handle, solid basket with cut-out slots |
+| `BasketIcon` | The Ingredients entry in the side panel and the admin ingredients tab | Peaked handle, solid basket with cut-out slots |
 | `ChefHatIcon` | Kitchens in the side panel and kitchen page titles | Three-lobed puff, slotted band, brim bar |
 | `BooksIcon` | The Notebooks entry in the side panel | Three spines, the right one leaning |
 | `LocationIcon` | Open the person's places (Ingredients header) | Solid pin with a round hole |
@@ -277,10 +277,18 @@ Two slider lines. Used for the Settings entry in the side panel.
 
 ### NotebookIcon
 
-A closed notebook with a spine. Used for the kitchen chrome's notebooks button and the admin recipes tab.
+A closed notebook with a spine. Used for the kitchen chrome's notebooks button.
 
 - ViewBox: `0 0 24 24`
 - Style: Stroke-based
+- Accepts: className, SVG element props
+
+### NotebookBaseIcon
+
+The solid notebook base (`NotebookShape`) with no badge: the shape `NotebookAddIcon` and `NotebookImportIcon` add a badge to. Used for the admin recipes tab.
+
+- ViewBox: `0 0 24 24`
+- Style: Solid fill
 - Accepts: className, SVG element props
 
 ### UploadIcon
