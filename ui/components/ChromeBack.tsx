@@ -5,8 +5,8 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -214,7 +214,9 @@ export function useChromeHeader(config: ChromeHeaderConfig) {
 
   // A change to this screen's own header updates its entry where it is; it never moves it to
   // the top, so a screen below another one cannot take the header from it.
-  useEffect(() => {
+  // Layout effects, so a page change commits the new entry before paint: with plain effects one
+  // frame showed neither page's entry, and a screen that opts into the side panel blinked it.
+  useLayoutEffect(() => {
     if (!registry) return;
     registry.upsert(
       id,
@@ -249,7 +251,7 @@ export function useChromeHeader(config: ChromeHeaderConfig) {
   ]);
 
   // Only unmounting removes the entry.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!registry) return;
     return () => registry.remove(id);
   }, [registry, id]);

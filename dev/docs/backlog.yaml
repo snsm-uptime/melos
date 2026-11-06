@@ -60,6 +60,21 @@ stories:
       ingredient catalog page reached from a side panel nav item (S-064). S-043 (rename and merge
       catalog names) and S-068 (receipts mark lines bought) build on it.
 
+  - id: S-071
+    title: Share a recipe with a person from the recipe page (share icon, searchable alias list, co-members first, copy to their default notebook)
+    epic: Recipes
+    priority: must
+    status: backlog
+    journey: J3
+    source: owner request 2026-11-05 (post-MVP; not in prd.md; extends J3 and J1a); specs/071-share-recipe-to-user
+    notes: >
+      Next to implement (owner, 2026-11-05). A share icon in the recipe page header opens a popup with a
+      SearchableSelect of user aliases. People who share a kitchen or notebook with the current user come
+      first. The send icon (as in invite by email) copies the recipe into the chosen person's default
+      notebook; the popup then shows a success message in place of the list. Depends on the S-048 copy
+      step, which is still backlog. Open for the owner: the list is assumed to hold co-members only, not
+      every account.
+
   - id: S-025
     title: Saved shopping list from the cart and hand-added items, closed with Done (closing_date)
     epic: Cart
