@@ -18,7 +18,7 @@ from application.ports import (
     SessionRef,
 )
 from application.shopping_list import GetShoppingListService
-from domain.shopping_list import SavedLine, SavedList
+from domain.shopping_list import SavedLine, SavedList, carry_bought
 from tests.test_carts_application import Setup, _setup
 
 
@@ -57,7 +57,8 @@ class FakeLists:
     def replace_cart_lines(self, list_id: UUID, lines: Sequence[SavedLine]) -> None:
         saved = self.lists[list_id]
         hand = tuple(i for i in saved.items if i.origin == "hand")
-        cart = tuple(replace(line, id=uuid4()) for line in lines)
+        old = [i for i in saved.items if i.origin == "cart"]
+        cart = tuple(replace(line, id=uuid4()) for line in carry_bought(old, lines))
         self.lists[list_id] = replace(saved, items=cart + hand)
 
     def add_item(self, list_id: UUID, item: SavedLine) -> None:
@@ -69,6 +70,17 @@ class FakeLists:
         kept = tuple(i for i in saved.items if not (i.id == item_id and i.origin == "hand"))
         self.lists[list_id] = replace(saved, items=kept)
         return len(kept) != len(saved.items)
+
+    def set_bought(self, list_id: UUID, item_id: UUID, bought: bool) -> SavedLine | None:
+        saved = self.lists[list_id]
+        if saved.closing_date is not None:
+            return None
+        items = tuple(replace(i, bought=bought) if i.id == item_id else i for i in saved.items)
+        self.lists[list_id] = replace(saved, items=items)
+        return next((i for i in items if i.id == item_id), None)
+
+    def is_closed_item(self, kitchen_id: UUID, item_id: UUID) -> bool:
+        return any(i.id == item_id for s in self.closed(kitchen_id) for i in s.items)
 
     def close(self, list_id: UUID, closing_date: date) -> bool:
         saved = self.lists[list_id]

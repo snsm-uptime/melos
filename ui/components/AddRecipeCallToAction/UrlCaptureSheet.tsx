@@ -122,9 +122,6 @@ export function UrlCaptureSheet({
           onChange={(event) => setLink(event.target.value)}
         />
       </label>
-      {submitting ? (
-        <CauldronLoader label={t.submittingLink} size="6rem" />
-      ) : null}
       {message && !submitting ? (
         <p role="alert" className="m-0 text-[0.9rem] text-error">
           {message}
@@ -133,9 +130,12 @@ export function UrlCaptureSheet({
       <button
         type="submit"
         disabled={disabled}
-        className="self-end rounded-[0.75rem] bg-accent px-4 py-2 text-[0.95rem] text-background disabled:opacity-50"
+        aria-busy={submitting || undefined}
+        className="inline-flex items-center gap-2 self-end rounded-[0.75rem] bg-accent px-4 py-2 text-[0.95rem] text-background disabled:opacity-50"
       >
-        {submitting ? t.submittingLink : t.submit}
+        {/* The wait shows on the button itself; its text already says what is happening. */}
+        {submitting ? <CauldronLoader tone="button" /> : null}
+        <span>{submitting ? t.submittingLink : t.submit}</span>
       </button>
     </form>
   );

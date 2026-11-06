@@ -564,3 +564,73 @@ class AdminNotFoundError(DomainError):
 
     def __init__(self) -> None:
         super().__init__(self.MESSAGE)
+
+
+class ShoppingListClosedError(DomainError):
+    """Raised when an item of a closed list is marked bought or not bought (spec 070 FR-004)."""
+
+    MESSAGE = "This list is closed."
+    CODE = "list_closed"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class PlaceNameInvalidError(DomainError):
+    """Raised for a place name that is empty or longer than 40 characters (spec 070 FR-007)."""
+
+    MESSAGE = "A place name needs 1 to 40 characters."
+    CODE = "place_name_invalid"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class PlaceNameTakenError(DomainError):
+    """Raised when a place name matches a default place or one of the person's places (FR-007)."""
+
+    MESSAGE = "You already have a place with that name."
+    CODE = "place_name_taken"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class PlaceLimitError(DomainError):
+    """Raised when a person already has 30 places of their own (spec 070 FR-007)."""
+
+    MESSAGE = "You can have at most 30 places of your own."
+    CODE = "place_limit"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class PlaceNotFoundError(DomainError):
+    """Raised for a place that is not the caller's, or a copy source they share nothing with."""
+
+    MESSAGE = "Place not found."
+    CODE = "place_not_found"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class InvalidPlaceError(DomainError):
+    """Raised for an unknown default key or another person's place id (spec 070 contracts)."""
+
+    MESSAGE = "Pick one of your places."
+    CODE = "invalid_place"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
+class IngredientNameInvalidError(DomainError):
+    """Raised when an ingredient name is empty once normalized (spec 070 contracts)."""
+
+    MESSAGE = "Enter an ingredient name."
+    CODE = "ingredient_name_invalid"
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)

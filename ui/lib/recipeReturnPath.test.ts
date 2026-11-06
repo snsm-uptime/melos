@@ -6,6 +6,7 @@ describe("safeReturnPath", () => {
   it("keeps notebook and kitchen paths, with their queries", () => {
     expect(safeReturnPath("/notebooks/n1?page=2&q=soup", "nb")).toBe("/notebooks/n1?page=2&q=soup");
     expect(safeReturnPath("/kitchens/k1", "nb")).toBe("/kitchens/k1");
+    expect(safeReturnPath("/ingredients", "nb")).toBe("/ingredients");
   });
 
   it.each([

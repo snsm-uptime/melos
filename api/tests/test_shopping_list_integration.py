@@ -8,6 +8,7 @@ whole path from stored ingredient lines to the response is exercised.
 from __future__ import annotations
 
 import time
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
@@ -125,6 +126,7 @@ def test_combined_scaled_list_has_the_contract_shape(
         "lines",
         "your_call",
         "hand_items",
+        "custom_places",
     }
     assert body["is_empty"] is False and body["your_call"] == []
     assert shown(body) == [
@@ -132,7 +134,10 @@ def test_combined_scaled_list_has_the_contract_shape(
         ("flour", None, (("1", "cup"), ("3", "tbsp"))),
     ]
     flour = body["lines"][1]
-    assert set(flour) == {"name", "kind", "size", "amounts", "recipes"}
+    assert set(flour) == {"id", "bought", "place", "name", "kind", "size", "amounts", "recipes"}
+    # A stored list: lines carry their row id and start not bought (spec 070 R3).
+    assert flour["id"] and flour["bought"] is False
+    assert flour["place"] == {"kind": "default", "key": "supermarket", "id": None, "name": None}
     assert flour["kind"] == "volume"
     assert body["lines"][0]["kind"] == "count"
     assert set(flour["recipes"][0]) == {"recipe_id", "title", "exists"}
@@ -351,7 +356,7 @@ def test_vague_lines_go_to_your_call_once_per_ingredient(
         ("salt", ["a pinch", "to taste"]),
     ]
     salt = body["your_call"][1]
-    assert set(salt) == {"name", "notes", "recipes"}
+    assert set(salt) == {"id", "bought", "place", "name", "notes", "recipes"}
     assert [r["title"] for r in salt["recipes"]] == ["A", "B"]
     butter = body["your_call"][0]
     assert [r["title"] for r in butter["recipes"]] == ["A"]
@@ -530,6 +535,9 @@ def test_a_custom_unit_reaches_the_list_for_a_member_who_never_kept_it(
         "size": None,
         "amounts": [{"quantity": "3", "unit": "lata"}],
         "recipes": custom["recipes"],
+        "id": custom["id"],
+        "bought": False,
+        "place": custom["place"],
     }
     assert shown(body) == [
         ("frijoles", None, (("200", "g"),)),
@@ -557,7 +565,7 @@ def test_a_saved_and_a_closed_list_keep_a_custom_line(
     assert [line["kind"] for line in before["lines"]] == ["custom"]
     closed = ana.post(
         f"{_list(kitchen_id)}/done",
-        json={"list_id": before["list_id"], "closing_date": "2026-11-02"},
+        json={"list_id": before["list_id"], "closing_date": datetime.now(UTC).date().isoformat()},
     )
     assert closed.status_code == 200, closed.text
     assert closed.json()["lines"][0]["amounts"] == [{"quantity": "1", "unit": "lata"}]

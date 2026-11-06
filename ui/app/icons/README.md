@@ -13,9 +13,14 @@ Centralized location for all custom SVG icon components used throughout the UI. 
 | `PlusIcon` | Add/create actions | Plus sign |
 | `CartIcon` | Open the kitchen's cart | Empty cart, same shape as `CartPlusIcon` |
 | `CartPlusIcon` | Add/remove a recipe from the cart | `inCart` turns the + into × |
+| `BasketIcon` | The Ingredients entry in the side panel | Peaked handle, solid basket with cut-out slots |
+| `ChefHatIcon` | Kitchens in the side panel and kitchen page titles | Three-lobed puff, slotted band, brim bar |
+| `BooksIcon` | The Notebooks entry in the side panel | Three spines, the right one leaning |
+| `LocationIcon` | Open the person's places (Ingredients header) | Solid pin with a round hole |
+| `AnalyticsIcon` | The admin dashboard entry in the side panel | Solid magnifier lens with cut-out bars |
 | `HistoryIcon` | Open the kitchen's past lists | Clock inside a counterclockwise arrow |
 | `RecipeIcon` | A recipe | Solid frame around a lined sheet |
-| `AddRecipeIcon` | Add a recipe | `RecipeIcon` with a circled plus |
+| `AddRecipeIcon` | Add a recipe | `RecipeIcon` with a solid circle and a cut-out plus |
 | `BookmarkIcon` | The default notebook | Outline bookmark |
 | `DotsIcon` | Menu triggers | Vertical dots, 16×16 viewBox |
 | `ShareIcon` | Invite/share actions | Connected circles |
@@ -38,10 +43,10 @@ A solid frame, thick at the top, around a sheet of three lines (the last shorter
 
 ### AddRecipeIcon
 
-`RecipeIcon`'s shape (`RecipeShape`) with a circled plus over its lower-right corner; the card is masked a gap short of the circle. Used for add-a-recipe actions.
+`RecipeIcon`'s shape (`RecipeShape`) with a solid circle over its lower-right corner and a plus cut through the circle (masked, so the background shows); the card is masked a gap short of the circle. Used for add-a-recipe actions.
 
 - ViewBox: `0 0 24 24`
-- Style: Filled frame, stroked lines and plus
+- Style: Filled frame and circle, stroked lines, cut-out plus
 - Accepts: className, SVG element props
 
 ### SaveIcon
@@ -91,6 +96,46 @@ A shopping cart with a "+" in the basket. Used to add a recipe to the kitchen ca
 - ViewBox: `0 0 24 24`
 - Style: Stroke-based
 - Accepts: className, `inCart`, SVG element props
+
+### BasketIcon
+
+A shopping basket: a peaked handle over a rim, and a solid body that narrows to a rounded base with three upright slots cut through it (via mask, same technique as `UsersIcon`, so the background shows through). Used for the Ingredients entry in the side panel (spec 070).
+
+- ViewBox: `0 0 24 24`
+- Style: Stroked handle and rim, filled body, shared stroke width (`ICON_STROKE`)
+- Accepts: className, SVG element props
+
+### ChefHatIcon
+
+A chef's hat: three overlapping circles for the puff over a band with three upright slots cut through it (via mask), and a separate brim bar. Marks the Kitchens section of the closed side panel and leads the title of a kitchen page.
+
+- ViewBox: `0 0 24 24`
+- Style: Fill-based
+- Accepts: className, SVG element props
+
+### BooksIcon
+
+Three book spines: a left one cut into three bands, a plain middle one, and a banded one leaning on it. Used for the Notebooks entry in the side panel.
+
+- ViewBox: `0 0 24 24`
+- Style: Fill-based
+- Accepts: className, SVG element props
+
+### LocationIcon
+
+A solid map pin with a round hole (even-odd fill, so the background shows). Used for the Ingredients page's header button that opens the Places dialog (tooltip "Location").
+
+- ViewBox: `0 0 24 24`
+- Style: Fill-based
+- Accepts: className, SVG element props
+
+### AnalyticsIcon
+
+A magnifier: a solid round lens with three bars of different heights cut through it (even-odd fill) and a stroked handle to the lower right. Used for the admin dashboard entry in the side panel.
+
+- ViewBox: `0 0 24 24`
+- Style: Filled lens, stroked handle
+- Accepts: className, SVG element props
 
 ### HistoryIcon
 
@@ -143,7 +188,7 @@ An eye for password visibility toggle. Shows open/closed eye based on `open` pro
 
 ### CopyIcon
 
-Two overlapping rectangles representing copy-to-clipboard. Used for copy actions (e.g., copying a masked IBAN).
+A page with a folded top-right corner in front of the edge of the page behind it (an open bracket at its lower left). Used for copy actions: `CopyButton` and copying another member's places on the Ingredients page.
 
 - ViewBox: `0 0 24 24`
 - Style: Stroke-based
@@ -176,7 +221,7 @@ Animates FileIcon into FileImportIcon. See [Animated Icons](#animated-icons) —
 
 ### HashtagIcon
 
-A slanted hash mark. Used for exact-amount split mode.
+A slanted hash mark. Used for the admin dashboard's units tab.
 
 - ViewBox: `0 0 24 24`
 - Style: Stroke-based
@@ -232,7 +277,7 @@ Two slider lines. Used for the Settings entry in the side panel.
 
 ### NotebookIcon
 
-A closed notebook with a spine. Used for the Notebook tab in the tab bar.
+A closed notebook with a spine. Used for the kitchen chrome's notebooks button and the admin recipes tab.
 
 - ViewBox: `0 0 24 24`
 - Style: Stroke-based

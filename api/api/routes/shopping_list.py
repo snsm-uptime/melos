@@ -16,13 +16,16 @@ from application.shopping_list import (
     CloseShoppingListService,
     GetShoppingListService,
     RemoveShoppingItemService,
+    SetItemBoughtService,
 )
 from domain.errors import (
+    InvalidPlaceError,
     KitchenArchivedError,
     KitchenNotFoundError,
     ShoppingDateError,
     ShoppingItemError,
     ShoppingItemNotFoundError,
+    ShoppingListClosedError,
     ShoppingListEmptyError,
     ShoppingListNotActiveError,
     ShoppingListNotFoundError,
@@ -36,11 +39,13 @@ from api.deps import (
     get_closed_shopping_lists,
     get_get_shopping_list,
     get_remove_shopping_item,
+    get_set_item_bought,
     require_session_ref,
 )
 from api.schemas.shopping_list import (
     AddShoppingItemBody,
     CloseShoppingListBody,
+    SetBoughtBody,
     closed_list_response,
     closed_lists_response,
     shopping_list_response,
@@ -65,9 +70,11 @@ def _run(call: Callable[[], object]) -> object | JSONResponse:
         return _error(status.HTTP_404_NOT_FOUND, exc.CODE, exc.MESSAGE)
     except KitchenArchivedError as exc:
         return _error(status.HTTP_403_FORBIDDEN, exc.CODE, exc.MESSAGE)
-    except (ShoppingListNotActiveError, ShoppingListEmptyError) as exc:
+    except (ShoppingListNotActiveError, ShoppingListEmptyError, ShoppingListClosedError) as exc:
         return _error(status.HTTP_409_CONFLICT, exc.CODE, exc.MESSAGE)
     except ShoppingDateError as exc:
+        return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, exc.CODE, exc.MESSAGE)
+    except InvalidPlaceError as exc:
         return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, exc.CODE, exc.MESSAGE)
     except ShoppingItemError as exc:
         return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, exc.CODE, exc.MESSAGE, field=exc.field)
@@ -106,7 +113,15 @@ def add_shopping_item(
     reader: GetShoppingListService = Depends(get_get_shopping_list),
 ) -> Response:
     result = _run(
-        lambda: service.execute(ref, kitchen_id, body.name, body.quantity, body.unit, body.size)
+        lambda: service.execute(
+            ref,
+            kitchen_id,
+            body.name,
+            body.quantity,
+            body.unit,
+            body.size,
+            None if body.place is None else body.place.ref(),
+        )
     )
     if isinstance(result, JSONResponse):
         return result
@@ -122,6 +137,22 @@ def remove_shopping_item(
     reader: GetShoppingListService = Depends(get_get_shopping_list),
 ) -> Response:
     result = _run(lambda: service.execute(ref, kitchen_id, item_id))
+    if isinstance(result, JSONResponse):
+        return result
+    return _list_body(reader, ref, kitchen_id)
+
+
+@router.patch("/kitchens/{kitchen_id}/shopping-list/items/{item_id}")
+def set_item_bought(
+    kitchen_id: uuid.UUID,
+    item_id: uuid.UUID,
+    body: SetBoughtBody,
+    ref: SessionRef = Depends(require_session_ref),
+    service: SetItemBoughtService = Depends(get_set_item_bought),
+    reader: GetShoppingListService = Depends(get_get_shopping_list),
+) -> Response:
+    """Sets the value sent, never flips it, so two members converge (spec 070 R10)."""
+    result = _run(lambda: service.execute(ref, kitchen_id, item_id, body.bought))
     if isinstance(result, JSONResponse):
         return result
     return _list_body(reader, ref, kitchen_id)

@@ -14,8 +14,11 @@ import {
   type ClosedList,
   type ClosedListSummary,
 } from "@/lib/shoppingListClient";
+import { ALL_TAB, inTab, placeTabs } from "@/lib/shoppingByPlace";
 import { formatHandItem } from "@/lib/shoppingListText";
 
+import { BoughtToggle, boughtText } from "./BoughtToggle";
+import { PlaceTabs } from "./PlaceTabs";
 import { ShoppingLineRow } from "./ShoppingLine";
 import { YourCallList } from "./YourCallList";
 
@@ -89,6 +92,8 @@ type ClosedListDetailProps = { kitchenId: string; listId: string; locale: Locale
 export function ClosedListDetail({ kitchenId, listId, locale }: ClosedListDetailProps) {
   const t = shoppingListMessages[locale];
   const [list, setList] = useState<ClosedList | null | "error">(null);
+  // A new list opens on All (spec 070 FR-017): this component mounts once per list.
+  const [tab, setTab] = useState(ALL_TAB);
   const back = `/kitchens/${encodeURIComponent(kitchenId)}/shopping-lists`;
 
   useEffect(() => {
@@ -117,36 +122,75 @@ export function ClosedListDetail({ kitchenId, listId, locale }: ClosedListDetail
           <h1 className="m-0 text-[1.25rem] font-[600] text-foreground">
             {t.closedOn(formatClosingDate(list.closing_date, locale))}
           </h1>
-          {list.lines.length > 0 ? (
-            <ul className="m-0 flex list-none flex-col gap-2 p-0">
-              {list.lines.map((line, index) => (
-                <ShoppingLineRow
-                  key={`${line.name}|${line.kind}|${line.size ?? ""}|${index}`}
-                  line={line}
-                  kitchenId={kitchenId}
-                  locale={locale}
-                />
-              ))}
-            </ul>
-          ) : null}
-          <YourCallList entries={list.your_call} kitchenId={kitchenId} locale={locale} />
-          {list.hand_items.length > 0 ? (
-            <>
-              <h2 className="m-0 text-[1rem] font-[600] text-foreground">{t.addedByHand}</h2>
-              <ul className="m-0 flex list-none flex-col gap-2 p-0">
-                {list.hand_items.map((item) => (
-                  <li
-                    key={item.id}
-                    className="rounded-[var(--radius-md)] border border-border bg-surface p-3 text-[1rem] font-[550] text-foreground"
-                  >
-                    {formatHandItem(item)}
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : null}
+          <ClosedListItems
+            list={list}
+            tab={tab}
+            onTab={setTab}
+            kitchenId={kitchenId}
+            locale={locale}
+          />
         </>
       )}
     </section>
+  );
+}
+
+type ClosedListItemsProps = {
+  list: ClosedList;
+  tab: string;
+  onTab: (tab: string) => void;
+  kitchenId: string;
+  locale: Locale;
+};
+
+/** A closed list's items under its store tabs, with their saved bought state (spec 070 FR-004). */
+function ClosedListItems({ list, tab, onTab, kitchenId, locale }: ClosedListItemsProps) {
+  const t = shoppingListMessages[locale];
+  const tabs = placeTabs(list, locale);
+  const shown = tab === ALL_TAB || tabs.some((x) => x.key === tab) ? tab : ALL_TAB;
+  const lines = inTab(list.lines, shown);
+  const handItems = inTab(list.hand_items, shown);
+  return (
+    <>
+      <PlaceTabs tabs={tabs} selected={shown} onSelect={onTab} locale={locale} />
+      {lines.length > 0 ? (
+        <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          {lines.map((line, index) => (
+            <ShoppingLineRow
+              key={line.id ?? `${line.name}|${line.kind}|${line.size ?? ""}|${index}`}
+              line={line}
+              kitchenId={kitchenId}
+              locale={locale}
+              frozen
+            />
+          ))}
+        </ul>
+      ) : null}
+      <YourCallList
+        entries={inTab(list.your_call, shown)}
+        kitchenId={kitchenId}
+        locale={locale}
+        frozen
+      />
+      {handItems.length > 0 ? (
+        <>
+          <h2 className="m-0 text-[1rem] font-[600] text-foreground">{t.addedByHand}</h2>
+          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+            {handItems.map((item) => (
+              <li
+                key={item.id}
+                data-bought={item.bought ? "true" : undefined}
+                className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-surface p-3"
+              >
+                <BoughtToggle name={item.name} bought={item.bought === true} locale={locale} />
+                <span className={`text-[1rem] font-[550] ${boughtText(item.bought)}`}>
+                  {formatHandItem(item)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </>
   );
 }

@@ -42,18 +42,30 @@ describe("RecipeChips", () => {
       <RecipeChips
         kitchenId="k1"
         locale="en"
-        recipes={[{ recipe_id: "r1", title: "A very long title for a small chip" }]}
+        recipes={[
+          { recipe_id: "r1", title: "A very long title for a small chip" },
+        ]}
       />,
     );
-    expect(view.container.querySelector("ul")?.getAttribute("aria-label")).toBe("Recipes");
-    expect(anchors()[0].getAttribute("title")).toBe("A very long title for a small chip");
+    expect(view.container.querySelector("ul")?.getAttribute("aria-label")).toBe(
+      "Recipes",
+    );
+    expect(anchors()[0].getAttribute("title")).toBe(
+      "A very long title for a small chip",
+    );
   });
 
   it("names the group in Spanish", () => {
     view.render(
-      <RecipeChips kitchenId="k1" locale="es" recipes={[{ recipe_id: "r1", title: "Pan" }]} />,
+      <RecipeChips
+        kitchenId="k1"
+        locale="es"
+        recipes={[{ recipe_id: "r1", title: "Pan" }]}
+      />,
     );
-    expect(view.container.querySelector("ul")?.getAttribute("aria-label")).toBe("Recetas");
+    expect(view.container.querySelector("ul")?.getAttribute("aria-label")).toBe(
+      "Recetas",
+    );
   });
 
   it("shows two recipes with the same title as two chips", () => {
@@ -70,11 +82,15 @@ describe("RecipeChips", () => {
     expect(anchors()).toHaveLength(2);
   });
 
-  it("makes each chip a touch target of at least 44px", () => {
+  it("styles each chip like the ingredients table chips", () => {
     view.render(
-      <RecipeChips kitchenId="k1" locale="en" recipes={[{ recipe_id: "r1", title: "Bread" }]} />,
+      <RecipeChips
+        kitchenId="k1"
+        locale="en"
+        recipes={[{ recipe_id: "r1", title: "Bread" }]}
+      />,
     );
-    expect(anchors()[0].className).toContain("min-h-11");
+    expect(anchors()[0].className).toContain("rounded-[8px]");
   });
 
   it("shows a saved chip whose recipe is gone as plain text", () => {

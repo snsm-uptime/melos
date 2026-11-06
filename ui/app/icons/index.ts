@@ -45,3 +45,8 @@ export { MenuIcon } from "./MenuIcon";
 export { LogOutIcon } from "./LogOutIcon";
 export { StarIcon } from "./StarIcon";
 export { SettingsIcon } from "./SettingsIcon";
+export { BasketIcon } from "./BasketIcon";
+export { BooksIcon } from "./BooksIcon";
+export { LocationIcon } from "./LocationIcon";
+export { AnalyticsIcon } from "./AnalyticsIcon";
+export { ChefHatIcon } from "./ChefHatIcon";

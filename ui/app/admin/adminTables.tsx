@@ -1,7 +1,7 @@
 /** The dashboard's five table schemas (spec 066 research R7), over spec 055's admin API rows. */
 
 import { CheckIcon, CloseIcon } from "@/app/icons";
-import { Chip } from "@/components/Chip";
+import { CountChips } from "@/components/Chip";
 import type { ColumnDef, TableSchema } from "@/components/DataTable";
 import { DeleteItemButton } from "@/components/DeleteItemButton";
 import type { adminMessages } from "@/lib/i18n/admin";
@@ -66,17 +66,7 @@ function PeopleWithAccess({
   aliases: Alias[] | undefined;
   noAlias: string;
 }) {
-  const names = Array.isArray(aliases) ? aliases : [];
-  return (
-    <div className="flex min-w-0 items-center gap-3">
-      <span className="shrink-0 font-semibold">{String(count)}</span>
-      <div className="flex max-w-[14rem] gap-1 overflow-x-auto pb-1">
-        {names.map((alias, index) => (
-          <Chip key={index}>{typeof alias === "string" ? alias : noAlias}</Chip>
-        ))}
-      </div>
-    </div>
-  );
+  return <CountChips count={count} names={aliases} fallback={noAlias} />;
 }
 
 function dateColumn<T>(

@@ -525,7 +525,7 @@ def test_first_open_creates_the_kitchen_notebook_and_second_open_lists_it(
     notebooks = first.json()["notebooks"]
     assert len(notebooks) == 1
     view = notebooks[0]
-    assert view["name"] == f"Home by {alias}"
+    assert view["name"] == f"Home de {alias}"
     assert view["kind"] == "kitchen"
     assert view["access"] == "kitchen_member"
     assert view["owner_alias"] == alias
@@ -631,7 +631,7 @@ def test_rename_keeps_the_kitchen_notebook_name(client: TestClient, db_session: 
     after = client.get(f"/notebooks/kitchens/{kitchen_id}").json()["notebooks"][0]
 
     assert after["id"] == before["id"]
-    assert after["name"] == f"Home by {alias}"
+    assert after["name"] == f"Home de {alias}"
 
 
 def test_archived_kitchen_without_notebook_lists_nothing(
@@ -714,7 +714,7 @@ def test_first_capture_in_a_kitchen_creates_its_notebook_and_second_uses_it(
     assert second.created is False
     assert second.notebook_id == first.notebook_id
     row = db_session.get(NotebookModel, first.notebook_id)
-    assert row.name == "My kitchen by ana_cap"
+    assert row.name == "My kitchen de ana_cap"
     assert row.owner_user_id == ana
     assert _notebook_count(db_session, kitchen_id=kitchen_id) == 1
 
@@ -899,20 +899,25 @@ def test_notebook_routes_are_gets_on_the_four_contract_paths(client: TestClient)
         "/notebooks/{notebook_id}/recipes",
         "/notebooks/kitchens/{kitchen_id}/snapshots",
         "/notebooks/kitchens/{kitchen_id}/capture-notebook",
+        # Spec 069: copy a personal recipe into a kitchen.
+        "/notebooks/kitchens/{kitchen_id}/recipe-copies",
         *sharing,
     }
     assert {path: notebook_paths.pop(path) for path in sharing} == sharing
     # S-059: creating a personal notebook is the one write on the list itself.
     assert notebook_paths.pop("/notebooks") == {"get", "post"}
-    # Spec 035 adds two writes: a snapshot and the member's own capture notebook.
+    # Spec 035 adds a snapshot and the member's own capture notebook; spec 069 a recipe copy.
     writes = {
         "/notebooks/kitchens/{kitchen_id}/snapshots",
         "/notebooks/kitchens/{kitchen_id}/capture-notebook",
+        "/notebooks/kitchens/{kitchen_id}/recipe-copies",
     }
     assert {path: notebook_paths.pop(path) for path in writes} == dict.fromkeys(writes, {"post"})
     # S-059: a kitchen notebook is added, and any notebook renamed or deleted.
     assert notebook_paths.pop("/notebooks/kitchens/{kitchen_id}") == {"get", "post"}
     assert notebook_paths.pop("/notebooks/{notebook_id}") == {"get", "patch", "delete"}
+    # The person chooses their default notebook.
+    assert notebook_paths.pop("/notebooks/default") == {"get", "put"}
     assert {method for operations in notebook_paths.values() for method in operations} == {"get"}
     capture_paths = {path: set(ops) for path, ops in paths.items() if "/captures/" in path}
     # Spec 026 adds capture from a link beside capture from text.

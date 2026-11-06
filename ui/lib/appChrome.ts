@@ -1,4 +1,4 @@
-const APP_CHROME_PREFIXES = ["/home", "/kitchens", "/notebooks", "/recipes"] as const;
+const APP_CHROME_PREFIXES = ["/home", "/ingredients", "/kitchens", "/notebooks", "/recipes"] as const;
 
 /** Authenticated product surfaces that show the side panel. */
 export function showsAppChrome(pathname: string): boolean {
@@ -13,6 +13,7 @@ export type PanelEntry = string;
 /** The side panel entry for a page. */
 export function panelEntryFromPath(pathname: string): PanelEntry | undefined {
   if (pathname === "/admin") return "admin";
+  if (pathname === "/ingredients") return "ingredients";
   const kitchenId = /^\/kitchens\/([^/]+)/.exec(pathname)?.[1];
   if (kitchenId) return `kitchen:${kitchenId}`;
   // A recipe lives in a notebook, so its detail and edit pages keep Notebooks marked.

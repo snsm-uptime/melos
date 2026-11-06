@@ -15,6 +15,7 @@ describe("showsAppChrome", () => {
     expect(showsAppChrome("/notebooks/nb-1")).toBe(true);
     expect(showsAppChrome("/recipes/r1")).toBe(true);
     expect(showsAppChrome("/recipes/r1/edit")).toBe(true);
+    expect(showsAppChrome("/ingredients")).toBe(true);
   });
 
   it("hides the side panel on auth, setup and removed finance routes", () => {
@@ -31,6 +32,10 @@ describe("showsAppChrome", () => {
 });
 
 describe("panelEntryFromPath", () => {
+  it("marks the Ingredients page (spec 070)", () => {
+    expect(panelEntryFromPath("/ingredients")).toBe("ingredients");
+  });
+
   it("marks nothing on /home and the kitchen under any kitchen path", () => {
     expect(panelEntryFromPath("/home")).toBeUndefined();
     expect(panelEntryFromPath("/kitchens/k1/cart")).toBe("kitchen:k1");

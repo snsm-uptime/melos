@@ -161,6 +161,11 @@ describe("SidePanel", () => {
     expect(link("Dashboard").getAttribute("href")).toBe("/admin");
   });
 
+  it("links to the Ingredients page (spec 070 FR-011)", async () => {
+    await render();
+    expect(link("Ingredients").getAttribute("href")).toBe("/ingredients");
+  });
+
   it("keeps only the default on the closed panel when the kitchens overflow", async () => {
     await render();
     await layOut(131);
@@ -200,8 +205,8 @@ describe("SidePanel", () => {
     expect(names()).toEqual([
       "Add recipe",
       "Notebooks",
+      "Ingredients",
       "Show archived kitchens",
-      "Create kitchen",
       "Mine",
       "Apple",
       "Set as default",
@@ -210,6 +215,17 @@ describe("SidePanel", () => {
       "Settings",
       "Log out",
     ]);
+  });
+
+  it("marks the kitchens with the chef's hat when closed, and offers the plus when open", async () => {
+    await render();
+    expect(button("Create kitchen")).toBeNull();
+    expect(host.querySelector('[data-side-panel="kitchens-mark"]')?.getAttribute("aria-label")).toBe("Kitchens");
+    await act(async () => button("Open menu").click());
+    expect(button("Create kitchen")).toBeTruthy();
+    const mark = host.querySelector('[data-side-panel="kitchens-mark"]');
+    expect(mark?.getAttribute("aria-hidden")).toBe("true");
+    expect(mark?.nextElementSibling?.textContent).toBe("Kitchens");
   });
 
   it("has no Home entry", async () => {
@@ -425,6 +441,7 @@ describe("SidePanel", () => {
 
   it("adds a kitchen from an inline row, with no dialog", async () => {
     createKitchen.mockResolvedValue({ ok: true, kitchen: {} });
+    window.localStorage.setItem(SIDE_PANEL_KEY, "true");
     await render();
     await act(async () => button("Create kitchen").click());
     expect(document.querySelector('[role="dialog"]')).toBeNull();
@@ -442,6 +459,7 @@ describe("SidePanel", () => {
 
   it("hides the row on a click outside, but not on one inside or on the plus", async () => {
     const press = (el: Element) => el.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    window.localStorage.setItem(SIDE_PANEL_KEY, "true");
     await render();
     await act(async () => button("Create kitchen").click());
     await act(async () => {
@@ -454,6 +472,7 @@ describe("SidePanel", () => {
   });
 
   it("refuses a blank name and cancels on Escape", async () => {
+    window.localStorage.setItem(SIDE_PANEL_KEY, "true");
     await render();
     await act(async () => button("Create kitchen").click());
     await act(async () => button("Save").click());

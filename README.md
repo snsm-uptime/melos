@@ -56,7 +56,8 @@ default one and holds log out.
 
 ## Progress
 
-Tracked in [dev/docs/backlog.yaml](dev/docs/backlog.yaml); the product spec is
+Pending work is tracked in [dev/docs/backlog.yaml](dev/docs/backlog.yaml) and
+finished stories in [dev/docs/backlog-done.yaml](dev/docs/backlog-done.yaml); the product spec is
 [dev/docs/prd.md](dev/docs/prd.md). MVP delivered 02/11/2026 and closed on
 2026-11-04; later work is post-MVP, picked from the backlog by priority.
 
@@ -131,7 +132,8 @@ same rules.
 | [AGENTS.md](AGENTS.md) | The single instruction file: architecture, domain rules, dev commands, checks and what not to do. `CLAUDE.md` and `GEMINI.md` only point to it |
 | [.specify/memory/constitution.md](.specify/memory/constitution.md) | Non-negotiable engineering principles; changed only with approval (`/speckit-constitution`) |
 | [dev/docs/prd.md](dev/docs/prd.md) | Product spec: architecture, flows, data model, journeys and acceptance criteria |
-| [dev/docs/backlog.yaml](dev/docs/backlog.yaml) | Stories (`S-NNN`) with priority, status (`backlog`, `in_design`, `in_progress`, `done`), source and verification notes |
+| [dev/docs/backlog.yaml](dev/docs/backlog.yaml) | Pending stories (`S-NNN`) with priority, status (`backlog`, `in_design`, `in_progress`, `verification`), source and verification notes |
+| [dev/docs/backlog-done.yaml](dev/docs/backlog-done.yaml) | Done stories, moved from the backlog with their verification notes; story numbers are unique across both files |
 | `dev/skills/` | Work states (Creating, Logic, Learning, Optimizing, Reflecting) the agent picks per request, plus procedures such as TOON encoding and saving memory |
 | `dev/memory/` | Append-only daily log (`ddMMYY.md`) of decisions and finished changes, read at the start of each session |
 
@@ -154,8 +156,9 @@ as skills in `.claude/skills/`:
 6. `/speckit-implement`: work through the tasks with tests;
    `/speckit-converge` appends tasks for anything still unbuilt.
 
-When a story is done, its backlog entry moves to `done` with a verification
-note (tests run, migrations checked, manual walks still open). Each story goes
+When a story is done, its entry gets `status: done` and a verification note
+(tests run, migrations checked, manual walks still open), and moves from
+`dev/docs/backlog.yaml` to `dev/docs/backlog-done.yaml`. Each story goes
 on its own branch and is merged by pull request after review; agents do not
 push or deploy without it.
 

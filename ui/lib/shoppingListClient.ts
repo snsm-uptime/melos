@@ -1,3 +1,5 @@
+import { placeBody, type CustomPlace, type PlaceRef } from "@/lib/places";
+
 /** Client helpers for the kitchen shopping list via the same-origin BFF (specs 023, 025, contracts/shopping-list-api.md). */
 
 export type ShoppingAmount = {
@@ -13,7 +15,11 @@ export type ShoppingRecipeRef = {
   exists?: boolean;
 };
 
-export type ShoppingLine = {
+/** Spec 070: a stored row id (null when the list is not saved), the shared bought flag, and
+ * the viewer's place for the item. */
+type Stored = { id?: string | null; bought?: boolean; place?: PlaceRef | null };
+
+export type ShoppingLine = Stored & {
   name: string;
   kind: "mass" | "volume" | "count" | "custom";
   /** Counts only. */
@@ -22,14 +28,14 @@ export type ShoppingLine = {
   recipes: ShoppingRecipeRef[];
 };
 
-export type YourCallEntry = {
+export type YourCallEntry = Stored & {
   name: string;
   notes: string[];
   recipes: ShoppingRecipeRef[];
 };
 
 /** An item a member added by hand. */
-export type HandItem = {
+export type HandItem = Stored & {
   id: string;
   name: string;
   quantity: string | null;
@@ -47,6 +53,8 @@ export type ShoppingList = {
   lines: ShoppingLine[];
   your_call: YourCallEntry[];
   hand_items: HandItem[];
+  /** The viewer's own places, for tab names and the add form (spec 070). */
+  custom_places?: CustomPlace[];
 };
 
 export type ClosedListSummary = {
@@ -62,9 +70,10 @@ export type ClosedList = {
   lines: ShoppingLine[];
   your_call: YourCallEntry[];
   hand_items: HandItem[];
+  custom_places?: CustomPlace[];
 };
 
-export type NewHandItem = { name: string; quantity?: string; unit?: string };
+export type NewHandItem = { name: string; quantity?: string; unit?: string; place?: PlaceRef };
 
 /** A refused call keeps the status and the api `code`. A network failure has status 0 and no code. */
 export type ShoppingListFailure = { ok: false; status: number; code: string | null };
@@ -84,6 +93,9 @@ function asShoppingList(data: unknown): ShoppingList | null {
     lines: list.lines as ShoppingLine[],
     your_call: Array.isArray(list.your_call) ? (list.your_call as YourCallEntry[]) : [],
     hand_items: Array.isArray(list.hand_items) ? (list.hand_items as HandItem[]) : [],
+    ...(Array.isArray(list.custom_places)
+      ? { custom_places: list.custom_places as CustomPlace[] }
+      : {}),
   };
 }
 
@@ -97,6 +109,9 @@ function asClosedList(data: unknown): ClosedList | null {
     lines: Array.isArray(list.lines) ? (list.lines as ShoppingLine[]) : [],
     your_call: Array.isArray(list.your_call) ? (list.your_call as YourCallEntry[]) : [],
     hand_items: Array.isArray(list.hand_items) ? (list.hand_items as HandItem[]) : [],
+    ...(Array.isArray(list.custom_places)
+      ? { custom_places: list.custom_places as CustomPlace[] }
+      : {}),
   };
 }
 
@@ -107,7 +122,7 @@ function asClosedLists(data: unknown): ClosedListSummary[] | null {
 
 async function call<T>(
   path: string,
-  method: "GET" | "POST" | "DELETE",
+  method: "GET" | "POST" | "PATCH" | "DELETE",
   body: unknown,
   parse: (data: unknown) => T | null,
 ): Promise<ShoppingResult<T>> {
@@ -160,7 +175,23 @@ export function addShoppingItem(
   kitchenId: string,
   item: NewHandItem,
 ): Promise<ShoppingListResult> {
-  return call(`${listPath(kitchenId)}/items`, "POST", item, asShoppingList);
+  const { place, ...rest } = item;
+  const body = place ? { ...rest, place: placeBody(place) } : rest;
+  return call(`${listPath(kitchenId)}/items`, "POST", body, asShoppingList);
+}
+
+/** Sets the value sent (spec 070 R10); answers with the whole list. */
+export function setItemBought(
+  kitchenId: string,
+  itemId: string,
+  bought: boolean,
+): Promise<ShoppingListResult> {
+  return call(
+    `${listPath(kitchenId)}/items/${encodeURIComponent(itemId)}`,
+    "PATCH",
+    { bought },
+    asShoppingList,
+  );
 }
 
 export function removeShoppingItem(

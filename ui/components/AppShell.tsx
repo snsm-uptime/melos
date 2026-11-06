@@ -4,7 +4,14 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useState, type ReactNode } from "react";
 
-import { BackIcon, MenuIcon } from "@/app/icons";
+import {
+  AnalyticsIcon,
+  BackIcon,
+  BasketIcon,
+  BooksIcon,
+  ChefHatIcon,
+  MenuIcon,
+} from "@/app/icons";
 import {
   ChromeBackProvider,
   chromeHeaderIsActive,
@@ -14,12 +21,29 @@ import { IconButton } from "@/components/IconButton";
 import { usePreferences } from "@/components/PreferencesProvider";
 import { SidePanel } from "@/components/SidePanel";
 import { ToastProvider, ToastViewport } from "@/components/Toast";
-import { showsAppChrome, showsFloatingLanguageSwitch } from "@/lib/appChrome";
+import {
+  panelEntryFromPath,
+  showsAppChrome,
+  showsFloatingLanguageSwitch,
+  type PanelEntry,
+} from "@/lib/appChrome";
 import { cartMessages } from "@/lib/i18n/cart";
 import { kitchensMessages } from "@/lib/i18n/kitchens";
 import { sidePanelMessages } from "@/lib/i18n/sidePanel";
 import { Chip } from "./Chip";
 import { SignedOutLanguageSwitch } from "./SignedOutLanguageSwitch";
+
+const TITLE_ICON_CLASS = "size-7 shrink-0 p-0.5 text-muted";
+
+/** The side panel entry's icon, so a page opened from the panel carries it before its title. */
+function panelEntryIcon(entry: PanelEntry | undefined): ReactNode {
+  if (!entry) return null;
+  if (entry === "notebooks") return <BooksIcon className={TITLE_ICON_CLASS} />;
+  if (entry === "ingredients") return <BasketIcon className={TITLE_ICON_CLASS} />;
+  if (entry === "admin") return <AnalyticsIcon className={TITLE_ICON_CLASS} />;
+  if (entry.startsWith("kitchen:")) return <ChefHatIcon className={TITLE_ICON_CLASS} />;
+  return null;
+}
 
 /** Persistent application chrome around authenticated pages. Auth/setup routes skip it. */
 export function AppShell({ children }: { children: ReactNode }) {
@@ -63,6 +87,9 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   // The English/Spanish switch of the signed-out screens (spec 063 FR-017), on both layouts:
   // /sign-in opts into the header, the other signed-out screens have none. /sign-in puts its
   // switch in its own card, below the sign-up link, so none floats there.
+  // Only the pages the panel opens: one with a way back (a recipe, a kitchen's sub-page) is not.
+  const titleIcon =
+    header.onBack || header.backHref || header.leading ? null : panelEntryIcon(panelEntryFromPath(pathname));
   const languageSwitch = showsFloatingLanguageSwitch(pathname) ? <SignedOutLanguageSwitch /> : null;
   const dismissLabel = cartMessages[locale].dismiss;
 
@@ -128,6 +155,11 @@ function AppShellFrame({ children }: { children: ReactNode }) {
                 header.titleAside ? "flex-wrap md:flex-nowrap" : ""
               }`}
             >
+              {header.title && titleIcon ? (
+                <span className="inline-flex shrink-0" data-app-chrome="title-icon">
+                  {titleIcon}
+                </span>
+              ) : null}
               {header.title ? (
                 <h1
                   className={`m-0 min-w-0 truncate text-[1.5rem] font-[550] leading-normal text-foreground ${

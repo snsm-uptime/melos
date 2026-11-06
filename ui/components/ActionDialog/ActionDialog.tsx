@@ -1,6 +1,9 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useId, useRef, type ReactNode } from "react";
+
+import { CloseIcon } from "@/app/icons";
+import { IconButton } from "@/components/IconButton";
 
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { GhostButton } from "@/components/soft-ledger/GhostButton";
@@ -23,6 +26,8 @@ export type ActionDialogProps = {
   onConfirm?: () => void;
   /** Whether an async operation is pending (disables buttons, shows loading state) */
   pending?: boolean;
+  /** Adds a ✕ at the end of the title row with this accessible name. */
+  closeLabel?: string;
 };
 
 /**
@@ -45,7 +50,10 @@ export function ActionDialog({
   onOpenChange,
   onConfirm,
   pending = false,
+  closeLabel,
 }: ActionDialogProps) {
+  // Unique, so a confirmation opened over another dialog names itself.
+  const titleId = useId();
   // A dialog with neither label renders no footer (spec 016 contracts/capture-ui.md).
   const hasFooter = confirmLabel !== undefined || cancelLabel !== undefined;
   const panelRef = useRef<HTMLDivElement>(null);
@@ -70,13 +78,24 @@ export function ActionDialog({
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="action-dialog-title"
+        aria-labelledby={titleId}
         className="w-full max-w-[28rem] rounded-md border border-border bg-surface p-5 shadow-none"
         onClick={(event) => event.stopPropagation()}
       >
-        <h2 id="action-dialog-title" className="m-0 text-[1.05rem] font-[550] text-foreground">
-          {title}
-        </h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 id={titleId} className="m-0 text-[1.05rem] font-[550] text-foreground">
+            {title}
+          </h2>
+          {closeLabel ? (
+            <IconButton
+              variant="ghost"
+              className="size-8"
+              label={closeLabel}
+              icon={<CloseIcon className="size-5" />}
+              onClick={() => onOpenChange(false)}
+            />
+          ) : null}
+        </div>
         <div className="mt-4">{children}</div>
         {hasFooter ? (
           <div className="mt-5 flex flex-wrap justify-end gap-2">

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from fractions import Fraction
@@ -52,6 +52,8 @@ class SavedLine:
     recipes: tuple[RecipeRef, ...]
     # None until stored.
     id: UUID | None = None
+    # Shared by the kitchen (spec 070 FR-001).
+    bought: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,6 +78,38 @@ def cart_lines(shopping_list: ShoppingList) -> tuple[SavedLine, ...]:
         for e in shopping_list.your_call
     )
     return measured + your_call
+
+
+def _amount_map(amounts: Sequence[Amount]) -> dict[str, Decimal] | None:
+    try:
+        return {a.unit: Decimal(a.quantity) for a in amounts}
+    except InvalidOperation:
+        return None
+
+
+def _not_grown(old: SavedLine, new: SavedLine) -> bool:
+    if old.section == "your_call":
+        return set(new.notes) == set(old.notes)
+    before = _amount_map(old.amounts)
+    after = _amount_map(new.amounts)
+    if before is None or after is None:
+        return False
+    return all(unit in before and qty <= before[unit] for unit, qty in after.items())
+
+
+def carry_bought(old: Sequence[SavedLine], new: Sequence[SavedLine]) -> tuple[SavedLine, ...]:
+    """New cart lines, bought where an old bought line is the same and has not grown (070 R2).
+
+    Same means the same section, name, kind and size. Grown means a unit was added or an amount
+    is larger; a "Your call" line has no amounts and stays bought only with the same notes.
+    """
+    bought = {(line.section, line.name, line.kind, line.size): line for line in old if line.bought}
+    result: list[SavedLine] = []
+    for line in new:
+        before = bought.get((line.section, line.name, line.kind, line.size))
+        keep = before is not None and _not_grown(before, line)
+        result.append(replace(line, bought=keep))
+    return tuple(result)
 
 
 def stored_cart_list(items: Sequence[SavedLine]) -> ShoppingList:

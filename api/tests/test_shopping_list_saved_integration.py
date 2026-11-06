@@ -67,7 +67,16 @@ def test_a_saved_cart_makes_a_shared_list_equal_to_the_live_one(
     saved = people.as_("ben").get(_list(kitchen)).json()
     assert saved["status"] == "active"
     assert saved["list_id"]
-    assert (saved["lines"], saved["your_call"]) == (draft["lines"], draft["your_call"])
+
+    # Only the stored list has row ids (spec 070 R3); everything else is the same.
+    def no_ids(lines: list[dict]) -> list[dict]:
+        return [{**line, "id": None} for line in lines]
+
+    assert all(line["id"] for line in saved["lines"])
+    assert (no_ids(saved["lines"]), no_ids(saved["your_call"])) == (
+        draft["lines"],
+        draft["your_call"],
+    )
 
 
 def test_the_list_follows_a_save_but_not_a_draft_or_recipe_edit(
