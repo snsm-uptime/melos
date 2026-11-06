@@ -64,6 +64,13 @@
   }
 }
 
+@media (prefers-reduced-transparency: reduce) {
+  .backdrop {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
 .sheetHeader {
   display: flex;
   align-items: center;
