@@ -16,6 +16,7 @@ from domain.errors import InvalidPlaceError, PlaceNotFoundError
 from domain.ingredient_catalog import normalize_name
 from domain.places import (
     DEFAULT_PLACE_KEYS,
+    PLACE_LIMIT,
     SUPERMARKET,
     CustomPlace,
     PlaceRef,
@@ -175,7 +176,13 @@ class PlaceSourcesService:
 
 
 class CopyPlacesService:
-    """Replace the caller's places with a snapshot of another member's (FR-010a)."""
+    """Add another member's places and choices to the caller's own (FR-010a, a merge).
+
+    Nothing of the caller's is removed or changed: only places whose folded name the caller does
+    not have yet are added (while under PLACE_LIMIT), and only choices for ingredients the caller
+    has not chosen yet are copied. A copied choice of one of the member's places points at the
+    caller's place of the same folded name, so it is skipped when that place could not be added.
+    """
 
     def __init__(self, places: PlaceRepository) -> None:
         self._places = places
@@ -185,6 +192,25 @@ class CopyPlacesService:
             s.user_id != source_id for s in self._places.sources(user_id)
         ):
             raise PlaceNotFoundError()
-        self._places.replace_with_copy(user_id, source_id)
-        logger.info("places outcome=copied")
+        own = {fold(p.name): p.id for p in self._places.list_custom(user_id)}
+        added = 0
+        for place in self._places.list_custom(source_id):
+            key = fold(place.name)
+            if key in own or len(own) >= PLACE_LIMIT:
+                continue
+            own[key] = self._places.add(user_id, place.name, key).id
+            added += 1
+        chosen = self._places.choices(user_id)
+        copied = 0
+        for name, ref in self._places.choices(source_id).items():
+            if name in chosen:
+                continue
+            if ref.key is None:
+                target = own.get(fold(ref.name or ""))
+                if target is None:
+                    continue
+                ref = PlaceRef(id=target)
+            self._places.set_choice(user_id, name, ref)
+            copied += 1
+        logger.info("places outcome=copied added=%d choices=%d", added, copied)
         return ListPlacesService(self._places).execute(user_id)

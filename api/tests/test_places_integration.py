@@ -221,3 +221,26 @@ def test_ingredient_page_lists_recipes_and_last_use(
     assert sorted(r["title"] for r in items["tomato"]["recipes"]) == ["Salad", "Soup"]
     assert soup in {r["id"] for r in items["tomato"]["recipes"]}
     assert items["tomato"]["last_used_at"] is not None
+
+
+def test_copy_keeps_the_persons_own_places_and_choices(
+    client: TestClient, db_session: Session
+) -> None:
+    people, _kitchen, _nb = _home(client, db_session)
+    ana = people.as_("ana")
+    asian = ana.post("/me/places", json={"name": "Asian market"}).json()
+    ana_deli = ana.post("/me/places", json={"name": "deli"}).json()
+    _set(ana, "miso", _custom(asian["id"]))
+    _set(ana, "ham", _custom(ana_deli["id"]))
+    _set(ana, "tomato", FARMERS)
+
+    ben = people.as_("ben")
+    deli = ben.post("/me/places", json={"name": "Deli"}).json()
+    _set(ben, "tomato", _custom(deli["id"]))
+    copied = ben.post("/me/places/copy", json={"source_user_id": str(people.ids["ana"])})
+    assert copied.status_code == 200, copied.text
+    assert sorted(p["name"] for p in copied.json()["custom"]) == ["Asian market", "Deli"]
+    places = _places(ben)
+    assert places["tomato"]["id"] == deli["id"]  # his own choice stays
+    assert places["ham"]["id"] == deli["id"]  # her "deli" is his "Deli"
+    assert places["miso"]["name"] == "Asian market"

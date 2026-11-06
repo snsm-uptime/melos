@@ -85,19 +85,6 @@ class FakePlaces:
     def sources(self, user_id: UUID) -> Sequence[PlaceSource]:
         return self.shared.get(user_id, [])
 
-    def replace_with_copy(self, target_id: UUID, source_id: UUID) -> None:
-        for place_id in [i for i, (owner, _) in self.places.items() if owner == target_id]:
-            del self.places[place_id]
-        new_ids = {}
-        for owner, place in list(self.places.values()):
-            if owner == source_id:
-                copy = self.add(target_id, place.name, fold(place.name))
-                new_ids[place.id] = copy.id
-        self.chosen[target_id] = {
-            name: ref if ref.id is None else PlaceRef(id=new_ids[ref.id])
-            for name, ref in self.chosen.get(source_id, {}).items()
-        }
-
 
 ANA = uuid.uuid4()
 BEN = uuid.uuid4()
@@ -176,18 +163,53 @@ def test_invalid_places_and_names() -> None:
         service.execute(ANA, "  ", PlaceRef(key="bakery"))
 
 
-def test_copy_is_a_snapshot_and_needs_a_shared_kitchen() -> None:
+def test_copy_adds_only_new_places_and_choices_and_needs_a_shared_kitchen() -> None:
     repo = FakePlaces()
     asian = AddPlaceService(repo).execute(ANA, "Asian market")
+    ana_deli = AddPlaceService(repo).execute(ANA, "deli")
     SetIngredientPlaceService(repo).execute(ANA, "miso", PlaceRef(id=asian.id))
-    AddPlaceService(repo).execute(BEN, "Old place")
+    SetIngredientPlaceService(repo).execute(ANA, "ham", PlaceRef(id=ana_deli.id))
+    SetIngredientPlaceService(repo).execute(ANA, "tomato", PlaceRef(key="farmers_market"))
+    SetIngredientPlaceService(repo).execute(ANA, "bread", PlaceRef(key="bakery"))
+
+    old = AddPlaceService(repo).execute(BEN, "Old place")
+    ben_deli = AddPlaceService(repo).execute(BEN, "Deli")
+    SetIngredientPlaceService(repo).execute(BEN, "tomato", PlaceRef(id=old.id))
     with pytest.raises(PlaceNotFoundError):
         CopyPlacesService(repo).execute(BEN, ANA)
 
     repo.shared[BEN] = [PlaceSource(ANA, "ana")]
     view = CopyPlacesService(repo).execute(BEN, ANA)
-    assert [p.name for p in view.custom] == ["Asian market"]
-    assert repo.choices(BEN)["miso"].name == "Asian market"
+    # Ben's own places stay; only a name he lacks is added ("deli" is his "Deli").
+    assert sorted(p.name for p in view.custom) == ["Asian market", "Deli", "Old place"]
+    chosen = repo.choices(BEN)
+    # His own choice stays; new ones are copied, a custom one pointing at his same-named place.
+    assert chosen["tomato"].id == old.id
+    assert chosen["bread"].key == "bakery"
+    assert chosen["miso"].name == "Asian market"
+    assert chosen["ham"].id == ben_deli.id
+
+    # Copying again adds nothing new.
+    again = CopyPlacesService(repo).execute(BEN, ANA)
+    assert len(again.custom) == 3
 
     RenamePlaceService(repo).execute(ANA, asian.id, "Japanese market")
     assert repo.choices(BEN)["miso"].name == "Asian market"
+
+
+def test_copy_stops_at_the_place_limit_and_skips_choices_of_places_not_added() -> None:
+    repo = FakePlaces()
+    for i in range(29):
+        AddPlaceService(repo).execute(BEN, f"Mine {i}")
+    first = AddPlaceService(repo).execute(ANA, "A shop")
+    second = AddPlaceService(repo).execute(ANA, "B shop")
+    SetIngredientPlaceService(repo).execute(ANA, "rice", PlaceRef(id=first.id))
+    SetIngredientPlaceService(repo).execute(ANA, "salt", PlaceRef(id=second.id))
+    repo.shared[BEN] = [PlaceSource(ANA, "ana")]
+    view = CopyPlacesService(repo).execute(BEN, ANA)
+    assert len(view.custom) == 30
+    added = {p.name for p in view.custom} - {f"Mine {i}" for i in range(29)}
+    chosen = repo.choices(BEN)
+    # Only the place that fit is used; the other's choice is skipped, not pointed elsewhere.
+    assert len(added) == 1
+    assert {chosen[n].name for n in chosen} == added

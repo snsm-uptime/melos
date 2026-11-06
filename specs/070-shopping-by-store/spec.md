@@ -52,7 +52,7 @@ A member opens "Ingredients" from the side panel. The page lists the ingredient 
 2. **Given** the catalog page, **When** it opens, **Then** it lists every ingredient name in scope (see FR-010 and FR-016a) in alphabetical order, with a text filter, each showing its place (Supermarket until picked).
 3. **Given** an ingredient, **When** the member picks a place, **Then** it is saved at once.
 4. **Given** the place picker, **When** the member adds a new place by name, **Then** it is saved, offered from then on next to the defaults, and can be renamed or deleted; deleting it sets its ingredients back to Supermarket after a confirmation.
-5. **Given** another member of a shared kitchen or notebook, **When** the person chooses to copy that member's places and confirms, **Then** their own places are replaced by a copy, and later changes by either one do not affect the other.
+5. **Given** another member of a shared kitchen or notebook, **When** the person chooses to copy that member's places and confirms, **Then** the member's places they do not have yet, and the member's choices for ingredients they have not set yet, are added to their own; nothing of their own is removed or changed, and later changes by either one do not affect the other.
 6. **Given** the default places, **When** shown, **Then** their names are in the member's interface language (Spanish or English).
 
 ---
@@ -110,7 +110,7 @@ On the active list, tabs across the top show "All" and one tab per place that ha
 **Ingredient catalog page**
 
 - **FR-010**: Places of ingredients and custom places MUST belong to each person: their choices apply on every list they open, in every kitchen, even when the catalog or list is shared, so two members may see different tabs for the same list. The catalog page lists every ingredient name in the catalogs of the notebooks the person can read (personal and kitchen), each name once.
-- **FR-010a**: A person MUST be able to copy the places (ingredient places and custom places) of another member of a kitchen or notebook they share. The copy is a snapshot: it replaces the person's own places after a confirmation, and later changes by either person do not reach the other. The person can then change any place on their own.
+- **FR-010a**: A person MUST be able to copy the places (ingredient places and custom places) of another member of a kitchen or notebook they share. The copy is a snapshot merged into the person's own after a confirmation (changed 2026-11-05, was a replace): only places whose name the person does not have yet (ignoring case and accents, within the 30-place limit) and choices for ingredients the person has not set yet are added; nothing of the person's is removed or changed. A copied choice of one of the member's places points at the person's place of the same name. Later changes by either person do not reach the other. The person can then change any place on their own.
 - **FR-011**: The side panel MUST have an "Ingredients" nav item that opens the catalog page, at phone and desktop widths, in both languages.
 - **FR-012**: The catalog page MUST list ingredient names alphabetically with a text filter, and a place picker per name that saves on change; it MUST also let the person manage their custom places (FR-007).
 - **FR-013**: The catalog page MUST NOT rename, merge or delete ingredient names; that is S-043.

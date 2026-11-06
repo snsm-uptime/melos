@@ -882,10 +882,6 @@ class PlaceRepository(Protocol):
 
     def sources(self, user_id: UUID) -> Sequence[PlaceSource]: ...
 
-    def replace_with_copy(self, target_id: UUID, source_id: UUID) -> None:
-        """Replace all the target's places and choices with a copy of the source's (R8)."""
-        ...
-
 
 # --- Recipe embeddings and search (spec 019) --------------------------------------------------
 
