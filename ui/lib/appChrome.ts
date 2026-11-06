@@ -1,4 +1,4 @@
-const APP_CHROME_PREFIXES = ["/home", "/kitchens", "/notebooks", "/recipes"] as const;
+const APP_CHROME_PREFIXES = ["/home", "/ingredients", "/kitchens", "/notebooks", "/recipes"] as const;
 
 /** Authenticated product surfaces that show the side panel. */
 export function showsAppChrome(pathname: string): boolean {

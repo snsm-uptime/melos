@@ -15,6 +15,7 @@ describe("showsAppChrome", () => {
     expect(showsAppChrome("/notebooks/nb-1")).toBe(true);
     expect(showsAppChrome("/recipes/r1")).toBe(true);
     expect(showsAppChrome("/recipes/r1/edit")).toBe(true);
+    expect(showsAppChrome("/ingredients")).toBe(true);
   });
 
   it("hides the side panel on auth, setup and removed finance routes", () => {
