@@ -175,7 +175,7 @@ export function SidePanel({
         type="button"
         aria-label={t.close}
         data-side-panel="backdrop"
-        className={`fixed inset-0 z-30 border-0 bg-black/40 transition-[opacity,visibility] md:hidden ${PANEL_SLIDE} ${drawerOpen ? "" : "invisible opacity-0"}`}
+        className={`modal-scrim fixed inset-0 z-30 border-0 bg-black/40 transition-[opacity,visibility] md:hidden ${PANEL_SLIDE} ${drawerOpen ? "" : "invisible opacity-0"}`}
         onClick={onDrawerClose}
       />
       <nav

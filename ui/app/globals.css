@@ -298,6 +298,27 @@ body {
   background: var(--muted);
 }
 
+/* Side panel: the slide speed and the sizes its absolute offsets depend on. */
+:root {
+  --panel-slide: 300ms;
+  --panel-width-open: 16rem;
+  --panel-width-closed: 3.75rem;
+  --panel-target: 2.75rem;
+}
+
+/* Modal scrims (dialogs, sheets, the phone drawer): blur the page behind them, as the frosted bars do. */
+.modal-scrim {
+  -webkit-backdrop-filter: blur(var(--frost-blur));
+  backdrop-filter: blur(var(--frost-blur));
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .modal-scrim {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
 /* Frosted sticky bars (spec 072, contracts/frost-surface.md §2). The frost lives on ::before so the
    bar itself never gets backdrop-filter: a menu opened from the bar can still blur the page. */
 .frost-bar {
