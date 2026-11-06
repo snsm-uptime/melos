@@ -13,9 +13,11 @@ Centralized location for all custom SVG icon components used throughout the UI. 
 | `PlusIcon` | Add/create actions | Plus sign |
 | `CartIcon` | Open the kitchen's cart | Empty cart, same shape as `CartPlusIcon` |
 | `CartPlusIcon` | Add/remove a recipe from the cart | `inCart` turns the + into × |
+| `BasketIcon` | The Ingredients entry in the side panel | Peaked handle, solid basket with cut-out slots |
+| `BooksIcon` | The Notebooks entry in the side panel | Three spines, the right one leaning |
 | `HistoryIcon` | Open the kitchen's past lists | Clock inside a counterclockwise arrow |
 | `RecipeIcon` | A recipe | Solid frame around a lined sheet |
-| `AddRecipeIcon` | Add a recipe | `RecipeIcon` with a circled plus |
+| `AddRecipeIcon` | Add a recipe | `RecipeIcon` with a solid circle and a cut-out plus |
 | `BookmarkIcon` | The default notebook | Outline bookmark |
 | `DotsIcon` | Menu triggers | Vertical dots, 16×16 viewBox |
 | `ShareIcon` | Invite/share actions | Connected circles |
@@ -38,10 +40,10 @@ A solid frame, thick at the top, around a sheet of three lines (the last shorter
 
 ### AddRecipeIcon
 
-`RecipeIcon`'s shape (`RecipeShape`) with a circled plus over its lower-right corner; the card is masked a gap short of the circle. Used for add-a-recipe actions.
+`RecipeIcon`'s shape (`RecipeShape`) with a solid circle over its lower-right corner and a plus cut through the circle (masked, so the background shows); the card is masked a gap short of the circle. Used for add-a-recipe actions.
 
 - ViewBox: `0 0 24 24`
-- Style: Filled frame, stroked lines and plus
+- Style: Filled frame and circle, stroked lines, cut-out plus
 - Accepts: className, SVG element props
 
 ### SaveIcon
@@ -91,6 +93,22 @@ A shopping cart with a "+" in the basket. Used to add a recipe to the kitchen ca
 - ViewBox: `0 0 24 24`
 - Style: Stroke-based
 - Accepts: className, `inCart`, SVG element props
+
+### BasketIcon
+
+A shopping basket: a peaked handle over a rim, and a solid body that narrows to a rounded base with three upright slots cut through it (via mask, same technique as `UsersIcon`, so the background shows through). Used for the Ingredients entry in the side panel (spec 070).
+
+- ViewBox: `0 0 24 24`
+- Style: Stroked handle and rim, filled body, shared stroke width (`ICON_STROKE`)
+- Accepts: className, SVG element props
+
+### BooksIcon
+
+Three book spines: a left one cut into three bands, a plain middle one, and a banded one leaning on it. Used for the Notebooks entry in the side panel.
+
+- ViewBox: `0 0 24 24`
+- Style: Fill-based
+- Accepts: className, SVG element props
 
 ### HistoryIcon
 
@@ -232,7 +250,7 @@ Two slider lines. Used for the Settings entry in the side panel.
 
 ### NotebookIcon
 
-A closed notebook with a spine. Used for the Notebook tab in the tab bar.
+A closed notebook with a spine. Used for the kitchen chrome's notebooks button and the admin recipes tab.
 
 - ViewBox: `0 0 24 24`
 - Style: Stroke-based

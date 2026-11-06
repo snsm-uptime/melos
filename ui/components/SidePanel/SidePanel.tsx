@@ -5,11 +5,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   ArchiveToggleIcon,
-  BoxIcon,
+  BasketIcon,
+  BooksIcon,
   HashtagIcon,
   LogOutIcon,
   MenuIcon,
-  NotebookIcon,
   PlusIcon,
 } from "@/app/icons";
 import { fetchKitchens, type KitchenItem } from "@/app/kitchens/kitchensClient";
@@ -213,7 +213,7 @@ export function SidePanel({
               <SidePanelEntry
                 href="/notebooks"
                 label={t.notebooks}
-                icon={<NotebookIcon className="size-7 shrink-0 p-0.5" />}
+                icon={<BooksIcon className="size-7 shrink-0 p-0.5" />}
                 current={current === "notebooks"}
                 onClick={onDrawerClose}
               />
@@ -223,7 +223,7 @@ export function SidePanel({
               <SidePanelEntry
                 href="/ingredients"
                 label={t.ingredients}
-                icon={<BoxIcon className="size-7 shrink-0 p-0.5" />}
+                icon={<BasketIcon className="size-7 shrink-0 p-0.5" />}
                 current={current === "ingredients"}
                 onClick={onDrawerClose}
               />
