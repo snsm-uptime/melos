@@ -288,6 +288,39 @@ describe("AppShell chrome header", () => {
     expect(container.querySelector('button[aria-label="Back"]')).toBeNull();
   });
 
+  it("puts the panel entry's icon before the title of a page the panel opens, not one with Back", async () => {
+    const icon = () => container.querySelector('[data-app-chrome="title-icon"]');
+    pathname = "/kitchens/k1";
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <EnableHeader title="Home" />
+        </AppShell>,
+      );
+    });
+    expect(icon()?.nextElementSibling?.tagName).toBe("H1");
+
+    pathname = "/upload";
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <EnableHeader title="Upload" />
+        </AppShell>,
+      );
+    });
+    expect(icon()).toBeNull();
+
+    pathname = "/recipes/r1";
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <EnableHeader title="Soup" href="/notebooks" />
+        </AppShell>,
+      );
+    });
+    expect(icon()).toBeNull();
+  });
+
   it("insets a leading avatar by the page gutter, and a Back button by the tighter chrome inset", async () => {
     function AvatarHeader() {
       useChromeHeader({ leading: <span>avatar</span>, title: "Kitchens" });

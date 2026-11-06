@@ -8,6 +8,7 @@ import {
   ArchiveToggleIcon,
   BasketIcon,
   BooksIcon,
+  ChefHatIcon,
   LogOutIcon,
   MenuIcon,
   PlusIcon,
@@ -240,13 +241,23 @@ export function SidePanel({
               </li>
             ) : null}
           </ul>
-          <div className="relative mt-3 flex min-h-11 items-center">
+          {/* Edge to edge in both states: the negative margin cancels the scroller's padding. */}
+          <hr data-side-panel="kitchens-divider" className="-mx-2 mt-3 mb-0 border-0 border-t border-border" />
+          <div className="relative mt-2 flex min-h-11 items-center gap-3 px-2">
+            {/* Lines up with the entry icons, so the closed panel still marks the section. */}
             <span
-              className={`min-w-0 flex-1 truncate pr-[calc(var(--panel-target)*2)] pl-2 text-[0.7rem] font-semibold uppercase tracking-[0.04rem] text-muted ${openOnlyClass}`}
+              data-side-panel="kitchens-mark"
+              className="inline-flex shrink-0 text-muted"
+              {...(wide ? { "aria-hidden": true } : { role: "img", "aria-label": t.kitchens, title: t.kitchens })}
+            >
+              <ChefHatIcon className="size-7 shrink-0 p-0.5" />
+            </span>
+            <span
+              className={`min-w-0 flex-1 truncate pr-[calc(var(--panel-target)*2)] text-[0.9rem] text-muted ${openOnlyClass}`}
             >
               {t.kitchens}
             </span>
-            {/* Anchored so the row text never pushes the plus during the slide. */}
+            {/* Anchored so the row text never pushes the buttons during the slide. */}
             <span className={`absolute top-0 right-(--panel-target) ${openOnlyClass}`}>
               <IconButton
                 type="button"
@@ -258,15 +269,18 @@ export function SidePanel({
                 onClick={() => setShowArchived((prev) => !prev)}
               />
             </span>
-            <IconButton
-              type="button"
-              variant="ghost"
-              className="absolute top-0 right-0 size-11"
-              label={kt.createSubmit}
-              data-new-kitchen-toggle
-              icon={<PlusIcon className="size-5" />}
-              onClick={onAddKitchen}
-            />
+            {/* Closed has no room for the plus; the hat marks the section instead. */}
+            {wide ? (
+              <IconButton
+                type="button"
+                variant="ghost"
+                className="absolute top-0 right-0 size-11"
+                label={kt.createSubmit}
+                data-new-kitchen-toggle
+                icon={<PlusIcon className="size-5" />}
+                onClick={onAddKitchen}
+              />
+            ) : null}
           </div>
           {kitchensError ? (
             <p className={`m-0 px-2 text-[0.8rem] text-error ${openOnlyClass}`} role="alert">
