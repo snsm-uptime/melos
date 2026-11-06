@@ -24,12 +24,12 @@ const list = {
 };
 
 describe("placeTabs", () => {
-  it("orders defaults first, then own places by name, and counts what is left", () => {
+  it("orders own places A to Z, then defaults A to Z, and counts what is left", () => {
     expect(placeTabs(list, "en")).toEqual([
-      { key: "default:supermarket", label: "Supermarket", left: 1 },
-      { key: "default:farmers_market", label: "Farmers market", left: 0 },
       { key: "custom:p1", label: "Asian market", left: 1 },
       { key: "custom:p2", label: "Zoo shop", left: 1 },
+      { key: "default:farmers_market", label: "Farmers market", left: 0 },
+      { key: "default:supermarket", label: "Supermarket", left: 1 },
     ]);
   });
 

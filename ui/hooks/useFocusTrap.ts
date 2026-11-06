@@ -3,6 +3,12 @@ import { RefObject, useEffect, useRef } from "react";
 const FOCUSABLE_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+/**
+ * Active traps, newest last. Only the newest one handles keys, so a confirmation opened over a
+ * dialog closes alone on Escape and owns Tab, and the dialog under it takes over again after.
+ */
+const activeTraps: object[] = [];
+
 type UseFocusTrapOptions = {
   isActive: boolean;
   containerRef: RefObject<HTMLElement | null>;
@@ -35,8 +41,13 @@ export function useFocusTrap({
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const token = {};
+    activeTraps.push(token);
 
     function onKeyDown(event: KeyboardEvent) {
+      if (activeTraps[activeTraps.length - 1] !== token) return;
+      // A control inside already handled it (e.g. Escape closing a select's open list).
+      if (event.defaultPrevented) return;
       if (event.key === "Escape") {
         event.preventDefault();
         onEscapePressRef.current?.();
@@ -74,6 +85,7 @@ export function useFocusTrap({
     document.addEventListener("keydown", onKeyDown);
 
     return () => {
+      activeTraps.splice(activeTraps.indexOf(token), 1);
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", onKeyDown);
     };

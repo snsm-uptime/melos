@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
+import { CloseIcon, CopyIcon, LocationIcon, PlusIcon } from "@/app/icons";
 import { ActionDialog } from "@/components/ActionDialog";
 import { CauldronLoader } from "@/components/CauldronLoader";
 import { CountChips } from "@/components/Chip";
 import { useChromeHeader } from "@/components/ChromeBack";
 import { DataTable, type TableSchema } from "@/components/DataTable";
+import { IconButton } from "@/components/IconButton";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import type { Locale } from "@/lib/i18n/locale";
 import { placesMessages } from "@/lib/i18n/places";
@@ -24,16 +26,23 @@ import {
   placeLabel,
   renamePlace,
   setIngredientPlace,
+  startsDefaults,
   type CustomPlace,
   type IngredientPlace,
   type PlaceRef,
   type PlaceSource,
 } from "@/lib/places";
 
-const FIELD =
-  "min-h-11 rounded-[var(--radius-md)] border border-border bg-background px-3 text-[1rem] text-foreground";
 const BUTTON =
   "min-h-11 rounded-[var(--radius-md)] border border-border bg-background px-4 text-[0.9rem] text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50";
+
+/** A place card: the name field reads as text (like the recipe title while editing). */
+const CARD =
+  "flex max-w-full items-center gap-1 rounded-[var(--radius-md)] border border-border bg-surface py-1 pr-1 pl-2";
+const CARD_FIELD =
+  "min-w-[3ch] max-w-full field-sizing-content rounded-[0.4rem] border-0 bg-transparent px-1 py-[0.15rem] text-[0.95rem] text-foreground outline-none placeholder:text-muted hover:bg-background focus:bg-background";
+const CARD_BUTTON =
+  "inline-flex size-8 shrink-0 items-center justify-center rounded-[0.4rem] text-muted hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50 disabled:hover:text-muted";
 
 type Data = { ingredients: IngredientPlace[]; custom: CustomPlace[]; sources: PlaceSource[] };
 type State = { status: "loading" } | { status: "ready"; data: Data } | { status: "error" };
@@ -46,7 +55,11 @@ function ingredientsTable(
   choose: (item: IngredientPlace, value: string) => void,
 ): TableSchema<IngredientPlace> {
   const c = t.columns;
-  const options = places.map((p) => ({ value: placeKey(p), label: placeLabel(p, locale) }));
+  const options = places.map((p, i) => ({
+    value: placeKey(p),
+    label: placeLabel(p, locale),
+    dividerBefore: startsDefaults(places, i),
+  }));
   return {
     search: true,
     rowKey: (row) => row.name,
@@ -130,7 +143,22 @@ async function load(): Promise<State> {
  */
 export function IngredientsScreen({ locale }: { locale: Locale }) {
   const t = placesMessages[locale];
-  useChromeHeader({ title: t.title });
+  const [placesOpen, setPlacesOpen] = useState(false);
+  // Memoised: the header keeps this element, and a new one each render would update it forever.
+  const trailing = useMemo(
+    () => (
+      <IconButton
+        variant="ghost"
+        className="size-10"
+        label={t.location}
+        aria-haspopup="dialog"
+        icon={<LocationIcon className="size-6" />}
+        onClick={() => setPlacesOpen(true)}
+      />
+    ),
+    [t.location],
+  );
+  useChromeHeader({ title: t.title, trailing });
   const [state, setState] = useState<State>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -206,6 +234,27 @@ export function IngredientsScreen({ locale }: { locale: Locale }) {
         </p>
       ) : null}
 
+      <ActionDialog
+        open={placesOpen}
+        title={t.placesSection}
+        closeLabel={t.close}
+        onOpenChange={setPlacesOpen}
+      >
+        <PlacesRow
+          locale={locale}
+          custom={data.custom}
+          sources={data.sources}
+          onChanged={() => {
+            setNotice(null);
+            reload();
+          }}
+          onCopied={() => {
+            setNotice(t.copied);
+            reload();
+          }}
+        />
+      </ActionDialog>
+
       <DataTable
         schema={ingredientsTable(t, locale, places, (item, value) => void choose(item, value))}
         rows={data.ingredients}
@@ -213,39 +262,29 @@ export function IngredientsScreen({ locale }: { locale: Locale }) {
         labels={tableMessages[locale]}
         empty={t.noIngredients}
       />
-
-      <MyPlaces
-        locale={locale}
-        custom={data.custom}
-        onChanged={() => {
-          setNotice(null);
-          reload();
-        }}
-      />
-      <CopyPlaces
-        locale={locale}
-        sources={data.sources}
-        onCopied={() => {
-          setNotice(t.copied);
-          reload();
-        }}
-      />
     </section>
   );
 }
 
-function MyPlaces({
+/**
+ * The Places dialog's one row of cards: copy from a member first, then the card that adds a
+ * place, then the person's places (their own and the ones copied).
+ */
+function PlacesRow({
   locale,
   custom,
+  sources,
   onChanged,
+  onCopied,
 }: {
   locale: Locale;
   custom: CustomPlace[];
+  sources: PlaceSource[];
   onChanged: () => void;
+  onCopied: () => void;
 }) {
   const t = placesMessages[locale];
   const [name, setName] = useState("");
-  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState<CustomPlace | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -263,17 +302,17 @@ function MyPlaces({
     } else setError(nameError(result.code, t));
   }
 
-  async function rename(event: FormEvent) {
-    event.preventDefault();
-    if (pending || !editing) return;
-    setPending(true);
+  /** A rename from a card; false puts the card's old name back. */
+  async function rename(place: CustomPlace, next: string): Promise<boolean> {
+    if (next.trim() === "" || next.trim() === place.name) return false;
     setError(null);
-    const result = await renamePlace(editing.id, editing.name);
-    setPending(false);
+    const result = await renamePlace(place.id, next);
     if (result.ok) {
-      setEditing(null);
       onChanged();
-    } else setError(nameError(result.code, t));
+      return true;
+    }
+    setError(nameError(result.code, t));
+    return false;
   }
 
   async function remove() {
@@ -289,65 +328,49 @@ function MyPlaces({
 
   return (
     <div className="flex flex-col gap-2">
-      <h2 className="m-0 text-[1.05rem] font-[600] text-foreground">{t.myPlaces}</h2>
-      {custom.length > 0 ? (
-        <ul className="m-0 flex list-none flex-col gap-2 p-0">
-          {custom.map((place) => (
-            <li
-              key={place.id}
-              className="flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface p-3"
-            >
-              {editing?.id === place.id ? (
-                <form className="flex flex-1 flex-wrap gap-2" onSubmit={(e) => void rename(e)}>
-                  <input
-                    className={`${FIELD} min-w-0 flex-1`}
-                    aria-label={t.renamePlace(place.name)}
-                    maxLength={40}
-                    value={editing.name}
-                    onChange={(e) => setEditing({ id: place.id, name: e.target.value })}
-                  />
-                  <button type="submit" className={BUTTON} disabled={pending}>
-                    {t.save}
-                  </button>
-                  <button type="button" className={BUTTON} onClick={() => setEditing(null)}>
-                    {t.cancel}
-                  </button>
-                </form>
-              ) : (
-                <>
-                  <span className="min-w-0 flex-1 break-words text-[1rem] text-foreground">
-                    {place.name}
-                  </span>
-                  <button
-                    type="button"
-                    className={BUTTON}
-                    onClick={() => setEditing({ id: place.id, name: place.name })}
-                  >
-                    {t.renamePlace(place.name)}
-                  </button>
-                  <button type="button" className={BUTTON} onClick={() => setDeleting(place)}>
-                    {t.deletePlace(place.name)}
-                  </button>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => void add(e)}>
-        <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-[0.85rem] text-muted">
-          {t.newPlace}
-          <input
-            className={FIELD}
-            maxLength={40}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+      <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
+        <li className="min-w-0 max-w-full">
+          <CopyPlaces
+            locale={locale}
+            sources={sources}
+            onCopied={onCopied}
+            onError={() => setError(t.saveError)}
           />
-        </label>
-        <button type="submit" className={BUTTON} disabled={pending || name.trim() === ""}>
-          {t.addPlace}
-        </button>
-      </form>
+        </li>
+        <li className="min-w-0 max-w-full">
+          <form className={CARD} onSubmit={(e) => void add(e)}>
+            <input
+              aria-label={t.newPlace}
+              placeholder={t.namePlaceholder}
+              maxLength={40}
+              value={name}
+              readOnly={pending}
+              onChange={(e) => setName(e.target.value)}
+              className={CARD_FIELD}
+            />
+            <button
+              type="submit"
+              aria-label={t.addPlace}
+              title={t.addPlace}
+              disabled={pending || name.trim() === ""}
+              className={CARD_BUTTON}
+            >
+              <PlusIcon className="size-4" />
+            </button>
+          </form>
+        </li>
+        {custom.map((place) => (
+          <li key={place.id} className="min-w-0 max-w-full">
+            <PlaceCard
+              place={place}
+              renameLabel={t.renamePlace(place.name)}
+              deleteLabel={t.deletePlace(place.name)}
+              onRename={(next) => rename(place, next)}
+              onDelete={() => setDeleting(place)}
+            />
+          </li>
+        ))}
+      </ul>
       {error ? (
         <p className="m-0 text-[0.9rem] text-muted" role="alert">
           {error}
@@ -370,69 +393,116 @@ function MyPlaces({
   );
 }
 
+/**
+ * One of the person's places as a small card. The name is a field that reads as text, like the
+ * recipe title while editing: click it to rename, Enter or leaving saves, Escape puts it back.
+ * The ✕ at the end asks before deleting.
+ */
+function PlaceCard({
+  place,
+  renameLabel,
+  deleteLabel,
+  onRename,
+  onDelete,
+}: {
+  place: CustomPlace;
+  renameLabel: string;
+  deleteLabel: string;
+  onRename: (next: string) => Promise<boolean>;
+  onDelete: () => void;
+}) {
+  const [name, setName] = useState(place.name);
+  // A rename saved elsewhere (or a reload) shows the new name.
+  const [shown, setShown] = useState(place.name);
+  if (shown !== place.name) {
+    setShown(place.name);
+    setName(place.name);
+  }
+
+  async function save() {
+    if (name === place.name) return;
+    if (!(await onRename(name))) setName(place.name);
+  }
+
+  return (
+    <div className={CARD}>
+      <input
+        aria-label={renameLabel}
+        maxLength={40}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onBlur={() => void save()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.currentTarget.blur();
+          } else if (e.key === "Escape") {
+            setName(place.name);
+          }
+        }}
+        className={CARD_FIELD}
+      />
+      <button
+        type="button"
+        aria-label={deleteLabel}
+        title={deleteLabel}
+        onClick={onDelete}
+        className={CARD_BUTTON}
+      >
+        <CloseIcon className="size-4" />
+      </button>
+    </div>
+  );
+}
+
+/** The "Copy from a member" card: pick a member, then the copy button asks before adding. */
 function CopyPlaces({
   locale,
   sources,
   onCopied,
+  onError,
 }: {
   locale: Locale;
   sources: PlaceSource[];
   onCopied: () => void;
+  onError: () => void;
 }) {
   const t = placesMessages[locale];
   const [source, setSource] = useState("");
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState(false);
   const chosen = sources.find((s) => s.user_id === source) ?? null;
 
   async function copy() {
     if (!chosen) return;
     setPending(true);
-    setError(false);
     const result = await copyPlaces(chosen.user_id);
     setPending(false);
     setOpen(false);
     if (result.ok) {
       setSource("");
       onCopied();
-    } else setError(true);
+    } else onError();
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <h2 className="m-0 text-[1.05rem] font-[600] text-foreground">{t.copyTitle}</h2>
-      <p className="m-0 text-[0.9rem] text-muted">{t.copyHelp}</p>
-      {sources.length === 0 ? (
-        <p className="m-0 text-[0.9rem] text-muted">{t.noSources}</p>
-      ) : (
-        <div className="flex flex-wrap items-end gap-2">
-          <label className="flex min-w-[12rem] flex-col gap-1 text-[0.85rem] text-muted">
-            {t.copyFrom}
-            <select className={FIELD} value={source} onChange={(e) => setSource(e.target.value)}>
-              <option value="" />
-              {sources.map((s) => (
-                <option key={s.user_id} value={s.user_id}>
-                  {s.alias}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            className={BUTTON}
-            disabled={!chosen}
-            onClick={() => setOpen(true)}
-          >
-            {t.copy}
-          </button>
-        </div>
-      )}
-      {error ? (
-        <p className="m-0 text-[0.9rem] text-muted" role="alert">
-          {t.saveError}
-        </p>
-      ) : null}
+    <div className={CARD} title={sources.length === 0 ? t.noSources : undefined}>
+      <SearchableSelect
+        aria-label={t.copyFrom}
+        placeholder={t.copyFrom}
+        value={source}
+        disabled={sources.length === 0}
+        options={sources.map((s) => ({ value: s.user_id, label: s.alias }))}
+        searchLabel={t.searchMembers}
+        noResults={t.noMemberMatch}
+        onChange={(value) => setSource(value)}
+        action={{
+          icon: <CopyIcon className="size-4" />,
+          label: t.copy,
+          onClick: () => setOpen(true),
+        }}
+        className="min-h-8 rounded-[0.4rem] px-1 text-[0.95rem] text-foreground hover:bg-background disabled:opacity-50"
+      />
       <ActionDialog
         open={open}
         title={chosen ? t.copyConfirmTitle(chosen.alias) : ""}

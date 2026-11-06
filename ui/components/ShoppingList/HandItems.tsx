@@ -9,6 +9,7 @@ import {
   placeFromKey,
   placeKey,
   placeLabel,
+  startsDefaults,
   type CustomPlace,
 } from "@/lib/places";
 import {
@@ -142,11 +143,17 @@ export function AddItemForm({
             onChange={(e) => setPlace(e.target.value)}
           >
             <option value="">{t.noPlace}</option>
-            {places.map((p) => (
+            {places.map((p, i) => [
+              // Own places, a divider, then the default places (a native select has no rule).
+              startsDefaults(places, i) ? (
+                <option key="divider" disabled value="__divider__">
+                  ──────────
+                </option>
+              ) : null,
               <option key={placeKey(p)} value={placeKey(p)}>
                 {placeLabel(p, locale)}
-              </option>
-            ))}
+              </option>,
+            ])}
           </select>
         </label>
         <button

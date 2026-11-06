@@ -47,7 +47,7 @@ describe("HandItems", () => {
     );
   }
 
-  it("sends an optional place, offering defaults and my own places (spec 070)", async () => {
+  it("sends an optional place, offering my own places and the defaults (spec 070)", async () => {
     client.addShoppingItem.mockResolvedValue({ ok: true, value: {} });
     view.render(
       <HandItems
@@ -62,14 +62,16 @@ describe("HandItems", () => {
     const select = view.container.querySelectorAll("select")[1] as HTMLSelectElement;
     expect(Array.from(select.options).map((o) => o.textContent)).toEqual([
       "Choose later",
-      "Supermarket",
-      "Farmers market",
-      "Butcher",
-      "Fish market",
-      "Bakery",
-      "Pharmacy or drugstore",
-      "Other",
+      // Own places A to Z, a divider, then the defaults A to Z.
       "Asian market",
+      "──────────",
+      "Bakery",
+      "Butcher",
+      "Farmers market",
+      "Fish market",
+      "Other",
+      "Pharmacy or drugstore",
+      "Supermarket",
     ]);
     type(view.container.querySelector("input") as HTMLInputElement, "Dish soap");
     act(() => {

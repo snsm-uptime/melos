@@ -7,11 +7,13 @@ import {
   useState,
   type CSSProperties,
   type KeyboardEvent,
+  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 
 import { BackIcon } from "@/app/icons";
 import { foldText } from "@/components/DataTable/tableRows";
+import { IconButton } from "@/components/IconButton";
 import { menuSurface } from "@/components/MenuSurface";
 
 export type SearchableSelectOption = {
@@ -19,6 +21,19 @@ export type SearchableSelectOption = {
   label: string;
   /** Stays in the list whatever is typed, such as an "Other…" entry. */
   pinned?: boolean;
+  /** Starts a new group: a divider is drawn above it (not while a search hides the one before). */
+  dividerBefore?: boolean;
+};
+
+/** An icon button at the end of the select that acts on the chosen option. */
+export type SearchableSelectAction = {
+  icon: ReactNode;
+  /** The button's accessible name and tooltip. */
+  label: string;
+  /** Called with the chosen value. */
+  onClick: (value: string) => void;
+  /** Also disabled while nothing is chosen or the select is disabled. */
+  disabled?: boolean;
 };
 
 export type SearchableSelectProps = {
@@ -30,10 +45,14 @@ export type SearchableSelectProps = {
   /** Width of the open panel in px. Long option labels need a wider panel. */
   panelWidth?: number;
   "aria-label": string;
+  /** Shown, muted, while `value` matches no option (nothing chosen yet). */
+  placeholder?: string;
   /** Label and placeholder of the search field. */
   searchLabel: string;
   /** Shown when the search finds no option. */
   noResults: string;
+  /** Optional icon button integrated after the trigger, such as Copy for the chosen member. */
+  action?: SearchableSelectAction;
   /** `query` is what was typed, for a pinned option that wants to carry it on. */
   onChange: (value: string, query: string) => void;
 };
@@ -50,7 +69,10 @@ function searchable(text: string): string {
 }
 
 /** Right-aligned to the trigger, opening upward when there is no room below. */
-function panelPosition(trigger: HTMLElement, panelWidth: number): CSSProperties {
+function panelPosition(
+  trigger: HTMLElement,
+  panelWidth: number,
+): CSSProperties {
   const rect = trigger.getBoundingClientRect();
   const left = Math.max(
     EDGE_GAP_PX,
@@ -76,8 +98,10 @@ export function SearchableSelect({
   className,
   panelWidth = DEFAULT_PANEL_WIDTH_PX,
   "aria-label": ariaLabel,
+  placeholder,
   searchLabel,
   noResults,
+  action,
   onChange,
 }: SearchableSelectProps) {
   const listboxId = `${useId()}-listbox`;
@@ -89,11 +113,13 @@ export function SearchableSelect({
   const [highlight, setHighlight] = useState(0);
   const [position, setPosition] = useState<CSSProperties>({});
 
+  const selected = options.find((option) => option.value === value);
   const needle = searchable(query);
   const visible = options.filter(
     (option) => option.pinned || searchable(option.label).includes(needle),
   );
-  const nothingFound = needle !== "" && visible.every((option) => option.pinned);
+  const nothingFound =
+    needle !== "" && visible.every((option) => option.pinned);
 
   function show() {
     if (disabled || !triggerRef.current) return;
@@ -121,7 +147,8 @@ export function SearchableSelect({
   useEffect(() => {
     if (!open) return;
     function follow() {
-      if (triggerRef.current) setPosition(panelPosition(triggerRef.current, panelWidth));
+      if (triggerRef.current)
+        setPosition(panelPosition(triggerRef.current, panelWidth));
     }
     function onPointerDown(event: PointerEvent) {
       const target = event.target as Node;
@@ -171,32 +198,54 @@ export function SearchableSelect({
     }
   }
 
+  const trigger = (
+    <button
+      type="button"
+      role="combobox"
+      ref={triggerRef}
+      className={`inline-flex items-center gap-1 ${className ?? ""}`}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      aria-haspopup="listbox"
+      aria-expanded={open}
+      aria-controls={open ? listboxId : undefined}
+      // Keeps the search field's blur from closing the panel just before the click toggles it.
+      onMouseDown={(event) => {
+        if (open) event.preventDefault();
+      }}
+      onClick={() => (open ? hide() : show())}
+      onKeyDown={onTriggerKeyDown}
+    >
+      {selected ? (
+        <span className="whitespace-nowrap">{selected.label}</span>
+      ) : (
+        <span className="whitespace-nowrap text-muted">
+          {placeholder ?? ""}
+        </span>
+      )}
+      <BackIcon
+        className={`size-[0.8em] shrink-0 opacity-60 transition-transform duration-200 ease-out motion-reduce:transition-none ${open ? "rotate-90" : "-rotate-90"}`}
+      />
+    </button>
+  );
+
   return (
     <>
-      <button
-        type="button"
-        role="combobox"
-        ref={triggerRef}
-        className={`inline-flex items-center gap-1 ${className ?? ""}`}
-        disabled={disabled}
-        aria-label={ariaLabel}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-controls={open ? listboxId : undefined}
-        // Keeps the search field's blur from closing the panel just before the click toggles it.
-        onMouseDown={(event) => {
-          if (open) event.preventDefault();
-        }}
-        onClick={() => (open ? hide() : show())}
-        onKeyDown={onTriggerKeyDown}
-      >
-        <span className="whitespace-nowrap">
-          {options.find((option) => option.value === value)?.label ?? ""}
+      {action ? (
+        <span className="inline-flex min-w-0 items-center gap-1">
+          {trigger}
+          <IconButton
+            variant="ghost"
+            className="size-8"
+            icon={action.icon}
+            label={action.label}
+            disabled={disabled || action.disabled || !selected}
+            onClick={() => action.onClick(value)}
+          />
         </span>
-        <BackIcon
-          className={`size-[0.8em] shrink-0 opacity-60 transition-transform duration-200 ease-out motion-reduce:transition-none ${open ? "rotate-90" : "-rotate-90"}`}
-        />
-      </button>
+      ) : (
+        trigger
+      )}
       {open
         ? createPortal(
             <div
@@ -214,7 +263,9 @@ export function SearchableSelect({
                 aria-controls={listboxId}
                 aria-autocomplete="list"
                 aria-activedescendant={
-                  visible.length > 0 ? `${listboxId}-opt-${highlight}` : undefined
+                  visible.length > 0
+                    ? `${listboxId}-opt-${highlight}`
+                    : undefined
                 }
                 placeholder={searchLabel}
                 // 1rem: a smaller field makes iOS zoom the page when it takes focus.
@@ -228,7 +279,9 @@ export function SearchableSelect({
                 onKeyDown={onSearchKeyDown}
               />
               {nothingFound ? (
-                <p className="m-0 px-2 py-1 text-[0.85rem] text-muted">{noResults}</p>
+                <p className="m-0 px-2 py-1 text-[0.85rem] text-muted">
+                  {noResults}
+                </p>
               ) : null}
               <ul
                 id={listboxId}
@@ -241,7 +294,15 @@ export function SearchableSelect({
               >
                 {visible.map((option, index) => {
                   const highlighted = index === highlight;
-                  return (
+                  return [
+                    option.dividerBefore && index > 0 ? (
+                      <li
+                        key={`${option.value}-divider`}
+                        role="separator"
+                        aria-hidden="true"
+                        className="mx-2 my-1 h-px list-none bg-border"
+                      />
+                    ) : null,
                     <li
                       key={option.value}
                       id={`${listboxId}-opt-${index}`}
@@ -257,8 +318,8 @@ export function SearchableSelect({
                       onClick={() => choose(option)}
                     >
                       {option.label}
-                    </li>
-                  );
+                    </li>,
+                  ];
                 })}
               </ul>
             </div>,

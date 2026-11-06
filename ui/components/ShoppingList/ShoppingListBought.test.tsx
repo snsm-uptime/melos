@@ -136,12 +136,12 @@ describe("bought and store tabs (spec 070)", () => {
       Array.from(view.container.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
     expect(tabs().map((t) => t.textContent)).toEqual([
       "All",
-      "Supermarket 1",
       "Farmers market 1",
+      "Supermarket 1",
     ]);
-    act(() => tabs()[2].click());
+    act(() => tabs()[1].click());
     expect(names()).toEqual(["tomato — 2"]);
-    expect(tabs()[2].getAttribute("aria-selected")).toBe("true");
+    expect(tabs()[1].getAttribute("aria-selected")).toBe("true");
   });
 
   it("shows no tabs when every item is at one place, and names tabs in Spanish", async () => {
@@ -155,6 +155,6 @@ describe("bought and store tabs (spec 070)", () => {
     const labels = Array.from(view.container.querySelectorAll('[role="tab"]')).map(
       (t) => t.textContent,
     );
-    expect(labels).toEqual(["Todo", "Supermercado 1", "Mercado de agricultores 1"]);
+    expect(labels).toEqual(["Todo", "Mercado de agricultores 1", "Supermercado 1"]);
   });
 });

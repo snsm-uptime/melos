@@ -20,20 +20,26 @@ export function CountChips({
   return (
     <div className="flex min-w-0 items-center gap-3">
       <span className="shrink-0 font-semibold">{String(count)}</span>
-      <div className="flex max-w-[14rem] gap-1 overflow-x-auto pb-1">
-        {list.map((item, index) =>
-          item !== null && typeof item === "object" ? (
-            <Link
-              key={index}
-              href={item.href}
-              className={`${chipClassName.muted} no-underline hover:border-accent hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
-            >
-              {item.label}
-            </Link>
-          ) : (
-            <Chip key={index}>{typeof item === "string" ? item : (fallback ?? "")}</Chip>
-          ),
-        )}
+      {/* The row fills the cell; `w-0 min-w-full` keeps the chips from widening the table, so it
+          scrolls only when the space the table gives the column is too small for them. */}
+      <div className="min-w-[12rem] flex-1">
+        <div className="flex w-0 min-w-full gap-1 overflow-x-auto pb-1">
+          {list.map((item, index) =>
+            item !== null && typeof item === "object" ? (
+              <Link
+                key={index}
+                href={item.href}
+                className={`${chipClassName.muted} no-underline hover:border-accent hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
+              >
+                {item.label}
+              </Link>
+            ) : (
+              <Chip key={index}>
+                {typeof item === "string" ? item : (fallback ?? "")}
+              </Chip>
+            ),
+          )}
+        </div>
       </div>
     </div>
   );

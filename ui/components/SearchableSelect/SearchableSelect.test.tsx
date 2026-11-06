@@ -145,4 +145,34 @@ describe("SearchableSelect", () => {
     act(() => trigger().click());
     expect(search()).toBeNull();
   });
+
+  it("shows a placeholder and an action button that acts on the chosen value", () => {
+    const onAction = vi.fn();
+    function WithAction() {
+      const [value, setValue] = useState("none");
+      return (
+        <SearchableSelect
+          aria-label="Member"
+          placeholder="Choose a member"
+          searchLabel="Search"
+          noResults="None"
+          value={value}
+          options={[{ value: "u2", label: "ben" }]}
+          onChange={setValue}
+          action={{ icon: <svg />, label: "Copy", onClick: onAction }}
+        />
+      );
+    }
+    act(() => root.render(<WithAction />));
+    const combobox = host.querySelector<HTMLButtonElement>('[role="combobox"]')!;
+    const copy = host.querySelector<HTMLButtonElement>('button[aria-label="Copy"]')!;
+    expect(combobox.textContent).toBe("Choose a member");
+    // Nothing chosen yet: the action waits.
+    expect(copy.disabled).toBe(true);
+    act(() => combobox.click());
+    act(() => (document.querySelector('[role="option"]') as HTMLElement).click());
+    expect(copy.disabled).toBe(false);
+    act(() => copy.click());
+    expect(onAction).toHaveBeenCalledWith("u2");
+  });
 });
