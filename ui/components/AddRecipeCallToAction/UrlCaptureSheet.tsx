@@ -1,7 +1,7 @@
 "use client";
 
+import { ActionDialog } from "@/components/ActionDialog";
 import { NotebookPicker } from "@/components/NotebookPicker";
-import { Sheet } from "@/app/kitchens/Sheet";
 import { CauldronLoader } from "@/components/CauldronLoader";
 import { submitLinkCapture } from "@/lib/capture/captureClient";
 import {
@@ -35,7 +35,7 @@ const fieldClassName =
   "w-full rounded-[0.75rem] border border-field-border bg-background px-3 py-2 text-[0.95rem] text-foreground";
 
 /**
- * The link sheet (spec 026 FR-001 to FR-004, FR-018, FR-023): one link field, the notebook
+ * The link capture modal (spec 026 FR-001 to FR-004, FR-018, FR-023): one link field, the notebook
  * picker, and Read recipe. The link stays in the store, so a refusal or Back keeps it unchanged.
  * One submission at a time; the api opens the page, never the browser.
  */
@@ -141,12 +141,15 @@ export function UrlCaptureSheet({
   );
 
   return (
-    <Sheet
+    <ActionDialog
       open={open}
-      onClose={closeSheet}
+      onOpenChange={(next) => {
+        if (!next) closeSheet();
+      }}
       closeLabel={t.close}
       title={notebook?.name ?? t.addRecipe}
-      body={body}
-    />
+    >
+      {body}
+    </ActionDialog>
   );
 }
