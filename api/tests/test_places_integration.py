@@ -205,3 +205,19 @@ def test_a_closed_list_uses_the_viewers_current_places(
     _set(ana, "tomato", FARMERS)
     read = ana.get(f"/kitchens/{kitchen}/shopping-lists/{list_id}").json()
     assert read["lines"][0]["place"]["key"] == "farmers_market"
+
+
+def test_ingredient_page_lists_recipes_and_last_use(
+    client: TestClient, db_session: Session
+) -> None:
+    people, _kitchen, notebook = _home(client, db_session)
+    ana = people.as_("ana")
+    soup = recipe(
+        ana, notebook, "Soup", [measured("tomato", 2, "unit"), measured("Tomato", 1, "unit")]
+    )
+    recipe(ana, notebook, "Salad", [measured("tomato", 1, "unit")])
+    items = {i["name"]: i for i in ana.get("/me/ingredient-places").json()["items"]}
+    # A recipe that lists the name twice counts once (order is covered by the unit test).
+    assert sorted(r["title"] for r in items["tomato"]["recipes"]) == ["Salad", "Soup"]
+    assert soup in {r["id"] for r in items["tomato"]["recipes"]}
+    assert items["tomato"]["last_used_at"] is not None

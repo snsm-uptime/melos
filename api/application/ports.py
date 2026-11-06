@@ -833,6 +833,16 @@ class PlaceSource:
     alias: str
 
 
+@dataclass(frozen=True, slots=True)
+class RecipeUse:
+    """One ingredient line of a recipe the person can read: its name, the recipe and its date."""
+
+    name: str
+    recipe_id: UUID
+    title: str
+    used_at: datetime
+
+
 class PlaceRepository(Protocol):
     """One person's custom places and their place per ingredient name (spec 070 R5)."""
 
@@ -864,6 +874,10 @@ class PlaceRepository(Protocol):
 
     def catalog_names(self, user_id: UUID) -> Sequence[str]:
         """Names of the catalogs the person can read plus their chosen names (research R7)."""
+        ...
+
+    def recipe_uses(self, user_id: UUID) -> Sequence[RecipeUse]:
+        """Every ingredient line of the recipes the person can read (same reach as the catalogs)."""
         ...
 
     def sources(self, user_id: UUID) -> Sequence[PlaceSource]: ...

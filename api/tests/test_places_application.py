@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from dataclasses import replace
+from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
@@ -16,7 +17,7 @@ from application.places import (
     RenamePlaceService,
     SetIngredientPlaceService,
 )
-from application.ports import PlaceSource
+from application.ports import PlaceSource, RecipeUse
 from domain.errors import (
     IngredientNameInvalidError,
     InvalidPlaceError,
@@ -33,6 +34,7 @@ class FakePlaces:
         self.chosen: dict[UUID, dict[str, PlaceRef]] = {}
         self.catalog: dict[UUID, list[str]] = {}
         self.shared: dict[UUID, list[PlaceSource]] = {}
+        self.uses: dict[UUID, list[RecipeUse]] = {}
 
     def list_custom(self, user_id: UUID) -> Sequence[CustomPlace]:
         mine = [p for owner, p in self.places.values() if owner == user_id]
@@ -76,6 +78,9 @@ class FakePlaces:
 
     def catalog_names(self, user_id: UUID) -> Sequence[str]:
         return [*self.catalog.get(user_id, []), *self.chosen.get(user_id, {})]
+
+    def recipe_uses(self, user_id: UUID) -> Sequence[RecipeUse]:
+        return self.uses.get(user_id, [])
 
     def sources(self, user_id: UUID) -> Sequence[PlaceSource]:
         return self.shared.get(user_id, [])
@@ -138,6 +143,25 @@ def test_set_place_and_catalog_page() -> None:
     DeletePlaceService(repo).execute(ANA, asian.id)
     miso = next(i for i in IngredientPlacesService(repo).execute(ANA) if i.name == "Miso")
     assert miso.place == SUPERMARKET
+
+
+def test_catalog_page_lists_recipes_and_last_use() -> None:
+    repo = FakePlaces()
+    repo.catalog[ANA] = ["tomato", "flour"]
+    soup, salad = uuid.uuid4(), uuid.uuid4()
+    old, new = datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 3, 1, tzinfo=UTC)
+    repo.uses[ANA] = [
+        RecipeUse("Tomato", soup, "Soup", old),
+        RecipeUse("tomato ", soup, "Soup", old),  # the same recipe twice counts once
+        RecipeUse("tomato", salad, "Salad", new),
+        RecipeUse("basil", salad, "Salad", new),  # not in the catalog: ignored
+    ]
+    items = {i.name: i for i in IngredientPlacesService(repo).execute(ANA)}
+    assert [r.title for r in items["tomato"].recipes] == ["Salad", "Soup"]
+    assert items["tomato"].recipes[0].id == salad
+    assert items["tomato"].last_used_at == new
+    assert items["flour"].recipes == ()
+    assert items["flour"].last_used_at is None
 
 
 def test_invalid_places_and_names() -> None:

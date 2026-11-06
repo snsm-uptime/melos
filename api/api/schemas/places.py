@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from application.places import IngredientPlace, PlacesView
@@ -24,9 +25,16 @@ class PlaceNameBody(BaseModel):
     name: object = None
 
 
+class IngredientRecipeResponse(BaseModel):
+    id: UUID
+    title: str
+
+
 class IngredientPlaceResponse(BaseModel):
     name: str
     place: PlaceResponse
+    recipes: list[IngredientRecipeResponse] = []
+    last_used_at: datetime | None = None
 
 
 class IngredientPlacesResponse(BaseModel):
@@ -59,4 +67,9 @@ def places_response(view: PlacesView) -> PlacesResponse:
 
 
 def ingredient_place_response(item: IngredientPlace) -> IngredientPlaceResponse:
-    return IngredientPlaceResponse(name=item.name, place=place_response(item.place))
+    return IngredientPlaceResponse(
+        name=item.name,
+        place=place_response(item.place),
+        recipes=[IngredientRecipeResponse(id=r.id, title=r.title) for r in item.recipes],
+        last_used_at=item.last_used_at,
+    )

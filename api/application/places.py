@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from uuid import UUID
 
 from domain.errors import InvalidPlaceError, PlaceNotFoundError
@@ -23,7 +24,7 @@ from domain.places import (
     ingredient_key,
 )
 
-from application.ports import PlaceRepository, PlaceSource
+from application.ports import PlaceRepository, PlaceSource, RecipeUse
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +36,19 @@ class PlacesView:
 
 
 @dataclass(frozen=True, slots=True)
+class IngredientRecipe:
+    id: UUID
+    title: str
+
+
+@dataclass(frozen=True, slots=True)
 class IngredientPlace:
     name: str
     place: PlaceRef
+    # The readable recipes that use the name, newest first.
+    recipes: tuple[IngredientRecipe, ...] = ()
+    # When the newest of those recipes was made; None when no recipe uses it.
+    last_used_at: datetime | None = None
 
 
 class ListPlacesService:
@@ -96,17 +107,40 @@ def checked_place(places: PlaceRepository, user_id: UUID, place: PlaceRef) -> Pl
     raise InvalidPlaceError()
 
 
-def catalog_entries(names: Sequence[str], choices: dict[str, PlaceRef]) -> list[IngredientPlace]:
-    """One entry per normalized name, shown with its first catalog spelling, sorted (R7)."""
+def catalog_entries(
+    names: Sequence[str],
+    choices: dict[str, PlaceRef],
+    uses: Sequence[RecipeUse] = (),
+) -> list[IngredientPlace]:
+    """One entry per normalized name, shown with its first catalog spelling, sorted (R7).
+
+    Each entry lists the recipes that use the name (one per recipe, newest first) and the date of
+    the newest one.
+    """
     shown: dict[str, str] = {}
     for name in sorted(names, key=lambda n: (normalize_name(n), n)):
         key = normalize_name(name)
         if key:
             shown.setdefault(key, name)
-    return [
-        IngredientPlace(shown[key], choices.get(key, SUPERMARKET))
-        for key in sorted(shown, key=lambda k: (shown[k].casefold(), k))
-    ]
+    by_key: dict[str, dict[UUID, RecipeUse]] = {}
+    for use in uses:
+        key = normalize_name(use.name)
+        if key in shown:
+            by_key.setdefault(key, {}).setdefault(use.recipe_id, use)
+    entries = []
+    for key in sorted(shown, key=lambda k: (shown[k].casefold(), k)):
+        # Newest first; same-moment recipes by title, so the order never shifts between loads.
+        recipes = sorted(by_key.get(key, {}).values(), key=lambda u: u.title.casefold())
+        recipes.sort(key=lambda u: u.used_at, reverse=True)
+        entries.append(
+            IngredientPlace(
+                shown[key],
+                choices.get(key, SUPERMARKET),
+                tuple(IngredientRecipe(u.recipe_id, u.title) for u in recipes),
+                recipes[0].used_at if recipes else None,
+            )
+        )
+    return entries
 
 
 class IngredientPlacesService:
@@ -114,7 +148,11 @@ class IngredientPlacesService:
         self._places = places
 
     def execute(self, user_id: UUID) -> list[IngredientPlace]:
-        return catalog_entries(self._places.catalog_names(user_id), self._places.choices(user_id))
+        return catalog_entries(
+            self._places.catalog_names(user_id),
+            self._places.choices(user_id),
+            self._places.recipe_uses(user_id),
+        )
 
 
 class SetIngredientPlaceService:

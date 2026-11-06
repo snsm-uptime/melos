@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Sequence
 from uuid import UUID
 
-from application.ports import PlaceSource
+from application.ports import PlaceSource, RecipeUse
 from domain.places import CustomPlace, PlaceRef
 from sqlalchemy import delete, func, select, union, update
 from sqlalchemy.dialects.postgresql import insert
@@ -19,6 +19,8 @@ from adapters.persistence.models import (
     NotebookMembershipModel,
     NotebookModel,
     PlaceModel,
+    RecipeIngredientModel,
+    RecipeModel,
     UserModel,
 )
 
@@ -112,6 +114,33 @@ class SqlAlchemyPlaceRepository:
         )
         chosen = select(IngredientPlaceModel.name).where(IngredientPlaceModel.user_id == user_id)
         return list(self._db.scalars(union(personal, kitchen, chosen)).all())
+
+    def recipe_uses(self, user_id: UUID) -> Sequence[RecipeUse]:
+        personal = (
+            select(NotebookModel.id)
+            .join(NotebookMembershipModel, NotebookMembershipModel.notebook_id == NotebookModel.id)
+            .where(NotebookMembershipModel.user_id == user_id, NotebookModel.kitchen_id.is_(None))
+        )
+        kitchen = (
+            select(NotebookModel.id)
+            .join(
+                KitchenMembershipModel,
+                KitchenMembershipModel.kitchen_id == NotebookModel.kitchen_id,
+            )
+            .where(KitchenMembershipModel.user_id == user_id)
+        )
+        readable = union(personal, kitchen).subquery()
+        rows = self._db.execute(
+            select(
+                RecipeIngredientModel.name,
+                RecipeModel.id,
+                RecipeModel.title,
+                RecipeModel.created_at,
+            )
+            .join(RecipeModel, RecipeModel.id == RecipeIngredientModel.recipe_id)
+            .where(RecipeModel.notebook_id.in_(select(readable.c[0])))
+        ).all()
+        return [RecipeUse(r.name, r.id, r.title, r.created_at) for r in rows]
 
     def sources(self, user_id: UUID) -> Sequence[PlaceSource]:
         mine_k = aliased(KitchenMembershipModel)
