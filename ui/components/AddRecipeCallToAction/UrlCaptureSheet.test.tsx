@@ -143,7 +143,10 @@ describe("UrlCaptureSheet", () => {
 
     await act(async () => submitButton().click());
 
-    expect(document.querySelector("[role='status']")).not.toBeNull();
+    // The loader is on the button, not a separate one in the sheet.
+    expect(submitButton().getAttribute("aria-busy")).toBe("true");
+    expect(submitButton().querySelector("svg")).not.toBeNull();
+    expect(document.querySelector("[role='status']")).toBeNull();
     expect(submitButton().disabled).toBe(true);
     // A second press while waiting sends nothing (FR-004).
     await act(async () => submitButton().click());
