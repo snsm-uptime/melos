@@ -4,7 +4,8 @@ import { Children, act, type ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const replace = vi.fn();
-const router = { replace };
+const push = vi.fn();
+const router = { replace, push };
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 const chrome = vi.hoisted(() => ({ trailing: null as unknown }));
 vi.mock("@/components/ChromeBack", () => ({
@@ -124,7 +125,7 @@ describe("CartScreen", () => {
     await flush();
   }
 
-  it("empties the cart on screen and shows a toast after Done", async () => {
+  it("shows a toast and goes to the kitchen page after Done", async () => {
     shopping.fetchShoppingList.mockResolvedValue({
       ok: true,
       value: {
@@ -150,7 +151,7 @@ describe("CartScreen", () => {
 
     expect(shopping.closeShoppingList).toHaveBeenCalledWith("k1", "l1");
     expect(document.body.textContent).toContain("Cart closed.");
-    expect(view.container.textContent).not.toContain("Recipe a");
+    expect(push).toHaveBeenCalledWith("/kitchens/k1");
   });
 
   it("loads the saved cart", async () => {

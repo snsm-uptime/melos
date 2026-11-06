@@ -386,35 +386,86 @@ describe("KitchenDetailChrome", () => {
     });
   });
 
-  it("puts the past lists button right after the cart button and opens past lists (spec 025 FR-010)", async () => {
+  describe("past lists in the dots menu (spec 025 FR-010)", () => {
     const pastLists = { href: "/kitchens/k1/shopping-lists", label: "Past lists" };
     const notebooks = { href: "/kitchens/k1/notebooks", label: "Notebooks" };
-    await act(async () => {
-      root.render(
-        <AppShell>
-          <KitchenDetailChrome
-            title="Household"
-            share={share}
-            cart={CART}
-            pastLists={pastLists}
-            notebooks={notebooks}
-          />
-        </AppShell>,
+    const manage: KitchenManage = {
+      kitchenId: "k1",
+      name: "Household",
+      isOwner: true,
+      isArchived: false,
+      isDefault: false,
+      locale: "en",
+    };
+
+    async function renderWith(next: Partial<KitchenManage> = {}) {
+      await act(async () => {
+        root.render(
+          <AppShell>
+            <KitchenDetailChrome
+              title="Household"
+              share={share}
+              cart={CART}
+              pastLists={pastLists}
+              notebooks={notebooks}
+              manage={{ ...manage, ...next }}
+            />
+          </AppShell>,
+        );
+      });
+    }
+
+    function menuItems(): string[] {
+      return Array.from(document.querySelectorAll('[role="menuitem"]')).map(
+        (item) => item.textContent ?? "",
       );
+    }
+
+    async function openMenu() {
+      const dots = container.querySelector(
+        `header button[aria-label="${t.menuAria}"]`,
+      ) as HTMLButtonElement;
+      await act(async () => dots.click());
+    }
+
+    beforeEach(() => vi.clearAllMocks());
+
+    it("is no longer a header button", async () => {
+      await renderWith();
+      const labels = Array.from(container.querySelectorAll("header button")).map((b) =>
+        b.getAttribute("aria-label"),
+      );
+      expect(labels).not.toContain("Past lists");
     });
 
-    const buttons = Array.from(container.querySelectorAll("header button"));
-    expect(buttons.map((b) => b.getAttribute("aria-label"))).toEqual([
-      "Open menu",
-      "Cart",
-      "Past lists",
-      "Notebooks",
-      t.mobileInviteAria,
-    ]);
-    await act(async () => {
-      (buttons[2] as HTMLButtonElement).click();
+    it("sits right below Rename kitchen and opens past lists", async () => {
+      await renderWith();
+      await openMenu();
+      expect(menuItems()).toEqual([
+        "Set as default",
+        "Rename kitchen",
+        "Past lists",
+        "Archive kitchen",
+        t.deleteAria,
+      ]);
+      const item = Array.from(document.querySelectorAll<HTMLElement>('[role="menuitem"]')).find(
+        (el) => el.textContent === "Past lists",
+      );
+      await act(async () => item!.click());
+      expect(push).toHaveBeenCalledWith("/kitchens/k1/shopping-lists");
     });
-    expect(push).toHaveBeenCalledWith("/kitchens/k1/shopping-lists");
+
+    it("ends the menu for a non-owner, who has no Rename kitchen", async () => {
+      await renderWith({ isOwner: false });
+      await openMenu();
+      expect(menuItems()).toEqual(["Set as default", "Past lists"]);
+    });
+
+    it("keeps the menu for a non-owner of an archived kitchen", async () => {
+      await renderWith({ isOwner: false, isArchived: true });
+      await openMenu();
+      expect(menuItems()).toEqual(["Past lists"]);
+    });
   });
 
   describe("notebooks button (spec 035 FR-007a)", () => {

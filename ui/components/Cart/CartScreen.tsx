@@ -300,7 +300,7 @@ export function CartScreen({ kitchenId, locale }: { kitchenId: string; locale: L
         cart={cart}
         onClosed={() => {
           toast.show({ id: "cart-closed", text: shoppingListMessages[locale].cartClosed });
-          void load();
+          router.push(`/kitchens/${encodeURIComponent(kitchenId)}`);
         }}
       />
     </div>

@@ -74,7 +74,7 @@ type Props = {
    * badge on its bottom right corner shows how many recipes are in the cart, in the given language.
    */
   cart?: { href: string; label: string; locale: Locale };
-  /** Every member: a button beside the cart button that opens the kitchen's past lists. */
+  /** Every member: an item in the dots menu, below Rename kitchen, that opens the kitchen's past lists. */
   pastLists?: { href: string; label: string };
   /** Every member: a button beside the share button that opens the kitchen's notebooks view. */
   notebooks?: { href: string; label: string };
@@ -112,7 +112,7 @@ export function KitchenDetailChrome({ title, share, cart, pastLists, notebooks, 
   const notebooksLabel = notebooks?.label;
   const cartCount = useKitchenCartCount();
 
-  const actions = useMemo(() => {
+  const manageActions = useMemo(() => {
     if (!manage) return [];
     const { kitchenId, name, isOwner, isArchived, isDefault } = manage;
     const fail = (text: string) => toast.show({ id: "kitchen-action", text });
@@ -181,9 +181,23 @@ export function KitchenDetailChrome({ title, share, cart, pastLists, notebooks, 
     return list;
   }, [manage, kt, panelText, push, refresh, toast]);
 
+  // Past lists sits in the dots menu right below Rename kitchen, else at its end.
+  const actions = useMemo(() => {
+    if (!pastListsHref || !pastListsLabel) return manageActions;
+    const item: Action = {
+      key: "past-lists",
+      label: pastListsLabel,
+      icon: <HistoryIcon className="size-5" />,
+      onClick: () => push(pastListsHref),
+    };
+    const rename = manageActions.findIndex((action) => action.key === "rename");
+    const at = rename === -1 ? manageActions.length : rename + 1;
+    return [...manageActions.slice(0, at), item, ...manageActions.slice(at)];
+  }, [manageActions, pastListsHref, pastListsLabel, push]);
+
   const trailing = useMemo(
     () =>
-      openLabel || cartHref || pastListsHref || notebooksHref || actions.length > 0 ? (
+      openLabel || cartHref || notebooksHref || actions.length > 0 ? (
         <>
           {cartHref && cartLabel && cartLocale ? (
             <IconButton
@@ -208,15 +222,6 @@ export function KitchenDetailChrome({ title, share, cart, pastLists, notebooks, 
                   ) : null}
                 </span>
               }
-            />
-          ) : null}
-          {pastListsHref && pastListsLabel ? (
-            <IconButton
-              type="button"
-              variant="ghost"
-              label={pastListsLabel}
-              onClick={() => push(pastListsHref)}
-              icon={<HistoryIcon className="size-6" />}
             />
           ) : null}
           {notebooksHref && notebooksLabel ? (
@@ -274,8 +279,6 @@ export function KitchenDetailChrome({ title, share, cart, pastLists, notebooks, 
       cartLabel,
       cartLocale,
       cartCount,
-      pastListsHref,
-      pastListsLabel,
       notebooksHref,
       notebooksLabel,
       push,
