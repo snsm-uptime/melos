@@ -2,13 +2,12 @@ import {
   BUBBLES,
   CAULDRON_SHAPES,
   MARK_INK_STRENGTH,
-  MARK_POT_STRENGTH,
   MARK_VIEWBOX_ATTR,
 } from "./geometry";
 
-/* Part way to the page background: lighter on a light theme, darker on a dark one. */
-const POT_FILL = `color-mix(in srgb, var(--foreground) ${MARK_POT_STRENGTH}%, var(--background))`;
-const INK_FILL = `color-mix(in srgb, var(--secondary) ${MARK_INK_STRENGTH}%, var(--background))`;
+/* The body is a theme token: dark violet on the light theme, light violet on the dark one. */
+const POT_FILL = "var(--cauldron-body)";
+const INK_FILL = `color-mix(in srgb, var(--accent-fill) ${MARK_INK_STRENGTH}%, var(--background))`;
 
 const POT_PARTS = [
   CAULDRON_SHAPES.body,
