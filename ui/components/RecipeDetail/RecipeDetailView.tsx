@@ -3,10 +3,17 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { BackIcon, CartPlusIcon, PencilIcon, TrashIcon } from "@/app/icons";
+import {
+  BackIcon,
+  CartPlusIcon,
+  PencilIcon,
+  ShareIcon,
+  TrashIcon,
+} from "@/app/icons";
 import { EditorNotice } from "@/components/Cart/EditorNotice";
 import { Chip } from "@/components/Chip";
 import { IconButton } from "@/components/IconButton";
+import { ShareRecipeDialog } from "@/components/ShareRecipeDialog";
 import {
   HeaderAction,
   HeaderActions,
@@ -15,7 +22,9 @@ import { IngredientLineRow } from "@/components/RecipeDraft/IngredientLineRow";
 import { StepCard } from "@/components/RecipeDraft/StepCard";
 import { cartMessages } from "@/lib/i18n/cart";
 import type { Locale } from "@/lib/i18n/locale";
+import { messagesFor } from "@/lib/i18n/messages";
 import { recipeDetailMessages } from "@/lib/i18n/recipeDetail";
+import { recipeShareMessages } from "@/lib/i18n/recipeShare";
 import { scaleLine } from "@/lib/recipeScale";
 import type { RecipeDetail } from "@/lib/recipesClient";
 
@@ -56,11 +65,13 @@ export function RecipeDetailView({
   cartAction,
 }: RecipeDetailViewProps) {
   const t = recipeDetailMessages[locale];
+  const shareText = messagesFor(recipeShareMessages, locale);
   const c = cartMessages[locale];
   // Another session edits the recipe: Edit and Delete wait (spec 022 FR-022).
   const lockedBy = recipe.editor && !recipe.editor.is_me ? recipe.editor : null;
   const source = recipe.source?.url ?? null;
   const [servings, setServings] = useState(recipe.base_servings);
+  const [sharing, setSharing] = useState(false);
   const scaled = servings !== recipe.base_servings;
   // Always from the saved lines, so going away and back returns to the saved amounts.
   const lines = useMemo(
@@ -72,6 +83,14 @@ export function RecipeDetailView({
   );
   return (
     <main className="mx-auto flex w-full flex-col gap-4 md:min-h-0 md:flex-1">
+      {sharing ? (
+        <ShareRecipeDialog
+          recipeId={recipe.id}
+          locale={locale}
+          open
+          onOpenChange={setSharing}
+        />
+      ) : null}
       <div className="flex flex-col gap-6 pb-8 md:min-h-0 md:flex-1">
         {/* Same insets and Back slot as the draft page and AppShell's chrome header. */}
         <header className="flex items-center gap-2 bg-background pt-[max(0.5rem,env(safe-area-inset-top))] max-md:sticky max-md:top-0 max-md:z-10 pr-[max(1rem,env(safe-area-inset-right))] pb-1 pl-[max(0.5rem,env(safe-area-inset-left))]">
@@ -113,31 +132,38 @@ export function RecipeDetailView({
               />
             </div>
           ) : null}
-          {recipe.can_write ? (
-            <HeaderActions>
-              {lockedBy ? (
+          <HeaderActions>
+            {recipe.can_write ? (
+              <>
+                {lockedBy ? (
+                  <HeaderAction
+                    onClick={() => {}}
+                    disabled
+                    label={t.edit}
+                    icon={<PencilIcon className="size-5" />}
+                  />
+                ) : (
+                  <HeaderAction
+                    href={editHref}
+                    label={t.edit}
+                    icon={<PencilIcon className="size-5" />}
+                  />
+                )}
                 <HeaderAction
-                  onClick={() => {}}
-                  disabled
-                  label={t.edit}
-                  icon={<PencilIcon className="size-5" />}
+                  onClick={onDelete}
+                  disabled={Boolean(lockedBy)}
+                  label={t.delete}
+                  tone="danger"
+                  icon={<TrashIcon className="size-5" />}
                 />
-              ) : (
-                <HeaderAction
-                  href={editHref}
-                  label={t.edit}
-                  icon={<PencilIcon className="size-5" />}
-                />
-              )}
-              <HeaderAction
-                onClick={onDelete}
-                disabled={Boolean(lockedBy)}
-                label={t.delete}
-                tone="danger"
-                icon={<TrashIcon className="size-5" />}
-              />
-            </HeaderActions>
-          ) : null}
+              </>
+            ) : null}
+            <HeaderAction
+              onClick={() => setSharing(true)}
+              label={shareText.shareButton}
+              icon={<ShareIcon className="size-5" />}
+            />
+          </HeaderActions>
         </header>
 
         {lockedBy ? (

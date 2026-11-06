@@ -77,7 +77,8 @@ describe("RecipeDetailView", () => {
     const labels = Array.from(container.querySelectorAll("button")).map(
       (b) => b.getAttribute("aria-label") ?? b.textContent,
     );
-    expect(labels).toEqual(["Delete", "Fewer servings", "More servings"]);
+    // Share is open to any reader (spec 071 FR-001); the rest are the servings and Delete.
+    expect(labels).toEqual(["Delete", "Share recipe", "Fewer servings", "More servings"]);
     expect(container.querySelector("[aria-label=Remove]")).toBeNull();
     expect(container.querySelector("[aria-label='Move up']")).toBeNull();
     expect(container.querySelector("[aria-label='Move down']")).toBeNull();
