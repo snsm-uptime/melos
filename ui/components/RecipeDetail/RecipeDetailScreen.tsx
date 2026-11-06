@@ -133,6 +133,7 @@ export function RecipeDetailScreen({ recipeId, locale }: { recipeId: string; loc
         backHref={backHref}
         editHref={editHref}
         onDelete={() => setConfirming(true)}
+        onRecipeChange={(next) => setState({ status: "ready", recipe: next })}
         cartAction={
           // Only kitchen recipes carry the cart fields; no message on success (FR-017a).
           kitchenId && typeof recipe.in_cart === "boolean"

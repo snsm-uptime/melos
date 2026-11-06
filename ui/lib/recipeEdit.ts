@@ -28,6 +28,8 @@ export type EditState = {
   declinedUnits: string[];
   /** The recipe photo as a data URI, or null (S-067). */
   previewImage: string | null;
+  /** The recipe's language (spec 043); its lines show the names of this language. */
+  language: "en" | "es";
   /** True once the member picks or removes the photo; only then is it sent on update. */
   imageChanged: boolean;
 };
@@ -38,24 +40,31 @@ export function nextKey(prefix: string): string {
   return `${prefix}-${counter}`;
 }
 
-/** A stored recipe as form state. Each stored name is already a catalog name, so it is matched. */
+/**
+ * A stored recipe as form state. Each stored name is already a catalog name, so it is matched.
+ * A line shows its name in the recipe's language (spec 043); Save maps it back to the kept name.
+ */
 export function toEditState(recipe: RecipeDetail): EditState {
   return {
     title: recipe.title,
     baseServings: recipe.base_servings,
     servingsEstimated: recipe.servings_estimated,
-    lines: recipe.ingredient_lines.map((line) => ({
-      key: nextKey("edit-line"),
-      name: line.name,
-      vague: line.vague,
-      quantity: line.quantity,
-      unit: line.unit,
-      size: line.size,
-      preparation: line.preparation,
-      note: line.note,
-      textName: line.name,
-      match: { kind: "matched", entry: line.name },
-    })),
+    language: recipe.language ?? "es",
+    lines: recipe.ingredient_lines.map((line) => {
+      const name = line.shown_name ?? line.name;
+      return {
+        key: nextKey("edit-line"),
+        name,
+        vague: line.vague,
+        quantity: line.quantity,
+        unit: line.unit,
+        size: line.size,
+        preparation: line.preparation,
+        note: line.note,
+        textName: name,
+        match: { kind: "matched", entry: name },
+      };
+    }),
     steps: recipe.steps.map((text) => ({ key: nextKey("edit-step"), text })),
     keptUnits: [],
     declinedUnits: [],
@@ -84,6 +93,7 @@ export function toUpdateBody(
     })),
     steps: state.steps.map((step) => step.text),
     keep_units: state.keptUnits,
+    language: state.language,
     // Left out keeps the stored photo; null removes it; a data URI replaces it (S-067).
     ...(state.imageChanged ? { preview_image: state.previewImage } : {}),
   };

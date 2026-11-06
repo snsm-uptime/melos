@@ -28,6 +28,7 @@ import { recipeShareMessages } from "@/lib/i18n/recipeShare";
 import { scaleLine } from "@/lib/recipeScale";
 import type { RecipeDetail } from "@/lib/recipesClient";
 
+import { LanguageProposal } from "./LanguageProposal";
 import { ServingsControl } from "./ServingsControl";
 
 type RecipeDetailViewProps = {
@@ -39,6 +40,8 @@ type RecipeDetailViewProps = {
   onDelete: () => void;
   /** The cart-icon button, for kitchen recipes (spec 022 FR-017c); omit for none. */
   cartAction?: DetailCartAction;
+  /** The recipe after its language was applied or its proposal dismissed (spec 043). */
+  onRecipeChange?: (recipe: RecipeDetail) => void;
 };
 
 export type DetailCartAction = {
@@ -63,6 +66,7 @@ export function RecipeDetailView({
   editHref,
   onDelete,
   cartAction,
+  onRecipeChange,
 }: RecipeDetailViewProps) {
   const t = recipeDetailMessages[locale];
   const shareText = messagesFor(recipeShareMessages, locale);
@@ -77,7 +81,8 @@ export function RecipeDetailView({
   const lines = useMemo(
     () =>
       recipe.ingredient_lines.map((line) =>
-        scaleLine(line, servings, recipe.base_servings),
+        // Each line shows its name in the recipe's language (spec 043 FR-006).
+        scaleLine({ ...line, name: line.shown_name ?? line.name }, servings, recipe.base_servings),
       ),
     [recipe.ingredient_lines, recipe.base_servings, servings],
   );
@@ -116,7 +121,21 @@ export function RecipeDetailView({
               <Chip tone="accent">
                 {recipe.author_alias ?? t.authorUnknown}
               </Chip>
+              {recipe.language ? (
+                <>
+                  <span>{t.languageLabel}</span>
+                  <Chip>{t.languages[recipe.language]}</Chip>
+                </>
+              ) : null}
             </div>
+            {recipe.can_write && recipe.proposed_language ? (
+              <LanguageProposal
+                recipe={recipe}
+                proposed={recipe.proposed_language}
+                locale={locale}
+                onRecipeChange={onRecipeChange}
+              />
+            ) : null}
           </div>
           {cartAction ? (
             <div className="flex shrink-0 items-center self-start">

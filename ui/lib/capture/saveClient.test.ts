@@ -116,6 +116,8 @@ describe("buildSaveBody", () => {
       ],
       steps: ["Simmer."],
       keep_units: [],
+      // No language picked: the interface language (spec 043).
+      language: "en",
     });
   });
 
