@@ -22,8 +22,9 @@ Centralized location for all custom SVG icon components used throughout the UI. 
 | `RecipeIcon` | A recipe | Solid frame around a lined sheet |
 | `AddRecipeIcon` | Add a recipe | `RecipeIcon` with a solid circle and a cut-out plus |
 | `BookmarkIcon` | The default notebook | Outline bookmark |
-| `DotsIcon` | Menu triggers | Vertical dots, 16×16 viewBox |
+| `DotsIcon` | Menu triggers (notebook page, recipe page) | Vertical dots, 16×16 viewBox |
 | `ShareIcon` | Invite/share actions | Connected circles |
+| `LinkIcon` | Open a recipe's source page | Two hooked chain links |
 | `PieChartIcon` | Analytics/split settings | Pie chart |
 | `EyeIcon` | Password visibility | Requires `open` boolean prop |
 | `HashtagIcon` | Exact-amount split | Slanted hash |
@@ -167,6 +168,14 @@ Three connected circles representing sharing/network. Used for invite/share acti
 
 - ViewBox: `0 0 24 24`
 - Style: Stroke-based
+- Accepts: className, SVG element props
+
+### LinkIcon
+
+Two rounded chain links hooked into each other on a diagonal, each open where it passes through the other. Used for the recipe page's chrome button that opens the page the recipe was captured from.
+
+- ViewBox: `0 0 24 24`
+- Style: Stroke-based, shared stroke width (`ICON_STROKE`)
 - Accepts: className, SVG element props
 
 ### PieChartIcon

@@ -234,9 +234,9 @@ export function RecipeFromNotebookSheet({
     const recipeOptions =
       recipes.status === "ready"
         ? recipes.items.map((recipe) => ({
-            value: recipe.id,
-            label: recipe.title,
-          }))
+          value: recipe.id,
+          label: recipe.title,
+        }))
         : [];
     const recipePlaceholder = !notebookId
       ? t.fromNotebookChooseNotebook
@@ -257,7 +257,7 @@ export function RecipeFromNotebookSheet({
             <SearchableSelect
               aria-label={t.fromNotebookOriginal}
               placeholder={t.fromNotebookChooseNotebook}
-              searchLabel={t.fromNotebookSearch}
+              searchLabel={t.fromNotebookChooseNotebook}
               noResults={t.fromNotebookNoMatch}
               className={fieldClassName}
               panelWidth={240}

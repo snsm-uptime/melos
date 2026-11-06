@@ -1,6 +1,6 @@
 "use client";
 
-import { DotsIcon } from "@/app/icons";
+import { DotsIcon, PencilIcon, TrashIcon } from "@/app/icons";
 import { IconButton } from "@/components/IconButton";
 import { IconButtonPopup, IconButtonPopupItem } from "@/components/IconButtonPopup";
 import type { Locale } from "@/lib/i18n/locale";
@@ -29,8 +29,8 @@ export function NotebookOptionsMenu({
           />
         }
       >
-        <IconButtonPopupItem onClick={onRename}>{t.renameAction}</IconButtonPopupItem>
-        <IconButtonPopupItem danger onClick={onDelete}>
+        <IconButtonPopupItem onClick={onRename} icon={<PencilIcon />}>{t.renameAction}</IconButtonPopupItem>
+        <IconButtonPopupItem danger onClick={onDelete} icon={<TrashIcon />}>
           {t.deleteAction}
         </IconButtonPopupItem>
       </IconButtonPopup>

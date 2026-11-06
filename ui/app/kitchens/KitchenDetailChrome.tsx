@@ -121,7 +121,7 @@ export function KitchenDetailChrome({ title, share, cart, pastLists, notebooks, 
       list.push({
         key: "default",
         label: panelText.setDefault,
-        icon: <StarIcon className="size-5" />,
+        icon: <StarIcon />,
         onClick: () =>
           void setDefaultKitchen(kitchenId).then((result) => {
             if (!result) return fail(kt.errorGeneric);
@@ -135,7 +135,7 @@ export function KitchenDetailChrome({ title, share, cart, pastLists, notebooks, 
       list.push({
         key: "restore",
         label: panelText.restore,
-        icon: <ArchiveToggleIcon active className="size-5" />,
+        icon: <ArchiveToggleIcon active />,
         onClick: () =>
           void unarchiveKitchen(kitchenId, kt).then((result) => {
             if (!result.ok) return fail(result.error);
@@ -149,7 +149,7 @@ export function KitchenDetailChrome({ title, share, cart, pastLists, notebooks, 
       {
         key: "rename",
         label: panelText.rename,
-        icon: <PencilIcon className="size-5" />,
+        icon: <PencilIcon />,
         onClick: () => {
           setDraft(name);
           setDialogError(null);
@@ -159,7 +159,7 @@ export function KitchenDetailChrome({ title, share, cart, pastLists, notebooks, 
       {
         key: "archive",
         label: panelText.archive,
-        icon: <ArchiveToggleIcon className="size-5" />,
+        icon: <ArchiveToggleIcon />,
         onClick: () =>
           void archiveKitchen(kitchenId, kt).then((result) => {
             if (!result.ok) return fail(result.error);
@@ -170,7 +170,7 @@ export function KitchenDetailChrome({ title, share, cart, pastLists, notebooks, 
       {
         key: "delete",
         label: kt.deleteAria,
-        icon: <TrashIcon className="size-5" />,
+        icon: <TrashIcon />,
         danger: true,
         onClick: () => {
           setDialogError(null);
@@ -187,7 +187,7 @@ export function KitchenDetailChrome({ title, share, cart, pastLists, notebooks, 
     const item: Action = {
       key: "past-lists",
       label: pastListsLabel,
-      icon: <HistoryIcon className="size-5" />,
+      icon: <HistoryIcon />,
       onClick: () => push(pastListsHref),
     };
     const rename = manageActions.findIndex((action) => action.key === "rename");
@@ -261,11 +261,9 @@ export function KitchenDetailChrome({ title, share, cart, pastLists, notebooks, 
                     key={action.key}
                     danger={action.danger}
                     onClick={action.onClick}
+                    icon={action.icon}
                   >
-                    <span className="inline-flex items-center gap-2">
-                      {action.icon}
-                      {action.label}
-                    </span>
+                    {action.label}
                   </IconButtonPopupItem>
                 ))}
               </IconButtonPopup>

@@ -53,3 +53,4 @@ export { BooksIcon } from "./BooksIcon";
 export { LocationIcon } from "./LocationIcon";
 export { AnalyticsIcon } from "./AnalyticsIcon";
 export { ChefHatIcon } from "./ChefHatIcon";
+export { LinkIcon } from "./LinkIcon";

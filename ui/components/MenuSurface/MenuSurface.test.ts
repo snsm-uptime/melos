@@ -8,14 +8,6 @@ const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "MenuSurface.module.scss"), "utf8");
 const globals = readFileSync(join(here, "../../app/globals.css"), "utf8");
 
-  it("frosts the panel on the surface at the shared frost settings, with a solid fallback", () => {
-    expect(css).toContain("background: color-mix(in srgb, var(--surface) var(--frost-alpha), transparent);");
-    expect(css).toContain("backdrop-filter: blur(var(--frost-blur));");
-    expect(css).toContain("-webkit-backdrop-filter: blur(var(--frost-blur));");
-    expect(css).toContain("@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)))");
-    expect(css).toContain("@media (prefers-reduced-transparency: reduce)");
-  });
-
 describe("MenuSurface", () => {
   it("tints surface for hover and a stronger selected row, with theme text color", () => {
     expect(globals).toContain(
@@ -28,5 +20,13 @@ describe("MenuSurface", () => {
     expect(css).toContain("background: var(--menu-item-hover);");
     expect(css).toContain("background: var(--menu-item-selected);");
     expect(css).toContain(':not([aria-selected="true"]):not(.itemSelected)');
+  });
+
+  it("frosts the panel on the surface at the shared frost settings, with a solid fallback", () => {
+    expect(css).toContain("background: color-mix(in srgb, var(--surface) var(--frost-alpha), transparent);");
+    expect(css).toContain("backdrop-filter: blur(var(--frost-blur));");
+    expect(css).toContain("-webkit-backdrop-filter: blur(var(--frost-blur));");
+    expect(css).toContain("@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)))");
+    expect(css).toContain("@media (prefers-reduced-transparency: reduce)");
   });
 });

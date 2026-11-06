@@ -7,6 +7,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { recipeFixture } from "./fixtures";
 import { RecipeDetailView } from "./RecipeDetailView";
 
+const chrome = vi.hoisted(() => ({ scrolled: false }));
+vi.mock("@/components/ChromeScroll", () => ({ useChromeScrolled: () => chrome.scrolled }));
+
 describe("RecipeDetailView", () => {
   let container: HTMLDivElement;
   let root: Root;
@@ -40,6 +43,11 @@ describe("RecipeDetailView", () => {
       (b) => (b.getAttribute("aria-label") ?? b.textContent) === label,
     );
 
+  /** Edit, Share and Delete live in the chrome's dots menu. */
+  function openMenu(label = "Recipe options") {
+    act(() => button(label)?.click());
+  }
+
   function render(recipe = recipeFixture(), locale: "en" | "es" = "en") {
     act(() => {
       root.render(
@@ -53,6 +61,25 @@ describe("RecipeDetailView", () => {
       );
     });
   }
+
+  it("the page header is a frosted phone bar with no solid background", async () => {
+    render();
+    const header = container.querySelector("header") as HTMLElement;
+    expect(header.classList.contains("frost-bar")).toBe(true);
+    expect(header.classList.contains("frost-bar-phone")).toBe(true);
+    expect(header.classList.contains("bg-background")).toBe(false);
+    expect(header.getAttribute("data-frosted")).toBe("false");
+  });
+
+  it("frosts the page header once the main scroller has been scrolled", async () => {
+    chrome.scrolled = true;
+    try {
+      render();
+      expect(container.querySelector("header")?.getAttribute("data-frosted")).toBe("true");
+    } finally {
+      chrome.scrolled = false;
+    }
+  });
 
   it("shows the title, servings, author, notebook, every line and every step in order", () => {
     render();
@@ -77,8 +104,8 @@ describe("RecipeDetailView", () => {
     const labels = Array.from(container.querySelectorAll("button")).map(
       (b) => b.getAttribute("aria-label") ?? b.textContent,
     );
-    // Share is open to any reader (spec 071 FR-001); the rest are the servings and Delete.
-    expect(labels).toEqual(["Delete", "Share recipe", "Fewer servings", "More servings"]);
+    // Edit, Share and Delete wait in the dots menu; the rest are the servings.
+    expect(labels).toEqual(["Recipe options", "Fewer servings", "More servings"]);
     expect(container.querySelector("[aria-label=Remove]")).toBeNull();
     expect(container.querySelector("[aria-label='Move up']")).toBeNull();
     expect(container.querySelector("[aria-label='Move down']")).toBeNull();
@@ -96,13 +123,14 @@ describe("RecipeDetailView", () => {
     expect(container.textContent).toContain("unknown");
   });
 
-  it("shows a source link only when the recipe has a url", () => {
+  it("shows the source as a link icon in the chrome only when the recipe has a url", () => {
     render();
     expect(container.querySelector("a[target=_blank]")).toBeNull();
     render(recipeFixture({ source: { type: "url", url: "https://example.com/soup" } }));
-    expect(container.querySelector("a[target=_blank]")?.getAttribute("href")).toBe(
-      "https://example.com/soup",
-    );
+    const link = container.querySelector("header a[target=_blank]");
+    expect(link?.getAttribute("href")).toBe("https://example.com/soup");
+    expect(link?.getAttribute("aria-label")).toBe("Source");
+    expect(link?.querySelector("svg")).not.toBeNull();
   });
 
   it("opens the source page in a new tab that cannot reach back (spec 026)", () => {
@@ -130,8 +158,15 @@ describe("RecipeDetailView", () => {
     );
   });
 
-  it("offers Edit and Delete to those who can write", () => {
+  it("offers Edit, Share and Delete in the dots menu to those who can write", () => {
     render();
+    expect(container.textContent).not.toContain("Edit");
+    openMenu();
+    const items = Array.from(container.querySelectorAll("[role=menuitem]")).map((i) => i.textContent);
+    expect(items).toEqual(["Edit", "Share recipe", "Delete"]);
+    for (const item of container.querySelectorAll("[role=menuitem]")) {
+      expect(item.firstElementChild?.querySelector("svg"), item.textContent ?? "").not.toBeNull();
+    }
     const edit = Array.from(container.querySelectorAll("a")).find((a) => a.textContent === "Edit");
     expect(edit?.getAttribute("href")).toBe("/recipes/r1/edit?from=x");
     const del = Array.from(container.querySelectorAll("button")).find(
@@ -141,8 +176,11 @@ describe("RecipeDetailView", () => {
     expect(onDelete).toHaveBeenCalledTimes(1);
   });
 
-  it("hides Edit and Delete when the member can only read", () => {
+  it("keeps only Share in the menu when the member can only read (spec 071 FR-001)", () => {
     render(recipeFixture({ can_write: false }));
+    openMenu();
+    const items = Array.from(container.querySelectorAll("[role=menuitem]")).map((i) => i.textContent);
+    expect(items).toEqual(["Share recipe"]);
     expect(container.textContent).not.toContain("Edit");
     expect(container.textContent).not.toContain("Delete");
   });
@@ -241,6 +279,7 @@ describe("RecipeDetailView", () => {
 
     it("has no English interface text in Spanish, and shows stored text as stored", () => {
       render(recipeFixture(), "es");
+      openMenu("Opciones de la receta");
       const text = container.textContent ?? "";
       for (const expected of ["Ingredientes", "Pasos", "Preparación:", "Nota:", "Editar", "Eliminar", "Porciones"]) {
         expect(text, expected).toContain(expected);
@@ -306,7 +345,9 @@ describe("RecipeDetailView", () => {
         Array.from(container.querySelectorAll("a"))
           .find((a) => a.textContent === "Edit")
           ?.getAttribute("href");
+      openMenu();
       const before = edit();
+      expect(before).toBe("/recipes/r1/edit?from=x");
       setServings("6");
       expect(edit()).toBe(before);
       expect(edit()).not.toMatch(/serving/i);
@@ -355,6 +396,7 @@ describe("RecipeDetailView", () => {
     it("disables Edit and Delete and names the editor while someone else edits", () => {
       render(recipeFixture({ editor: { alias: "ben", is_me: false, idle_expires_at: null } }));
       expect(container.textContent).toContain("ben is editing this recipe");
+      openMenu();
       expect(button("Delete")?.disabled).toBe(true);
       expect(button("Edit")?.disabled).toBe(true);
       expect(container.querySelector('a[href="/recipes/r1/edit?from=x"]')).toBeNull();
@@ -364,6 +406,7 @@ describe("RecipeDetailView", () => {
       render(
         recipeFixture({ editor: { alias: "ana", is_me: true, idle_expires_at: "2999-01-01T00:00:00Z" } }),
       );
+      openMenu();
       expect(container.querySelector('a[href="/recipes/r1/edit?from=x"]')).not.toBeNull();
       expect(container.textContent).not.toContain("is editing this recipe");
     });

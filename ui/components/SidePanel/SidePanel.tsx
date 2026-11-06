@@ -196,15 +196,19 @@ export function SidePanel({
           />
         </div>
 
-        {/* `!` because the app-wide scrollbar rule is unlayered and beats utilities. */}
-        <div
-          data-side-panel="scroller"
-          className={`relative mt-2 min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 ${wide ? "" : "[scrollbar-width:none]! [&::-webkit-scrollbar]:hidden"}`}
-        >
+        {/* Pinned: when the settings open, only the entries and kitchens below scroll. */}
+        <div className="mt-2 shrink-0 px-2">
           <SidePanelIdentity
             recipeCount={panel ? t.recipeCount(panel.recipes_added) : null}
             notebookCount={panel ? t.notebookCount(panel.notebooks) : null}
           />
+        </div>
+        {/* A floor, so opening the settings cannot squeeze the entries away; the settings scroll instead. */}
+        {/* `!` because the app-wide scrollbar rule is unlayered and beats utilities. */}
+        <div
+          data-side-panel="scroller"
+          className={`relative min-h-[7.5rem] flex-1 overflow-y-auto overflow-x-hidden px-2 ${wide ? "" : "[scrollbar-width:none]! [&::-webkit-scrollbar]:hidden"}`}
+        >
           <ul className="m-0 flex list-none flex-col gap-1 p-0">
             {/* The quick add (spec 069 FR-001), wherever the panel shows. */}
             <li className="min-w-0">
@@ -335,7 +339,7 @@ export function SidePanel({
           </ul>
         </div>
 
-        <div className="mt-2 shrink-0 border-t border-border px-2 pt-2">
+        <div className="mt-2 flex min-h-0 flex-col border-t border-border px-2 pt-2">
           <SidePanelSettings expanded={settingsOpen} onToggle={onSettingsToggle} />
           <SidePanelEntry
             label={logOutLabel}

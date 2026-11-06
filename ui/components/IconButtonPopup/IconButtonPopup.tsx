@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   cloneElement,
   isValidElement,
@@ -8,6 +9,7 @@ import {
   useId,
   useRef,
   useState,
+  type AnchorHTMLAttributes,
   type ButtonHTMLAttributes,
   type MouseEvent,
   type ReactElement,
@@ -43,6 +45,8 @@ export type IconButtonPopupProps = {
 
 export type IconButtonPopupItemProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   danger?: boolean;
+  /** The action's glyph, shown before the label at the standard icon size. */
+  icon?: ReactNode;
   /** Keep the popup open after this item is chosen (e.g. swap panel content). */
   stayOpen?: boolean;
 };
@@ -176,9 +180,29 @@ export function IconButtonPopup({
   );
 }
 
+/** Leads every menu item: the chrome's icon size, never squeezed by a long label. */
+function ItemContent({ icon, children }: { icon?: ReactNode; children?: ReactNode }) {
+  return (
+    <>
+      {icon ? (
+        <span className={styles.itemIcon} aria-hidden="true">
+          {icon}
+        </span>
+      ) : null}
+      <span className={styles.itemLabel}>{children}</span>
+    </>
+  );
+}
+
+/**
+ * One action in the popup. Pass `icon` with the same glyph the action has elsewhere (Edit →
+ * `PencilIcon`, Delete → `TrashIcon`); it is sized here, so leave the size off the glyph.
+ */
 export function IconButtonPopupItem({
   danger = false,
   stayOpen = false,
+  icon,
+  children,
   className,
   type = "button",
   ...rest
@@ -199,6 +223,31 @@ export function IconButtonPopupItem({
       role="menuitem"
       className={classes}
       data-stay-open={stayOpen ? "true" : undefined}
-    />
+    >
+      <ItemContent icon={icon}>{children}</ItemContent>
+    </button>
+  );
+}
+
+export type IconButtonPopupLinkItemProps = Omit<
+  AnchorHTMLAttributes<HTMLAnchorElement>,
+  "href"
+> & { href: string; icon?: ReactNode };
+
+/** A menu item that goes to another page; the popup closes when it is followed. */
+export function IconButtonPopupLinkItem({
+  className,
+  href,
+  icon,
+  children,
+  ...rest
+}: IconButtonPopupLinkItemProps) {
+  const classes = [menuSurface.item, styles.itemLayout, "no-underline", className]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    <Link {...rest} href={href} role="menuitem" className={classes}>
+      <ItemContent icon={icon}>{children}</ItemContent>
+    </Link>
   );
 }

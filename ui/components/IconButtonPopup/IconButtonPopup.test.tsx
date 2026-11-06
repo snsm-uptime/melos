@@ -37,7 +37,7 @@ vi.mock("@/components/IconButton/IconButton.module.scss", () => ({
   ),
 }));
 
-import { IconButtonPopup, IconButtonPopupItem } from "./IconButtonPopup";
+import { IconButtonPopup, IconButtonPopupItem, IconButtonPopupLinkItem } from "./IconButtonPopup";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -221,5 +221,41 @@ describe("IconButtonPopup.module.scss", () => {
     expect(css).toContain(".root.open");
     expect(css).toContain("z-index: 5;");
     expect(css).not.toContain("background: var(--surface);");
+  });
+
+  it("puts each item's icon before its label in the fixed-size icon slot", () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <IconButtonPopup open button={<IconButton label="More" icon={<span />} />}>
+          <IconButtonPopupItem icon={<svg data-testid="edit" />}>Edit</IconButtonPopupItem>
+          <IconButtonPopupLinkItem href="/x" icon={<svg data-testid="go" />}>
+            Go
+          </IconButtonPopupLinkItem>
+          <IconButtonPopupItem>Plain</IconButtonPopupItem>
+        </IconButtonPopup>,
+      );
+    });
+    const items = Array.from(container.querySelectorAll("[role=menuitem]"));
+    const pairs: [Element, string][] = [
+      [items[0], "Edit"],
+      [items[1], "Go"],
+    ];
+    for (const [item, label] of pairs) {
+      const [icon, text] = Array.from(item.children);
+      expect(icon.className).toBe("itemIcon");
+      expect(icon.querySelector("svg")).not.toBeNull();
+      expect(text.textContent).toBe(label);
+    }
+    expect(items[1].getAttribute("href")).toBe("/x");
+    expect(items[2].querySelector(".itemIcon")).toBeNull();
+    act(() => root.unmount());
+  });
+
+  it("sizes the icon slot like the chrome icons and keeps labels on one line", () => {
+    const css = readFileSync(join(here, "IconButtonPopup.module.scss"), "utf8");
+    expect(css).toMatch(/\.itemIcon \{[^}]*flex-shrink: 0;[^}]*width: 1\.5rem;[^}]*height: 1\.5rem;/);
+    expect(css).toMatch(/\.itemLayout \{[^}]*white-space: nowrap;/);
   });
 });
