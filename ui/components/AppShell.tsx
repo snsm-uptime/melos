@@ -2,7 +2,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useState, type ReactNode } from "react";
 
 import {
   AnalyticsIcon,
@@ -66,7 +66,19 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   // Decoupled from showHeader: public screens (e.g. /sign-in) opt into
   // just the header — a way back to "/" — via useChromeHeader, without also
   // gaining the authenticated side panel that showsAppChrome gates.
-  const showPanel = showsAppChrome(pathname) || header.sidePanel === true;
+  const routePanel = showsAppChrome(pathname) || header.sidePanel === true;
+  // A screen that opts into the panel (the dashboard) does so in a layout effect, after the page
+  // change has committed. Coming from a page with the panel, hold it through that commit: else it
+  // unmounts and mounts again, and loads everything anew. A screen that does not opt in (the
+  // dashboard's not-found page) drops it before paint.
+  const [lastRoute, setLastRoute] = useState({ pathname, panel: routePanel });
+  const holdPanel =
+    lastRoute.pathname !== pathname && lastRoute.panel && panelEntryFromPath(pathname) !== undefined;
+  const showPanel = routePanel || holdPanel;
+  useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- read after the screen's own layout effect
+    setLastRoute({ pathname, panel: routePanel });
+  }, [pathname, routePanel]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
   // A page change closes the drawer, also one the panel's quick add makes (its draft page).

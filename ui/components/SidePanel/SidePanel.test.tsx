@@ -161,6 +161,31 @@ describe("SidePanel", () => {
     expect(link("Dashboard").getAttribute("href")).toBe("/admin");
   });
 
+  it("a click on the entry of the page already open does not navigate or reload the panel", async () => {
+    pathname = "/admin";
+    try {
+      stubKitchens();
+      fetchSidePanel.mockResolvedValue({
+        default_kitchen_id: "k1",
+        recipes_added: 0,
+        notebooks: 0,
+        is_admin: true,
+      });
+      await render();
+      const loads = fetchSidePanel.mock.calls.length;
+      const kitchenLoads = fetchKitchens.mock.calls.length;
+      const event = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+      await act(async () => {
+        link("Dashboard").dispatchEvent(event);
+      });
+      expect(event.defaultPrevented).toBe(true);
+      expect(fetchSidePanel.mock.calls.length).toBe(loads);
+      expect(fetchKitchens.mock.calls.length).toBe(kitchenLoads);
+    } finally {
+      pathname = "/recipes/r1";
+    }
+  });
+
   it("links to the Ingredients page (spec 070 FR-011)", async () => {
     await render();
     expect(link("Ingredients").getAttribute("href")).toBe("/ingredients");

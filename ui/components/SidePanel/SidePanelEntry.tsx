@@ -49,7 +49,11 @@ export function SidePanelEntry({
           aria-label={label}
           aria-current={current ? "page" : undefined}
           className={`${panelEntryClass} ${current ? "!text-foreground font-semibold" : ""} ${atTarget ? "!cursor-default" : ""}`}
-          onClick={onClick}
+          onClick={(event) => {
+            // Already on this page: no navigation, so the page and panel stay as they are.
+            if (atTarget) event.preventDefault();
+            onClick?.(event);
+          }}
         >
           {content}
         </Link>

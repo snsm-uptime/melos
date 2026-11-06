@@ -216,6 +216,7 @@ export function SidePanel({
                 label={t.notebooks}
                 icon={<BooksIcon className="size-7 shrink-0 p-0.5" />}
                 current={current === "notebooks"}
+                atTarget={current === "notebooks"}
                 onClick={onDrawerClose}
               />
             </li>
@@ -226,6 +227,7 @@ export function SidePanel({
                 label={t.ingredients}
                 icon={<BasketIcon className="size-7 shrink-0 p-0.5" />}
                 current={current === "ingredients"}
+                atTarget={current === "ingredients"}
                 onClick={onDrawerClose}
               />
             </li>
@@ -236,6 +238,7 @@ export function SidePanel({
                   label={adminMessages[locale].entry}
                   icon={<AnalyticsIcon className="size-7 shrink-0 p-0.5" />}
                   current={current === "admin"}
+                  atTarget={current === "admin"}
                   onClick={onDrawerClose}
                 />
               </li>

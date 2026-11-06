@@ -187,6 +187,52 @@ describe("AppShell chrome header", () => {
     expect(container.querySelector("nav")).toBeNull();
   });
 
+  it("keeps the same panel from another page into the dashboard, and drops it for its not-found page", async () => {
+    pathname = "/notebooks";
+    function Dashboard() {
+      useChromeHeader({ title: "Dashboard", sidePanel: true });
+      return <p>dashboard</p>;
+    }
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <p>notebooks</p>
+        </AppShell>,
+      );
+    });
+    const panel = container.querySelector("nav");
+    expect(panel).not.toBeNull();
+
+    // A remounted panel would be a new element, loading its kitchens and counts again.
+    pathname = "/admin";
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <Dashboard />
+        </AppShell>,
+      );
+    });
+    expect(container.querySelector("nav")).toBe(panel);
+
+    pathname = "/notebooks";
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <p>notebooks</p>
+        </AppShell>,
+      );
+    });
+    pathname = "/admin";
+    await act(async () => {
+      root.render(
+        <AppShell>
+          <p>not found</p>
+        </AppShell>,
+      );
+    });
+    expect(container.querySelector("nav")).toBeNull();
+  });
+
   it("opens the drawer from the header's menu button", async () => {
     pathname = "/notebooks";
     await act(async () => {
