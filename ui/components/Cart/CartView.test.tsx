@@ -3,8 +3,15 @@
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  replaceMembershipKitchens,
+  resetMembershipKitchensStore,
+} from "@/app/kitchens/membershipKitchensStore";
+
 import { CartView, draftFromCart, type LocalDraft } from "./CartView";
 import { cart, entry, mount, type } from "./testRoot";
+
+const KITCHEN = { id: "k1", name: "Home", owner_id: "u1", role: "owner" };
 
 function buttons(container: HTMLElement) {
   return Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
@@ -20,7 +27,10 @@ describe("CartView", () => {
     view = mount();
     for (const fn of Object.values(handlers)) fn.mockReset();
   });
-  afterEach(() => view.unmount());
+  afterEach(() => {
+    view.unmount();
+    resetMembershipKitchensStore();
+  });
 
   function render(props: Partial<Parameters<typeof CartView>[0]> = {}) {
     view.render(
@@ -41,6 +51,12 @@ describe("CartView", () => {
     expect(view.container.textContent).toContain("Add recipes from the kitchen's notebooks");
     expect(view.container.querySelector('a[href="/kitchens/k1"]')).not.toBeNull();
     expect(view.container.textContent).not.toContain("People");
+  });
+
+  it("names the kitchen in the empty hint once the kitchens have loaded", () => {
+    replaceMembershipKitchens([KITCHEN]);
+    render();
+    expect(view.container.textContent).toContain("Add recipes from Home's notebooks");
   });
 
   it("puts the empty hint first, with no Edit button in the page", () => {

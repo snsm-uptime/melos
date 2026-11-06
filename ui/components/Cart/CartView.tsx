@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { useMembershipKitchens } from "@/app/kitchens/membershipKitchensStore";
 import { formatFactor } from "@/lib/cartFactor";
 import type { Cart, CartEntry } from "@/lib/cartClient";
 import type { Locale } from "@/lib/i18n/locale";
@@ -47,6 +48,8 @@ export function CartView({
 }: CartViewProps) {
   const t = cartMessages[locale];
   const from = `/kitchens/${encodeURIComponent(kitchenId)}/cart`;
+  const kitchenName =
+    useMembershipKitchens()?.find((kitchen) => kitchen.id === kitchenId)?.name ?? null;
   const someoneElse = cart.editor && !cart.editor.is_me ? cart.editor : null;
 
   const entries = draft ? draft.entries : cart.entries;
@@ -61,7 +64,7 @@ export function CartView({
     <section className="flex flex-col gap-4 px-4">
       {entries.length === 0 ? (
         <p className="m-0 text-[0.9rem] text-muted">
-          {t.empty}.{" "}
+          {t.empty(kitchenName)}.{" "}
           <Link href={`/kitchens/${encodeURIComponent(kitchenId)}`} className="text-accent">
             {t.emptyLink}
           </Link>
@@ -87,10 +90,10 @@ export function CartView({
               onRemove={
                 draft
                   ? () =>
-                      onDraftChange({
-                        ...draft,
-                        entries: draft.entries.filter((_, at) => at !== index),
-                      })
+                    onDraftChange({
+                      ...draft,
+                      entries: draft.entries.filter((_, at) => at !== index),
+                    })
                   : undefined
               }
             />

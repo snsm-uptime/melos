@@ -22,8 +22,10 @@ export const cartMessages = {
     recipeIdleWarning: "Your recipe changes will be discarded in 1 minute",
     recipeEditEnded: "Your edit ended. Your changes are still here.",
     startNewEdit: "Edit again",
-    empty: "Add recipes from the kitchen's notebooks",
-    emptyLink: "Go to the notebooks",
+    /** `kitchen` is null until the member's kitchens have loaded. */
+    empty: (kitchen: string | null) =>
+      kitchen ? `Add recipes from ${kitchen}'s notebooks` : "Add recipes from the kitchen's notebooks",
+    emptyLink: "Go to the recipes",
     serves: (n: number) => `Serves ${n}`,
     servings: "Servings",
     factor: (factor: string) => `×${factor}`,
@@ -64,8 +66,9 @@ export const cartMessages = {
     recipeIdleWarning: "Tus cambios de la receta se descartarán en 1 minuto",
     recipeEditEnded: "Tu edición terminó. Tus cambios siguen aquí.",
     startNewEdit: "Editar de nuevo",
-    empty: "Añade recetas desde los cuadernos de la cocina",
-    emptyLink: "Ir a los cuadernos",
+    empty: (kitchen: string | null) =>
+      `Añade recetas desde los cuadernos de ${kitchen ?? "la cocina"}`,
+    emptyLink: "Ir a las recetas",
     serves: (n: number) => `Para ${n}`,
     servings: "Porciones",
     factor: (factor: string) => `×${factor}`,
