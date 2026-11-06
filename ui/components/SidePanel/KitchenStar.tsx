@@ -21,7 +21,7 @@ export function KitchenStar({
   if (isDefault) {
     return (
       <span
-        className={`absolute inset-y-0 right-0 inline-flex size-11 items-center justify-center text-accent ${openOnlyClass}`}
+        className={`absolute inset-y-0 right-0 inline-flex size-11 items-center justify-center text-accent-fill ${openOnlyClass}`}
       >
         <Tooltip label={defaultLabel}>
           <span role="img" aria-label={defaultLabel}>
