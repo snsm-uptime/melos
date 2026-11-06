@@ -20,7 +20,10 @@ export type ShoppingRecipeRef = {
 type Stored = { id?: string | null; bought?: boolean; place?: PlaceRef | null };
 
 export type ShoppingLine = Stored & {
+  /** The word the viewer sees (spec 043 FR-007). */
   name: string;
+  /** The line's kept name, the key for places and bought state. */
+  kept_name?: string;
   kind: "mass" | "volume" | "count" | "custom";
   /** Counts only. */
   size: "small" | "medium" | "large" | null;
@@ -30,6 +33,7 @@ export type ShoppingLine = Stored & {
 
 export type YourCallEntry = Stored & {
   name: string;
+  kept_name?: string;
   notes: string[];
   recipes: ShoppingRecipeRef[];
 };

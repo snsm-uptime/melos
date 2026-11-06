@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 
 import { CloseIcon, CopyIcon, LocationIcon, PlusIcon } from "@/app/icons";
 import { ActionDialog } from "@/components/ActionDialog";
@@ -64,7 +64,22 @@ function ingredientsTable(
     search: true,
     rowKey: (row) => row.name,
     columns: [
-      { key: "name", label: c.name, sort: "text", searchable: true },
+      {
+        key: "name",
+        label: c.name,
+        sort: "text",
+        searchable: true,
+        searchValue: (row) => [row.name, ...(row.other_names ?? [])],
+        cell: (row) =>
+          row.other_names && row.other_names.length > 0 ? (
+            <span className="flex flex-col">
+              <span>{row.name}</span>
+              <span className="text-[0.85rem] text-muted">{row.other_names.join(", ")}</span>
+            </span>
+          ) : (
+            row.name
+          ),
+      },
       {
         key: "place",
         label: c.place,
@@ -140,8 +155,19 @@ async function load(): Promise<State> {
 /**
  * The Ingredients page (spec 070 US2): where the person buys each ingredient, their own places,
  * and a copy of another member's places. Every choice is the person's own (FR-010).
+ *
+ * Spec 043: `top` sits above the content (the notebook selector), and `catalog`, when given,
+ * replaces the places table with one notebook's catalog. The header and Places stay.
  */
-export function IngredientsScreen({ locale }: { locale: Locale }) {
+export function IngredientsScreen({
+  locale,
+  top,
+  catalog,
+}: {
+  locale: Locale;
+  top?: ReactNode;
+  catalog?: ReactNode;
+}) {
   const t = placesMessages[locale];
   const [placesOpen, setPlacesOpen] = useState(false);
   // Memoised: the header keeps this element, and a new one each render would update it forever.
@@ -222,7 +248,8 @@ export function IngredientsScreen({ locale }: { locale: Locale }) {
 
   return (
     <section className="flex min-w-0 flex-col gap-4">
-      <p className="m-0 text-[0.95rem] text-muted">{t.intro}</p>
+      {top}
+      {catalog ? null : <p className="m-0 text-[0.95rem] text-muted">{t.intro}</p>}
       {error ? (
         <p className="m-0 text-[0.9rem] text-muted" role="alert">
           {error}
@@ -255,13 +282,15 @@ export function IngredientsScreen({ locale }: { locale: Locale }) {
         />
       </ActionDialog>
 
-      <DataTable
-        schema={ingredientsTable(t, locale, places, (item, value) => void choose(item, value))}
-        rows={data.ingredients}
-        locale={locale}
-        labels={tableMessages[locale]}
-        empty={t.noIngredients}
-      />
+      {catalog ?? (
+        <DataTable
+          schema={ingredientsTable(t, locale, places, (item, value) => void choose(item, value))}
+          rows={data.ingredients}
+          locale={locale}
+          labels={tableMessages[locale]}
+          empty={t.noIngredients}
+        />
+      )}
     </section>
   );
 }

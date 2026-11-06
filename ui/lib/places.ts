@@ -93,6 +93,8 @@ export type IngredientPlace = {
   recipes: IngredientRecipe[];
   /** ISO date of the newest of those recipes; null when no recipe uses it. */
   last_used_at: string | null;
+  /** Its other names in the catalogs the person reads (spec 043); shown under it. */
+  other_names?: string[];
 };
 export type PlaceSource = { user_id: string; alias: string };
 

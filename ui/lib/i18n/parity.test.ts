@@ -5,6 +5,7 @@ import { adminMessages } from "./admin";
 import { aliasMessages } from "./alias";
 import { captureText } from "./capture";
 import { cartMessages } from "./cart";
+import { catalogMessages } from "./catalog";
 import { customUnitMessages } from "./customUnits";
 import { inviteMessages, notebookInviteMessages } from "./invite";
 import { kitchensMessages } from "./kitchens";
@@ -33,6 +34,7 @@ const SETS: Record<string, { en: unknown; es: unknown }> = {
   alias: aliasMessages,
   capture: captureText,
   cart: cartMessages,
+  catalog: catalogMessages,
   customUnits: customUnitMessages,
   invite: inviteMessages,
   kitchens: kitchensMessages,
@@ -74,6 +76,7 @@ const SAME_ON_PURPOSE = new Set<string>([
   "capture.linkPlaceholder", // "https://…", a link has no language
   "customUnits.no", // "No" is the same word in Spanish
   "notebooks.tabPersonal", // "Personal" is the same word in Spanish
+  "catalog.languageShort.es", // "ES", the language code, is the same in both languages
 ]);
 
 function paths(value: unknown, prefix = ""): { path: string; leaf: unknown }[] {
