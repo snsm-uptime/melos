@@ -347,6 +347,68 @@ class IngredientModel(Base):
         UUID(as_uuid=True), ForeignKey("notebook.id", ondelete="CASCADE"), nullable=False
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
+    # The kept name's language, or None until a merge or the person sets it (spec 043).
+    language: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class IngredientNameModel(Base):
+    """An other name of a catalog ingredient: a variant per language or a spelling (spec 043)."""
+
+    __tablename__ = "ingredient_name"
+    __table_args__ = (
+        UniqueConstraint("notebook_id", "name", name="uq_ingredient_name_notebook_name"),
+        CheckConstraint("kind IN ('variant', 'spelling')", name="ck_ingredient_name_kind"),
+        CheckConstraint(
+            "(kind = 'variant' AND language IN ('en', 'es')) "
+            "OR (kind = 'spelling' AND language IS NULL)",
+            name="ck_ingredient_name_language",
+        ),
+        Index(
+            "uq_ingredient_name_variant_language",
+            "ingredient_id",
+            "language",
+            unique=True,
+            postgresql_where=text("kind = 'variant'"),
+        ),
+        Index("ix_ingredient_name_ingredient", "ingredient_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    ingredient_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("ingredient.id", ondelete="CASCADE"), nullable=False
+    )
+    notebook_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("notebook.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    language: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class IngredientPairDismissalModel(Base):
+    """A pair a person marked as not the same ingredient in one notebook (spec 043 FR-009d)."""
+
+    __tablename__ = "ingredient_pair_dismissal"
+    __table_args__ = (
+        CheckConstraint("name_a < name_b", name="ck_ingredient_pair_dismissal_sorted"),
+    )
+
+    notebook_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("notebook.id", ondelete="CASCADE"), primary_key=True
+    )
+    name_a: Mapped[str] = mapped_column(Text, primary_key=True)
+    name_b: Mapped[str] = mapped_column(Text, primary_key=True)
+    dismissed_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -403,6 +465,11 @@ class RecipeModel(Base):
         CheckConstraint("btrim(title) <> ''", name="ck_recipe_title_not_blank"),
         CheckConstraint("base_servings >= 1", name="ck_recipe_base_servings"),
         CheckConstraint("cart_add_count >= 0", name="ck_recipe_cart_add_count"),
+        CheckConstraint("language IN ('en', 'es')", name="ck_recipe_language"),
+        CheckConstraint(
+            "proposed_language IS NULL OR proposed_language IN ('en', 'es')",
+            name="ck_recipe_proposed_language",
+        ),
         Index(
             "uq_recipe_author_save_key",
             "author_id",
@@ -453,6 +520,15 @@ class RecipeModel(Base):
         nullable=True,
         index=True,
     )
+    # The language most of the recipe is in; its lines show the variant in it (spec 043).
+    language: Mapped[str] = mapped_column(
+        String(2), nullable=False, server_default="es", default="es"
+    )
+    # Set once the language command has read the recipe; its proposal waits for a person.
+    language_detected_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    proposed_language: Mapped[str | None] = mapped_column(String(2), nullable=True)
 
 
 class RecipeIngredientModel(Base):
@@ -604,6 +680,10 @@ class ShoppingListItemModel(Base):
     notes: Mapped[list] = mapped_column(JSONB, nullable=False)
     recipes: Mapped[list] = mapped_column(JSONB, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
+    # The ingredient's variants by language, for cart lines; {} for hand items (spec 043 R7).
+    names: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb"), default=dict
+    )
     # Shared by the kitchen; frozen once the list is closed (spec 070 FR-001, FR-004).
     bought: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false"), default=False
