@@ -8,6 +8,7 @@ whole path from stored ingredient lines to the response is exercised.
 from __future__ import annotations
 
 import time
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
@@ -564,7 +565,7 @@ def test_a_saved_and_a_closed_list_keep_a_custom_line(
     assert [line["kind"] for line in before["lines"]] == ["custom"]
     closed = ana.post(
         f"{_list(kitchen_id)}/done",
-        json={"list_id": before["list_id"], "closing_date": "2026-11-02"},
+        json={"list_id": before["list_id"], "closing_date": datetime.now(UTC).date().isoformat()},
     )
     assert closed.status_code == 200, closed.text
     assert closed.json()["lines"][0]["amounts"] == [{"quantity": "1", "unit": "lata"}]
