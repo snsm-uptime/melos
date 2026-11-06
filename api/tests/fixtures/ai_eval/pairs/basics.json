@@ -1,0 +1,20 @@
+{
+  "catalog": [
+    "garlic",
+    "ajo",
+    "flour",
+    "harina",
+    "salt",
+    "sugar"
+  ],
+  "expected": [
+    [
+      "garlic",
+      "ajo"
+    ],
+    [
+      "flour",
+      "harina"
+    ]
+  ]
+}

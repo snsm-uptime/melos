@@ -1,0 +1,25 @@
+{
+  "catalog": [
+    "cumin",
+    "comino",
+    "cinnamon",
+    "canela",
+    "paprika",
+    "pimentón",
+    "nutmeg"
+  ],
+  "expected": [
+    [
+      "cumin",
+      "comino"
+    ],
+    [
+      "cinnamon",
+      "canela"
+    ],
+    [
+      "paprika",
+      "pimentón"
+    ]
+  ]
+}

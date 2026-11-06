@@ -1,0 +1,25 @@
+{
+  "catalog": [
+    "rice",
+    "arroz",
+    "black beans",
+    "frijoles negros",
+    "olive oil",
+    "aceite de oliva",
+    "vinegar"
+  ],
+  "expected": [
+    [
+      "rice",
+      "arroz"
+    ],
+    [
+      "black beans",
+      "frijoles negros"
+    ],
+    [
+      "olive oil",
+      "aceite de oliva"
+    ]
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "catalog": [
+    "salt",
+    "pepper",
+    "sugar",
+    "flour",
+    "butter"
+  ],
+  "expected": []
+}

@@ -1,0 +1,16 @@
+{
+  "catalog": [
+    "onion",
+    "cebolleta",
+    "lemon",
+    "lima",
+    "lime",
+    "limón"
+  ],
+  "expected": [
+    [
+      "lemon",
+      "limón"
+    ]
+  ]
+}

@@ -1,0 +1,10 @@
+Simple bread
+
+flour
+water
+yeast
+salt
+
+Mix and knead.
+Let rise for an hour.
+Bake at 220 C.

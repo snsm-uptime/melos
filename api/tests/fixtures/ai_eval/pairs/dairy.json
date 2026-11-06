@@ -1,0 +1,20 @@
+{
+  "catalog": [
+    "butter",
+    "mantequilla",
+    "milk",
+    "leche",
+    "cream",
+    "queso"
+  ],
+  "expected": [
+    [
+      "butter",
+      "mantequilla"
+    ],
+    [
+      "milk",
+      "leche"
+    ]
+  ]
+}

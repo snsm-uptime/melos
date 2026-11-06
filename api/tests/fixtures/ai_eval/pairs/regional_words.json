@@ -1,0 +1,25 @@
+{
+  "catalog": [
+    "avocado",
+    "aguacate",
+    "palta",
+    "corn",
+    "maíz",
+    "bell pepper",
+    "pimiento"
+  ],
+  "expected": [
+    [
+      "avocado",
+      "aguacate"
+    ],
+    [
+      "corn",
+      "maíz"
+    ],
+    [
+      "bell pepper",
+      "pimiento"
+    ]
+  ]
+}
