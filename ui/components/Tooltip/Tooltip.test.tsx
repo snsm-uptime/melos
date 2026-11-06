@@ -344,4 +344,38 @@ describe("Tooltip", () => {
     });
     expect(focused).toBe(true);
   });
+  it("does not show the bubble after a touch tap (emulated mouseenter)", async () => {
+    await act(async () => {
+      root.render(
+        <Tooltip label="Close menu">
+          <button type="button">trigger</button>
+        </Tooltip>,
+      );
+    });
+    const button = container.querySelector("button") as HTMLButtonElement;
+
+    function pointer(type: string, pointerType: string) {
+      const event = new MouseEvent(type, { bubbles: true });
+      Object.defineProperty(event, "pointerType", { value: pointerType });
+      button.dispatchEvent(event);
+    }
+
+    await act(async () => {
+      pointer("pointerover", "touch");
+      pointer("pointerdown", "touch");
+      button.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+      button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      vi.advanceTimersByTime(SHOW_DELAY_MS * 2);
+    });
+    expect(document.querySelector('[data-testid="tooltip-bubble"]')).toBeNull();
+
+    // A real mouse hover afterwards (hybrid device) still shows it.
+    await act(async () => {
+      button.dispatchEvent(new MouseEvent("mouseout", { bubbles: true }));
+      pointer("pointerover", "mouse");
+      button.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+      vi.advanceTimersByTime(SHOW_DELAY_MS);
+    });
+    expect(document.querySelector('[data-testid="tooltip-bubble"]')).not.toBeNull();
+  });
 });

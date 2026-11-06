@@ -10,6 +10,7 @@ import {
   useState,
   type FocusEvent,
   type MouseEvent,
+  type PointerEvent,
   type ReactElement,
   type Ref,
 } from "react";
@@ -76,6 +77,13 @@ export function Tooltip({ label, disabled = false, children }: Props) {
   // synchronously without routing through an effect.
   const hoveredRef = useRef(false);
   const focusVisibleRef = useRef(false);
+  // Pointer type of the most recent pointer to enter/press the trigger.
+  // Touch browsers emulate `mouseenter` on tap but never send a matching
+  // `mouseleave`, so without this a tap would arm the show timer and pop
+  // the bubble up after the tap's action (e.g. after a menu pane closes).
+  // Pointer events fire before the emulated mouse events, so recording the
+  // type here lets `onMouseEnter` ignore non-mouse "hovers".
+  const lastPointerTypeRef = useRef<string | null>(null);
   const showTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Mirrors the "adjusting state when a prop changes" pattern (see
   // https://react.dev/learn/you-might-not-need-an-effect) rather than a
@@ -116,6 +124,8 @@ export function Tooltip({ label, disabled = false, children }: Props) {
     ref?: Ref<HTMLElement>;
     onMouseEnter?: (event: MouseEvent) => void;
     onMouseLeave?: (event: MouseEvent) => void;
+    onPointerEnter?: (event: PointerEvent) => void;
+    onPointerDown?: (event: PointerEvent) => void;
     onFocus?: (event: FocusEvent) => void;
     onBlur?: (event: FocusEvent) => void;
   };
@@ -240,8 +250,26 @@ export function Tooltip({ label, disabled = false, children }: Props) {
     /* eslint-disable-next-line react-hooks/refs */
     cloneElement(single, {
       ref: mergedRef,
+      onPointerEnter: (event: PointerEvent) => {
+        childProps.onPointerEnter?.(event);
+        lastPointerTypeRef.current = event.pointerType;
+      },
+      onPointerDown: (event: PointerEvent) => {
+        childProps.onPointerDown?.(event);
+        lastPointerTypeRef.current = event.pointerType;
+        if (event.pointerType !== "mouse") {
+          hoveredRef.current = false;
+          syncVisibility();
+        }
+      },
       onMouseEnter: (event: MouseEvent) => {
         childProps.onMouseEnter?.(event);
+        if (
+          lastPointerTypeRef.current !== null &&
+          lastPointerTypeRef.current !== "mouse"
+        ) {
+          return;
+        }
         hoveredRef.current = true;
         syncVisibility();
       },
