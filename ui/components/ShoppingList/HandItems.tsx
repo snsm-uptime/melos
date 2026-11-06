@@ -2,7 +2,10 @@
 
 import { useState, type FormEvent } from "react";
 
+import { SearchableSelect } from "@/components/SearchableSelect";
+import { customUnitMessages } from "@/lib/i18n/customUnits";
 import type { Locale } from "@/lib/i18n/locale";
+import { placesMessages } from "@/lib/i18n/places";
 import { shoppingListMessages } from "@/lib/i18n/shoppingList";
 import {
   allPlaces,
@@ -19,6 +22,7 @@ import {
   type ShoppingList,
 } from "@/lib/shoppingListClient";
 
+import { ITEM_GRID } from "./itemGrid";
 import { ShoppingRow } from "./ShoppingLine";
 
 const UNITS = [
@@ -36,6 +40,9 @@ const UNITS = [
 
 const FIELD =
   "min-h-11 rounded-[var(--radius-md)] border border-border bg-background px-3 text-[1rem] text-foreground";
+
+/** A SearchableSelect trigger that looks like the text fields beside it. */
+const PICKER = `${FIELD} w-full justify-between focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`;
 
 /** A hand item's amount, or nothing when it has none. */
 function handAmount(item: HandItem): string {
@@ -64,6 +71,8 @@ export function AddItemForm({
   customPlaces = [],
 }: Pick<HandItemsProps, "kitchenId" | "locale" | "onChange" | "customPlaces">) {
   const t = shoppingListMessages[locale];
+  const unitText = customUnitMessages[locale];
+  const placeText = placesMessages[locale];
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("");
@@ -120,42 +129,42 @@ export function AddItemForm({
             onChange={(e) => setQuantity(e.target.value)}
           />
         </label>
-        <label className="flex w-[7rem] flex-col gap-1 text-[0.85rem] text-muted">
-          {t.itemUnit}
-          <select
-            className={FIELD}
+        <div className="flex w-[7rem] flex-col gap-1 text-[0.85rem] text-muted">
+          <span aria-hidden="true">{t.itemUnit}</span>
+          <SearchableSelect
+            aria-label={t.itemUnit}
+            className={PICKER}
             value={unit}
-            onChange={(e) => setUnit(e.target.value)}
-          >
-            <option value="">{t.noUnit}</option>
-            {UNITS.map((code) => (
-              <option key={code} value={code}>
-                {code}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex w-[12rem] flex-col gap-1 text-[0.85rem] text-muted">
-          {t.itemPlace}
-          <select
-            className={FIELD}
+            options={[
+              { value: "", label: t.noUnit },
+              ...UNITS.map((code) => ({ value: code, label: code })),
+            ]}
+            searchLabel={unitText.search}
+            noResults={unitText.noMatch}
+            onChange={(value) => setUnit(value)}
+          />
+        </div>
+        <div className="flex w-[12rem] flex-col gap-1 text-[0.85rem] text-muted">
+          <span aria-hidden="true">{t.itemPlace}</span>
+          <SearchableSelect
+            aria-label={t.itemPlace}
+            className={PICKER}
             value={place}
-            onChange={(e) => setPlace(e.target.value)}
-          >
-            <option value="">{t.noPlace}</option>
-            {places.map((p, i) => [
-              // Own places, a divider, then the default places (a native select has no rule).
-              startsDefaults(places, i) ? (
-                <option key="divider" disabled value="__divider__">
-                  ──────────
-                </option>
-              ) : null,
-              <option key={placeKey(p)} value={placeKey(p)}>
-                {placeLabel(p, locale)}
-              </option>,
-            ])}
-          </select>
-        </label>
+            panelWidth={224}
+            options={[
+              { value: "", label: t.noPlace },
+              // Own places, a divider, then the default places.
+              ...places.map((p, i) => ({
+                value: placeKey(p),
+                label: placeLabel(p, locale),
+                dividerBefore: startsDefaults(places, i),
+              })),
+            ]}
+            searchLabel={placeText.searchPlaces}
+            noResults={placeText.noPlaceMatch}
+            onChange={(value) => setPlace(value)}
+          />
+        </div>
         <button
           type="submit"
           disabled={pending || name.trim() === ""}
@@ -203,7 +212,7 @@ export function HandItemsList({
           <h3 className="m-0 text-[1rem] font-[600] text-foreground">
             {t.addedByHand}
           </h3>
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          <ul className={ITEM_GRID}>
             {items.map((item) => (
               <ShoppingRow
                 key={item.id}

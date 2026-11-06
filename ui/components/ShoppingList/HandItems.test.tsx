@@ -22,6 +22,26 @@ function type(input: HTMLInputElement, value: string) {
   });
 }
 
+/** The options a SearchableSelect offers; it is left closed. */
+function choices(trigger: string): string[] {
+  const button = document.querySelector(trigger) as HTMLButtonElement;
+  act(() => button.click());
+  const labels = Array.from(document.querySelectorAll('[role="option"]')).map(
+    (option) => option.textContent ?? "",
+  );
+  act(() => button.click());
+  return labels;
+}
+
+/** Opens a SearchableSelect and chooses the option labelled `label`. */
+function pick(trigger: string, label: string) {
+  act(() => (document.querySelector(trigger) as HTMLButtonElement).click());
+  const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(
+    (item) => item.textContent === label,
+  );
+  act(() => option!.click());
+}
+
 async function submit(form: HTMLFormElement) {
   await act(async () => {
     form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
@@ -59,12 +79,11 @@ describe("HandItems", () => {
         customPlaces={[{ id: "p1", name: "Asian market" }]}
       />,
     );
-    const select = view.container.querySelectorAll("select")[1] as HTMLSelectElement;
-    expect(Array.from(select.options).map((o) => o.textContent)).toEqual([
+    const picker = 'button[aria-label="Where to buy (optional)"]';
+    expect(choices(picker)).toEqual([
       "Choose later",
       // Own places A to Z, a divider, then the defaults A to Z.
       "Asian market",
-      "──────────",
       "Bakery",
       "Butcher",
       "Farmers market",
@@ -73,11 +92,13 @@ describe("HandItems", () => {
       "Pharmacy or drugstore",
       "Supermarket",
     ]);
+    act(() => (document.querySelector(picker) as HTMLButtonElement).click());
+    const divider = document.querySelector('[role="separator"]');
+    expect(divider?.previousElementSibling?.textContent).toBe("Asian market");
+    act(() => (document.querySelector(picker) as HTMLButtonElement).click());
     type(view.container.querySelector("input") as HTMLInputElement, "Dish soap");
-    act(() => {
-      select.value = "default:pharmacy";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    pick(picker, "Pharmacy or drugstore");
+    expect(view.container.querySelector(picker)?.textContent).toBe("Pharmacy or drugstore");
     await submit(view.container.querySelector("form") as HTMLFormElement);
     expect(client.addShoppingItem).toHaveBeenCalledWith("k1", {
       name: "Dish soap",
@@ -126,6 +147,25 @@ describe("HandItems", () => {
       quantity: "2",
       unit: "unit",
     });
+  });
+
+  it("sends the unit chosen in the searchable unit picker", async () => {
+    client.addShoppingItem.mockResolvedValue({ ok: true, value: {} });
+    render();
+    const unit = 'button[aria-label="Unit"]';
+    expect(view.container.querySelector(unit)?.textContent).toBe("No unit");
+    const [name, quantity] = Array.from(view.container.querySelectorAll("input"));
+    type(name, "Flour");
+    type(quantity, "2");
+    pick(unit, "kg");
+    await submit(view.container.querySelector("form") as HTMLFormElement);
+
+    expect(client.addShoppingItem).toHaveBeenCalledWith("k1", {
+      name: "Flour",
+      quantity: "2",
+      unit: "kg",
+    });
+    expect(view.container.querySelector(unit)?.textContent).toBe("No unit");
   });
 
   it("shows a plain message for a refused item and keeps the text", async () => {

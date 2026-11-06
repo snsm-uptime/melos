@@ -22,7 +22,7 @@ export function RecipeChips({ kitchenId, recipes, locale }: RecipeChipsProps) {
   return (
     <ul
       aria-label={t.recipesLabel}
-      className="m-0 flex max-w-[14rem] shrink-0 list-none gap-1 overflow-x-auto p-0 pb-1"
+      className="m-0 flex max-w-[min(14rem,45%)] shrink-0 list-none gap-1 overflow-x-auto p-0 pb-1"
     >
       {recipes.map((recipe) => (
         <li key={recipe.recipe_id} className="shrink-0">

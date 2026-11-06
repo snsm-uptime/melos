@@ -2,6 +2,7 @@ import type { Locale } from "@/lib/i18n/locale";
 import { shoppingListMessages } from "@/lib/i18n/shoppingList";
 import type { YourCallEntry } from "@/lib/shoppingListClient";
 
+import { ITEM_GRID } from "./itemGrid";
 import { ShoppingRow } from "./ShoppingLine";
 
 type YourCallListProps = {
@@ -32,7 +33,7 @@ export function YourCallList({
       <h3 className="m-0 text-[1rem] font-[600] text-foreground">
         {t.yourCall}
       </h3>
-      <ul className="m-0 flex list-none flex-col gap-2 p-0">
+      <ul className={ITEM_GRID}>
         {entries.map((entry) => (
           <ShoppingRow
             key={entry.name}

@@ -5,6 +5,7 @@ import type { ShoppingLine, ShoppingRecipeRef } from "@/lib/shoppingListClient";
 
 import { BoughtToggle, boughtText } from "./BoughtToggle";
 import { RecipeChips } from "./RecipeChips";
+import { TruncatedText } from "./TruncatedText";
 
 type ShoppingLineRowProps = {
   line: ShoppingLine;
@@ -42,17 +43,19 @@ export function ShoppingRow({
   return (
     <li
       data-bought={bought ? "true" : undefined}
-      className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-1.5"
+      className="flex min-w-0 items-center gap-3 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-1.5"
     >
       <div className="min-w-0 flex-1">
         <span
           className={`flex min-w-0 items-baseline gap-2 ${boughtText(bought)}`}
         >
-          <span className="truncate text-[1rem] font-[550]">{name}</span>
+          <TruncatedText text={name} className="text-[1rem] font-[550]" />
           <span className="sr-only"> — </span>
-          <span className="shrink-0 text-[0.9rem] tabular-nums text-muted">
-            {detail}
-          </span>
+          {/* Shrinks only after the name is cut to nothing, so a long note can't push out the row. */}
+          <TruncatedText
+            text={detail}
+            className="shrink-[0.0001] text-[0.9rem] tabular-nums text-muted"
+          />
         </span>
       </div>
       {recipes.length > 0 ? (

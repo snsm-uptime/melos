@@ -20,6 +20,8 @@ import { formatHandItem } from "@/lib/shoppingListText";
 import { BoughtToggle, boughtText } from "./BoughtToggle";
 import { PlaceTabs } from "./PlaceTabs";
 import { ShoppingLineRow } from "./ShoppingLine";
+import { TruncatedText } from "./TruncatedText";
+import { ITEM_GRID } from "./itemGrid";
 import { YourCallList } from "./YourCallList";
 
 const BACK =
@@ -107,7 +109,7 @@ export function ClosedListDetail({ kitchenId, listId, locale }: ClosedListDetail
   }, [kitchenId, listId]);
 
   return (
-    <section className="flex flex-col gap-3 px-4">
+    <section className="@container flex flex-col gap-3 px-4">
       <Link href={back} className={BACK}>
         {t.backToPastLists}
       </Link>
@@ -154,7 +156,7 @@ function ClosedListItems({ list, tab, onTab, kitchenId, locale }: ClosedListItem
     <>
       <PlaceTabs tabs={tabs} selected={shown} onSelect={onTab} locale={locale} />
       {lines.length > 0 ? (
-        <ul className="m-0 flex list-none flex-col gap-2 p-0">
+        <ul className={ITEM_GRID}>
           {lines.map((line, index) => (
             <ShoppingLineRow
               key={line.id ?? `${line.name}|${line.kind}|${line.size ?? ""}|${index}`}
@@ -175,17 +177,18 @@ function ClosedListItems({ list, tab, onTab, kitchenId, locale }: ClosedListItem
       {handItems.length > 0 ? (
         <>
           <h2 className="m-0 text-[1rem] font-[600] text-foreground">{t.addedByHand}</h2>
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          <ul className={ITEM_GRID}>
             {handItems.map((item) => (
               <li
                 key={item.id}
                 data-bought={item.bought ? "true" : undefined}
-                className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-surface p-3"
+                className="flex min-w-0 items-center gap-3 rounded-[var(--radius-md)] border border-border bg-surface p-3"
               >
                 <BoughtToggle name={item.name} bought={item.bought === true} locale={locale} />
-                <span className={`text-[1rem] font-[550] ${boughtText(item.bought)}`}>
-                  {formatHandItem(item)}
-                </span>
+                <TruncatedText
+                  text={formatHandItem(item)}
+                  className={`text-[1rem] font-[550] ${boughtText(item.bought)}`}
+                />
               </li>
             ))}
           </ul>

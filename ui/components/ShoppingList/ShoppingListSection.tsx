@@ -23,6 +23,7 @@ import { DoneButton } from "./DoneButton";
 import { AddItemForm, HandItemsList } from "./HandItems";
 import { PlaceTabs } from "./PlaceTabs";
 import { ShoppingLineRow } from "./ShoppingLine";
+import { ITEM_GRID } from "./itemGrid";
 import { YourCallList } from "./YourCallList";
 
 type State =
@@ -141,7 +142,7 @@ export function ShoppingListSection({
   const handItems = inTab(list.hand_items, shownTab);
 
   return (
-    <section className="flex flex-col gap-3 px-4 [overflow-anchor:none]">
+    <section className="@container flex flex-col gap-3 px-4 [overflow-anchor:none]">
       <h2 className="m-0 text-[1.1rem] font-[600] text-foreground">
         {t.title}
       </h2>
@@ -175,7 +176,7 @@ export function ShoppingListSection({
         </p>
       ) : null}
       {lines.length > 0 ? (
-        <ul className="m-0 flex list-none flex-col gap-2 p-0">
+        <ul className={ITEM_GRID}>
           {lines.map((line, index) => (
             <ShoppingLineRow
               key={
