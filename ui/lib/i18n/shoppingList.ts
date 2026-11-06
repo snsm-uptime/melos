@@ -77,7 +77,7 @@ export const shoppingListMessages = {
     pastLists: "Carritos anteriores",
     pastListsEmpty: "Aún no hay listas cerradas.",
     pastListsLoadError: "No se pudieron cargar las listas anteriores. Inténtalo de nuevo.",
-    closedOn: (date: string) => `Cerrada el ${date}`,
+    closedOn: (date: string) => `Cerrado el ${date}`,
     backToPastLists: "Volver a las listas anteriores",
     markBought: (name: string) => `Comprado: ${name}`,
     allBought: "Todo está comprado. Pulsa Listo para cerrar la lista.",
