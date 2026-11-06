@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { act } from "react";
+import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -27,7 +27,12 @@ const notebook = (over: Record<string, unknown>) => ({
 const list = [
   notebook({}),
   notebook({ id: "nb-2", name: "Desserts", is_default: false }),
-  notebook({ id: "nb-3", name: "Family list", access: "member", is_default: false }),
+  notebook({
+    id: "nb-3",
+    name: "Family list",
+    access: "member",
+    is_default: false,
+  }),
   notebook({
     id: "nb-4",
     name: "Home notebook",
@@ -41,7 +46,11 @@ type Reply = { status: number; body: unknown };
 
 const SNAPSHOTS = "/api/notebooks/kitchens/k1/snapshots";
 
-let posts: { confirm_repeat: boolean; snapshot_key: string; source_notebook_id: string }[];
+let posts: {
+  confirm_repeat: boolean;
+  snapshot_key: string;
+  source_notebook_id: string;
+}[];
 let replies: (Reply | Promise<Reply>)[];
 let onAdded: ReturnType<typeof vi.fn<() => void>>;
 let container: HTMLDivElement;
@@ -64,12 +73,39 @@ async function flush() {
 
 function button(name: string): HTMLButtonElement | undefined {
   return Array.from(document.querySelectorAll("button")).find(
-    (el) => el.getAttribute("aria-label") === name || el.textContent?.includes(name),
+    (el) =>
+      el.getAttribute("aria-label") === name || el.textContent?.includes(name),
   );
 }
 
+/** The dialog opens by mounting, as the kitchen notebooks screen mounts it. */
+function Host() {
+  const [open, setOpen] = useState(true);
+  return open ? (
+    <AddNotebookSnapshot
+      kitchenId="k1"
+      locale="en"
+      onAdded={onAdded}
+      onClose={() => setOpen(false)}
+    />
+  ) : null;
+}
+
 async function open() {
-  act(() => button("Add a notebook")!.click());
+  await flush();
+}
+
+/** Mounts the dialog again, so it loads with the fetch stubbed in the test. */
+async function remount() {
+  act(() => root.render(<></>));
+  act(() => {
+    root.render(
+      <ToastProvider>
+        <Host />
+        <ToastViewport />
+      </ToastProvider>,
+    );
+  });
   await flush();
 }
 
@@ -87,8 +123,10 @@ beforeEach(() => {
     "fetch",
     vi.fn(async (url: string, init?: RequestInit) => {
       order.push(url);
-      if (url === "/api/notebooks/default") return answer({ status: 200, body: list[0] });
-      if (url === "/api/notebooks") return answer({ status: 200, body: { notebooks: list } });
+      if (url === "/api/notebooks/default")
+        return answer({ status: 200, body: list[0] });
+      if (url === "/api/notebooks")
+        return answer({ status: 200, body: { notebooks: list } });
       if (url === SNAPSHOTS) {
         posts.push(JSON.parse(init?.body as string));
         const reply = replies.length > 1 ? replies.shift()! : replies[0];
@@ -103,7 +141,7 @@ beforeEach(() => {
   act(() => {
     root.render(
       <ToastProvider>
-        <AddNotebookSnapshot kitchenId="k1" locale="en" onAdded={onAdded} />
+        <Host />
         <ToastViewport />
       </ToastProvider>,
     );
@@ -120,7 +158,10 @@ describe("AddNotebookSnapshot", () => {
   it("loads the default first, and offers only the personal notebooks the person owns", async () => {
     await open();
 
-    expect(order.slice(0, 2)).toEqual(["/api/notebooks/default", "/api/notebooks"]);
+    expect(order.slice(0, 2)).toEqual([
+      "/api/notebooks/default",
+      "/api/notebooks",
+    ]);
     expect(button("ana's Notebook")).toBeDefined();
     expect(button("Desserts")).toBeDefined();
     expect(button("Family list")).toBeUndefined();
@@ -130,7 +171,9 @@ describe("AddNotebookSnapshot", () => {
   it("says who will see the copy", async () => {
     await open();
 
-    expect(document.body.textContent).toContain("Everyone in this kitchen will see a copy");
+    expect(document.body.textContent).toContain(
+      "Everyone in this kitchen will see a copy",
+    );
   });
 
   it("adds at once with no confirmation, and reports it to screen readers", async () => {
@@ -139,7 +182,10 @@ describe("AddNotebookSnapshot", () => {
     await choose("Desserts");
 
     expect(posts).toHaveLength(1);
-    expect(posts[0]).toMatchObject({ source_notebook_id: "nb-2", confirm_repeat: false });
+    expect(posts[0]).toMatchObject({
+      source_notebook_id: "nb-2",
+      confirm_repeat: false,
+    });
     expect(document.querySelector("[role='dialog']")).toBeNull();
     expect(onAdded).toHaveBeenCalledTimes(1);
     expect(document.querySelector("[role='status']")?.textContent).toContain(
@@ -153,7 +199,9 @@ describe("AddNotebookSnapshot", () => {
 
     await choose("Desserts");
 
-    expect(document.body.textContent).toContain("already has a copy of Desserts");
+    expect(document.body.textContent).toContain(
+      "already has a copy of Desserts",
+    );
     act(() => button("Cancel")!.click());
     await flush();
     expect(posts).toHaveLength(1);
@@ -244,7 +292,9 @@ describe("AddNotebookSnapshot", () => {
     );
 
     await choose("Desserts");
-    expect(document.querySelector("[role='alert']")?.textContent).toContain("archived");
+    expect(document.querySelector("[role='alert']")?.textContent).toContain(
+      "archived",
+    );
   });
 
   it("says so when the person owns no notebooks to add", async () => {
@@ -258,15 +308,20 @@ describe("AddNotebookSnapshot", () => {
       ),
     );
 
-    await open();
+    await remount();
 
-    expect(document.body.textContent).toContain("You have no notebooks of your own to add.");
+    expect(document.body.textContent).toContain(
+      "You have no notebooks of your own to add.",
+    );
   });
 
   it("shows a load error when the notebooks can't be read", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => answer({ status: 500, body: {} })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => answer({ status: 500, body: {} })),
+    );
 
-    await open();
+    await remount();
 
     expect(document.querySelector("[role='alert']")?.textContent).toBe(
       "Could not load notebooks. Try again.",

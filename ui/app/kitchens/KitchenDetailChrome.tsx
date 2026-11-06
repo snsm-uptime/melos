@@ -8,7 +8,7 @@ import {
   CartIcon,
   DotsIcon,
   HistoryIcon,
-  NotebookIcon,
+  BooksIcon,
   StarIcon,
   PencilIcon,
   ShareIcon,
@@ -225,7 +225,7 @@ export function KitchenDetailChrome({ title, share, cart, pastLists, notebooks, 
               variant="ghost"
               label={notebooksLabel}
               onClick={() => push(notebooksHref)}
-              icon={<NotebookIcon className="size-6" />}
+              icon={<BooksIcon className="size-6" />}
             />
           ) : null}
           {openLabel ? (

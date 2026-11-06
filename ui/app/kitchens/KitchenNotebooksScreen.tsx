@@ -1,17 +1,22 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { CauldronLoader } from "@/components/CauldronLoader";
 import { useChromeHeader } from "@/components/ChromeBack";
+import { IconButton } from "@/components/IconButton";
 import { NotebookCard } from "@/components/NotebookCard/NotebookCard";
 import type { Locale } from "@/lib/i18n/locale";
 import { notebooksMessages } from "@/lib/i18n/notebooks";
-import { fetchKitchenNotebooks, type NotebookResponse } from "@/lib/notebooksClient";
+import {
+  fetchKitchenNotebooks,
+  type NotebookResponse,
+} from "@/lib/notebooksClient";
 import { requestSidePanelRefresh } from "@/lib/sidePanelClient";
 
-import { NewNotebookCard } from "../notebooks/NewNotebookCard";
+import { NotebookAddIcon, NotebookImportIcon } from "@/app/icons";
+import { NewNotebookDialog } from "../notebooks/NewNotebookCard";
 import styles from "../notebooks/notebooks.module.scss";
 import { AddNotebookSnapshot } from "./AddNotebookSnapshot";
 
@@ -40,9 +45,11 @@ export function KitchenNotebooksScreen({
   const t = notebooksMessages[locale];
   const router = useRouter();
   const kitchenPath = `/kitchens/${encodeURIComponent(kitchenId)}`;
-  useChromeHeader({ backHref: kitchenPath, title: t.sectionTitle });
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<ScreenState>({ status: "loading" });
+  // Which add dialog is open: the two add actions sit in the chrome header.
+  const [importing, setImporting] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     let current = true;
@@ -51,7 +58,9 @@ export function KitchenNotebooksScreen({
       if (result.ok) {
         setState({ status: "ready", notebooks: result.value });
       } else if (result.code === "alias_required") {
-        router.replace(`/alias?returnTo=${encodeURIComponent(`${kitchenPath}/notebooks`)}`);
+        router.replace(
+          `/alias?returnTo=${encodeURIComponent(`${kitchenPath}/notebooks`)}`,
+        );
       } else if (result.code === "kitchen_not_found") {
         setState({ status: "not_found" });
       } else {
@@ -80,6 +89,29 @@ export function KitchenNotebooksScreen({
   const canAdd =
     state.status === "ready" &&
     state.notebooks.some((notebook) => notebook.kitchen_is_archived === false);
+  const trailing = useMemo(
+    () =>
+      canAdd ? (
+        <>
+          <IconButton
+            type="button"
+            variant="ghost"
+            label={t.snapshotAction}
+            onClick={() => setImporting(true)}
+            icon={<NotebookImportIcon className="size-6" />}
+          />
+          <IconButton
+            type="button"
+            variant="ghost"
+            label={t.newNotebook}
+            onClick={() => setCreating(true)}
+            icon={<NotebookAddIcon className="size-6" />}
+          />
+        </>
+      ) : null,
+    [canAdd, t],
+  );
+  useChromeHeader({ backHref: kitchenPath, title: t.sectionTitle, trailing });
   const from = encodeURIComponent(`${kitchenPath}/notebooks`);
 
   return (
@@ -105,16 +137,6 @@ export function KitchenNotebooksScreen({
       ) : null}
       {state.status === "ready" && state.notebooks.length > 0 ? (
         <ul className={styles.grid}>
-          {canAdd ? (
-            <li>
-              <AddNotebookSnapshot kitchenId={kitchenId} locale={locale} onAdded={onAdded} />
-            </li>
-          ) : null}
-          {canAdd ? (
-            <li>
-              <NewNotebookCard locale={locale} kitchenId={kitchenId} />
-            </li>
-          ) : null}
           {state.notebooks.map((notebook) => (
             <li key={notebook.id}>
               <NotebookCard
@@ -128,6 +150,21 @@ export function KitchenNotebooksScreen({
             </li>
           ))}
         </ul>
+      ) : null}
+      {importing ? (
+        <AddNotebookSnapshot
+          kitchenId={kitchenId}
+          locale={locale}
+          onAdded={onAdded}
+          onClose={() => setImporting(false)}
+        />
+      ) : null}
+      {creating ? (
+        <NewNotebookDialog
+          locale={locale}
+          kitchenId={kitchenId}
+          onClose={() => setCreating(false)}
+        />
       ) : null}
     </section>
   );

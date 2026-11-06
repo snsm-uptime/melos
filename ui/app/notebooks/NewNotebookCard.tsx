@@ -11,33 +11,69 @@ import { createKitchenNotebook, createNotebook } from "@/lib/notebooksClient";
 import { NotebookNameDialog } from "./NotebookNameDialog";
 
 /**
- * The plus tile: name a notebook, then open it, empty (S-059). A personal notebook on the Notebook
- * tab; with a `kitchenId`, a notebook of that kitchen on its notebooks list.
+ * Name a notebook, then open it, empty (S-059). A personal notebook on the Notebook tab; with a
+ * `kitchenId`, a notebook of that kitchen on its notebooks list. Mounting it opens it.
  */
-export function NewNotebookCard({ locale, kitchenId }: { locale: Locale; kitchenId?: string }) {
+export function NewNotebookDialog({
+  locale,
+  kitchenId,
+  onClose,
+}: {
+  locale: Locale;
+  kitchenId?: string;
+  onClose: () => void;
+}) {
   const t = notebooksMessages[locale];
   const router = useRouter();
+  const listPath = kitchenId
+    ? `/kitchens/${encodeURIComponent(kitchenId)}/notebooks`
+    : "/notebooks";
+  return (
+    <NotebookNameDialog
+      title={t.newNotebook}
+      confirmLabel={t.newNotebookCreate}
+      failedMessage={t.newNotebookFailed}
+      locale={locale}
+      submit={(name) =>
+        kitchenId
+          ? createKitchenNotebook(kitchenId, name)
+          : createNotebook(name)
+      }
+      onSaved={(notebook) => {
+        const path = `/notebooks/${encodeURIComponent(notebook.id)}`;
+        router.push(
+          kitchenId ? `${path}?from=${encodeURIComponent(listPath)}` : path,
+        );
+      }}
+      onClose={onClose}
+      returnTo={listPath}
+    />
+  );
+}
+
+/** The plus tile on the notebooks grid: opens `NewNotebookDialog`. */
+export function NewNotebookCard({
+  locale,
+  kitchenId,
+}: {
+  locale: Locale;
+  kitchenId?: string;
+}) {
+  const t = notebooksMessages[locale];
   const [open, setOpen] = useState(false);
-  const listPath = kitchenId ? `/kitchens/${encodeURIComponent(kitchenId)}/notebooks` : "/notebooks";
 
   return (
     <>
-      <AddItemCard label={t.newNotebook} onClick={() => setOpen(true)} className="h-full" />
+      <AddItemCard
+        label={t.newNotebook}
+        onClick={() => setOpen(true)}
+        className="h-full"
+      />
       {open ? (
-        <NotebookNameDialog
-          title={t.newNotebook}
-          confirmLabel={t.newNotebookCreate}
-          failedMessage={t.newNotebookFailed}
+        <NewNotebookDialog
           locale={locale}
-          submit={(name) =>
-            kitchenId ? createKitchenNotebook(kitchenId, name) : createNotebook(name)
-          }
-          onSaved={(notebook) => {
-            const path = `/notebooks/${encodeURIComponent(notebook.id)}`;
-            router.push(kitchenId ? `${path}?from=${encodeURIComponent(listPath)}` : path);
-          }}
+          kitchenId={kitchenId}
           onClose={() => setOpen(false)}
-          returnTo={listPath}
         />
       ) : null}
     </>

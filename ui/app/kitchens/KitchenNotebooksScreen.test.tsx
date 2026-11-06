@@ -4,13 +4,19 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  ChromeBackProvider,
+  useChromeHeaderState,
+} from "@/components/ChromeBack";
 import { ToastProvider } from "@/components/Toast";
 
 import { KitchenNotebooksScreen } from "./KitchenNotebooksScreen";
 
 const replace = vi.fn();
 const router = { replace };
-const { requestSidePanelRefresh } = vi.hoisted(() => ({ requestSidePanelRefresh: vi.fn() }));
+const { requestSidePanelRefresh } = vi.hoisted(() => ({
+  requestSidePanelRefresh: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
@@ -18,7 +24,14 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/sidePanelClient", () => ({ requestSidePanelRefresh }));
 vi.mock("next/link", () => ({
-  default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
+  default: ({
+    href,
+    children,
+    ...rest
+  }: {
+    href: string;
+    children: React.ReactNode;
+  }) => (
     <a href={href} {...rest}>
       {children}
     </a>
@@ -61,11 +74,24 @@ function reply(item: Reply) {
   };
 }
 
+/** Shows the chrome header's trailing actions, which AppShell draws in the real page. */
+function ChromeProbe() {
+  const header = useChromeHeaderState();
+  return <div data-testid="chrome">{header.trailing}</div>;
+}
+
 async function render() {
   act(() => {
     root.render(
       <ToastProvider>
-        <KitchenNotebooksScreen kitchenId="k1" locale="en" viewerAlias="ana" />
+        <ChromeBackProvider>
+          <ChromeProbe />
+          <KitchenNotebooksScreen
+            kitchenId="k1"
+            locale="en"
+            viewerAlias="ana"
+          />
+        </ChromeBackProvider>
       </ToastProvider>,
     );
   });
@@ -73,11 +99,20 @@ async function render() {
 }
 
 function links(): (string | null)[] {
-  return Array.from(document.querySelectorAll("a")).map((el) => el.getAttribute("href"));
+  return Array.from(document.querySelectorAll("a")).map((el) =>
+    el.getAttribute("href"),
+  );
+}
+
+/** The add actions are in the chrome header (not the grid). */
+function chromeButton(label: string): HTMLButtonElement | null {
+  return document.querySelector(
+    `[data-testid='chrome'] button[aria-label='${label}']`,
+  );
 }
 
 function addButton(): HTMLButtonElement | null {
-  return document.querySelector("button[aria-label='Add a notebook']");
+  return chromeButton("Add a notebook");
 }
 
 beforeEach(() => {
@@ -86,7 +121,9 @@ beforeEach(() => {
   replies = [{ status: 200, body: { notebooks: [kitchenNotebook({})] } }];
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () => reply(replies.length > 1 ? replies.shift()! : replies[0])),
+    vi.fn(async () =>
+      reply(replies.length > 1 ? replies.shift()! : replies[0]),
+    ),
   );
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -100,10 +137,7 @@ afterEach(() => {
 });
 
 describe("KitchenNotebooksScreen", () => {
-  const newTile = () =>
-    Array.from(document.querySelectorAll("button")).find(
-      (el) => el.textContent === "New notebook" || el.getAttribute("aria-label") === "New notebook",
-    );
+  const newTile = () => chromeButton("New notebook");
 
   it("offers a new notebook in an active kitchen", async () => {
     await render();
@@ -113,11 +147,14 @@ describe("KitchenNotebooksScreen", () => {
 
   it("offers no new notebook in an archived kitchen", async () => {
     replies = [
-      { status: 200, body: { notebooks: [kitchenNotebook({ kitchen_is_archived: true })] } },
+      {
+        status: 200,
+        body: { notebooks: [kitchenNotebook({ kitchen_is_archived: true })] },
+      },
     ];
     await render();
 
-    expect(newTile()).toBeUndefined();
+    expect(newTile()).toBeNull();
   });
 
   it("shows every notebook as a card linking to its page, empty ones included", async () => {
@@ -127,7 +164,12 @@ describe("KitchenNotebooksScreen", () => {
         body: {
           notebooks: [
             kitchenNotebook({}),
-            kitchenNotebook({ id: "snap", name: "Desserts", recipe_count: 0, is_snapshot: true }),
+            kitchenNotebook({
+              id: "snap",
+              name: "Desserts",
+              recipe_count: 0,
+              is_snapshot: true,
+            }),
           ],
         },
       },
@@ -143,18 +185,23 @@ describe("KitchenNotebooksScreen", () => {
     expect(document.body.textContent).toContain("0 recipes");
   });
 
-  it("puts the add action in the first cell and shows no access chip", async () => {
+  it("puts both add actions in the chrome, leaves the grid to notebooks, and shows no access chip", async () => {
     await render();
 
-    expect(document.querySelector("li:first-child button")?.getAttribute("aria-label")).toBe(
-      "Add a notebook",
+    expect(addButton()).not.toBeNull();
+    expect(newTile()).not.toBeNull();
+    expect(document.querySelector("li:first-child")?.textContent).toContain(
+      "ana's (Home) Notebook",
     );
     expect(document.body.textContent).not.toContain("Kitchen member");
   });
 
   it("shows the cards with no add action in an archived kitchen", async () => {
     replies = [
-      { status: 200, body: { notebooks: [kitchenNotebook({ kitchen_is_archived: true })] } },
+      {
+        status: 200,
+        body: { notebooks: [kitchenNotebook({ kitchen_is_archived: true })] },
+      },
     ];
 
     await render();
@@ -168,24 +215,42 @@ describe("KitchenNotebooksScreen", () => {
 
     await render();
 
-    expect(document.body.textContent).toContain("This kitchen has no notebooks yet.");
+    expect(document.body.textContent).toContain(
+      "This kitchen has no notebooks yet.",
+    );
     expect(addButton()).toBeNull();
   });
 
   it("shows a new snapshot without a page reload, and refreshes the side panel", async () => {
     const before = { status: 200, body: { notebooks: [kitchenNotebook({})] } };
-    const snapshot = kitchenNotebook({ id: "snap", name: "Desserts", is_snapshot: true });
-    const after = { status: 200, body: { notebooks: [kitchenNotebook({}), snapshot] } };
-    const personal = kitchenNotebook({ id: "p1", name: "Desserts", kind: "personal", access: "owner" });
+    const snapshot = kitchenNotebook({
+      id: "snap",
+      name: "Desserts",
+      is_snapshot: true,
+    });
+    const after = {
+      status: 200,
+      body: { notebooks: [kitchenNotebook({}), snapshot] },
+    };
+    const personal = kitchenNotebook({
+      id: "p1",
+      name: "Desserts",
+      kind: "personal",
+      access: "owner",
+    });
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string, init?: RequestInit) => {
-        if (url === "/api/notebooks/default") return reply({ status: 200, body: personal });
+        if (url === "/api/notebooks/default")
+          return reply({ status: 200, body: personal });
         if (url === "/api/notebooks") {
           return reply({ status: 200, body: { notebooks: [personal] } });
         }
-        if (init?.method === "POST") return reply({ status: 201, body: snapshot });
-        const added = vi.mocked(fetch).mock.calls.some(([, call]) => call?.method === "POST");
+        if (init?.method === "POST")
+          return reply({ status: 201, body: snapshot });
+        const added = vi
+          .mocked(fetch)
+          .mock.calls.some(([, call]) => call?.method === "POST");
         return reply(added ? after : before);
       }),
     );
@@ -194,9 +259,9 @@ describe("KitchenNotebooksScreen", () => {
 
     act(() => addButton()!.click());
     await flush();
-    const row = Array.from(document.querySelectorAll("[role='dialog'] button")).find((el) =>
-      el.textContent?.includes("Desserts"),
-    ) as HTMLButtonElement;
+    const row = Array.from(
+      document.querySelectorAll("[role='dialog'] button"),
+    ).find((el) => el.textContent?.includes("Desserts")) as HTMLButtonElement;
     act(() => row.click());
     await flush();
 

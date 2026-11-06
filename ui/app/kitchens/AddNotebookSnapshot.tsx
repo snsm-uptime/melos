@@ -1,9 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ActionDialog } from "@/components/ActionDialog";
-import { AddItemCard } from "@/components/Card";
 import { CauldronLoader } from "@/components/CauldronLoader";
 import { useToast } from "@/components/Toast";
 import type { Locale } from "@/lib/i18n/locale";
@@ -25,17 +24,24 @@ type AddNotebookSnapshotProps = {
   kitchenId: string;
   locale: Locale;
   onAdded: () => void;
+  /** The parent unmounts the dialog; it is opened by mounting it. */
+  onClose: () => void;
 };
 
 /**
  * Adds a personal notebook the person owns to the kitchen (spec 035). Choosing one adds it at
  * once; only a repeat asks first (FR-002a, FR-008a). Each notebook chosen in one opening keeps
- * one key, so a retry or a confirmation can't make a second snapshot (research R3).
+ * one key, so a retry or a confirmation can't make a second snapshot (research R3). Mounting it
+ * opens it: the parent mounts it when the member asks to add a notebook, and unmounts it on close.
  */
-export function AddNotebookSnapshot({ kitchenId, locale, onAdded }: AddNotebookSnapshotProps) {
+export function AddNotebookSnapshot({
+  kitchenId,
+  locale,
+  onAdded,
+  onClose,
+}: AddNotebookSnapshotProps) {
   const t = notebooksMessages[locale];
   const toast = useToast();
-  const [open, setOpen] = useState(false);
   const [choice, setChoice] = useState<Choice>({ status: "loading" });
   const [pending, setPending] = useState(false);
   const [repeat, setRepeat] = useState<NotebookResponse | null>(null);
@@ -43,39 +49,34 @@ export function AddNotebookSnapshot({ kitchenId, locale, onAdded }: AddNotebookS
   const keys = useRef(new Map<string, string>());
   // State updates after the render; this stops a second press in the same tick.
   const running = useRef(false);
-  const opening = useRef(0);
 
-  async function load(current: number) {
-    setChoice({ status: "loading" });
+  useEffect(() => {
+    let current = true;
     // The default is created on first use, so it must exist before the list (research R10).
-    const made = await fetchDefaultNotebook();
-    const list = made.ok ? await fetchPersonalNotebooks() : made;
-    if (current !== opening.current) return;
-    if (!list.ok) {
-      setChoice({ status: "error" });
-      return;
-    }
-    setChoice({
-      status: "ready",
-      notebooks: list.value.filter(
-        (notebook) => notebook.kind === "personal" && notebook.access === "owner",
-      ),
-    });
-  }
-
-  function start() {
-    opening.current += 1;
-    keys.current.clear();
-    setMessage(null);
-    setRepeat(null);
-    setOpen(true);
-    void load(opening.current);
-  }
+    void (async () => {
+      const made = await fetchDefaultNotebook();
+      const list = made.ok ? await fetchPersonalNotebooks() : made;
+      if (!current) return;
+      if (!list.ok) {
+        setChoice({ status: "error" });
+        return;
+      }
+      setChoice({
+        status: "ready",
+        notebooks: list.value.filter(
+          (notebook) =>
+            notebook.kind === "personal" && notebook.access === "owner",
+        ),
+      });
+    })();
+    return () => {
+      current = false;
+    };
+  }, []);
 
   function close() {
     if (running.current) return;
-    setOpen(false);
-    setRepeat(null);
+    onClose();
   }
 
   function failure(error: NotebookError): string {
@@ -100,10 +101,12 @@ export function AddNotebookSnapshot({ kitchenId, locale, onAdded }: AddNotebookS
     running.current = false;
     setPending(false);
     if (result.ok) {
-      setOpen(false);
-      setRepeat(null);
-      toast.show({ id: "notebook-snapshot", text: t.snapshotAdded(notebook.name) });
+      toast.show({
+        id: "notebook-snapshot",
+        text: t.snapshotAdded(notebook.name),
+      });
       onAdded();
+      onClose();
       return;
     }
     if (result.code === "snapshot_exists") {
@@ -116,9 +119,8 @@ export function AddNotebookSnapshot({ kitchenId, locale, onAdded }: AddNotebookS
 
   return (
     <>
-      <AddItemCard label={t.snapshotAction} onClick={start} className="h-full min-h-[2.75rem]" />
       <ActionDialog
-        open={open}
+        open
         title={repeat ? t.snapshotRepeatTitle : t.snapshotChoose}
         cancelLabel={repeat ? t.snapshotCancel : t.snapshotClose}
         confirmLabel={repeat ? t.snapshotRepeatConfirm : undefined}
@@ -131,9 +133,14 @@ export function AddNotebookSnapshot({ kitchenId, locale, onAdded }: AddNotebookS
         {repeat ? (
           <p className="m-0">{t.snapshotRepeatWarning(repeat.name)}</p>
         ) : (
-          <div className="flex flex-col gap-[var(--space-3)]" aria-busy={pending}>
+          <div
+            className="flex flex-col gap-[var(--space-3)]"
+            aria-busy={pending}
+          >
             <p className="m-0 text-[0.9rem] text-muted">{t.snapshotAudience}</p>
-            {choice.status === "loading" ? <CauldronLoader label={t.snapshotLoading} /> : null}
+            {choice.status === "loading" ? (
+              <CauldronLoader label={t.snapshotLoading} />
+            ) : null}
             {choice.status === "error" ? (
               <p className="m-0 text-error text-[0.9rem]" role="alert">
                 {t.loadError}
@@ -152,7 +159,9 @@ export function AddNotebookSnapshot({ kitchenId, locale, onAdded }: AddNotebookS
                       onClick={() => void add(notebook, false)}
                       className="flex w-full cursor-pointer flex-col items-start gap-[var(--space-1)] rounded-[var(--radius-md)] border border-border bg-surface p-[var(--space-3)] text-left text-foreground enabled:hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-65"
                     >
-                      <span className="break-words font-[550]">{notebook.name}</span>
+                      <span className="break-words font-[550]">
+                        {notebook.name}
+                      </span>
                       <span className="text-[0.85rem] text-muted">
                         {t.recipeCount(notebook.recipe_count)}
                       </span>
@@ -161,7 +170,9 @@ export function AddNotebookSnapshot({ kitchenId, locale, onAdded }: AddNotebookS
                 ))}
               </ul>
             ) : null}
-            {pending ? <p className="m-0 text-[0.9rem] text-muted">{t.snapshotAdding}</p> : null}
+            {pending ? (
+              <p className="m-0 text-[0.9rem] text-muted">{t.snapshotAdding}</p>
+            ) : null}
             {message ? (
               <p className="m-0 text-error text-[0.9rem]" role="alert">
                 {message}
