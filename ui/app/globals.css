@@ -157,6 +157,11 @@
 @media (width < 48rem) {
   :root {
     --page-gutter: 1rem;
+    /* Type is sized in rem, mostly 0.8–0.9rem: fine on a desktop, too small held in the hand.
+       Raising the root scales all of it (and rem spacing with it) on phones only; 0.9rem form
+       fields land just over 16px, so iOS no longer zooms in when one gets focus. The breakpoint
+       itself is unaffected: rem in a media query is always the browser default. */
+    font-size: 112.5%;
   }
 }
 
