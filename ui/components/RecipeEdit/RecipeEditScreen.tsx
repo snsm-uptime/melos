@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { CloseIcon } from "@/app/icons";
 import { EditorNotice } from "@/components/Cart/EditorNotice";
+import { IconButton } from "@/components/IconButton";
 import { useLockKeepAlive } from "@/hooks/useLockKeepAlive";
 import { cartMessages } from "@/lib/i18n/cart";
 
@@ -107,6 +109,20 @@ export function RecipeEditScreen({ recipeId, locale }: { recipeId: string; local
   const ended: { alias: string | null } | null =
     lock.status === "ended" ? lock : lock.status === "held" && expired ? { alias: null } : null;
 
+  // The ended toast closes itself after ENDED_TOAST_MS or on its close icon; a new end shows it again.
+  const endedKey = ended ? `ended:${ended.alias ?? ""}` : null;
+  const [seenEndedKey, setSeenEndedKey] = useState(endedKey);
+  const [endedHidden, setEndedHidden] = useState(false);
+  if (seenEndedKey !== endedKey) {
+    setSeenEndedKey(endedKey);
+    setEndedHidden(false);
+  }
+  useEffect(() => {
+    if (!endedKey) return;
+    const timer = setTimeout(() => setEndedHidden(true), ENDED_TOAST_MS);
+    return () => clearTimeout(timer);
+  }, [endedKey]);
+
   const listHref = from && safeReturnPath(from, "x") === from ? from : "/notebooks";
   const detailBase = `/recipes/${encodeURIComponent(recipeId)}`;
   const detailHref = from ? `${detailBase}?from=${encodeURIComponent(listHref)}` : detailBase;
@@ -174,24 +190,32 @@ export function RecipeEditScreen({ recipeId, locale }: { recipeId: string; local
       onInputCapture={notifyActivity}
       onChangeCapture={notifyActivity}
     >
-      {lock.status === "held" && warning && !ended ? (
-        <div role="status" className={LOCK_BAR}>
-          <span className="min-w-0 flex-1">{c.recipeIdleWarning}</span>
-          <button type="button" className={LOCK_ACTION} onClick={keepNow}>
-            {c.keepEditing}
-          </button>
-        </div>
-      ) : null}
-      {ended ? (
-        <div role="alert" className={LOCK_BAR}>
-          <span className="min-w-0 flex-1">
-            {ended.alias ? c.editingRecipe(ended.alias) : c.recipeEditEnded}
-          </span>
-          <button type="button" className={LOCK_ACTION} onClick={takeLock}>
-            {c.startNewEdit}
-          </button>
-        </div>
-      ) : null}
+      {/* Lock toasts float over the bottom of the content area, as the app's toasts do. */}
+      <div className={TOAST_LAYER}>
+        {lock.status === "held" && warning && !ended ? (
+          <div role="status" className={TOAST_BOX}>
+            <span className="min-w-0 flex-1">{c.recipeIdleWarning}</span>
+            <button type="button" className={TOAST_ACTION} onClick={keepNow}>
+              {c.keepEditing}
+            </button>
+          </div>
+        ) : null}
+        {ended && !endedHidden ? (
+          <div role="alert" className={TOAST_BOX}>
+            <span className="min-w-0 flex-1">
+              {ended.alias ? c.editingRecipe(ended.alias) : c.recipeEditEnded}
+            </span>
+            <button type="button" className={TOAST_ACTION} onClick={takeLock}>
+              {c.startNewEdit}
+            </button>
+            <IconButton
+              label={c.dismiss}
+              icon={<CloseIcon className="size-4" />}
+              onClick={() => setEndedHidden(true)}
+            />
+          </div>
+        ) : null}
+      </div>
       <RecipeEditForm
         key={state.recipe.version}
         recipe={state.recipe}
@@ -211,7 +235,12 @@ export function RecipeEditScreen({ recipeId, locale }: { recipeId: string; local
   );
 }
 
-const LOCK_BAR =
-  "mx-4 flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-accent bg-surface px-3 py-2 text-[0.9rem] text-foreground";
-const LOCK_ACTION =
+/** How long the "your edit ended" toast stays before it closes itself. */
+const ENDED_TOAST_MS = 10_000;
+
+const TOAST_LAYER =
+  "pointer-events-none absolute inset-x-0 bottom-0 z-50 flex flex-col gap-2 px-[var(--page-gutter,1rem)] pb-[max(1rem,env(safe-area-inset-bottom))]";
+const TOAST_BOX =
+  "pointer-events-auto mx-auto flex w-full max-w-[640px] flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-accent bg-surface px-4 py-3 text-[0.9rem] text-foreground shadow-md";
+const TOAST_ACTION =
   "rounded-[var(--radius-md)] border border-border bg-background px-3 py-1 text-[0.85rem] text-foreground hover:border-accent";

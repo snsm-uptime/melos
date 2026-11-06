@@ -6,6 +6,8 @@ import { PencilIcon, PotIcon, TrashIcon, UploadIcon } from "@/app/icons";
 import { AvatarCropSheet } from "@/components/AvatarCropSheet";
 import { AddItemCard } from "@/components/Card";
 import { IconButton } from "@/components/IconButton";
+import { photoActionClass } from "@/components/photoAction";
+import { Tooltip } from "@/components/Tooltip";
 import { captureMessagesFor } from "@/lib/i18n/capture";
 import type { Locale } from "@/lib/i18n/locale";
 import { encodeCroppedRecipeImage } from "@/lib/imageEncode";
@@ -79,24 +81,29 @@ export function RecipeImagePicker({
             alt={t.recipePhotoAlt}
             className={`block w-full rounded-[0.75rem] object-cover ${fixedSlot ? "h-72" : "max-h-72"}`}
           />
-          <span className="absolute top-2 right-2 flex gap-1">
-            <IconButton
-              variant="ghost"
-              label={t.changePhoto}
-              icon={<PencilIcon className="size-5" />}
-              onClick={pick}
-              disabled={disabled}
-              className="bg-background/80"
-            />
-            <IconButton
-              variant="ghost"
-              label={t.removePhoto}
-              icon={<TrashIcon className="size-5" />}
-              onClick={() => onChange(null)}
-              disabled={disabled}
-              className="bg-background/80"
-            />
-          </span>
+          {/* The avatar's photo actions: change on the bottom-left corner, remove on the top-right. */}
+          <button
+            type="button"
+            aria-label={t.changePhoto}
+            className={`${photoActionClass} bottom-2 left-2 size-8`}
+            disabled={disabled}
+            onClick={pick}
+          >
+            <Tooltip label={t.changePhoto}>
+              <PencilIcon className="size-4" />
+            </Tooltip>
+          </button>
+          <button
+            type="button"
+            aria-label={t.removePhoto}
+            className={`${photoActionClass} top-2 right-2 size-8 text-error`}
+            disabled={disabled}
+            onClick={() => onChange(null)}
+          >
+            <Tooltip label={t.removePhoto}>
+              <TrashIcon className="size-4" />
+            </Tooltip>
+          </button>
         </figure>
       ) : empty === "add" ? (
         <AddItemCard label={t.addPhoto} onClick={pick} disabled={disabled} className="h-72" />

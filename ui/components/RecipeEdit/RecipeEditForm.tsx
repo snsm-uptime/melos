@@ -300,21 +300,20 @@ export function RecipeEditForm({
         </HeaderActions>
       </header>
 
-      {/* The ingredients column's width, as on the detail page. */}
-      <div className="px-4 md:max-w-[calc(450px+2rem)]">
-        <RecipeImagePicker
-          empty="add"
-          value={state.previewImage}
-          onChange={(previewImage) =>
-            commit({ ...stateRef.current, previewImage, imageChanged: true })
-          }
-          locale={locale}
-          disabled={saving}
-        />
-      </div>
-
       <div className="flex flex-col gap-6 px-4 md:min-h-0 md:flex-1 md:flex-row">
         <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:max-w-[450px] md:flex-1 md:overflow-hidden">
+          {/* The photo heads the ingredients column, so the steps run beside it. */}
+          <div className="mb-4 shrink-0">
+            <RecipeImagePicker
+              empty="add"
+              value={state.previewImage}
+              onChange={(previewImage) =>
+                commit({ ...stateRef.current, previewImage, imageChanged: true })
+              }
+              locale={locale}
+              disabled={saving}
+            />
+          </div>
           <div className="flex shrink-0 items-center justify-between gap-2">
             <h2 className="m-0 text-[1rem] font-[550] text-foreground">
               {t.ingredientsTitle}

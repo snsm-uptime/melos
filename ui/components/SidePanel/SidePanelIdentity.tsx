@@ -4,13 +4,13 @@ import { PencilIcon, TrashIcon } from "@/app/icons";
 import { Avatar } from "@/components/Avatar";
 import { AvatarCropSheet } from "@/components/AvatarCropSheet";
 import { usePreferences } from "@/components/PreferencesProvider";
+import { photoActionClass } from "@/components/photoAction";
 import { Tooltip } from "@/components/Tooltip";
 import { accountCopy } from "@/lib/i18n/account";
 import { PANEL_SLIDE, usePanelLayout } from "./panelLayout";
 import { useProfilePhoto } from "./useProfilePhoto";
 
-const photoActionClass =
-  "absolute inline-flex size-6 items-center justify-center rounded-full border border-border bg-surface text-foreground cursor-pointer shadow-sm disabled:opacity-45 disabled:cursor-not-allowed";
+const photoAction = `${photoActionClass} size-6`;
 
 /** Avatar with its photo edits, alias and recipe count. Edits and text need the wide panel. */
 export function SidePanelIdentity({
@@ -38,7 +38,7 @@ export function SidePanelIdentity({
           className={`transition-[font-size] ${PANEL_SLIDE} ${wide ? "text-[1.75rem]" : "text-[1.75rem] md:text-[0.75rem]"}`}
         />
         <div className={openOnlyClass}>
-          <label className={`${photoActionClass} -bottom-1.5 -left-1.5`}>
+          <label className={`${photoAction} -bottom-1.5 -left-1.5`}>
             <Tooltip label={t.photoUpload}>
               <PencilIcon className="size-3.5" />
             </Tooltip>
@@ -55,7 +55,7 @@ export function SidePanelIdentity({
             <button
               type="button"
               aria-label={t.photoRemove}
-              className={`${photoActionClass} -top-1.5 -right-1.5 text-error`}
+              className={`${photoAction} -top-1.5 -right-1.5 text-error`}
               disabled={photo.pending}
               onClick={() => void photo.save(null)}
             >
