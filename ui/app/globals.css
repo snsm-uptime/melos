@@ -11,6 +11,10 @@
   --color-border: var(--border);
   --color-accent: var(--accent);
   --color-on-accent: var(--on-accent);
+  --color-accent-fill: var(--accent-fill);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-field-border: var(--field-border);
   --color-secondary: var(--secondary);
   --color-on-secondary: var(--on-secondary);
   --color-error: var(--error);
@@ -38,42 +42,35 @@
 }
 
 :root {
-  /* Warm Balance light (UX-DR1) — --wb-* canonical + legacy aliases */
-  --wb-bg: #f7f3ec;
-  --wb-surface: #fffcf7;
-  --wb-text: #2a241c;
-  --wb-muted: #6e6456;
-  --wb-border: #e2d8c8;
-  --wb-accent: #3f6b45;
-  --wb-on-accent: #fffcf7;
-  --wb-error: #a04936;
-  --wb-owed: #2f6e48;
-  --wb-warn: #a6791f;
-  --wb-danger: #8b3a2a;
-  --wb-danger-strong: #d32f2f;
-
-  --background: var(--wb-bg);
-  --surface: var(--wb-surface);
-  --foreground: var(--wb-text);
-  --muted: var(--wb-muted);
-  --border: var(--wb-border);
-  --accent: var(--wb-accent);
-  --on-accent: var(--wb-on-accent);
-  --error: var(--wb-error);
-  --owed: var(--wb-owed);
-  --warn: var(--wb-warn);
-  --danger: var(--wb-danger);
-  --danger-strong: var(--wb-danger-strong);
-
-  /* button-system Secondary variant — distinct from --accent (moss/Primary); see
-     _bmad-output/planning-artifacts/ux-designs/ux-finance-dashboard-2026-09-02-buttons/DESIGN.md */
-  --secondary: #4356a3;
+  /* Light theme derived from the portfolio palette (spec 072 US3, contracts/theme-tokens.md).
+     Orange is the main colour: --accent is orange ink for text and icons, --accent-fill is the
+     orange area that carries text, --primary (violet) fills buttons. */
+  --background: #f7f5fa;
+  --surface: #ffffff;
+  --foreground: #1d1a24;
+  --muted: #5f596b;
+  --border: #e4e0ea;
+  --field-border: #8b8497;
+  --accent: #ab5a00;
+  --accent-fill: #fd9c21;
+  --on-accent: #141218;
+  --primary: #9035d6;
+  --on-primary: #ffffff;
+  --secondary: #d82591;
   --on-secondary: #ffffff;
+  --error: #c42727;
+  --danger: #b91c1c;
+  --danger-strong: #d32f2f;
+  --warn: #8a6a00;
+  --owed: #15803d;
+
+  /* Loader cauldron body: #ac79c4 on the light theme, #806595 on the dark one. */
+  --cauldron-body: #ac79c4;
 
   /* Dropdown rows: tint --surface so --foreground stays readable. Hover < selected. */
-  --menu-item-hover: color-mix(in srgb, var(--accent) 10%, var(--surface));
-  --menu-item-selected: color-mix(in srgb, var(--accent) 22%, var(--surface));
-  --card-selected: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  --menu-item-hover: color-mix(in srgb, var(--accent-fill) 10%, var(--surface));
+  --menu-item-selected: color-mix(in srgb, var(--accent-fill) 22%, var(--surface));
+  --card-selected: color-mix(in srgb, var(--accent-fill) 12%, var(--surface));
 
   /* Soft-Ledger spacing (4px rhythm + named locks) */
   --space-1: 4px;
@@ -147,6 +144,9 @@
      a single wide blur reads as a glow. These are M3's standard shadow colours,
      in both themes. Shared by any control that lifts on activation (UploadButton,
      IconButton's ghost `active` state, the review screen's keycap legend) so
+     they all cast the same shadow rather than each re-deriving it. */
+  --lift-key: rgb(0 0 0 / 0.3);
+  --lift-ambient: rgb(0 0 0 / 0.15);
 
   /* Frosted chrome (spec 072 R4). 88% is the lowest page-colour opacity at which quiet text
      passes 4.5:1 over pure black and pure white in both themes; 80% (the portfolio's) does not. */
@@ -154,9 +154,6 @@
   --frost-blur: 8px;
   --frost-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --frost-fade: 300ms;
-     they all cast the same shadow rather than each re-deriving it. */
-  --lift-key: rgb(0 0 0 / 0.3);
-  --lift-ambient: rgb(0 0 0 / 0.15);
 }
 
 /* Phones get a narrower page gutter so text has more room. Tailwind's md breakpoint is the same
@@ -179,34 +176,27 @@ html.light {
 html.dark {
   /* Native controls (number spinners, select arrows) follow the app theme. */
   color-scheme: dark;
-  --wb-bg: #17140f;
-  --wb-surface: #221e17;
-  --wb-text: #f0e9dc;
-  --wb-muted: #a89b88;
-  --wb-border: #3a342a;
-  --wb-accent: #8fbb8e;
-  --wb-on-accent: #17140f;
-  --wb-error: #d48b78;
-  --wb-owed: #7ec794;
-  --wb-warn: #d9b866;
-  --wb-danger: color-mix(in srgb, #8b3a2a 65%, white);
-  --wb-danger-strong: #d32f2f;
-
-  --background: var(--wb-bg);
-  --surface: var(--wb-surface);
-  --foreground: var(--wb-text);
-  --muted: var(--wb-muted);
-  --border: var(--wb-border);
-  --accent: var(--wb-accent);
-  --on-accent: var(--wb-on-accent);
-  --error: var(--wb-error);
-  --owed: var(--wb-owed);
-  --warn: var(--wb-warn);
-  --danger: var(--wb-danger);
-  --danger-strong: var(--wb-danger-strong);
-
-  --secondary: #adbdff;
-  --on-secondary: #17140f;
+  /* Dark theme on the portfolio palette (spec 072 US2). Both dark blocks must stay identical:
+     palette.test.ts checks it. */
+  --background: #141218;
+  --surface: #201d27;
+  --foreground: #e5e7eb;
+  --muted: #9ca3af;
+  --border: #36313f;
+  --field-border: #756e82;
+  --accent: #fd9c21;
+  --accent-fill: #fd9c21;
+  --on-accent: #141218;
+  --primary: #6d1aad;
+  --on-primary: #ffffff;
+  --secondary: #d82591;
+  --on-secondary: #ffffff;
+  --error: #f87171;
+  --danger: #f26363;
+  --danger-strong: #d32f2f;
+  --warn: #facc15;
+  --owed: #4ade80;
+  --cauldron-body: #806595;
 }
 
 /*
@@ -216,34 +206,27 @@ html.dark {
 @media (prefers-color-scheme: dark) {
   html:not(.light):not(.dark) {
     color-scheme: dark;
-    --wb-bg: #17140f;
-    --wb-surface: #221e17;
-    --wb-text: #f0e9dc;
-    --wb-muted: #a89b88;
-    --wb-border: #3a342a;
-    --wb-accent: #8fbb8e;
-    --wb-on-accent: #17140f;
-    --wb-error: #d48b78;
-    --wb-owed: #7ec794;
-    --wb-warn: #d9b866;
-    --wb-danger: color-mix(in srgb, #8b3a2a 65%, white);
-    --wb-danger-strong: #d32f2f;
-
-    --background: var(--wb-bg);
-    --surface: var(--wb-surface);
-    --foreground: var(--wb-text);
-    --muted: var(--wb-muted);
-    --border: var(--wb-border);
-    --accent: var(--wb-accent);
-    --on-accent: var(--wb-on-accent);
-    --error: var(--wb-error);
-    --owed: var(--wb-owed);
-    --warn: var(--wb-warn);
-    --danger: var(--wb-danger);
-    --danger-strong: var(--wb-danger-strong);
-
-    --secondary: #adbdff;
-    --on-secondary: #17140f;
+    /* Dark theme on the portfolio palette (spec 072 US2). Both dark blocks must stay identical:
+       palette.test.ts checks it. */
+    --background: #141218;
+    --surface: #201d27;
+    --foreground: #e5e7eb;
+    --muted: #9ca3af;
+    --border: #36313f;
+    --field-border: #756e82;
+    --accent: #fd9c21;
+    --accent-fill: #fd9c21;
+    --on-accent: #141218;
+    --primary: #6d1aad;
+    --on-primary: #ffffff;
+    --secondary: #d82591;
+    --on-secondary: #ffffff;
+    --error: #f87171;
+    --danger: #f26363;
+    --danger-strong: #d32f2f;
+    --warn: #facc15;
+    --owed: #4ade80;
+    --cauldron-body: #806595;
   }
 }
 

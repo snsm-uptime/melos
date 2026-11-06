@@ -131,7 +131,7 @@ export function UrlCaptureSheet({
         type="submit"
         disabled={disabled}
         aria-busy={submitting || undefined}
-        className="inline-flex items-center gap-2 self-end rounded-[0.75rem] bg-accent px-4 py-2 text-[0.95rem] text-background disabled:opacity-50"
+        className="inline-flex items-center gap-2 self-end rounded-[0.75rem] bg-primary px-4 py-2 text-[0.95rem] text-on-primary disabled:opacity-50"
       >
         {/* The wait shows on the button itself; its text already says what is happening. */}
         {submitting ? <CauldronLoader tone="button" /> : null}

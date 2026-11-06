@@ -183,7 +183,7 @@ export function TextCaptureSheet({
         type="button"
         onClick={() => void submit()}
         disabled={disabled}
-        className="self-end rounded-[0.75rem] bg-accent px-4 py-2 text-[0.95rem] text-background disabled:opacity-50"
+        className="self-end rounded-[0.75rem] bg-primary px-4 py-2 text-[0.95rem] text-on-primary disabled:opacity-50"
       >
         {submitting ? t.submitting : t.submit}
       </button>

@@ -186,8 +186,8 @@
   flex: 0 0 auto;
   white-space: nowrap;
   border: none;
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--primary);
+  color: var(--on-primary);
 }
 
 .primary:not(:disabled):hover {
@@ -560,7 +560,7 @@
 }
 
 .sliderSegment:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--accent) 10%, transparent);
+  background-color: color-mix(in srgb, var(--accent-fill) 10%, transparent);
 }
 
 .sliderHandle {

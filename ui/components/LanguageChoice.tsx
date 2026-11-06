@@ -60,7 +60,7 @@ export function LanguageChoice() {
                 }
               }}
               className={`px-4 py-2 text-[0.95rem] disabled:opacity-60 ${
-                checked ? "bg-accent font-semibold text-on-accent" : "bg-transparent text-foreground"
+                checked ? "bg-accent-fill font-semibold text-on-accent" : "bg-transparent text-foreground"
               }`}
             >
               {option.label}

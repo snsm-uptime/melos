@@ -19,10 +19,10 @@ const globals = readFileSync(join(here, "../../app/globals.css"), "utf8");
 describe("MenuSurface", () => {
   it("tints surface for hover and a stronger selected row, with theme text color", () => {
     expect(globals).toContain(
-      "--menu-item-hover: color-mix(in srgb, var(--accent) 10%, var(--surface));",
+      "--menu-item-hover: color-mix(in srgb, var(--accent-fill) 10%, var(--surface));",
     );
     expect(globals).toContain(
-      "--menu-item-selected: color-mix(in srgb, var(--accent) 22%, var(--surface));",
+      "--menu-item-selected: color-mix(in srgb, var(--accent-fill) 22%, var(--surface));",
     );
     expect(css).toContain("color: var(--foreground);");
     expect(css).toContain("background: var(--menu-item-hover);");

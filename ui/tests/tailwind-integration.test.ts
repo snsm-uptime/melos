@@ -9,7 +9,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const uiRoot = resolve(__dirname, "..");
 const globalsPath = resolve(uiRoot, "app/globals.css");
 
-describe("Tailwind + Warm Balance bridge", () => {
+describe("Tailwind + palette bridge", () => {
   it("@theme references existing CSS variables", () => {
     const css = readFileSync(globalsPath, "utf-8");
     expect(css).toContain('@import "tailwindcss"');
@@ -44,7 +44,9 @@ describe("Tailwind + Warm Balance bridge", () => {
     expect(result.css).toContain("@layer theme");
     expect(result.css).toContain("@layer base");
 
-    // Warm Balance token values must survive the compile untouched.
-    expect(result.css).toContain("--wb-bg");
+    // The palette's utilities (spec 072 bg-primary, bg-accent-fill, border-field-border) must survive the compile.
+    expect(result.css).toContain("--color-primary");
+    expect(result.css).toContain("--color-accent-fill");
+    expect(result.css).toContain("--color-field-border");
   });
 });

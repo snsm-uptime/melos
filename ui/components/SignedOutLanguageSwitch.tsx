@@ -45,7 +45,7 @@ export function SignedOutLanguageSwitch({
               if (!current) void setLanguage(option.value);
             }}
             className={`px-3 py-1 ${
-              current ? "bg-accent font-semibold text-on-accent" : "bg-transparent text-foreground"
+              current ? "bg-accent-fill font-semibold text-on-accent" : "bg-transparent text-foreground"
             }`}
           >
             {option.label}

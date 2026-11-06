@@ -72,7 +72,7 @@ const fieldClassName =
   "w-full justify-between rounded-[0.75rem] border border-border bg-background px-3 py-2 text-left text-[0.95rem] text-foreground disabled:opacity-60";
 const buttonClassName =
   "rounded-[0.75rem] px-4 py-2 text-[0.95rem] disabled:opacity-50";
-const primaryClassName = `${buttonClassName} bg-accent text-background`;
+const primaryClassName = `${buttonClassName} bg-primary text-on-primary`;
 const secondaryClassName = `${buttonClassName} border border-border text-foreground`;
 
 /**

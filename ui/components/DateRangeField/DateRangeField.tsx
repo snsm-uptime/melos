@@ -289,8 +289,8 @@ export function DateRangeField({
                     "rounded-full py-[5px] text-[0.72rem] tabular-nums border-none cursor-pointer",
                     cell.inMonth ? "text-foreground" : "text-border",
                     cell.isToday ? "shadow-[inset_0_0_0_1px_var(--muted)]" : "",
-                    inRange && !isSelected ? "bg-accent/15 rounded-none" : "",
-                    isSelected ? "bg-accent text-on-accent font-[550]" : "bg-transparent",
+                    inRange && !isSelected ? "bg-accent-fill/15 rounded-none" : "",
+                    isSelected ? "bg-accent-fill text-on-accent font-[550]" : "bg-transparent",
                   ].join(" ")}
                 >
                   {cell.day}
