@@ -235,6 +235,22 @@ stories:
     source: prd.md J0 API Key Management, 1.3.1
 
   # ---------------------------------------------------------------------------
+  # Look and feel, open.
+  # ---------------------------------------------------------------------------
+
+  - id: S-072
+    title: Acrylic (see-through, blurred) app chrome and the portfolio colour palette in light and dark
+    epic: Platform
+    priority: should
+    status: in_design
+    source: owner request 2026-11-06 (post-MVP; not in prd.md); specs/072-acrylic-nav-palette
+    notes: >
+      Copies the scrolled navbar of the owner's portfolio (snsm-uptime/portfolio, src/components/navbar.tsx:
+      background at 80% with a backdrop blur and a small shadow once the page has scrolled) and its
+      palette (src/app/globals.css). The portfolio defines only a dark palette, so the light one is
+      derived for Melos.
+
+  # ---------------------------------------------------------------------------
   # Quality and deployment, open.
   # ---------------------------------------------------------------------------
 
