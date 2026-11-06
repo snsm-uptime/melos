@@ -118,8 +118,9 @@ export function RecipeCard({
     <article
       className={`relative isolate flex min-w-0 rounded-[var(--radius-md)] border border-border ${
         tall
-          ? // Two parts: the photo on top, the metadata under it; as wide as the photo at most.
-            "h-full w-full max-w-[200px] flex-col overflow-hidden"
+          ? // Two parts: the photo on top, the metadata under it. Phones and tablets fill their grid
+            // column; from lg up it is as wide as the photo at most.
+            "h-full w-full flex-col overflow-hidden lg:max-w-[200px]"
           : "items-center gap-[var(--space-3)] p-[var(--space-3)]"
       } ${cart?.inCart ? "bg-[var(--card-selected)]" : "bg-surface"}${
         // The title link's overlay makes the whole card the target; show that it is one.
