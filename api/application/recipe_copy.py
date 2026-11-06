@@ -1,4 +1,4 @@
-"""Copy one personal recipe into a kitchen (spec 069).
+"""Copy one recipe into a kitchen (spec 069).
 
 The copy goes to the caller's own kitchen notebook of the kitchen, made first if missing, under
 the kitchen lock the capture and snapshot paths take. A hidden `copied_from_recipe_id` turns a
@@ -18,6 +18,7 @@ from domain.errors import (
     RecipeLockedError,
     RecipeNotFoundError,
 )
+from domain.notebook import notebook_access
 
 from application.kitchen_access import (
     AuthorizeKitchenAccessCommand,
@@ -89,7 +90,7 @@ class CopyRecipeToKitchenService:
         if kitchen.is_archived:
             raise KitchenArchivedError()
 
-        names = self._readable_personal_source(command)
+        names = self._readable_source(command)
 
         alias, language = _naming_profile(self._prefs, command.actor_id)
         # Takes the kitchen lock, so two adds of the same recipe run one after the other.
@@ -141,14 +142,18 @@ class CopyRecipeToKitchenService:
             overwritten=False,
         )
 
-    def _readable_personal_source(self, command: CopyRecipeToKitchenCommand) -> list[str]:
-        """The source's distinct line names, if it sits in a personal notebook the caller owns or
-        is a member of; otherwise the same 404 as a missing recipe (FR-008)."""
+    def _readable_source(self, command: CopyRecipeToKitchenCommand) -> list[str]:
+        """The source's distinct line names, if the caller can read its notebook: a personal
+        notebook they belong to, or a notebook of a kitchen they belong to. Otherwise the same
+        404 as a missing recipe (FR-008)."""
         detail = self._recipes.get_detail(command.source_recipe_id)
         if detail is None:
             raise RecipeNotFoundError()
         facts = self._notebooks.facts_for(command.actor_id, detail.notebook_id)
-        if facts is None or facts.notebook.kind != "personal" or facts.role is None:
+        if (
+            facts is None
+            or notebook_access(facts.notebook.kind, facts.role, facts.in_kitchen) is None
+        ):
             raise RecipeNotFoundError()
         return list(dict.fromkeys(line.name for line in detail.lines))
 

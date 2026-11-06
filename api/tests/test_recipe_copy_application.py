@@ -173,7 +173,7 @@ def test_archived_kitchen_refuses(world: World, recipes: FakeRecipes) -> None:
     assert recipes.copies == {}
 
 
-def test_unreadable_missing_or_kitchen_source_is_not_found(
+def test_unreadable_or_missing_source_is_not_found(
     world: World, recipes: FakeRecipes
 ) -> None:
     kitchen = _kitchen(world, ANA)
@@ -185,8 +185,9 @@ def test_unreadable_missing_or_kitchen_source_is_not_found(
         _copy(world, recipes, kitchen, uuid4())
     copied = _copy(world, recipes, kitchen, recipes.add(_personal(world, ANA, "a"), "x"))
     kitchen_recipe = recipes.add(copied.notebook_id, "x")
-    with pytest.raises(RecipeNotFoundError):
-        _copy(world, recipes, kitchen, kitchen_recipe)
+    # A kitchen notebook the caller can read is a valid source (spec 069, all notebooks).
+    again = _copy(world, recipes, kitchen, kitchen_recipe, on_repeat="add")
+    assert again.overwritten is False
 
 
 def test_a_notebook_member_may_copy(world: World, recipes: FakeRecipes) -> None:

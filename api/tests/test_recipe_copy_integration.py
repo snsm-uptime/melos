@@ -222,10 +222,10 @@ def test_outsider_and_unreadable_source_get_404(
     assert response.status_code == 404
     assert response.json()["code"] == "kitchen_not_found"
 
-    # A kitchen recipe is not a personal source.
+    # A kitchen recipe the caller can read is a valid source (spec 069, all notebooks).
     _use(client, setup["ana"][1])
     copy_id = UUID(_post(client, setup["kitchen"], setup["recipe"]).json()["recipe_id"])
-    assert _post(client, setup["kitchen"], copy_id).status_code == 404
+    assert _post(client, setup["kitchen"], copy_id, on_repeat="add").status_code == 201
     assert _post(client, setup["kitchen"], uuid4()).status_code == 404
 
 
