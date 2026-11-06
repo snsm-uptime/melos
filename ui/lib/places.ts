@@ -52,7 +52,16 @@ export function placeBody(place: PlaceRef): { kind: string; key?: string; id?: s
   return place.kind === "default" ? { kind: "default", key: place.key } : { kind: "custom", id: place.id };
 }
 
-export type IngredientPlace = { name: string; place: PlaceRef };
+export type IngredientRecipe = { id: string; title: string };
+
+export type IngredientPlace = {
+  name: string;
+  place: PlaceRef;
+  /** The recipes that use it, newest first. */
+  recipes: IngredientRecipe[];
+  /** ISO date of the newest of those recipes; null when no recipe uses it. */
+  last_used_at: string | null;
+};
 export type PlaceSource = { user_id: string; alias: string };
 
 export type PlacesFailure = { ok: false; status: number; code: string | null };
@@ -114,7 +123,15 @@ export function deletePlace(id: string): Promise<PlacesResult<void>> {
 
 export async function fetchIngredientPlaces(): Promise<PlacesResult<IngredientPlace[]>> {
   const result = await call<{ items: IngredientPlace[] }>("/api/me/ingredient-places", "GET");
-  return result.ok ? { ok: true, value: result.value.items } : result;
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    value: result.value.items.map((item) => ({
+      ...item,
+      recipes: Array.isArray(item.recipes) ? item.recipes : [],
+      last_used_at: item.last_used_at ?? null,
+    })),
+  };
 }
 
 export function setIngredientPlace(

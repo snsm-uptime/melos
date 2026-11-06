@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { ActionDialog } from "@/components/ActionDialog";
 import { CauldronLoader } from "@/components/CauldronLoader";
+import { CountChips } from "@/components/Chip";
 import { useChromeHeader } from "@/components/ChromeBack";
+import { DataTable, type TableSchema } from "@/components/DataTable";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import type { Locale } from "@/lib/i18n/locale";
 import { placesMessages } from "@/lib/i18n/places";
+import { tableMessages } from "@/lib/i18n/table";
 import {
   addPlace,
   allPlaces,
@@ -22,6 +26,7 @@ import {
   setIngredientPlace,
   type CustomPlace,
   type IngredientPlace,
+  type PlaceRef,
   type PlaceSource,
 } from "@/lib/places";
 
@@ -33,9 +38,66 @@ const BUTTON =
 type Data = { ingredients: IngredientPlace[]; custom: CustomPlace[]; sources: PlaceSource[] };
 type State = { status: "loading" } | { status: "ready"; data: Data } | { status: "error" };
 
-/** Folded for the filter: lower case, no accents. */
-function fold(text: string): string {
-  return text.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().trim();
+/** The ingredients table: name, place (a picker), last use and the recipes that use it. */
+function ingredientsTable(
+  t: (typeof placesMessages)[Locale],
+  locale: Locale,
+  places: PlaceRef[],
+  choose: (item: IngredientPlace, value: string) => void,
+): TableSchema<IngredientPlace> {
+  const c = t.columns;
+  const options = places.map((p) => ({ value: placeKey(p), label: placeLabel(p, locale) }));
+  return {
+    search: true,
+    rowKey: (row) => row.name,
+    columns: [
+      { key: "name", label: c.name, sort: "text", searchable: true },
+      {
+        key: "place",
+        label: c.place,
+        sort: "text",
+        searchable: true,
+        value: (row) => placeLabel(row.place, locale),
+        cell: (row) => (
+          <SearchableSelect
+            aria-label={t.placeFor(row.name)}
+            value={placeKey(row.place)}
+            options={options}
+            panelWidth={224}
+            searchLabel={t.searchPlaces}
+            noResults={t.noPlaceMatch}
+            onChange={(value) => choose(row, value)}
+          />
+        ),
+      },
+      {
+        key: "last_used_at",
+        label: c.lastUsed,
+        sort: "date",
+        cell: (row) =>
+          row.last_used_at ? new Date(row.last_used_at).toLocaleDateString(locale) : t.never,
+      },
+      {
+        key: "recipes",
+        label: c.recipes,
+        sort: "number",
+        searchable: true,
+        wrap: true,
+        value: (row) => row.recipes.length,
+        searchValue: (row) => row.recipes.map((r) => r.title),
+        cell: (row) => (
+          <CountChips
+            count={row.recipes.length}
+            names={row.recipes.map((r) => ({
+              label: r.title,
+              // The recipe page's Back returns here (safeReturnPath).
+              href: `/recipes/${encodeURIComponent(r.id)}?from=${encodeURIComponent("/ingredients")}`,
+            }))}
+          />
+        ),
+      },
+    ],
+  };
 }
 
 function nameError(code: string | null, t: (typeof placesMessages)[Locale]): string {
@@ -71,7 +133,6 @@ export function IngredientsScreen({ locale }: { locale: Locale }) {
   useChromeHeader({ title: t.title });
   const [state, setState] = useState<State>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
-  const [filter, setFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -87,16 +148,10 @@ export function IngredientsScreen({ locale }: { locale: Locale }) {
 
   const reload = () => setAttempt((n) => n + 1);
 
-  const shown = useMemo(() => {
-    if (state.status !== "ready") return [];
-    const wanted = fold(filter);
-    return state.data.ingredients.filter((item) => fold(item.name).includes(wanted));
-  }, [state, filter]);
-
   if (state.status === "loading") return <CauldronLoader label={t.loading} />;
   if (state.status === "error") {
     return (
-      <div className="flex flex-col items-start gap-2 px-4">
+      <div className="flex flex-col items-start gap-2">
         <p className="m-0 text-[0.9rem] text-muted" role="alert">
           {t.loadError}
         </p>
@@ -138,7 +193,7 @@ export function IngredientsScreen({ locale }: { locale: Locale }) {
   }
 
   return (
-    <section className="flex flex-col gap-4 px-4">
+    <section className="flex min-w-0 flex-col gap-4">
       <p className="m-0 text-[0.95rem] text-muted">{t.intro}</p>
       {error ? (
         <p className="m-0 text-[0.9rem] text-muted" role="alert">
@@ -151,46 +206,13 @@ export function IngredientsScreen({ locale }: { locale: Locale }) {
         </p>
       ) : null}
 
-      <label className="flex flex-col gap-1 text-[0.85rem] text-muted">
-        {t.filter}
-        <input
-          type="search"
-          className={FIELD}
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        />
-      </label>
-
-      {data.ingredients.length === 0 ? (
-        <p className="m-0 text-[0.9rem] text-muted">{t.noIngredients}</p>
-      ) : shown.length === 0 ? (
-        <p className="m-0 text-[0.9rem] text-muted">{t.noMatch}</p>
-      ) : (
-        <ul className="m-0 flex list-none flex-col gap-2 p-0" data-ingredients>
-          {shown.map((item) => (
-            <li
-              key={item.name}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] border border-border bg-surface p-3"
-            >
-              <span className="min-w-0 break-words text-[1rem] font-[550] text-foreground">
-                {item.name}
-              </span>
-              <select
-                className={FIELD}
-                aria-label={t.placeFor(item.name)}
-                value={placeKey(item.place)}
-                onChange={(e) => void choose(item, e.target.value)}
-              >
-                {places.map((p) => (
-                  <option key={placeKey(p)} value={placeKey(p)}>
-                    {placeLabel(p, locale)}
-                  </option>
-                ))}
-              </select>
-            </li>
-          ))}
-        </ul>
-      )}
+      <DataTable
+        schema={ingredientsTable(t, locale, places, (item, value) => void choose(item, value))}
+        rows={data.ingredients}
+        locale={locale}
+        labels={tableMessages[locale]}
+        empty={t.noIngredients}
+      />
 
       <MyPlaces
         locale={locale}

@@ -27,9 +27,27 @@ import { mount } from "@/components/Cart/testRoot";
 import { IngredientsScreen } from "./IngredientsScreen";
 
 const ITEMS = [
-  { name: "flour", place: { kind: "default", key: "supermarket" } },
-  { name: "jalapeño", place: { kind: "default", key: "farmers_market" } },
-  { name: "miso", place: { kind: "custom", id: "p1", name: "Asian market" } },
+  {
+    name: "flour",
+    place: { kind: "default", key: "supermarket" },
+    recipes: [
+      { id: "r1", title: "Bread" },
+      { id: "r2", title: "Pancakes" },
+    ],
+    last_used_at: "2026-03-01T12:00:00Z",
+  },
+  {
+    name: "jalapeño",
+    place: { kind: "default", key: "farmers_market" },
+    recipes: [{ id: "r3", title: "Salsa" }],
+    last_used_at: "2026-02-01T12:00:00Z",
+  },
+  {
+    name: "miso",
+    place: { kind: "custom", id: "p1", name: "Asian market" },
+    recipes: [],
+    last_used_at: null,
+  },
 ];
 
 async function settle() {
@@ -72,44 +90,69 @@ describe("IngredientsScreen (spec 070 US2)", () => {
   });
   afterEach(() => view.unmount());
 
+  const picker = (label: string) =>
+    view.container.querySelector<HTMLButtonElement>(`[role="combobox"][aria-label="${label}"]`)!;
+  function pick(label: string, option: string) {
+    act(() => picker(label).click());
+    const found = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(
+      (o) => o.textContent === option,
+    )!;
+    act(() => found.click());
+  }
+
   async function render(locale: "en" | "es" = "en") {
     view.render(<IngredientsScreen locale={locale} />);
     await settle();
   }
 
   const rows = () =>
-    Array.from(view.container.querySelectorAll("[data-ingredients] > li > span")).map(
+    Array.from(view.container.querySelectorAll("tbody tr > td:first-child")).map(
       (s) => s.textContent,
     );
+  const row = (name: string) =>
+    Array.from(view.container.querySelectorAll("tbody tr")).find(
+      (r) => r.querySelector("td")?.textContent === name,
+    )!;
 
   it("lists each ingredient with its place, and filters ignoring accents", async () => {
     await render();
     expect(rows()).toEqual(["flour", "jalapeño", "miso"]);
-    const picker = view.container.querySelector<HTMLSelectElement>(
-      'select[aria-label="Where to buy miso"]',
-    );
-    expect(picker?.value).toBe("custom:p1");
+    expect(picker("Where to buy miso").textContent).toContain("Asian market");
     setValue(view.container.querySelector('input[type="search"]') as HTMLInputElement, "JALAPENO");
+    expect(rows()).toEqual(["jalapeño"]);
+  });
+
+  it("shows the last use and the recipes as a count with chips", async () => {
+    await render();
+    const flour = row("flour").querySelectorAll("td");
+    expect(flour[2].textContent).toBe(new Date("2026-03-01T12:00:00Z").toLocaleDateString("en"));
+    expect(flour[3].textContent).toBe("2BreadPancakes");
+    const bread = flour[3].querySelector("a");
+    expect(bread?.getAttribute("href")).toBe("/recipes/r1?from=%2Fingredients");
+    const miso = row("miso").querySelectorAll("td");
+    expect(miso[2].textContent).toBe("Never");
+    expect(miso[3].textContent).toBe("0");
+    // A recipe title finds the ingredients it uses.
+    setValue(view.container.querySelector('input[type="search"]') as HTMLInputElement, "salsa");
     expect(rows()).toEqual(["jalapeño"]);
   });
 
   it("saves a place at once and puts it back when saving fails", async () => {
     api.setIngredientPlace.mockResolvedValueOnce({ ok: true, value: {} });
     await render();
-    const flour = () =>
-      view.container.querySelector<HTMLSelectElement>('select[aria-label="Where to buy flour"]')!;
-    setValue(flour(), "default:bakery");
+    const flour = () => picker("Where to buy flour");
+    pick("Where to buy flour", "Bakery");
     await settle();
     expect(api.setIngredientPlace).toHaveBeenCalledWith("flour", {
       kind: "default",
       key: "bakery",
     });
-    expect(flour().value).toBe("default:bakery");
+    expect(flour().textContent).toContain("Bakery");
 
     api.setIngredientPlace.mockResolvedValueOnce({ ok: false, status: 500, code: null });
-    setValue(flour(), "default:butcher");
+    pick("Where to buy flour", "Butcher");
     await settle();
-    expect(flour().value).toBe("default:bakery");
+    expect(flour().textContent).toContain("Bakery");
     expect(view.container.querySelector('[role="alert"]')?.textContent).toBe(
       "Could not save that. Try again.",
     );
@@ -161,10 +204,10 @@ describe("IngredientsScreen (spec 070 US2)", () => {
 
   it("names default places in Spanish", async () => {
     await render("es");
-    const options = Array.from(
-      view.container.querySelector<HTMLSelectElement>('select[aria-label="Dónde comprar flour"]')!
-        .options,
-    ).map((o) => o.textContent);
+    act(() => picker("Dónde comprar flour").click());
+    const options = Array.from(document.querySelectorAll('[role="option"]')).map(
+      (o) => o.textContent,
+    );
     expect(options.slice(0, 2)).toEqual(["Supermercado", "Mercado de agricultores"]);
   });
 });

@@ -8,5 +8,9 @@ export const dynamic = "force-dynamic";
 export default async function IngredientsPage() {
   await requireAlias("/ingredients");
   const locale = await getServerLocale();
-  return <IngredientsScreen locale={locale} />;
+  return (
+    <main className="flex min-w-0 flex-1 flex-col px-page-gutter pt-2 pb-6">
+      <IngredientsScreen locale={locale} />
+    </main>
+  );
 }
