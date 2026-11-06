@@ -3,7 +3,7 @@
 import { NotebookPicker } from "@/components/NotebookPicker";
 import { useEffect, useState } from "react";
 
-import { Sheet } from "@/app/kitchens/Sheet";
+import { ActionDialog } from "@/components/ActionDialog";
 import {
   fetchVocabulary,
   submitCapture,
@@ -191,12 +191,15 @@ export function TextCaptureSheet({
   );
 
   return (
-    <Sheet
+    <ActionDialog
       open={open}
-      onClose={closeSheet}
+      onOpenChange={(next) => {
+        if (!next) closeSheet();
+      }}
       closeLabel={t.close}
       title={notebook?.name ?? t.addRecipe}
-      body={body}
-    />
+    >
+      {body}
+    </ActionDialog>
   );
 }
