@@ -249,6 +249,20 @@ docker compose exec db psql -U melos -d melos -c "\\dx vector"
 # Expected: vector extension listed
 ```
 
+### 7a. One-time commands after an upgrade
+
+After deploying migration `0020_catalog_other_names` (spec 043), run the recipe language
+proposal once. Existing recipes got a fallback language in the migration; this asks the model
+for each one and stores a proposal that people apply or dismiss on the recipe page. It never
+changes a recipe's language by itself, and it is safe to run again: it only reads recipes it
+has not read yet.
+
+```bash
+docker compose exec api uv run python -m scripts.recipe_languages detect
+docker compose exec api uv run python -m scripts.recipe_languages status
+# Expected: waiting=0 once it has read every recipe
+```
+
 ### 8. Test Core Flows
 
 1. **Sign Up**: Navigate to https://melos.example.com and create an account

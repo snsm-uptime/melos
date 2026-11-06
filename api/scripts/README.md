@@ -46,3 +46,17 @@ already seeded are not added again and a plain restart picks up new ones.
 The seed is idempotent: an existing account with the same email is left
 untouched. A seed failure is logged and never blocks boot. Never use real
 personal data here.
+
+## recipe_languages.py — one-time language proposal (spec 043)
+
+Run once after deploying migration `0020_catalog_other_names`:
+
+    docker compose exec api uv run python -m scripts.recipe_languages detect [--limit N]
+    docker compose exec api uv run python -m scripts.recipe_languages status
+
+`detect` sends each recipe not read yet (title, ingredient names and steps only) to the model.
+When the answer differs from the stored fallback language, it stores the answer as
+`proposed_language`, and the recipe page offers "Apply" or "Dismiss". It never writes
+`language` itself. Every recipe it reads gets `language_detected_at`, so a second run reads
+only new rows. It commits every 50 recipes, prints counts, and exits 0, or 1 on a database
+error. Uses `GEMINI_API_KEY` and `GEMINI_CHAT_MODEL`.
