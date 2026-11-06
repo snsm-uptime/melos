@@ -14,7 +14,10 @@ Centralized location for all custom SVG icon components used throughout the UI. 
 | `CartIcon` | Open the kitchen's cart | Empty cart, same shape as `CartPlusIcon` |
 | `CartPlusIcon` | Add/remove a recipe from the cart | `inCart` turns the + into × |
 | `BasketIcon` | The Ingredients entry in the side panel | Peaked handle, solid basket with cut-out slots |
+| `ChefHatIcon` | Kitchens in the side panel and kitchen page titles | Three-lobed puff, slotted band, brim bar |
 | `BooksIcon` | The Notebooks entry in the side panel | Three spines, the right one leaning |
+| `LocationIcon` | Open the person's places (Ingredients header) | Solid pin with a round hole |
+| `AnalyticsIcon` | The admin dashboard entry in the side panel | Solid magnifier lens with cut-out bars |
 | `HistoryIcon` | Open the kitchen's past lists | Clock inside a counterclockwise arrow |
 | `RecipeIcon` | A recipe | Solid frame around a lined sheet |
 | `AddRecipeIcon` | Add a recipe | `RecipeIcon` with a solid circle and a cut-out plus |
@@ -102,12 +105,36 @@ A shopping basket: a peaked handle over a rim, and a solid body that narrows to 
 - Style: Stroked handle and rim, filled body, shared stroke width (`ICON_STROKE`)
 - Accepts: className, SVG element props
 
+### ChefHatIcon
+
+A chef's hat: three overlapping circles for the puff over a band with three upright slots cut through it (via mask), and a separate brim bar. Marks the Kitchens section of the closed side panel and leads the title of a kitchen page.
+
+- ViewBox: `0 0 24 24`
+- Style: Fill-based
+- Accepts: className, SVG element props
+
 ### BooksIcon
 
 Three book spines: a left one cut into three bands, a plain middle one, and a banded one leaning on it. Used for the Notebooks entry in the side panel.
 
 - ViewBox: `0 0 24 24`
 - Style: Fill-based
+- Accepts: className, SVG element props
+
+### LocationIcon
+
+A solid map pin with a round hole (even-odd fill, so the background shows). Used for the Ingredients page's header button that opens the Places dialog (tooltip "Location").
+
+- ViewBox: `0 0 24 24`
+- Style: Fill-based
+- Accepts: className, SVG element props
+
+### AnalyticsIcon
+
+A magnifier: a solid round lens with three bars of different heights cut through it (even-odd fill) and a stroked handle to the lower right. Used for the admin dashboard entry in the side panel.
+
+- ViewBox: `0 0 24 24`
+- Style: Filled lens, stroked handle
 - Accepts: className, SVG element props
 
 ### HistoryIcon
@@ -161,7 +188,7 @@ An eye for password visibility toggle. Shows open/closed eye based on `open` pro
 
 ### CopyIcon
 
-Two overlapping rectangles representing copy-to-clipboard. Used for copy actions (e.g., copying a masked IBAN).
+A page with a folded top-right corner in front of the edge of the page behind it (an open bracket at its lower left). Used for copy actions: `CopyButton` and copying another member's places on the Ingredients page.
 
 - ViewBox: `0 0 24 24`
 - Style: Stroke-based
@@ -194,7 +221,7 @@ Animates FileIcon into FileImportIcon. See [Animated Icons](#animated-icons) —
 
 ### HashtagIcon
 
-A slanted hash mark. Used for exact-amount split mode.
+A slanted hash mark. Used for the admin dashboard's units tab.
 
 - ViewBox: `0 0 24 24`
 - Style: Stroke-based

@@ -4,10 +4,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
+  AnalyticsIcon,
   ArchiveToggleIcon,
   BasketIcon,
   BooksIcon,
-  HashtagIcon,
   LogOutIcon,
   MenuIcon,
   PlusIcon,
@@ -233,7 +233,7 @@ export function SidePanel({
                 <SidePanelEntry
                   href="/admin"
                   label={adminMessages[locale].entry}
-                  icon={<HashtagIcon className="size-7 shrink-0 p-0.5" />}
+                  icon={<AnalyticsIcon className="size-7 shrink-0 p-0.5" />}
                   current={current === "admin"}
                   onClick={onDrawerClose}
                 />
