@@ -93,14 +93,17 @@ class SqlAlchemyShoppingListRepository:
         return active
 
     def replace_cart_lines(self, list_id: UUID, lines: Sequence[SavedLine]) -> None:
+        # Locks every cart line, not only bought ones, so a tick that lands mid-save waits for the
+        # replace instead of being read before it and then deleted (graphify review).
         old = self._db.scalars(
-            select(ShoppingListItemModel).where(
+            select(ShoppingListItemModel)
+            .where(
                 ShoppingListItemModel.shopping_list_id == list_id,
                 ShoppingListItemModel.origin == "cart",
-                ShoppingListItemModel.bought.is_(True),
             )
+            .with_for_update()
         ).all()
-        lines = carry_bought([_line(row) for row in old], lines)
+        lines = carry_bought([_line(row) for row in old if row.bought], lines)
         self._db.execute(
             delete(ShoppingListItemModel).where(
                 ShoppingListItemModel.shopping_list_id == list_id,

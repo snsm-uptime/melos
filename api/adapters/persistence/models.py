@@ -614,7 +614,11 @@ class PlaceModel(Base):
     """A person's own place to buy things; default places are not rows (spec 070 R4)."""
 
     __tablename__ = "place"
-    __table_args__ = (UniqueConstraint("user_id", "name_key", name="uq_place_user_name_key"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "name_key", name="uq_place_user_name_key"),
+        # The target of ingredient_place's owner key.
+        UniqueConstraint("id", "user_id", name="uq_place_id_user"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
@@ -642,6 +646,13 @@ class IngredientPlaceModel(Base):
             "(default_key IS NULL) <> (place_id IS NULL)", name="ck_ingredient_place_one_place"
         ),
         Index("ix_ingredient_place_place", "place_id"),
+        # Only the person's own place (graphify review): place_id with user_id, not place_id alone.
+        ForeignKeyConstraint(
+            ["place_id", "user_id"],
+            ["place.id", "place.user_id"],
+            ondelete="CASCADE",
+            name="fk_ingredient_place_own_place",
+        ),
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(
@@ -649,9 +660,7 @@ class IngredientPlaceModel(Base):
     )
     name: Mapped[str] = mapped_column(Text, primary_key=True)
     default_key: Mapped[str | None] = mapped_column(Text, nullable=True)
-    place_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("place.id", ondelete="CASCADE"), nullable=True
-    )
+    place_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
