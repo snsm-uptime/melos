@@ -16,6 +16,7 @@ from domain.errors import (
     NotebookChoiceRequiredError,
     NotebookNotFoundError,
 )
+from domain.ingredient_catalog import CatalogIndex
 from domain.notebook import Notebook
 from domain.recipe import NewRecipe
 from domain.recipe_draft import (
@@ -42,6 +43,9 @@ class FakeNotebooks:
 class FakeCatalog:
     names: dict[UUID, list[str]] = field(default_factory=dict)
     fail_add: bool = False
+
+    def index_for_notebook(self, notebook_id: UUID) -> CatalogIndex:
+        return CatalogIndex.of_names(self.names_for_notebook(notebook_id))
 
     def names_for_notebook(self, notebook_id: UUID) -> list[str]:
         return list(self.names.get(notebook_id, []))

@@ -30,6 +30,7 @@ def _row(list_id: uuid.UUID, item: SavedLine, position: int) -> dict[str, object
         "recipes": [{"recipe_id": str(r.recipe_id), "title": r.title} for r in item.recipes],
         "position": position,
         "bought": item.bought,
+        "names": dict(item.names),
     }
 
 
@@ -45,6 +46,7 @@ def _line(row: ShoppingListItemModel) -> SavedLine:
         recipes=tuple(RecipeRef(UUID(r["recipe_id"]), r["title"]) for r in row.recipes),
         id=row.id,
         bought=row.bought,
+        names=tuple(sorted((row.names or {}).items())),
     )
 
 

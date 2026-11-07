@@ -134,7 +134,17 @@ def test_combined_scaled_list_has_the_contract_shape(
         ("flour", None, (("1", "cup"), ("3", "tbsp"))),
     ]
     flour = body["lines"][1]
-    assert set(flour) == {"id", "bought", "place", "name", "kind", "size", "amounts", "recipes"}
+    assert set(flour) == {
+        "id",
+        "bought",
+        "place",
+        "name",
+        "kept_name",
+        "kind",
+        "size",
+        "amounts",
+        "recipes",
+    }
     # A stored list: lines carry their row id and start not bought (spec 070 R3).
     assert flour["id"] and flour["bought"] is False
     assert flour["place"] == {"kind": "default", "key": "supermarket", "id": None, "name": None}
@@ -356,7 +366,7 @@ def test_vague_lines_go_to_your_call_once_per_ingredient(
         ("salt", ["a pinch", "to taste"]),
     ]
     salt = body["your_call"][1]
-    assert set(salt) == {"id", "bought", "place", "name", "notes", "recipes"}
+    assert set(salt) == {"id", "bought", "place", "name", "kept_name", "notes", "recipes"}
     assert [r["title"] for r in salt["recipes"]] == ["A", "B"]
     butter = body["your_call"][0]
     assert [r["title"] for r in butter["recipes"]] == ["A"]
@@ -531,6 +541,7 @@ def test_a_custom_unit_reaches_the_list_for_a_member_who_never_kept_it(
     custom = next(line for line in body["lines"] if line["kind"] == "custom")
     assert custom == {
         "name": "frijoles",
+        "kept_name": "frijoles",
         "kind": "custom",
         "size": None,
         "amounts": [{"quantity": "3", "unit": "lata"}],

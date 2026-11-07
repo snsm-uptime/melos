@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import date
 from typing import Literal
 from uuid import UUID
@@ -12,9 +13,10 @@ from application.shopping_list import (
     PlaceChoices,
     ShoppingListView,
 )
-from domain.cart import RecipeRef, ShoppingList
+from domain.cart import RecipeRef, ShoppingList, name_sort_key
+from domain.ingredient_catalog import normalize_name
 from domain.places import DefaultKey, PlaceRef, resolve_place
-from domain.shopping_list import SavedLine
+from domain.shopping_list import ListNames, SavedLine, shown_list_name
 from pydantic import BaseModel, model_validator
 
 
@@ -73,7 +75,9 @@ class ShoppingLineResponse(BaseModel):
     id: UUID | None = None
     bought: bool = False
     place: PlaceResponse | None = None
+    # The word the viewer sees (spec 043 FR-007); kept_name is the line's key.
     name: str
+    kept_name: str = ""
     kind: Literal["mass", "volume", "count", "custom"]
     size: Literal["small", "medium", "large"] | None
     amounts: list[AmountResponse]
@@ -85,6 +89,7 @@ class YourCallResponse(BaseModel):
     bought: bool = False
     place: PlaceResponse | None = None
     name: str
+    kept_name: str = ""
     notes: list[str]
     recipes: list[RecipeRefResponse]
 
@@ -151,6 +156,27 @@ def _place(name: str, places: PlaceChoices | None) -> PlaceResponse | None:
     return None if places is None else place_response(resolve_place(name, places.choices))
 
 
+def _place_any(
+    kept: str, words: Mapping[str, str], places: PlaceChoices | None
+) -> PlaceResponse | None:
+    """The viewer's place under any of the line's names, kept name first (spec 043 FR-007a)."""
+    if places is None:
+        return None
+    for name in (kept, *sorted(words.values())):
+        if normalize_name(name) in places.choices:
+            return place_response(resolve_place(name, places.choices))
+    return _place(kept, places)
+
+
+def _shown(kept: str, names: ListNames | None, language: str | None) -> str:
+    return shown_list_name(kept, names or {}, language)
+
+
+def _by_shown[T: (ShoppingLineResponse, YourCallResponse)](responses: list[T]) -> list[T]:
+    # Stable: lines of one name keep their kind and size order (FR-007 sorts by the shown word).
+    return sorted(responses, key=lambda response: name_sort_key(response.name))
+
+
 def _custom(places: PlaceChoices | None) -> list[CustomPlaceResponse]:
     if places is None:
         return []
@@ -178,21 +204,27 @@ def _lines(
     missing: frozenset[UUID],
     stored: tuple[SavedLine, ...] = (),
     places: PlaceChoices | None = None,
+    names: ListNames | None = None,
+    language: str | None = None,
 ) -> list[ShoppingLineResponse]:
     saved = _pad(_stored(stored, "measured"), len(result.lines))
-    return [
-        ShoppingLineResponse(
-            id=item.id if item else None,
-            bought=item.bought if item else False,
-            place=_place(line.name, places),
-            name=line.name,
-            kind=line.kind,
-            size=line.size,  # type: ignore[arg-type]
-            amounts=[AmountResponse(quantity=a.quantity, unit=a.unit) for a in line.amounts],
-            recipes=_recipes(line.recipes, missing),
-        )
-        for line, item in zip(result.lines, saved, strict=True)
-    ]
+    words = names or {}
+    return _by_shown(
+        [
+            ShoppingLineResponse(
+                id=item.id if item else None,
+                bought=item.bought if item else False,
+                place=_place_any(line.name, words.get(line.name, {}), places),
+                name=_shown(line.name, names, language),
+                kept_name=line.name,
+                kind=line.kind,
+                size=line.size,  # type: ignore[arg-type]
+                amounts=[AmountResponse(quantity=a.quantity, unit=a.unit) for a in line.amounts],
+                recipes=_recipes(line.recipes, missing),
+            )
+            for line, item in zip(result.lines, saved, strict=True)
+        ]
+    )
 
 
 def _your_call(
@@ -200,19 +232,25 @@ def _your_call(
     missing: frozenset[UUID],
     stored: tuple[SavedLine, ...] = (),
     places: PlaceChoices | None = None,
+    names: ListNames | None = None,
+    language: str | None = None,
 ) -> list[YourCallResponse]:
     saved = _pad(_stored(stored, "your_call"), len(result.your_call))
-    return [
-        YourCallResponse(
-            id=item.id if item else None,
-            bought=item.bought if item else False,
-            place=_place(e.name, places),
-            name=e.name,
-            notes=list(e.notes),
-            recipes=_recipes(e.recipes, missing),
-        )
-        for e, item in zip(result.your_call, saved, strict=True)
-    ]
+    words = names or {}
+    return _by_shown(
+        [
+            YourCallResponse(
+                id=item.id if item else None,
+                bought=item.bought if item else False,
+                place=_place_any(e.name, words.get(e.name, {}), places),
+                name=_shown(e.name, names, language),
+                kept_name=e.name,
+                notes=list(e.notes),
+                recipes=_recipes(e.recipes, missing),
+            )
+            for e, item in zip(result.your_call, saved, strict=True)
+        ]
+    )
 
 
 def _hand(
@@ -243,8 +281,22 @@ def shopping_list_response(view: ShoppingListView) -> ShoppingListResponse:
         status=view.status,
         list_id=view.list_id,
         kitchen_is_archived=view.kitchen_is_archived,
-        lines=_lines(result, view.missing_recipe_ids, view.cart_items, view.places),
-        your_call=_your_call(result, view.missing_recipe_ids, view.cart_items, view.places),
+        lines=_lines(
+            result,
+            view.missing_recipe_ids,
+            view.cart_items,
+            view.places,
+            view.names,
+            view.language,
+        ),
+        your_call=_your_call(
+            result,
+            view.missing_recipe_ids,
+            view.cart_items,
+            view.places,
+            view.names,
+            view.language,
+        ),
         hand_items=_hand(view.hand_items, view.places),
         custom_places=_custom(view.places),
     )
@@ -255,9 +307,21 @@ def closed_list_response(view: ClosedListView) -> ClosedListResponse:
     return ClosedListResponse(
         id=view.saved.id,
         closing_date=view.saved.closing_date,
-        lines=_lines(view.shopping_list, view.missing_recipe_ids, view.cart_items, view.places),
+        lines=_lines(
+            view.shopping_list,
+            view.missing_recipe_ids,
+            view.cart_items,
+            view.places,
+            view.names,
+            view.language,
+        ),
         your_call=_your_call(
-            view.shopping_list, view.missing_recipe_ids, view.cart_items, view.places
+            view.shopping_list,
+            view.missing_recipe_ids,
+            view.cart_items,
+            view.places,
+            view.names,
+            view.language,
         ),
         hand_items=_hand(view.hand_items, view.places),
         custom_places=_custom(view.places),

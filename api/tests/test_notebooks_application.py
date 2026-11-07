@@ -32,6 +32,7 @@ from domain.errors import (
     NotebookChoiceRequiredError,
     NotebookNotFoundError,
 )
+from domain.ingredient_catalog import CatalogIndex
 from domain.notebook import Notebook
 
 
@@ -206,6 +207,9 @@ class FakeUserDefaultNotebook:
 class FakeIngredientCatalog:
     repo: FakeNotebookRepo
     names: dict[UUID, set[str]] = field(default_factory=dict)
+
+    def index_for_notebook(self, notebook_id: UUID) -> CatalogIndex:
+        return CatalogIndex.of_names(self.names_for_notebook(notebook_id))
 
     def names_for_notebook(self, notebook_id: UUID) -> list[str]:
         return sorted(self.names.get(notebook_id, set()))

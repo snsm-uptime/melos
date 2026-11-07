@@ -37,14 +37,17 @@ from domain.errors import (
     ShoppingListNotActiveError,
     ShoppingListNotFoundError,
 )
+from domain.ingredient_catalog import as_language
 from domain.places import CustomPlace, PlaceRef, ingredient_key
 from domain.shopping_list import (
+    ListNames,
     SavedLine,
     SavedList,
     cart_lines,
     closing_date,
     hand_item,
     hand_lines,
+    line_names,
     recipe_titles,
     stored_cart_list,
 )
@@ -58,7 +61,9 @@ from application.ports import (
     CartRepository,
     EditLockRepository,
     IngredientLineReader,
+    ListNameSource,
     PlaceRepository,
+    PreferencesRepository,
     SessionRef,
     ShoppingListRepository,
 )
@@ -104,6 +109,18 @@ def build_cart_list(
     return build_shopping_list(recipes)
 
 
+def list_recipe_ids(shopping_list: ShoppingList) -> list[UUID]:
+    refs = [*shopping_list.lines, *shopping_list.your_call]
+    return list(dict.fromkeys(ref.recipe_id for line in refs for ref in line.recipes))
+
+
+def built_names(source: ListNameSource | None, shopping_list: ShoppingList) -> ListNames:
+    """Each line's words, for a list built from the cart (spec 043 R7); {} without a source."""
+    if source is None:
+        return {}
+    return source.names_for(list_recipe_ids(shopping_list))
+
+
 class ActiveListSync:
     """Keeps the stored list in line with the saved cart; hand items are never touched."""
 
@@ -112,15 +129,19 @@ class ActiveListSync:
         carts: CartRepository,
         lines: IngredientLineReader,
         lists: ShoppingListRepository,
+        *,
+        names: ListNameSource | None = None,
     ) -> None:
         self._carts = carts
         self._lines = lines
         self._lists = lists
+        self._names = names
 
     def _replace(self, list_id: UUID, kitchen_id: UUID) -> None:
         items = self._carts.read(kitchen_id).items
         built = build_cart_list(self._carts, self._lines, kitchen_id, items)
-        self._lists.replace_cart_lines(list_id, cart_lines(built))
+        names = built_names(self._names, built)
+        self._lists.replace_cart_lines(list_id, cart_lines(built, names))
 
     def refresh(self, kitchen_id: UUID) -> None:
         active = self._lists.active(kitchen_id)
@@ -156,6 +177,15 @@ def viewer_places(places: PlaceRepository | None, user_id: UUID) -> PlaceChoices
     return PlaceChoices(places.choices(user_id), tuple(places.list_custom(user_id)))
 
 
+def viewer_language(prefs: PreferencesRepository | None, user_id: UUID) -> str | None:
+    """The viewer's interface language, 'en' or 'es', or None to show kept names (FR-007)."""
+    if prefs is None:
+        return None
+    record = prefs.get_preferences(user_id)
+    language = (record.language or "").lower()[:2] if record is not None else ""
+    return as_language(language)
+
+
 @dataclass(frozen=True, slots=True)
 class ShoppingListView:
     # True when there is nothing at all: no cart recipes and no saved items.
@@ -171,6 +201,9 @@ class ShoppingListView:
     cart_items: tuple[SavedLine, ...] = ()
     # The viewer's places (spec 070 FR-010): their choices and their own places.
     places: PlaceChoices | None = None
+    # Each cart line's words, and the viewer's language that picks one (spec 043 FR-007).
+    names: ListNames | None = None
+    language: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,6 +213,11 @@ class ClosedListView:
     hand_items: tuple[SavedLine, ...]
     missing_recipe_ids: frozenset[UUID]
     places: PlaceChoices | None = None
+    language: str | None = None
+
+    @property
+    def names(self) -> ListNames:
+        return line_names(self.cart_items)
 
     @property
     def cart_items(self) -> tuple[SavedLine, ...]:
@@ -209,6 +247,9 @@ class GetShoppingListService:
         lines: IngredientLineReader,
         lists: ShoppingListRepository,
         places: PlaceRepository | None = None,
+        *,
+        names: ListNameSource | None = None,
+        prefs: PreferencesRepository | None = None,
     ) -> None:
         self._kitchens = kitchens
         self._carts = carts
@@ -216,10 +257,21 @@ class GetShoppingListService:
         self._lines = lines
         self._lists = lists
         self._places = places
+        self._names = names
+        self._prefs = prefs
 
     def execute(self, ref: SessionRef, kitchen_id: UUID) -> ShoppingListView:
         view = self._read(ref, kitchen_id)
-        return replace(view, places=viewer_places(self._places, ref.user_id))
+        if view.status == "active":
+            names: ListNames = line_names(view.cart_items)
+        else:
+            names = built_names(self._names, view.shopping_list)
+        return replace(
+            view,
+            places=viewer_places(self._places, ref.user_id),
+            names=names,
+            language=viewer_language(self._prefs, ref.user_id),
+        )
 
     def _read(self, ref: SessionRef, kitchen_id: UUID) -> ShoppingListView:
         kitchen = _member_kitchen(self._kitchens, ref, kitchen_id)
@@ -365,9 +417,11 @@ class CloseShoppingListService(_ListChange):
         *,
         activity: CartActivityLog,
         places: PlaceRepository | None = None,
+        prefs: PreferencesRepository | None = None,
     ) -> None:
         super().__init__(kitchens, carts, lists, sync, places)
         self._activity = activity
+        self._prefs = prefs
 
     def execute(
         self,
@@ -391,7 +445,11 @@ class CloseShoppingListService(_ListChange):
         assert closed is not None
         logger.info("shopping list outcome=closed items=%d", len(closed.items))
         view = _closed_view(closed, _missing(self._carts, [closed]))
-        return replace(view, places=viewer_places(self._places, ref.user_id))
+        return replace(
+            view,
+            places=viewer_places(self._places, ref.user_id),
+            language=viewer_language(self._prefs, ref.user_id),
+        )
 
 
 def _closed_view(saved: SavedList, missing: frozenset[UUID]) -> ClosedListView:
@@ -412,11 +470,14 @@ class ClosedShoppingListsService:
         carts: CartRepository,
         lists: ShoppingListRepository,
         places: PlaceRepository | None = None,
+        *,
+        prefs: PreferencesRepository | None = None,
     ) -> None:
         self._kitchens = kitchens
         self._carts = carts
         self._lists = lists
         self._places = places
+        self._prefs = prefs
 
     def list(self, ref: SessionRef, kitchen_id: UUID) -> tuple[ClosedListSummary, ...]:
         _member_kitchen(self._kitchens, ref, kitchen_id)
@@ -431,4 +492,8 @@ class ClosedShoppingListsService:
         if saved is None:
             raise ShoppingListNotFoundError()
         view = _closed_view(saved, _missing(self._carts, [saved]))
-        return replace(view, places=viewer_places(self._places, ref.user_id))
+        return replace(
+            view,
+            places=viewer_places(self._places, ref.user_id),
+            language=viewer_language(self._prefs, ref.user_id),
+        )

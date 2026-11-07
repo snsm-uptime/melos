@@ -39,6 +39,8 @@ export function buildSaveBody(
     })),
     steps: draft.steps.map((step) => step.text),
     keep_units: draft.keptUnits ?? [],
+    // A draft written by hand takes the interface language until the member picks one.
+    language: draft.recipeLanguage ?? capture.language,
   };
 }
 

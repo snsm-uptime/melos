@@ -1,0 +1,20 @@
+{
+  "catalog": [
+    "chicken breast",
+    "pechuga de pollo",
+    "egg",
+    "huevo",
+    "beef",
+    "cerdo"
+  ],
+  "expected": [
+    [
+      "chicken breast",
+      "pechuga de pollo"
+    ],
+    [
+      "egg",
+      "huevo"
+    ]
+  ]
+}

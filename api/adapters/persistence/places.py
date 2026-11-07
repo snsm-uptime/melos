@@ -7,13 +7,15 @@ from collections.abc import Sequence
 from uuid import UUID
 
 from application.ports import PlaceSource, RecipeUse
+from domain.ingredient_catalog import normalize_name
 from domain.places import CustomPlace, PlaceRef
-from sqlalchemy import delete, func, select, union, update
+from sqlalchemy import delete, func, select, text, union, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, aliased
 
 from adapters.persistence.models import (
     IngredientModel,
+    IngredientNameModel,
     IngredientPlaceModel,
     KitchenMembershipModel,
     NotebookMembershipModel,
@@ -141,6 +143,48 @@ class SqlAlchemyPlaceRepository:
             .where(RecipeModel.notebook_id.in_(select(readable.c[0])))
         ).all()
         return [RecipeUse(r.name, r.id, r.title, r.created_at) for r in rows]
+
+    def other_names(self, user_id: UUID) -> Sequence[tuple[str, str]]:
+        personal = (
+            select(NotebookModel.id)
+            .join(NotebookMembershipModel, NotebookMembershipModel.notebook_id == NotebookModel.id)
+            .where(NotebookMembershipModel.user_id == user_id, NotebookModel.kitchen_id.is_(None))
+        )
+        kitchen = (
+            select(NotebookModel.id)
+            .join(
+                KitchenMembershipModel,
+                KitchenMembershipModel.kitchen_id == NotebookModel.kitchen_id,
+            )
+            .where(KitchenMembershipModel.user_id == user_id)
+        )
+        readable = union(personal, kitchen).subquery()
+        rows = self._db.execute(
+            select(IngredientModel.name, IngredientNameModel.name)
+            .join(IngredientModel, IngredientModel.id == IngredientNameModel.ingredient_id)
+            .where(IngredientNameModel.notebook_id.in_(select(readable.c[0])))
+            .distinct()
+        ).all()
+        return [(kept, other) for kept, other in rows]
+
+    def move_choices(self, old_name: str, new_name: str) -> None:
+        old_key, new_key = normalize_name(old_name), normalize_name(new_name)
+        if not old_key or old_key == new_key:
+            return
+        self._db.execute(
+            text(
+                """
+                UPDATE ingredient_place AS p
+                SET name = :new, updated_at = now()
+                WHERE p.name = :old
+                  AND NOT EXISTS (
+                      SELECT 1 FROM ingredient_place AS q
+                      WHERE q.user_id = p.user_id AND q.name = :new
+                  )
+                """
+            ),
+            {"old": old_key, "new": new_key},
+        )
 
     def sources(self, user_id: UUID) -> Sequence[PlaceSource]:
         mine_k = aliased(KitchenMembershipModel)

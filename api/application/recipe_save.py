@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from domain.errors import KitchenArchivedError, NotebookNotFoundError
+from domain.ingredient_catalog import as_language
 from domain.page_link import PageLinkRefused, check_link
 from domain.recipe import MAX_LINES, MAX_STEPS, NewRecipe, resolve_line_names
 from domain.recipe_draft import DraftRecipe, IngredientLine, InvalidDraftError, check_edited_draft
@@ -66,6 +67,8 @@ class SaveRecipeCommand:
     source_url: str | None = None
     # The recipe image: the page's photo, or one the person picked (S-067).
     preview_image: str | None = None
+    # 'en' or 'es', from the draft (spec 043 FR-005a); anything else stores Spanish.
+    language: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,7 +131,7 @@ class SaveRecipeDraft:
             allowed_for_save(available, command.keep_units),
         )
         lines, new_names = resolve_line_names(
-            checked.ingredient_lines, self._catalog.names_for_notebook(view.id)
+            checked.ingredient_lines, self._catalog.index_for_notebook(view.id)
         )
         assert checked.base_servings is not None
         recipe = NewRecipe(
@@ -143,6 +146,7 @@ class SaveRecipeDraft:
             save_key=command.save_key,
             source_url=source_url,
             preview_image=preview_image,
+            language=as_language(command.language) or "es",
         )
         try:
             stored = self._recipes.add(recipe)

@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { BackIcon, SaveIcon, TrashIcon } from "@/app/icons";
 import { CauldronLoader } from "@/components/CauldronLoader";
 import { IconButton } from "@/components/IconButton";
+import { LanguageField } from "@/components/LanguageField";
 import { RecipeImagePicker } from "@/components/RecipeImagePicker";
 import {
   fetchVocabulary,
@@ -333,6 +334,15 @@ export function RecipeDraftEditor() {
             onChange={setPreviewImage}
             locale={locale}
             disabled={capture.saving}
+          />
+          <LanguageField
+            legend={t.recipeLanguage}
+            value={draft.recipeLanguage ?? capture.language}
+            labels={t.recipeLanguages}
+            disabled={capture.saving}
+            onChange={(language) => {
+              if (language) update({ recipeLanguage: language });
+            }}
           />
           <section className="flex min-w-0 flex-col gap-2 md:min-h-0 md:flex-1 md:overflow-hidden">
             <div className="flex shrink-0 items-center justify-between gap-2">

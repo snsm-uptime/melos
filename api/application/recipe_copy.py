@@ -20,6 +20,7 @@ from domain.errors import (
 )
 from domain.notebook import notebook_access
 
+from application.catalog_manage import match_copied_names
 from application.kitchen_access import (
     AuthorizeKitchenAccessCommand,
     AuthorizeKitchenAccessService,
@@ -117,7 +118,9 @@ class CopyRecipeToKitchenService:
                 existing.recipe_id, command.source_recipe_id, command.actor_id
             ):
                 raise RecipeNotFoundError()
-            self._catalog.add_names(existing.notebook_id, names)
+            match_copied_names(
+                self._recipes, self._catalog, existing.recipe_id, existing.notebook_id, names
+            )
             self._enqueue(existing.recipe_id)
             logger.info("recipe copy outcome=overwritten")
             return CopiedRecipe(
@@ -130,7 +133,7 @@ class CopyRecipeToKitchenService:
         recipe_id = self._recipes.copy_one(command.source_recipe_id, notebook_id, command.actor_id)
         if recipe_id is None:
             raise RecipeNotFoundError()
-        self._catalog.add_names(notebook_id, names)
+        match_copied_names(self._recipes, self._catalog, recipe_id, notebook_id, names)
         self._enqueue(recipe_id)
         facts = self._notebooks.facts_for(command.actor_id, notebook_id)
         assert facts is not None

@@ -106,7 +106,7 @@ class CaptureRecipeText:
         if view.kitchen_is_archived:
             raise KitchenArchivedError()
 
-        names = self._catalog.names_for_notebook(command.notebook_id)
+        names = self._catalog.index_for_notebook(command.notebook_id)
         units = available_units(self._units.extras_for(command.actor_user_id))
         result = self._extraction.extract(text, names, self._timeout_s, units)
         logger.info(
@@ -119,6 +119,6 @@ class CaptureRecipeText:
                 recipe=result.recipe,
                 notebook=view,
                 language=command.language,
-                catalog=tuple(names),
+                catalog=tuple(names.all_names()),
             )
         return result

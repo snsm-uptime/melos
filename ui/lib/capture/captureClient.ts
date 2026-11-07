@@ -11,6 +11,8 @@ export type CaptureDraftResponse = {
     title: string;
     base_servings: number;
     servings_estimated: boolean;
+    /** The language most of the text is in (spec 043); absent from older answers. */
+    language?: "en" | "es";
     // MVP-OUT: main_ingredients: { id: string; label: string }[];
     // MVP-OUT: cuisines: { id: string; label: string; tag: string | null }[];
     changes: { line: number; from: string; to: string }[];

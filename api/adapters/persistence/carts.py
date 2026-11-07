@@ -13,7 +13,7 @@ from application.ports import (
     CartRecipeFacts,
     SavedCart,
 )
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -116,6 +116,57 @@ class SqlAlchemyCartRepository:
                 .values(cart_add_count=RecipeModel.cart_add_count + 1)
             )
         return added
+
+
+class SqlAlchemyListNameSource:
+    """The words per language of the ingredients in a set of recipes (spec 043 R7).
+
+    For each kept name, the ingredient comes from the notebook with the most of these recipes
+    whose ingredient of that name has variants; ties go to the lower notebook id, so the choice
+    does not change when the cart order does.
+    """
+
+    def __init__(self, db: Session) -> None:
+        self._db = db
+
+    def names_for(self, recipe_ids: Sequence[uuid.UUID]) -> dict[str, dict[str, str]]:
+        if not recipe_ids:
+            return {}
+        rows = self._db.execute(
+            text(
+                """
+                WITH uses AS (
+                    SELECT ri.name, r.notebook_id, count(DISTINCT r.id) AS n
+                    FROM recipe_ingredient AS ri
+                    JOIN recipe AS r ON r.id = ri.recipe_id
+                    WHERE r.id = ANY(:ids)
+                    GROUP BY ri.name, r.notebook_id
+                ),
+                best AS (
+                    SELECT DISTINCT ON (u.name) u.name, i.id AS ingredient_id, i.language
+                    FROM uses AS u
+                    JOIN ingredient AS i ON i.notebook_id = u.notebook_id AND i.name = u.name
+                    WHERE EXISTS (
+                        SELECT 1 FROM ingredient_name AS v
+                        WHERE v.ingredient_id = i.id AND v.kind = 'variant'
+                    )
+                    ORDER BY u.name, u.n DESC, u.notebook_id
+                )
+                SELECT b.name, b.language, v.language, v.name
+                FROM best AS b
+                JOIN ingredient_name AS v ON v.ingredient_id = b.ingredient_id
+                WHERE v.kind = 'variant'
+                """
+            ),
+            {"ids": list(recipe_ids)},
+        ).all()
+        names: dict[str, dict[str, str]] = {}
+        for kept, kept_language, language, name in rows:
+            words = names.setdefault(kept, {})
+            if kept_language:
+                words[kept_language] = kept
+            words[language] = name
+        return names
 
 
 class SqlAlchemyIngredientLineReader:

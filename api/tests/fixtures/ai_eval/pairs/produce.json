@@ -1,0 +1,25 @@
+{
+  "catalog": [
+    "onion",
+    "cebolla",
+    "tomato",
+    "tomate",
+    "carrot",
+    "zanahoria",
+    "potato"
+  ],
+  "expected": [
+    [
+      "onion",
+      "cebolla"
+    ],
+    [
+      "tomato",
+      "tomate"
+    ],
+    [
+      "carrot",
+      "zanahoria"
+    ]
+  ]
+}

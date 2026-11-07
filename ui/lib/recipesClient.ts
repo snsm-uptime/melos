@@ -79,7 +79,10 @@ export function fetchKitchenRecipes(
 // --- One recipe: detail, edit and delete (spec 027) ---
 
 export type RecipeLine = {
+  /** The kept name, as stored. */
   name: string;
+  /** The name in the recipe's language (spec 043 FR-006); absent from older answers. */
+  shown_name?: string;
   vague: boolean;
   quantity: number | null;
   unit: string | null;
@@ -110,6 +113,9 @@ export type RecipeDetail = {
   source: { type: string; url: string | null } | null;
   /** The recipe image as a data URI (spec 026), or null. */
   preview_image: string | null;
+  /** The recipe's language, and the model's differing proposal or null (spec 043 FR-005a). */
+  language?: "en" | "es";
+  proposed_language?: "en" | "es" | null;
   /** Who edits the recipe now (spec 022); null when nobody does. Absent from older answers. */
   editor?: LockEditor | null;
   /** Kitchen recipes only (null for personal notebooks): in the cart as I see it. */
@@ -150,6 +156,8 @@ export type RecipeUpdateBody = {
   keep_units: string[];
   /** Left out keeps the photo; null removes it; a data URI replaces it (S-067). */
   preview_image?: string | null;
+  /** Spec 043: the recipe's language; setting it clears a detected proposal. */
+  language?: "en" | "es";
 };
 
 /** The answer to a word typed by hand (spec 055, contracts/units-api.md). */

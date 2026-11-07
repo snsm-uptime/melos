@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
@@ -16,6 +17,7 @@ from domain.errors import (
     RecipeLockedError,
     RecipeNotFoundError,
 )
+from domain.ingredient_catalog import CatalogEntry, CatalogIndex
 from tests.embedding_fakes import FakeEmbeddingJobs
 from tests.test_notebooks_application import World, _join, _kitchen, _personal, _world
 
@@ -36,6 +38,7 @@ class FakeRecipes:
     # copy id -> (source id, notebook id, author id), in creation order
     copies: dict[UUID, tuple[UUID, UUID, UUID]] = field(default_factory=dict)
     overwrites: list[tuple[UUID, UUID, UUID]] = field(default_factory=list)
+    renames: dict[UUID, dict[str, str]] = field(default_factory=dict)
 
     def add(self, notebook_id: UUID, *names: str) -> UUID:
         recipe_id = uuid4()
@@ -64,6 +67,9 @@ class FakeRecipes:
         copy_id = uuid4()
         self.copies[copy_id] = (source, target, author)
         return copy_id
+
+    def rename_line_names(self, recipe_id: UUID, renames: Mapping[str, str]) -> None:
+        self.renames[recipe_id] = dict(renames)
 
     def overwrite_from(self, target: UUID, source: UUID, author: UUID) -> bool:
         self.overwrites.append((target, source, author))
@@ -173,9 +179,7 @@ def test_archived_kitchen_refuses(world: World, recipes: FakeRecipes) -> None:
     assert recipes.copies == {}
 
 
-def test_unreadable_or_missing_source_is_not_found(
-    world: World, recipes: FakeRecipes
-) -> None:
+def test_unreadable_or_missing_source_is_not_found(world: World, recipes: FakeRecipes) -> None:
     kitchen = _kitchen(world, ANA)
     _join(world, kitchen, BEN)
     bens = recipes.add(_personal(world, BEN, "ben's Notebook"), "rice")
@@ -246,3 +250,23 @@ def test_overwrite_refused_while_the_copy_is_being_edited(
     with pytest.raises(RecipeLockedError):
         _copy(world, recipes, kitchen, source, on_repeat="overwrite", locks=locks)
     assert recipes.overwrites == []
+
+
+def test_a_copy_takes_the_kitchen_catalog_s_kept_names(world: World, recipes: FakeRecipes) -> None:
+    """Spec 043 FR-008: a name the kitchen merged into another stays merged after a copy."""
+    kitchen = _kitchen(world, ANA)
+    first = _copy(world, recipes, kitchen, recipes.add(_personal(world, ANA, "a"), "rice"))
+    target = first.notebook_id
+    onion = CatalogEntry("onion", "en", {"es": "cebolla"})
+    world.catalog.index_for_notebook = lambda notebook_id: (  # type: ignore[method-assign]
+        CatalogIndex.build([onion, CatalogEntry("rice")])
+        if notebook_id == target
+        else CatalogIndex.of_names(world.catalog.names_for_notebook(notebook_id))
+    )
+    source = recipes.add(_personal(world, ANA, "b"), "cebollas", "garlic")
+
+    copied = _copy(world, recipes, kitchen, source, on_repeat="add")
+
+    assert recipes.renames[copied.recipe_id] == {"cebollas": "onion"}
+    assert "cebollas" not in world.catalog.names[target]
+    assert "garlic" in world.catalog.names[target]

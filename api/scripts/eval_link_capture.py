@@ -30,6 +30,7 @@ from application.recipe_capture_url import (
     CaptureRecipeUrlCommand,
 )
 from application.recipe_extraction import RecipeExtraction
+from domain.ingredient_catalog import CatalogIndex
 from domain.notebook import Notebook
 
 PAGES = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "ai_eval" / "pages"
@@ -45,6 +46,9 @@ class _Notebooks:
 
 
 class _Catalog:
+    def index_for_notebook(self, notebook_id: UUID) -> CatalogIndex:
+        return CatalogIndex.of_names(self.names_for_notebook(notebook_id))
+
     def names_for_notebook(self, notebook_id: UUID) -> list[str]:
         return []
 

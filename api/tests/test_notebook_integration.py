@@ -888,6 +888,15 @@ def test_notebook_routes_are_gets_on_the_four_contract_paths(client: TestClient)
         "/notebooks/{notebook_id}/invites/{invite_id}": {"delete"},
         "/notebooks/{notebook_id}/invites/{invite_id}/resend": {"post"},
     }
+    # Spec 043: one notebook's catalog, its names, and suggested pairs.
+    catalog = {
+        "/notebooks/{notebook_id}/catalog": {"get"},
+        "/notebooks/{notebook_id}/catalog/{name}": {"patch", "delete"},
+        "/notebooks/{notebook_id}/catalog/{name}/split": {"post"},
+        "/notebooks/{notebook_id}/catalog/pair-suggestions": {"post"},
+        "/notebooks/{notebook_id}/catalog/pair-dismissals": {"post"},
+    }
+    assert {path: notebook_paths.pop(path) for path in catalog} == catalog
 
     assert set(notebook_paths) == {
         "/notebooks",

@@ -6,11 +6,11 @@ which catalog spelling each line takes and which names are new.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from uuid import UUID
 
-from domain.ingredient_catalog import same_spelling
+from domain.ingredient_catalog import CatalogLike, Language, as_index, same_spelling
 from domain.recipe_draft import IngredientLine
 
 # Largest draft Save accepts (spec FR-019).
@@ -33,6 +33,8 @@ class NewRecipe:
     source_url: str | None = None
     # The recipe image, a data URI already checked by domain.recipe_preview.
     preview_image: str | None = None
+    # The language most of the recipe is in (spec 043 FR-005a).
+    language: Language = "es"
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,21 +50,26 @@ class EditedRecipe:
     # where None removes it. preview_image is a data URI already checked by recipe_preview.
     change_image: bool = False
     preview_image: str | None = None
+    # None keeps the stored language (spec 043). Setting one clears a pending proposal.
+    language: Language | None = None
+    # True drops the model's proposal without changing the language (FR-005a dismiss).
+    dismiss_proposal: bool = False
 
 
 def resolve_line_names(
-    lines: Sequence[IngredientLine], catalog_names: Iterable[str]
+    lines: Sequence[IngredientLine], catalog: CatalogLike
 ) -> tuple[tuple[IngredientLine, ...], tuple[str, ...]]:
-    """Give each line the catalog spelling of its name, and list the names the catalog lacks.
+    """Give each line the kept name of its catalog name, and list the names the catalog lacks.
 
-    A name that differs from an entry only by letter case or spacing takes the entry's
-    spelling. Any other name is new and is listed once, in order of first appearance.
+    A name that differs from a catalog name (kept or other, spec 043) only by letter case or
+    spacing takes that ingredient's kept name. Any other name is new and is listed once, in
+    order of first appearance.
     """
-    entries = [name for name in catalog_names if name]
+    index = as_index(catalog)
     resolved: list[IngredientLine] = []
     new_names: list[str] = []
     for line in lines:
-        entry = next((e for e in entries if same_spelling(e, line.name)), None)
+        entry = index.kept_for_spelling(line.name)
         if entry is not None:
             resolved.append(replace(line, name=entry))
             continue

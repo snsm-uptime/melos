@@ -43,7 +43,7 @@
 - [X] T007 Implement the `CoMemberDirectory` adapter in `api/adapters/persistence/co_members.py`: one SQL query over kitchen and notebook memberships, distinct by user, excluding the caller, returning `shared_at` as the max join time (or null) per research R-1, ordered by `shared_at` desc then alias case-insensitive (depends on T006)
 - [X] T008 [P] Add the `CoMemberRecord` dataclass (`user_id`, `alias`, `shared_at`) to `api/application/recipe_share.py`
 - [X] T009 Wire the adapter into the app's dependency container (where `SqlAlchemyRecipeRepository` is wired) in `api/api/deps.py` or the existing wiring module (depends on T007)
-- [ ] T010 Write pytest unit tests for the co-member ordering rule against fake ports in `api/tests/application/test_recipe_share.py`: shared-kitchen and shared-notebook peers both appear, caller excluded, duplicates collapsed, `shared_at` desc then alias (depends on T008)
+- [X] T010 Write pytest unit tests for the co-member ordering rule against fake ports in `api/tests/application/test_recipe_share.py`: shared-kitchen and shared-notebook peers both appear, caller excluded, duplicates collapsed, `shared_at` desc then alias (depends on T008). Written in `api/tests/test_recipe_share_application.py` (tests are flat); the ordering itself is SQL, covered by T011, so the fake test checks the order is kept
 - [X] T011 Write integration tests for the co-member SQL in `api/tests/integration/test_co_members.py` against Postgres: a peer in a shared kitchen only, a peer in a shared notebook only, a peer in both (appears once), a stranger (absent), an archived-kitchen peer per T004 (depends on T007)
 
 **Checkpoint**: Co-member listing works against Postgres and the domain errors exist.
@@ -58,7 +58,7 @@
 
 ### Tests for User Story 1
 
-- [ ] T012 [P] [US1] Write application tests for `ShareRecipeService` against fakes in `api/tests/application/test_recipe_share.py`: copy lands in the recipient's default notebook with the recipient as author; source unchanged; recipient not a co-member raises not-found; self-share raises; no default notebook raises and copies nothing (FR-008, FR-011, edge cases)
+- [X] T012 [P] [US1] Write application tests for `ShareRecipeService` against fakes in `api/tests/application/test_recipe_share.py`: copy lands in the recipient's default notebook with the recipient as author; source unchanged; recipient not a co-member raises not-found; self-share raises; no default notebook raises and copies nothing (FR-008, FR-011, edge cases). Written in `api/tests/test_recipe_share_application.py`. The 422 path is unreachable from fakes: a missing default is created, and a recipient with no alias stops on `AliasRequiredError` with nothing written
 - [X] T013 [P] [US1] Write integration tests for both routes in `api/tests/integration/test_recipe_share_routes.py`: GET candidates ordering and empty list; POST 201 body shape; 404 for unreadable recipe and for non-co-member recipient with identical bodies; 409 `share_self`; 422 `recipient_no_default_notebook` with no row created; 401 unauthenticated (contracts/share-api.md)
 - [X] T014 [P] [US1] Write vitest tests for the popup in `ui/components/ShareRecipeDialog/ShareRecipeDialog.test.tsx`: send disabled with nothing chosen (FR-007); search narrows list and keeps order (FR-005); success replaces list with a message naming the person (FR-009); error keeps selection and shows message (FR-010); double press sends once (R-4)
 

@@ -50,6 +50,8 @@ class IngredientPlace:
     recipes: tuple[IngredientRecipe, ...] = ()
     # When the newest of those recipes was made; None when no recipe uses it.
     last_used_at: datetime | None = None
+    # Its other names in the catalogs the person reads, sorted (spec 043 R8).
+    other_names: tuple[str, ...] = ()
 
 
 class ListPlacesService:
@@ -112,6 +114,7 @@ def catalog_entries(
     names: Sequence[str],
     choices: dict[str, PlaceRef],
     uses: Sequence[RecipeUse] = (),
+    others: Sequence[tuple[str, str]] = (),
 ) -> list[IngredientPlace]:
     """One entry per normalized name, shown with its first catalog spelling, sorted (R7).
 
@@ -128,6 +131,12 @@ def catalog_entries(
         key = normalize_name(use.name)
         if key in shown:
             by_key.setdefault(key, {}).setdefault(use.recipe_id, use)
+    # A kept name's other names; one that is itself a listed name stays its own entry.
+    other_by_key: dict[str, set[str]] = {}
+    for kept, other in others:
+        key = normalize_name(kept)
+        if key in shown and normalize_name(other) not in shown:
+            other_by_key.setdefault(key, set()).add(other)
     entries = []
     for key in sorted(shown, key=lambda k: (shown[k].casefold(), k)):
         # Newest first; same-moment recipes by title, so the order never shifts between loads.
@@ -139,6 +148,7 @@ def catalog_entries(
                 choices.get(key, SUPERMARKET),
                 tuple(IngredientRecipe(u.recipe_id, u.title) for u in recipes),
                 recipes[0].used_at if recipes else None,
+                tuple(sorted(other_by_key.get(key, set()))),
             )
         )
     return entries
@@ -153,6 +163,7 @@ class IngredientPlacesService:
             self._places.catalog_names(user_id),
             self._places.choices(user_id),
             self._places.recipe_uses(user_id),
+            self._places.other_names(user_id),
         )
 
 

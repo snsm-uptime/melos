@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from domain.recipe import MAX_LINES, MAX_STEPS
@@ -37,6 +38,8 @@ class SaveRecipeBody(BaseModel):
     # Link capture (spec 026): the page address instead of pasted text, and its photo.
     source_url: str | None = Field(default=None, max_length=2048)
     preview_image: str | None = None
+    # The draft's language (spec 043 FR-005a); left out stores Spanish.
+    language: Literal["en", "es"] | None = None
 
 
 class UpdateRecipeBody(BaseModel):
@@ -55,6 +58,16 @@ class UpdateRecipeBody(BaseModel):
     keep_units: list[str] = Field(default_factory=list, max_length=MAX_LINES + 1)
     # The image (S-067): left out keeps it, null removes it, a data URI replaces it.
     preview_image: str | None = None
+    # Spec 043: a language replaces the stored one and clears a proposal; left out keeps it.
+    language: Literal["en", "es"] | None = None
+    # Sent as null alone to dismiss the model's proposal (FR-005a).
+    proposed_language: None = None
+
+
+class SetRecipeLanguageBody(BaseModel):
+    """Apply a language, which clears the proposal, or send null to dismiss it (spec 043)."""
+
+    language: Literal["en", "es"] | None
 
 
 class NameMatchesBody(BaseModel):
@@ -71,7 +84,10 @@ class NameMatchesResponse(BaseModel):
 
 
 class RecipeLineResponse(BaseModel):
+    # The kept name, as the line is stored.
     name: str
+    # The name in the recipe's language (spec 043 FR-006).
+    shown_name: str
     vague: bool
     quantity: float | None
     unit: str | None
@@ -108,6 +124,9 @@ class RecipeDetailResponse(BaseModel):
     source: RecipeSourceResponse | None
     # The recipe image as a data URI (spec 026); null when it has none.
     preview_image: str | None = None
+    # 'en' or 'es', and the model's differing proposal or null (spec 043 FR-005a).
+    language: str = "es"
+    proposed_language: str | None = None
     # Who edits the recipe now (spec 022); null when nobody does.
     editor: EditorResponse | None = None
     # Kitchen recipes only (null for personal notebooks): in the cart as the caller sees it,

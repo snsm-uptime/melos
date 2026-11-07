@@ -16,6 +16,7 @@ from application.ports import (
 )
 from application.signin import AuthUserRecord
 from domain.errors import NotebookNotFoundError
+from domain.ingredient_catalog import CatalogIndex
 from domain.notebook import Notebook
 
 EPOCH = datetime(2026, 1, 1, tzinfo=UTC)
@@ -231,6 +232,9 @@ class FakeCatalog:
     def names_for_person(self, user_id: UUID) -> list[str]:
         self.log.append("names_for_person")
         return list(self.person.get(user_id, []))
+
+    def index_for_notebook(self, notebook_id: UUID) -> CatalogIndex:
+        return CatalogIndex.of_names(self.names_for_notebook(notebook_id))
 
     def names_for_notebook(self, notebook_id: UUID) -> list[str]:
         return list(self.notebook.get(notebook_id, []))

@@ -468,7 +468,7 @@ class AcceptNotebookInviteService:
 
         new_names = names_to_add(
             self._catalog.names_for_person(user_id),
-            self._catalog.names_for_notebook(notebook_id),
+            self._catalog.index_for_notebook(notebook_id),
         )
         self._catalog.add_names(notebook_id, new_names)
         self._notebooks.add_member(notebook_id, user_id)

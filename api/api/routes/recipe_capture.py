@@ -37,7 +37,7 @@ from application.recipe_extraction import (
 from application.recipe_vocabulary import check_unit_word, vocabulary_for_person
 from application.units import available_units
 from domain.errors import KitchenArchivedError, NotebookNotFoundError
-from domain.ingredient_catalog import LineMatch
+from domain.ingredient_catalog import LineMatch, as_language
 from domain.page_link import MAX_LINK_CHARS, PageLinkRefused
 from domain.preferences import effective_language
 from domain.recipe_draft import clean_display_name
@@ -69,10 +69,16 @@ def _error(
     )
 
 
-def _match_body(match: LineMatch | None) -> dict[str, Any]:
+def _match_body(match: LineMatch | None, shown: str) -> dict[str, Any]:
     if match is None or match.kind == "new":
         return {"kind": "new", "entry": None}
-    return {"kind": "matched", "entry": match.entry}
+    # The name the line shows in the draft's language (spec 043), which is the line's name.
+    return {"kind": "matched", "entry": shown}
+
+
+def _draft_language(captured: CapturedDraft | CapturedPageDraft) -> str:
+    """The draft's language: the detected one, else the interface's, else Spanish (FR-005a)."""
+    return captured.recipe.language or as_language(captured.language) or "es"
 
 
 def _draft_body(captured: CapturedDraft | CapturedPageDraft) -> dict[str, Any]:
@@ -104,6 +110,7 @@ def _draft_body(captured: CapturedDraft | CapturedPageDraft) -> dict[str, Any]:
             "title": recipe.title,
             "base_servings": recipe.base_servings,
             "servings_estimated": recipe.servings_estimated,
+            "language": _draft_language(captured),
             # MVP-OUT: "main_ingredients": [
             # MVP-OUT:     {"id": key, "label": pick_label(main_labels[key], language)}
             # MVP-OUT:     for key in recipe.main_ingredients
@@ -127,7 +134,7 @@ def _draft_body(captured: CapturedDraft | CapturedPageDraft) -> dict[str, Any]:
                     "vague_text": line.vague_text,
                     "note": line.note,
                     "text_name": line.text_name,
-                    "match": _match_body(matches[index]),
+                    "match": _match_body(matches[index], line.name),
                 }
                 for index, line in enumerate(recipe.ingredient_lines)
             ],

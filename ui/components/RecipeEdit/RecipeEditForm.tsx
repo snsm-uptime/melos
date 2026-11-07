@@ -27,6 +27,7 @@ import {
 } from "@/lib/capture/draftRules";
 import { captureMessagesFor } from "@/lib/i18n/capture";
 import type { Locale } from "@/lib/i18n/locale";
+import { LanguageField } from "@/components/LanguageField";
 import { recipeDetailMessages, saveProblemText } from "@/lib/i18n/recipeDetail";
 import { nameChanges } from "@/lib/capture/nameChanges";
 import {
@@ -276,6 +277,17 @@ export function RecipeEditForm({
           <h4 className="m-0 px-1 text-[0.9rem] font-normal text-muted">
             {recipe.notebook.name}
           </h4>
+          <div className="px-1 pt-1">
+            <LanguageField
+              legend={t.recipeLanguage}
+              value={state.language}
+              labels={t.languages}
+              disabled={saving}
+              onChange={(language) =>
+                commit({ ...stateRef.current, language: language ?? stateRef.current.language })
+              }
+            />
+          </div>
           {errors.title ? (
             <span role="alert" className="px-1 text-[0.8rem] text-error">
               {c.errors[errors.title]}

@@ -1,0 +1,21 @@
+{
+  "catalog": [
+    "cilantro",
+    "coriander",
+    "parsley",
+    "perejil",
+    "basil",
+    "albahaca",
+    "oregano"
+  ],
+  "expected": [
+    [
+      "parsley",
+      "perejil"
+    ],
+    [
+      "basil",
+      "albahaca"
+    ]
+  ]
+}
