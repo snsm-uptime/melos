@@ -37,20 +37,6 @@ stories:
   # Focus 2026-11-05: shopping list (owner priority). Shopping by store first, then
   # the open shopping-list work it sits on, then the stories that extend it.
   # ---------------------------------------------------------------------------
-
-  - id: S-043
-    title: "Catalog management: rename and merge ingredient names in a notebook's catalog"
-    epic: Recipes
-    priority: should
-    status: in_design
-    journey: J3
-    source: prd.md J3, Appendix A
-    notes: >
-      Spec: specs/043-catalog-rename-merge (2026-11-06). Adds merging names across languages for
-      bilingual users: a recipe gains a language, an ingredient keeps one name variant per language,
-      recipes and the shopping list show the variant in their language, one merge reaches every
-      notebook the person can write to, and the model suggests English-Spanish pairs to confirm.
-
   - id: S-046
     title: Edit shopping list items while the list is active
     epic: Cart
