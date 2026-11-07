@@ -66,6 +66,7 @@ RESPONSE_SCHEMA: dict[str, Any] = {
                             "quantity": {"type": "number"},
                             "unit": {"type": "string"},
                             "size": {"type": "string"},
+                            "vague_text": {"type": "string"},
                             "note": {"type": "string"},
                             "preparation": {"type": "string"},
                             "text_name": {"type": "string"},
@@ -113,6 +114,7 @@ class _LinePayload(BaseModel):
     quantity: float | None = None
     unit: str | None = None
     size: str | None = None
+    vague_text: str | None = None
     note: str | None = None
     preparation: str | None = None
     text_name: str | None = None
@@ -191,6 +193,7 @@ def _line(line: _LinePayload) -> IngredientLine:
         quantity=line.quantity,
         unit=line.unit,
         size=line.size,
+        vague_text=line.vague_text,
         note=line.note,
         preparation=line.preparation,
         text_name=line.text_name,

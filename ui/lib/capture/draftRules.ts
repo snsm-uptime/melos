@@ -16,7 +16,7 @@ export type LineInput = {
   unit: string | null;
   size: string | null;
   /** The words of a vague amount; checked only when the line carries the field. */
-  note?: string | null;
+  vagueText?: string | null;
 };
 
 export type DraftInput = {
@@ -43,7 +43,7 @@ export function lineErrors(
   const errors: NonNullable<DraftErrors["lines"][number]> = [];
   if (line.vague) {
     if (line.quantity !== null || line.unit !== null) errors.push("vagueHasAmount");
-    if (line.note !== undefined && (line.note ?? "").trim().length === 0) {
+    if (line.vagueText !== undefined && (line.vagueText ?? "").trim().length === 0) {
       errors.push("vagueNeedsNote");
     }
   } else {

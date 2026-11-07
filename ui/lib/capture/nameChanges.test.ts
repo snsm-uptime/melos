@@ -12,6 +12,7 @@ function line(overrides: Partial<LineView>): LineView {
     unit: "unit",
     size: "large",
     preparation: null,
+    vagueText: null,
     note: null,
     textName: "onion",
     match: { kind: "new", entry: null },

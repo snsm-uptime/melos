@@ -85,6 +85,7 @@ export type RecipeLine = {
   unit: string | null;
   size: string | null;
   preparation: string | null;
+  vague_text: string | null;
   note: string | null;
 };
 

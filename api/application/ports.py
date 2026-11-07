@@ -297,7 +297,8 @@ class RecipeLineDetail:
     unit: str | None
     size: str | None
     preparation: str | None
-    note: str | None
+    vague_text: str | None = None
+    note: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

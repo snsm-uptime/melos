@@ -19,6 +19,7 @@ export function draftHash(draft: DraftView): string {
       line.unit,
       line.size,
       line.preparation,
+      line.vagueText,
       line.note,
     ]),
     steps: draft.steps.map((step) => step.text),

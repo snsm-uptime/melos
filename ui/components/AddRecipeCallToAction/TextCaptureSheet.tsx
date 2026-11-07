@@ -59,6 +59,7 @@ export function toDraftView(response: CaptureDraftResponse): DraftView {
       unit: line.unit,
       size: line.size,
       preparation: line.preparation,
+      vagueText: line.vague_text,
       note: line.note,
       textName: line.text_name,
       match: line.match,

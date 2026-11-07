@@ -22,6 +22,7 @@ function matchedOnion(): LineView {
     unit: "unit",
     size: "large",
     preparation: null,
+    vagueText: null,
     note: null,
     textName: "onions",
     match: { kind: "matched", entry: "onion" },

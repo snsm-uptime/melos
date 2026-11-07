@@ -152,7 +152,7 @@ class Harness:
             "servings_estimated": False,
             "lines": (
                 IngredientLine("onion", False, 2.0, "unit", "large", None, "chopped"),
-                IngredientLine("salt", True, note="a pinch"),
+                IngredientLine("salt", True, vague_text="a pinch"),
             ),
             "steps": ("Simmer the onion.",),
             "notebook_id": notebook_id,
@@ -195,7 +195,7 @@ def test_the_edited_values_are_stored_as_sent() -> None:
     assert recipe.title == "Better soup" and recipe.servings_estimated is True
     assert recipe.steps == ("First.", "Second.")
     assert [line.name for line in recipe.lines] == ["onion", "salt"]
-    assert recipe.lines[1].vague and recipe.lines[1].note == "a pinch"
+    assert recipe.lines[1].vague and recipe.lines[1].vague_text == "a pinch"
 
 
 def test_the_same_save_key_returns_the_first_recipe_and_adds_nothing() -> None:
@@ -229,7 +229,7 @@ def test_new_names_join_the_catalog_and_matched_names_do_not() -> None:
         lines=(
             IngredientLine("Onion ", False, 1.0, "unit"),
             IngredientLine("leek", False, 1.0, "unit"),
-            IngredientLine("leek", True, note="some"),
+            IngredientLine("leek", True, vague_text="some"),
         ),
     )
     assert saved.created_catalog_names == ("leek",)
@@ -326,7 +326,7 @@ def test_a_broken_draft_stores_nothing() -> None:
     with pytest.raises(DraftProblems):
         h.run(nid, title=" ")
     with pytest.raises(InvalidDraftError):
-        h.run(nid, lines=(IngredientLine("salt", True, quantity=1.0, note="x"),))
+        h.run(nid, lines=(IngredientLine("salt", True, quantity=1.0, vague_text="x"),))
     assert h.recipes.stored == [] and h.catalog.names[nid] == []
 
 
@@ -337,7 +337,7 @@ def test_too_much_text_or_too_many_lines_or_steps_is_refused() -> None:
     with pytest.raises(TextTooLongError):
         h.run(nid, source_text="x" * (MAX_TEXT + 1))
     with pytest.raises(InvalidDraftError):
-        h.run(nid, lines=tuple(IngredientLine(f"a{i}", True, note="x") for i in range(101)))
+        h.run(nid, lines=tuple(IngredientLine(f"a{i}", True, vague_text="x") for i in range(101)))
     with pytest.raises(InvalidDraftError):
         h.run(nid, steps=tuple(f"step {i}" for i in range(101)))
     assert h.recipes.stored == []

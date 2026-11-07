@@ -35,6 +35,7 @@ const draft: DraftView = {
       unit: "unit",
       size: "large",
       preparation: "picada",
+      vagueText: null,
       note: null,
       textName: "cebollas",
       match: { kind: "new", entry: null },

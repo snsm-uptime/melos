@@ -212,7 +212,7 @@ recipe(id, notebook_id, author_id?, source_id?, title, base_servings ≥ 1,
                                                                       cart_add_count: recipes in a kitchen notebook only
                                                                       main ingredients and cuisines are out of the MVP (Appendix E)
 recipe_ingredient(id, recipe_id, name, quantity?, unit?, size?, preparation?,
-                  vague_note?, position)                               name: a normalized name in the notebook's catalog
+                  vague (bool), vague_note?, note?, position)                               name: a normalized name in the notebook's catalog
 step(id, recipe_id, position, text)
 recipe_embedding(recipe_id, model, embedding vector(768), strategy_used, input_tokens, updated_at)  pk(recipe_id, model)
 cart(id, kitchen_id unique)
@@ -233,7 +233,9 @@ message(id, conversation_id, role: user|assistant, content, found?, cited_recipe
   - count: `unit`
 
 **Line rules (enforced in `domain/recipe.py`)**
-- `vague_note` set → `quantity` and `unit` are null.
+- `vague` true → `quantity` and `unit` are null and `vague_note` is set. `vague_note` holds the words of a vague amount ("to taste").
+- `vague_note` on a measured line is hidden text: the words stay when "Vague amount" is unchecked, so checking it again brings them back. They are never shown as an amount and never listed as a "Your call" entry. Only `vague` decides what a line is.
+- `note` is free text for any line: a recommendation or disclaimer about the ingredient, never the amount. It is stored apart from `vague_note`, so a measured line can have a note and a vague line can have both.
 - `size` is only allowed when `unit = unit`.
 - A non-vague line needs both `quantity > 0` and `unit`.
 
@@ -375,7 +377,7 @@ The user signs up, signs in, signs out, resets their password by email and edits
 - **Save** creates the recipe in the notebook the capture started from, with the member as author, adds the confirmed new names to that notebook's catalog, then embeds it. Outside a kitchen it goes into one of the person's personal notebooks (they pick one if they have several); in a kitchen, it goes to the member's own kitchen notebook (created on their first capture if needed). No capture happens in an archived kitchen. **Discard** saves nothing.
 - **Extraction rules** (prompt in Appendix B):
   - Canonical names in the language of the pasted text: singular, lower-case, preparation in its own field. Translation is a later story.
-  - Vague amounts (the phrases in Appendix B.1 rule 4) → `vague_note`.
+  - Vague amounts (the phrases in Appendix B.1 rule 4) → `vague_text` (stored as `vague_note`). A free note for the ingredient → `note`.
   - "2 large onions" → `quantity 2, unit unit, size large`.
   - Units are mapped to the allowed set without converting ("tablespoon" → `tbsp`). A unit with no exact match that is one edit away from an allowed spelling (one letter added, removed or changed) and is 5 or more characters long is mapped the same way ("tablespon" → `tbsp`). The same rule also covers the person's own units. A unit one edit away from the spellings of more than one unit is invalid output. Any other measure word that can be a unit opens the draft with a question: on a yes it joins the person's units when the recipe is saved; on a no the line stays flagged until they pick a unit or make the amount vague (spec 055). A word that can't be a unit (only digits or symbols, or over 32 characters) is still invalid output.
   - Servings are taken from the text, or estimated and flagged.
@@ -424,7 +426,7 @@ The user signs up, signs in, signs out, resets their password by email and edits
 3. The same ingredient in different dimensions gives **separate lines**.
 4. **Count:** one line per `size` (no size is its own line). Sum first, then round **up** (`ceil`).
 5. **Mass and volume:** sum per unit without converting. Join the units from largest to smallest using the order in 1.6, e.g. `flour — 1 cup + 3 tbsp`. At most 2 decimals, trailing zeros removed.
-6. Lines with `vague_note` go in a separate section, **"Your call"**, de-duplicated by ingredient name and listing their notes. An ingredient that is vague in one recipe and measured in another appears in both places.
+6. Vague lines (`vague` true) go in a separate section, **"Your call"**, de-duplicated by ingredient name and listing their notes. An ingredient that is vague in one recipe and measured in another appears in both places.
 7. Each line shows **chips** with the titles of the recipes it comes from.
 
 **Export:**
@@ -551,7 +553,7 @@ Rules:
    (e.g. "onion" + "chopped").
 3. If an ingredient is the same as a name in KNOWN_INGREDIENTS, set catalog_name to that name.
    Otherwise set proposed_name. Never add a variety or detail the input doesn't mention.
-4. Vague amounts: put the words in vague_note and leave quantity and unit empty. Vague phrases: English "to taste", "a pinch (of)", "a dash (of)", "a splash (of)", "a drizzle (of)", "some", "a little"; Spanish "al gusto", "un poco (de)", "mucho", "la mitad (de)", "una pizca (de)", "algo de", "unas gotas (de)", "un chorrito (de)". A phrase is vague only when it is the whole amount and no number is given.
+4. Vague amounts: put the words in vague_text and leave quantity and unit empty. Put a recommendation or disclaimer about the ingredient in note, never the amount; leave note null when there is none. Vague phrases: English "to taste", "a pinch (of)", "a dash (of)", "a splash (of)", "a drizzle (of)", "some", "a little"; Spanish "al gusto", "un poco (de)", "mucho", "la mitad (de)", "una pizca (de)", "algo de", "unas gotas (de)", "un chorrito (de)". A phrase is vague only when it is the whole amount and no number is given.
 5. Countable items ("2 large onions"): unit="unit", and size (small|medium|large) only if stated. Amounts written as number words are converted to a number and an allowed unit: "a dozen" → 12 unit, "un par" → 2 unit, "una decena" → 10 unit.
 6. Default units: g, kg, oz, lb, ml, l, cup, tbsp, tsp, unit. A container or measure word outside them ("lata", "can") is reported as written and never folded into a plain count; the app compares it to the person's own units in code, and stored units are never sent to the model. Map spelled-out forms
    ("tablespoon" and "tablespon" -> tbsp; a one-letter typo is mapped only for units of 5 or more characters). Never convert between units.
@@ -599,11 +601,11 @@ User content:
 id: 3f2a9c1e
 title: tomato rice
 base_servings: 4
-ingredients[4]{name,quantity,unit,size,preparation,vague_note}:
-  rice,1,cup,null,null,null
-  tomato,2,unit,large,grated,null
-  garlic,2,unit,null,minced,null
-  salt,null,null,null,null,to taste
+ingredients[4]{name,quantity,unit,size,preparation,vague_text,note}:
+  rice,1,cup,null,null,null,null
+  tomato,2,unit,large,grated,null,null
+  garlic,2,unit,null,minced,null,null
+  salt,null,null,null,null,to taste,null
 steps[3]: "Fry the garlic in oil.","Add the tomato and cook 5 minutes.","Add the rice and 2 cups of water; cook 18 minutes."
 ```
 

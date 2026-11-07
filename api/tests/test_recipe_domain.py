@@ -53,10 +53,10 @@ def test_the_estimated_flag_is_kept() -> None:
     assert check_edited_draft(flagged).servings_estimated is True
 
 
-def test_a_vague_line_keeps_its_note_and_has_no_amount() -> None:
-    draft = _draft((IngredientLine(name="salt", vague=True, note="a pinch"),))
+def test_a_vague_line_keeps_its_words_and_has_no_amount() -> None:
+    draft = _draft((IngredientLine(name="salt", vague=True, vague_text="a pinch"),))
     line = check_edited_draft(draft).ingredient_lines[0]
-    assert line.vague and line.note == "a pinch"
+    assert line.vague and line.vague_text == "a pinch"
     assert line.quantity is None and line.unit is None
 
 
@@ -74,7 +74,7 @@ def test_a_line_with_no_unit_is_a_named_problem() -> None:
 
 
 def test_a_vague_line_with_a_quantity_is_invalid() -> None:
-    draft = _draft((IngredientLine(name="salt", vague=True, quantity=1, note="x"),))
+    draft = _draft((IngredientLine(name="salt", vague=True, quantity=1, vague_text="x"),))
     with pytest.raises(InvalidDraftError):
         check_edited_draft(draft)
 
@@ -106,7 +106,7 @@ def test_letter_case_and_spacing_do_not_make_a_new_name() -> None:
 def test_the_same_new_name_on_two_lines_is_listed_once() -> None:
     lines = (
         IngredientLine(name="leek", vague=False, quantity=1, unit="unit"),
-        IngredientLine(name="leek", vague=True, note="some"),
+        IngredientLine(name="leek", vague=True, vague_text="some"),
     )
     resolved, new = resolve_line_names(lines, ["onion"])
     assert new == ("leek",) and [line.name for line in resolved] == ["leek", "leek"]
@@ -115,7 +115,7 @@ def test_the_same_new_name_on_two_lines_is_listed_once() -> None:
 def test_an_empty_catalog_makes_every_distinct_name_new() -> None:
     lines = (
         IngredientLine(name="leek", vague=False, quantity=1, unit="unit"),
-        IngredientLine(name="salt", vague=True, note="to taste"),
+        IngredientLine(name="salt", vague=True, vague_text="to taste"),
     )
     _, new = resolve_line_names(lines, [])
     assert new == ("leek", "salt")

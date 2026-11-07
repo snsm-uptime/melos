@@ -85,7 +85,7 @@ def _lines() -> list[dict]:
     return [
         {"name": "rice", "quantity": 1, "unit": "cup"},
         {"name": "onion", "quantity": 2, "unit": "unit", "size": "large", "preparation": "chopped"},
-        {"name": "salt", "vague": True, "note": "to taste"},
+        {"name": "salt", "vague": True, "vague_text": "to taste"},
     ]
 
 
@@ -162,7 +162,7 @@ def test_the_author_reads_a_recipe_as_saved(client: TestClient, db_session: Sess
     assert data["ingredient_lines"][1]["size"] == "large"
     assert data["ingredient_lines"][1]["preparation"] == "chopped"
     assert data["ingredient_lines"][2]["vague"] is True
-    assert data["ingredient_lines"][2]["note"] == "to taste"
+    assert data["ingredient_lines"][2]["vague_text"] == "to taste"
     assert data["steps"] == ["Fry the garlic.", "Add the rice.", "Simmer."]
     assert data["source"] is None
     assert "pasted private text" not in response.text

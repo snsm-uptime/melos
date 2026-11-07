@@ -468,8 +468,8 @@ class RecipeIngredientModel(Base):
             name="ck_recipe_ingredient_size",
         ),
         CheckConstraint(
-            "(vague_note IS NOT NULL AND quantity IS NULL AND unit IS NULL)"
-            " OR (vague_note IS NULL AND quantity IS NOT NULL AND unit IS NOT NULL)",
+            "(vague AND quantity IS NULL AND unit IS NULL AND vague_note IS NOT NULL)"
+            " OR (NOT vague AND quantity IS NOT NULL AND unit IS NOT NULL)",
             name="ck_recipe_ingredient_vague_or_measured",
         ),
         CheckConstraint("btrim(name) <> ''", name="ck_recipe_ingredient_name_not_blank"),
@@ -490,7 +490,13 @@ class RecipeIngredientModel(Base):
     unit: Mapped[str | None] = mapped_column(Text, nullable=True)
     size: Mapped[str | None] = mapped_column(Text, nullable=True)
     preparation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Whether the amount is vague. The only thing that says so.
+    vague: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    # The words of a vague amount ("to taste"). On a measured line they are hidden text: kept so
+    # that checking "Vague amount" again brings them back, and never shown or used as an amount.
     vague_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # A free note for the ingredient (a recommendation or disclaimer). Any line.
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class StepModel(Base):

@@ -162,6 +162,7 @@ def save_recipe(
                 quantity=line.quantity,
                 unit=line.unit,
                 size=line.size,
+                vague_text=line.vague_text,
                 note=line.note,
                 preparation=line.preparation,
             )
@@ -233,6 +234,7 @@ def _detail(view: RecipeView) -> RecipeDetailResponse:
                 unit=line.unit,
                 size=line.size,
                 preparation=line.preparation,
+                vague_text=line.vague_text,
                 note=line.note,
             )
             for line in detail.lines
@@ -395,6 +397,7 @@ def update_recipe(
                 quantity=line.quantity,
                 unit=line.unit,
                 size=line.size,
+                vague_text=line.vague_text,
                 note=line.note,
                 preparation=line.preparation,
             )

@@ -144,7 +144,7 @@ def _recipe(
                 recipe_id=recipe_id, position=1, name="onion", quantity=2, unit="unit", size="large"
             ),
             RecipeIngredientModel(
-                recipe_id=recipe_id, position=2, name="salt", vague_note="a pinch"
+                recipe_id=recipe_id, position=2, name="salt", vague=True, vague_note="a pinch"
             ),
         ][:line_count]
     )

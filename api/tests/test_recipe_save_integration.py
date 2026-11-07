@@ -68,7 +68,7 @@ def _kitchen_notebook(client: TestClient, name: str = "Test Kitchen") -> tuple[s
 def _lines() -> list[dict]:
     return [
         {"name": "onion", "quantity": 2, "unit": "unit", "size": "large", "preparation": "chopped"},
-        {"name": "salt", "vague": True, "note": "a pinch"},
+        {"name": "salt", "vague": True, "vague_text": "a pinch"},
     ]
 
 
@@ -229,7 +229,11 @@ def test_a_broken_draft_stores_nothing_and_adds_no_catalog_name(
             "ingredient_line_problem",
         ),
         (
-            {"ingredient_lines": [{"name": "salt", "vague": True, "quantity": 1, "note": "x"}]},
+            {
+                "ingredient_lines": [
+                    {"name": "salt", "vague": True, "quantity": 1, "vague_text": "x"}
+                ]
+            },
             422,
             "invalid_recipe",
         ),
@@ -550,3 +554,38 @@ def test_a_bad_link_or_image_is_refused_and_stores_nothing(
     assert response.status_code == 422, response.text
     assert response.json()["code"] == code
     assert _counts(db_session) == before
+
+
+def test_a_free_note_and_the_words_of_a_vague_amount_are_stored_apart(
+    client: TestClient, db_session: Session
+):
+    _register(client, "ana_note@example.com")
+    notebook_id = _personal_notebook(client)
+    lines = [
+        {"name": "onion", "quantity": 2, "unit": "unit", "size": "large", "note": "Buy organic"},
+        {"name": "salt", "vague": True, "vague_text": "to taste", "note": "Use sea salt"},
+    ]
+
+    response = client.post("/recipes", json=_body(notebook_id, ingredient_lines=lines))
+
+    assert response.status_code == 201, response.text
+    recipe_id = response.json()["recipe"]["id"]
+    stored = client.get(f"/recipes/{recipe_id}").json()["ingredient_lines"]
+    assert stored[0]["note"] == "Buy organic" and stored[0]["vague_text"] is None
+    assert stored[1]["vague_text"] == "to taste" and stored[1]["note"] == "Use sea salt"
+
+
+def test_hidden_words_on_a_measured_line_are_kept_and_not_shown_as_vague(
+    client: TestClient, db_session: Session
+):
+    _register(client, "ana_hidden@example.com")
+    notebook_id = _personal_notebook(client)
+    lines = [{"name": "salt", "quantity": 1, "unit": "tsp", "vague_text": "to taste"}]
+
+    response = client.post("/recipes", json=_body(notebook_id, ingredient_lines=lines))
+
+    assert response.status_code == 201, response.text
+    recipe_id = response.json()["recipe"]["id"]
+    stored = client.get(f"/recipes/{recipe_id}").json()["ingredient_lines"][0]
+    assert stored["vague"] is False and stored["quantity"] == 1
+    assert stored["vague_text"] == "to taste"

@@ -125,12 +125,15 @@ class IngredientLine:
     quantity: float | None = None
     unit: str | None = None
     size: str | None = None
-    note: str | None = None
+    # The words of a vague amount ("to taste"); set only when vague.
+    vague_text: str | None = None
     # How the ingredient is cut or prepared ("chopped"). Never part of name (FR-010).
     preparation: str | None = None
     # The name as written in the pasted text, and the catalog entry the model proposes (spec 018).
     text_name: str | None = None
     catalog_match: str | None = None
+    # A free note for the ingredient: a recommendation or disclaimer, not the amount.
+    note: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -551,12 +554,15 @@ def _check_name(raw: str) -> str:
 
 def _check_line(line: IngredientLine, units: Iterable[str] = ()) -> IngredientLine:
     name = _check_name(line.name)
+    vague_text = line.vague_text.strip() or None if line.vague_text else None
     note = line.note.strip() or None if line.note else None
     preparation = line.preparation.strip() or None if line.preparation else None
     if line.vague:
         if line.quantity is not None or line.unit:
             raise InvalidDraftError("vague line")
-        return IngredientLine(name=name, vague=True, note=note, preparation=preparation)
+        return IngredientLine(
+            name=name, vague=True, vague_text=vague_text, preparation=preparation, note=note
+        )
 
     if line.quantity is None or not math.isfinite(line.quantity) or line.quantity <= 0:
         raise InvalidDraftError("quantity")
@@ -570,8 +576,10 @@ def _check_line(line: IngredientLine, units: Iterable[str] = ()) -> IngredientLi
         quantity=float(line.quantity),
         unit=unit,
         size=size,
-        note=note,
+        # Hidden words: kept so that checking "Vague amount" again brings them back.
+        vague_text=vague_text,
         preparation=preparation,
+        note=note,
     )
 
 
@@ -694,7 +702,7 @@ def check_edited_draft(draft: DraftRecipe, allowed_units: Iterable[str] = ()) ->
 
     servings, estimated = _check_servings(draft.base_servings)
     lines = tuple(_check_line(line, allowed) for line in draft.ingredient_lines)
-    if any(line.vague and not line.note for line in lines):
+    if any(line.vague and not line.vague_text for line in lines):
         raise InvalidDraftError("vague note")
     return DraftRecipe(
         title=_check_title(draft.title),

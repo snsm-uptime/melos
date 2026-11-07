@@ -15,6 +15,7 @@ class Line:
     unit: str | None = None
     size: str | None = None
     preparation: str | None = None
+    vague_text: str | None = None
     note: str | None = None
 
 
@@ -33,7 +34,7 @@ TOMATO_RICE = Recipe(
         Line("rice", quantity=1.0, unit="cup"),
         Line("tomato", quantity=2.0, unit="unit", size="large", preparation="grated"),
         Line("garlic", quantity=2.0, unit="unit", preparation="minced"),
-        Line("salt", vague=True, note="to taste"),
+        Line("salt", vague=True, vague_text="to taste"),
     ),
     steps=(
         "Fry the garlic in oil.",
@@ -48,11 +49,11 @@ def test_toon_is_the_b3_shape_without_id() -> None:
         [
             "title: tomato rice",
             "base_servings: 4",
-            "ingredients[4]{name,quantity,unit,size,preparation,vague_note}:",
-            "  rice,1,cup,null,null,null",
-            "  tomato,2,unit,large,grated,null",
-            "  garlic,2,unit,null,minced,null",
-            "  salt,null,null,null,null,to taste",
+            "ingredients[4]{name,quantity,unit,size,preparation,vague_text,note}:",
+            "  rice,1,cup,null,null,null,null",
+            "  tomato,2,unit,large,grated,null,null",
+            "  garlic,2,unit,null,minced,null,null",
+            "  salt,null,null,null,null,to taste,null",
             "steps[3]: Fry the garlic in oil.,Add the tomato and cook 5 minutes.,Add the rice and 2"
             " cups of water; cook 18 minutes.",
         ]
@@ -90,7 +91,7 @@ def test_both_put_title_and_ingredients_before_the_steps() -> None:
 
 
 def test_no_steps_and_a_vague_only_line_render() -> None:
-    recipe = Recipe("salad", 2, (Line("salt", vague=True, note="a pinch"),), ())
+    recipe = Recipe("salad", 2, (Line("salt", vague=True, vague_text="a pinch"),), ())
     for render in STRATEGIES.values():
         text = render(recipe)
         assert "salad" in text and "a pinch" in text

@@ -38,6 +38,7 @@ const okResponse = {
         unit: "unit",
         size: "large",
         preparation: "chopped",
+        vague_text: null,
         note: null,
         text_name: "onions",
         match: { kind: "matched", entry: "onion" },

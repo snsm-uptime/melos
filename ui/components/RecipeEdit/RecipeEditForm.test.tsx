@@ -190,11 +190,8 @@ describe("RecipeEditForm", () => {
   it("opens at the saved servings and amounts and saves the saved servings (spec 062)", async () => {
     render();
     expect(document.querySelector<HTMLInputElement>("input[type=number][min='1']")?.value).toBe("4");
-    expect(byLabel("Quantity").map((input) => (input as HTMLInputElement).value)).toEqual([
-      "1",
-      "2",
-      "",
-    ]);
+    // The vague line has no quantity box: its words are in the "Amount in words" field.
+    expect(byLabel("Quantity").map((input) => (input as HTMLInputElement).value)).toEqual(["1", "2"]);
     act(() => setValue(byLabel("Title")[0], "Renamed"));
 
     await save();
@@ -429,8 +426,8 @@ describe("RecipeEditForm", () => {
       myUnits = [...TEN];
       const shared = recipeFixture({
         ingredient_lines: [
-          { name: "frijoles", vague: false, quantity: 1, unit: "bote", size: null, preparation: null, note: null },
-          { name: "rice", vague: false, quantity: 1, unit: "cup", size: null, preparation: null, note: null },
+          { name: "frijoles", vague: false, quantity: 1, unit: "bote", size: null, preparation: null, vague_text: null, note: null },
+          { name: "rice", vague: false, quantity: 1, unit: "cup", size: null, preparation: null, vague_text: null, note: null },
         ],
       });
       await renderLoaded(shared);

@@ -59,7 +59,7 @@ def _good_draft() -> DraftRecipe:  # MVP-OUT: main: tuple[str, ...] = ()
         # MVP-OUT: main_ingredients=main,
         # MVP-OUT: cuisines=(),
         ingredient_lines=(
-            IngredientLine("salt", True, note="a pinch"),
+            IngredientLine("salt", True, vague_text="a pinch"),
             IngredientLine("onion", False, 2.0, "unit", "large", None, "chopped"),
         ),
         steps=("Simmer the onion.",),

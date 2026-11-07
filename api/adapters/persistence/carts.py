@@ -137,13 +137,15 @@ class SqlAlchemyIngredientLineReader:
                 RecipeIngredientModel.unit,
                 RecipeIngredientModel.size,
                 RecipeIngredientModel.vague_note,
+                RecipeIngredientModel.vague,
             )
             .where(RecipeIngredientModel.recipe_id.in_(list(recipe_ids)))
             .order_by(RecipeIngredientModel.recipe_id, RecipeIngredientModel.position)
         ).all()
         grouped: dict[uuid.UUID, list[CartIngredientLine]] = {}
-        for recipe_id, name, quantity, unit, size, vague_note in rows:
+        for recipe_id, name, quantity, unit, size, vague_note, vague in rows:
+            # Hidden words on a measured line are not an amount the shopping list shows.
             grouped.setdefault(recipe_id, []).append(
-                CartIngredientLine(name, quantity, unit, size, vague_note)
+                CartIngredientLine(name, quantity, unit, size, vague_note if vague else None)
             )
         return {recipe_id: tuple(lines) for recipe_id, lines in grouped.items()}

@@ -13,9 +13,9 @@ export function recipeFixture(overrides: Partial<RecipeDetail> = {}): RecipeDeta
     notebook: { id: "nb1", name: "ana's Notebook", kind: "personal", kitchen_id: null },
     can_write: true,
     ingredient_lines: [
-      { name: "rice", vague: false, quantity: 1, unit: "cup", size: null, preparation: null, note: null },
-      { name: "onion", vague: false, quantity: 2, unit: "unit", size: "large", preparation: "chopped", note: null },
-      { name: "salt", vague: true, quantity: null, unit: null, size: null, preparation: null, note: "to taste" },
+      { name: "rice", vague: false, quantity: 1, unit: "cup", size: null, preparation: null, vague_text: null, note: null },
+      { name: "onion", vague: false, quantity: 2, unit: "unit", size: "large", preparation: "chopped", vague_text: null, note: null },
+      { name: "salt", vague: true, quantity: null, unit: null, size: null, preparation: null, vague_text: "to taste", note: "Use sea salt" },
     ],
     steps: ["Fry the garlic.", "Add the rice."],
     source: null,

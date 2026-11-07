@@ -45,6 +45,7 @@ const draft: DraftView = {
       unit: "unit",
       size: "large",
       preparation: "chopped",
+      vagueText: null,
       note: null,
       textName: "onion",
       match: { kind: "new", entry: null },
@@ -460,6 +461,37 @@ describe("a draft from a link (spec 026)", () => {
       expect.arrayContaining(["Add a title.", "Add at least one step.", "Add an amount and a unit, or mark it as vague."]),
     );
     expect(getCaptureState().saving).toBe(false);
+  });
+
+  it("a vague line asks for its amount in words, under the amount, and keeps the Note field", async () => {
+    showLinkDraft({ lines: [{ ...draft.lines[0], vague: true, quantity: null, unit: null, size: null, vagueText: null, note: null }] });
+    await act(async () => {
+      root.render(<RecipeDraftEditor />);
+    });
+
+    const words = document.querySelector<HTMLInputElement>("input[aria-label='Amount in words']");
+    expect(words?.placeholder).toBe("to taste");
+    expect(document.querySelector("input[aria-label='Quantity']")).toBeNull();
+    expect(document.querySelector("input[id$='-note']")).not.toBeNull();
+
+    await act(async () => buttonByText("Save recipe").click());
+    const alerts = Array.from(document.querySelectorAll("[role='alert']")).map((el) => el.textContent);
+    expect(alerts).toContain('Write the amount in words, for example "to taste".');
+    expect(words?.getAttribute("aria-invalid")).toBe("true");
+  });
+
+  it("hidden words of a measured line come back when Vague amount is checked again", async () => {
+    showLinkDraft({ lines: [{ ...draft.lines[0], vague: false, vagueText: "to taste" }] });
+    await act(async () => {
+      root.render(<RecipeDraftEditor />);
+    });
+    expect(document.querySelector("input[aria-label='Amount in words']")).toBeNull();
+
+    const vague = document.querySelector<HTMLInputElement>("input[type='checkbox']");
+    await act(async () => vague?.click());
+
+    const words = document.querySelector<HTMLInputElement>("input[aria-label='Amount in words']");
+    expect(words?.value).toBe("to taste");
   });
 
   it("a text draft shows neither", async () => {

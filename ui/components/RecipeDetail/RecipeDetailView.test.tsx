@@ -91,7 +91,7 @@ describe("RecipeDetailView", () => {
     expect(cards).toEqual([
       "rice1 cup",
       "onion2 largePreparation:chopped",
-      "saltNote:to taste",
+      "saltto tasteNote:Use sea salt",
     ]);
     const steps = Array.from(container.querySelectorAll("ol > li")).map((li) => li.textContent);
     expect(steps).toEqual(["1Fry the garlic.", "2Add the rice."]);
@@ -214,7 +214,7 @@ describe("RecipeDetailView", () => {
       expect(cards()).toEqual([
         "rice1.5 cup",
         "onion3 largePreparation:chopped",
-        "saltNote:to taste",
+        "saltto tasteNote:Use sea salt",
       ]);
     });
 

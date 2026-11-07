@@ -409,6 +409,7 @@ export function RecipeDraftEditor() {
                         unit: null,
                         size: null,
                         preparation: null,
+                        vagueText: null,
                         note: null,
                         textName: "",
                         match: { kind: "new", entry: null },

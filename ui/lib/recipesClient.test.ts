@@ -91,7 +91,7 @@ describe("one recipe (spec 027)", () => {
     notebook: { id: "n1", name: "ana's Notebook", kind: "personal", kitchen_id: null },
     can_write: true,
     ingredient_lines: [
-      { name: "rice", vague: false, quantity: 1, unit: "cup", size: null, preparation: null, note: null },
+      { name: "rice", vague: false, quantity: 1, unit: "cup", size: null, preparation: null, vague_text: null, note: null },
     ],
     steps: ["Cook."],
     source: null,

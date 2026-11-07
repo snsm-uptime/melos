@@ -50,6 +50,9 @@ export type LineView = {
   unit: string | null;
   size: string | null;
   preparation: string | null;
+  /** The words of a vague amount ("to taste"); shown only when vague. */
+  vagueText: string | null;
+  /** A free note for the ingredient: a recommendation or disclaimer, never the amount. */
   note: string | null;
   /** The name as the text writes it; undo returns the line to it (spec 018 FR-004). */
   textName: string;

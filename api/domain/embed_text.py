@@ -27,6 +27,7 @@ class EmbedLine(Protocol):
     unit: str | None
     size: str | None
     preparation: str | None
+    vague_text: str | None
     note: str | None
 
 
@@ -56,7 +57,8 @@ def toon(recipe: EmbedRecipe) -> str:
                 "unit": line.unit,
                 "size": line.size,
                 "preparation": line.preparation,
-                "vague_note": line.note,
+                "vague_text": line.vague_text if line.vague else None,
+                "note": line.note,
             }
             for line in recipe.lines
         ],
@@ -74,8 +76,10 @@ def _plain_line(line: EmbedLine) -> str:
     text = " ".join(parts)
     if line.preparation:
         text = f"{text}, {line.preparation}"
+    if line.vague and line.vague_text:
+        text = f"{text} ({line.vague_text})"
     if line.note:
-        text = f"{text} ({line.note})"
+        text = f"{text}, {line.note}"
     return f"- {text}"
 
 

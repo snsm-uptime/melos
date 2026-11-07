@@ -73,7 +73,7 @@ _OWNER_RECIPE = (
         IngredientLine("harina de maiz precocida", False, 2.0, "cup"),
         IngredientLine("agua", False, 2.5, "cup"),
         IngredientLine("queso mozzarella", False, 200.0, "g", preparation="rallado"),
-        IngredientLine("sal", True, note="una pizca"),
+        IngredientLine("sal", True, vague_text="una pizca"),
     ),
     (
         "Mezcla el agua con la sal y agrega la harina poco a poco.",
@@ -91,7 +91,7 @@ _MEMBER_RECIPE = (
         IngredientLine("cebolla morada", False, 0.5, "unit", preparation="en rodajas finas"),
         IngredientLine("limon", False, 1.0, "unit"),
         IngredientLine("aceite de oliva", False, 2.0, "tbsp"),
-        IngredientLine("sal", True, note="al gusto"),
+        IngredientLine("sal", True, vague_text="al gusto"),
     ),
     (
         "Mezcla el tomate, el aguacate y la cebolla en un bol.",

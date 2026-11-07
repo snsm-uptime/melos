@@ -18,6 +18,7 @@ class SaveIngredientLine(BaseModel):
     unit: str | None = None
     size: str | None = None
     preparation: str | None = None
+    vague_text: str | None = None
     note: str | None = None
 
 
@@ -76,6 +77,7 @@ class RecipeLineResponse(BaseModel):
     unit: str | None
     size: str | None
     preparation: str | None
+    vague_text: str | None
     note: str | None
 
 
