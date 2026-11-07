@@ -12,12 +12,12 @@ import json
 import logging
 import threading
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Protocol
 
 from domain.errors import DomainError
-from domain.ingredient_catalog import CatalogIndex, CatalogLike
+from domain.ingredient_catalog import CatalogIndex, CatalogLike, as_language
 from domain.recipe_draft import (
     DraftProblems,
     DraftRecipe,
@@ -150,11 +150,26 @@ def _all_names(catalog: CatalogLike) -> list[str]:
     return catalog.all_names() if isinstance(catalog, CatalogIndex) else list(catalog)
 
 
-class RecipeExtraction:
-    """Use case: text in, one checked ExtractionResult out."""
+class TextLanguage(Protocol):
+    """The application's LanguageDetector port, named here so ports.py need not be imported."""
 
-    def __init__(self, extractor: RecipeExtractor) -> None:  # MVP-OUT: vocabulary: Vocabulary
+    def detect(self, text: str) -> str | None: ...
+
+
+class RecipeExtraction:
+    """Use case: text in, one checked ExtractionResult out.
+
+    With `languages`, each draft (and each page part) gets the language of its text, found
+    offline, never by the model (spec 043 FR-005a). Without it the draft has no language.
+    """
+
+    def __init__(
+        self,
+        extractor: RecipeExtractor,
+        languages: TextLanguage | None = None,
+    ) -> None:  # MVP-OUT: vocabulary: Vocabulary
         self._extractor = extractor
+        self._languages = languages
         # MVP-OUT: self._vocabulary = vocabulary
         self._lock = threading.Lock()
         self._in_flight: dict[str, _InFlight] = {}
@@ -203,6 +218,10 @@ class RecipeExtraction:
             flight.done.set()
         return flight.result
 
+    def _language_of(self, text: str):  # noqa: ANN202
+        assert self._languages is not None
+        return as_language(self._languages.detect(text))
+
     def _evaluate(
         self,
         trimmed: str,
@@ -215,13 +234,19 @@ class RecipeExtraction:
         # The units stay here: they are compared in code and never reach the model (spec 055 R4).
         if mode is ExtractionMode.PAGE_PART:
             # A part may hold only steps or only lines: the merged draft is checked instead.
-            return self._extractor.extract(
+            part_result = self._extractor.extract(
                 trimmed, _all_names(ingredient_names), timeout_s, mode=mode, part=part
             )
+            if isinstance(part_result, DraftPart) and self._languages is not None:
+                part_result = replace(part_result, language=self._language_of(trimmed))
+            return part_result
         # Whole mode calls the port exactly as before spec 026.
         result = self._extractor.extract(trimmed, _all_names(ingredient_names), timeout_s)
         if not isinstance(result, Draft):
             return result
+        if self._languages is not None:
+            # Before matching: a line shows the name in the draft's language (FR-008).
+            result = Draft(recipe=replace(result.recipe, language=self._language_of(trimmed)))
         try:
             recipe = check_draft(result.recipe, ingredient_names, available_units)
         except DraftProblems as exc:

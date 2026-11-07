@@ -536,13 +536,7 @@ def test_part_schema_requires_no_recipe_field() -> None:
         "multiple_recipes",
     ]
     assert "required" not in recipe
-    assert set(recipe["properties"]) == {
-        "title",
-        "base_servings",
-        "language",
-        "ingredient_lines",
-        "steps",
-    }
+    assert set(recipe["properties"]) == {"title", "base_servings", "ingredient_lines", "steps"}
 
 
 def test_a_part_with_only_steps_is_a_draft_part() -> None:

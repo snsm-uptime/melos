@@ -19,7 +19,6 @@ Recipe fields (only when outcome is "recipe_part"; leave out any field this part
 
 - title: the recipe name, in the pasted text's language, 200 characters or fewer.
 - base_servings: a whole number when the text gives servings. Leave it out when it gives none.
-- language: "en" or "es", the language most of the pasted text is in.
 - ingredient_lines: one entry per ingredient, with:
   - name: lower-case, singular, in the pasted text's language.
   - text_name: the ingredient's name exactly as the text writes it, with its own

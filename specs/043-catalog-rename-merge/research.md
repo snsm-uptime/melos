@@ -56,6 +56,11 @@ so no reader needs a null branch; the model pass only proposes. The command copi
 `scripts.embeddings` pattern (constitution 1: no queue, no worker beyond the existing thread). A
 `recipe.language_detected_at` column makes the command safe to repeat and resume.
 
+**Update (2026-11-06, owner decision)**: the language is detected offline with lingua-py
+(English and Spanish only), not by the model. Capture runs it on the pasted text or each page
+part, and `scripts.recipe_languages detect` runs it on stored recipes. The extractor no longer
+returns a language. A detected language for an existing recipe is still only a proposal.
+
 **Alternatives considered**: Detect in the embedding worker thread: mixes two concerns and needs a
 job table. Rejected. Detect with a fixed word list: unreliable on short recipes. Rejected. Leave
 null until set: every display needs a null branch, and spec Q5 chose the model.

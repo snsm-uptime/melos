@@ -993,10 +993,10 @@ class IngredientPairSuggester(Protocol):
 
 
 class LanguageDetector(Protocol):
-    """Port: the language most of a recipe is in (spec 043 FR-005a)."""
+    """Port: the language most of a text is in, found offline (spec 043 FR-005a)."""
 
     def detect(self, text: str) -> str | None:
-        """'en' or 'es', or None when unsure or on a model error."""
+        """'en' or 'es', or None when unsure."""
         ...
 
 

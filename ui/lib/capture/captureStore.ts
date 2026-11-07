@@ -85,7 +85,7 @@ export type DraftView = {
   manual?: boolean;
   /** The page was long and part of it was not read: the draft shows the long-page note. */
   pageCut?: boolean;
-  /** The recipe's language (spec 043): the extractor's answer, which the member may change. */
+  /** The recipe's language (spec 043): detected from the text, which the member may change. */
   recipeLanguage?: "en" | "es";
 };
 

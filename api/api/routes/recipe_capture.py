@@ -77,7 +77,7 @@ def _match_body(match: LineMatch | None, shown: str) -> dict[str, Any]:
 
 
 def _draft_language(captured: CapturedDraft | CapturedPageDraft) -> str:
-    """The draft's language: the extractor's, else the interface's, else Spanish (FR-005a)."""
+    """The draft's language: the detected one, else the interface's, else Spanish (FR-005a)."""
     return captured.recipe.language or as_language(captured.language) or "es"
 
 

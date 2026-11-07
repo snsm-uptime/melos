@@ -171,7 +171,7 @@ class DraftRecipe:
     changes: tuple[NameChange, ...] = ()
     # Empty in the raw value and after an edit check.
     unknown_units: tuple[UnknownUnit, ...] = ()
-    # The language most of the text is in, from the extractor (spec 043); None when unknown.
+    # The language most of the text is in, detected offline (spec 043); None when unknown.
     language: Language | None = None
 
 

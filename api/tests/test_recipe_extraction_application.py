@@ -307,8 +307,7 @@ def test_stand_in_returns_each_of_the_six_results_in_order() -> None:
         InvalidOutput(),
         AIProviderError(),
     ]
-    # No default language, so each result comes back exactly as scripted.
-    fake = FakeRecipeExtractor(script, language=None)
+    fake = FakeRecipeExtractor(script)
 
     results = [fake.extract("text", [], 10.0) for _ in script]
 
@@ -558,3 +557,43 @@ def test_one_text_in_different_modes_or_parts_never_shares_a_flight() -> None:
             repr((ExtractionMode.PAGE_PART, (2, 2))),
         ]
     )
+
+
+# ── recipe language, found offline (spec 043 FR-005a) ──────────────────────────
+
+
+class _Languages:
+    def __init__(self, answer: str | None) -> None:
+        self.answer = answer
+        self.texts: list[str] = []
+
+    def detect(self, text: str) -> str | None:
+        self.texts.append(text)
+        return self.answer
+
+
+def test_a_draft_gets_the_language_of_its_text() -> None:
+    languages = _Languages("es")
+    service = RecipeExtraction(FakeRecipeExtractor(Draft(recipe=acceptance_draft())), languages)
+    result = service.extract(f"  {ACCEPTANCE_TEXT}  ", [], 10.0)
+    assert isinstance(result, Draft)
+    assert result.recipe.language == "es"
+    assert languages.texts == [ACCEPTANCE_TEXT]
+
+
+def test_an_unsure_or_missing_detector_leaves_no_language() -> None:
+    unsure = RecipeExtraction(
+        FakeRecipeExtractor(Draft(recipe=acceptance_draft())), _Languages(None)
+    )
+    result = unsure.extract(ACCEPTANCE_TEXT, [], 10.0)
+    assert isinstance(result, Draft) and result.recipe.language is None
+    plain = RecipeExtraction(FakeRecipeExtractor(Draft(recipe=acceptance_draft())))
+    result = plain.extract(ACCEPTANCE_TEXT, [], 10.0)
+    assert isinstance(result, Draft) and result.recipe.language is None
+
+
+def test_each_page_part_gets_the_language_of_its_text() -> None:
+    part = DraftPart(title="Sopa", base_servings=None, ingredient_lines=(), steps=("Cocinar.",))
+    service = RecipeExtraction(FakeRecipeExtractor(part), _Languages("es"))
+    result = service.extract("Sopa\nCocinar.", [], 10.0, mode=ExtractionMode.PAGE_PART, part=(1, 2))
+    assert isinstance(result, DraftPart) and result.language == "es"

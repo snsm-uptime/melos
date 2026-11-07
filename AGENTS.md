@@ -97,8 +97,10 @@ Source of truth: `dev/docs/prd.md` §1.6 and §2 J3.
   reaches every notebook they can write to that has both names.
 - A recipe has a **language** (`recipe.language`, `en` or `es`), set at capture
   and editable. Each line shows its ingredient's variant in that language, else
-  the kept name. Recipes saved before spec 043 got a fallback; the model's
-  one-time proposal (`scripts.recipe_languages detect`) waits in
+  the kept name. The language is detected from the text offline with lingua
+  (`adapters/language/lingua_detector.py`), never by the model. Recipes saved
+  before spec 043 got a fallback; the one-time proposal
+  (`scripts.recipe_languages detect`) waits in
   `recipe.proposed_language` until a person applies or dismisses it.
 - The shopping list adds an ingredient's names up on one line, keyed by the
   kept name, and shows each viewer the variant in their interface language.

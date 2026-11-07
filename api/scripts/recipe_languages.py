@@ -1,19 +1,22 @@
 """Operator command: propose a language for recipes saved before spec 043 (FR-005a).
 
+The language is found offline with lingua (`adapters/language/lingua_detector.py`): no model
+call, no API key.
+
 Run once after deploy, inside the api container:
 
     docker compose exec api uv run python -m scripts.recipe_languages <subcommand>
 
 | Subcommand | Does |
 |---|---|
-| detect [--limit N] | ask the model once per recipe not read yet; store a differing proposal |
+| detect [--limit N] | read each recipe not read yet; store a differing proposal |
 | status | how many recipes are read, waiting, and have a proposal |
 
-`detect` never changes a recipe's language. When the model's answer differs from the stored
+`detect` never changes a recipe's language. When the detected language differs from the stored
 (fallback) language it is stored in `proposed_language`, and the recipe page offers to apply it
 (constitution 5). Every recipe it reads gets `language_detected_at`, unsure answers included, so
 running it again only reads recipes it has not seen. Only title, ingredient names and steps are
-sent. Prints counts, exits 0, or 1 on a database error.
+read. Prints counts, exits 0, or 1 on a database error.
 """
 
 from __future__ import annotations
@@ -26,7 +29,6 @@ from uuid import UUID
 
 from adapters.persistence.db import get_session_factory
 from adapters.persistence.models import RecipeIngredientModel, RecipeModel, StepModel
-from api.settings import load_gemini_settings
 from application.ports import LanguageDetector
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import SQLAlchemyError
@@ -107,12 +109,9 @@ def status(session: Session) -> list[str]:
 
 
 def _detector() -> LanguageDetector:
-    from adapters.llm.gemini_language_detector import GeminiLanguageDetector
+    from adapters.language.lingua_detector import LinguaLanguageDetector
 
-    settings = load_gemini_settings()
-    return GeminiLanguageDetector(
-        api_key=settings.api_key, model=settings.chat_model, timeout_s=settings.text_timeout_s
-    )
+    return LinguaLanguageDetector()
 
 
 def _parser() -> argparse.ArgumentParser:

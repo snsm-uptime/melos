@@ -54,9 +54,10 @@ Run once after deploying migration `0020_catalog_other_names`:
     docker compose exec api uv run python -m scripts.recipe_languages detect [--limit N]
     docker compose exec api uv run python -m scripts.recipe_languages status
 
-`detect` sends each recipe not read yet (title, ingredient names and steps only) to the model.
-When the answer differs from the stored fallback language, it stores the answer as
+`detect` reads each recipe not read yet (title, ingredient names and steps only) and detects
+its language offline with lingua (`adapters/language/lingua_detector.py`). When the result
+differs from the stored fallback language, it stores it as
 `proposed_language`, and the recipe page offers "Apply" or "Dismiss". It never writes
 `language` itself. Every recipe it reads gets `language_detected_at`, so a second run reads
 only new rows. It commits every 50 recipes, prints counts, and exits 0, or 1 on a database
-error. Uses `GEMINI_API_KEY` and `GEMINI_CHAT_MODEL`.
+error. It needs no API key and makes no network call.

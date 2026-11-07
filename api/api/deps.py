@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterator
 
+from adapters.language.lingua_detector import LinguaLanguageDetector
 from adapters.llm.gemini_embedder import GeminiEmbedder
 from adapters.llm.gemini_extractor import GeminiRecipeExtractor
 from adapters.llm.gemini_pair_suggester import GeminiPairSuggester
@@ -257,7 +258,8 @@ def get_recipe_extraction(request: Request) -> RecipeExtraction:
             model=settings.chat_model,
             # MVP-OUT: vocabulary=vocabulary,
         )
-        cached = RecipeExtraction(extractor)
+        # The draft's language comes from the text, offline (spec 043 FR-005a).
+        cached = RecipeExtraction(extractor, LinguaLanguageDetector())
         request.app.state.recipe_extraction = cached
     return cached
 

@@ -1,4 +1,4 @@
-"""The pair suggester and language detector adapters with a stand-in client (spec 043)."""
+"""The pair suggester adapter with a stand-in client (spec 043)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from adapters.llm.gemini_language_detector import GeminiLanguageDetector
 from adapters.llm.gemini_pair_suggester import (
     NAMES_CLOSE,
     GeminiPairSuggester,
@@ -71,18 +70,3 @@ def test_no_key_is_unavailable_without_a_call() -> None:
     with pytest.raises(AIUnavailableError):
         _suggester(client, key=" ").suggest([("garlic", "en")])
     assert client.models.calls == []
-
-
-@pytest.mark.parametrize(
-    ("reply", "expected"),
-    [
-        (json.dumps({"language": "en"}), "en"),
-        (json.dumps({"language": "es"}), "es"),
-        (json.dumps({"language": "unsure"}), None),
-        ("broken", None),
-        (RuntimeError("down"), None),
-    ],
-)
-def test_the_detector_answers_or_says_nothing(reply: Any, expected: str | None) -> None:
-    detector = GeminiLanguageDetector(api_key="k", model="m", timeout_s=5, client=_client(reply))
-    assert detector.detect("Sopa de ajo\n\najo\n\nCocinar.") == expected

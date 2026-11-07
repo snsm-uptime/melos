@@ -55,6 +55,23 @@ folder, so `./scripts/compose-test.sh` runs against an isolated test database.
 - **T056, mypy.** mypy is not a project dependency (`api/pyproject.toml` has pytest and ruff
   only), and adding it would be a new dependency, so it was not run.
 
+- **Language detection is offline (owner decision, 2026-11-06).** The owner asked to stop
+  using AI to identify the language. lingua-py (`lingua-language-detector==2.2.0`), limited to
+  English and Spanish, now does it in `adapters/language/lingua_detector.py`, behind the
+  `LanguageDetector` port:
+  - `RecipeExtraction` sets each draft's and each page part's language from its text, before
+    matching. The extractor prompt and its response schema no longer have a `language` field.
+  - `scripts.recipe_languages detect` uses the same detector, so it needs no API key.
+  - The Gemini language detector and its prompt are gone.
+  - The proposal still waits for a person to apply it (FR-005a, unchanged).
+  - This adds one library, against plan principle 2's "No new library"; the owner approved it.
+    The wheel is about 160 MB, which grows the api image.
+  - The ten language evaluation cases now run as a test, and all ten pass. T059's
+    language-detection part is covered by that test.
+  - Verified the same day: the api image rebuilds with lingua, and the Compose suite has
+    **2133 passed** with the same 3 environmental failures. The host unit suite has 1455
+    passed.
+
 ## Verification
 
 - Phase 2 checkpoint (2026-11-06): the six T015 suites pass in Compose (174 tests).

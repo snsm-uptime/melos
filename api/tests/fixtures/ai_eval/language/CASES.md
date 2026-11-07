@@ -1,12 +1,9 @@
 # Recipe language evaluation set (spec 043, FR-005a)
 
-Manual AI evaluation (constitution 6). Each file is a recipe as `scripts.recipe_languages` sends
-it: the title, a blank line, the ingredient names, a blank line, the steps. Send each one to the
-detector (for example, save it as a recipe with the other language and run
-`python -m scripts.recipe_languages detect`), and compare the proposal with "Expected". A mixed
-recipe should get the language most of its text is in.
-
-Record how many of the 10 match in the feature's notes.
+Each file is a recipe as `scripts.recipe_languages` reads it: the title, a blank line, the
+ingredient names, a blank line, the steps. A mixed recipe should get the language most of its
+text is in. The language is detected offline with lingua, so this set runs as an ordinary test:
+`tests/test_lingua_language_detector.py` checks every case.
 
 | Case file | Expected |
 |---|---|
