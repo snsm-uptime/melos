@@ -1,11 +1,12 @@
 # Melos Project Constitution
 
-**Version:** 2.0.0  
+**Version:** 3.0.0  
 **Ratified:** 2026-10-19  
-**Last Amended:** 2026-11-04
+**Last Amended:** 2026-11-07
 
 ### Amendment log
 
+- **3.0.0 (2026-11-07, spec 073)**: Scheduled ingredient translation. Principle 1 replaces the four-service list with `db`, `api`, `ui` and `jobs`, the `mcp` service is removed, and one scheduled job service is allowed (no queue, no other worker). Principle 5 adds an exception: AI-validated ingredient translations for the standard ingredient table are saved without a person's confirmation, marked AI-made, and are reviewable by the admin. Principle 7 replaces `mcp` with `jobs` in the health-check list, and `jobs` is checked by a heartbeat file, since it has no HTTP server. Redefinitions of principles 1, 5 and 7 are MAJOR under the Versioning Policy. Approved by the project lead (2026-11-07).
 - **2.0.0 (2026-11-04)**: The MVP is closed: it is the work done up to 2026-11-04 (backlog stories S-001 to S-065 as recorded in `dev/docs/backlog.yaml` on that date). Work from now on is post-MVP and is not held to the MVP's product limits. Principle 5 drops "Photos are not stored"; principle 9 is redefined from the MVP scope and deadline to post-MVP scope by backlog priority. Every other principle is unchanged. Approved by the project lead in the spec 026 planning session (2026-11-04).
 
 ---
@@ -39,7 +40,7 @@ Amendments are recorded with their date and version in this document's header.
 **Non-negotiable rules:**
 - Architecture, structure, auth layer and tooling are reused from `snsm-uptime/finance-dashboard` unchanged (see AGENTS.md §1.2–1.3)
 - The authentication layer is immutable: no changes without explicit approval
-- Only four services: `db`, `api`, `ui`, `mcp`. No queue, no worker.
+- Only four services: `db`, `api`, `ui`, `jobs`. One scheduled job service (`jobs`) is allowed; no queue and no other worker.
 - Every external call (Gemini, web fetch, SMTP) goes through a port and maps errors to user-facing messages
 
 **Rationale:** Reuse reduces maintenance burden, accelerates delivery, and allows focus on domain-specific features. The auth layer is security-critical and must remain stable.
@@ -95,6 +96,7 @@ Amendments are recorded with their date and version in this document's header.
 
 **Non-negotiable rules:**
 - An AI draft is never saved without the user confirming it first
+- Exception (spec 073): AI-validated ingredient translations for the standard ingredient table are saved without confirmation, marked `source = ai` with the model name, and listed for admin review. No other AI output is exempt.
 - The assistant only answers from the kitchen's recipes, ingredients, categories, and conversation history—no web search, no general knowledge, no nutrition or health advice
 - Images (recipe images, receipts, photos sent for capture) are stored only when a story says so, with a size limit and a format check; an image sent only for extraction is not kept unless its story stores it
 - No unit conversion or carry-over ("1 cup + 20 tbsp" stays as is)
@@ -128,7 +130,7 @@ Amendments are recorded with their date and version in this document's header.
 - Production runs `docker-compose.yml` + `docker-compose.prod.yml` on the owner's server
 - The reverse proxy (nginx), TLS, and server config are out of scope—managed by the owner separately
 - Postgres data lives under `MELOS_DATA` on the host, outside the repository
-- Health checks on `/health` must respond on grading day (ui, api, mcp)
+- Health checks on `/health` must respond on grading day (ui, api). `jobs` has no HTTP server and is checked by a heartbeat file that the Compose healthcheck reads
 
 **Rationale:** Keeps infrastructure code out of the repository and leaves operational details to whoever manages the server.
 
