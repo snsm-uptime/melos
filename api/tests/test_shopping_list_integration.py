@@ -49,7 +49,7 @@ def measured(name: str, quantity: float, unit: str, size: str | None = None) -> 
 
 
 def vague(name: str, note: str) -> dict:
-    return {"name": name, "vague": True, "note": note}
+    return {"name": name, "vague": True, "vague_text": note}
 
 
 def recipe(
@@ -593,3 +593,18 @@ def test_a_hand_item_with_a_custom_unit_is_still_refused(
         f"{_list(kitchen_id)}/items", json={"name": "frijoles", "quantity": 1, "unit": "lata"}
     )
     assert response.status_code == 422
+
+
+def test_hidden_words_on_a_measured_line_stay_out_of_the_shopping_list(
+    client: TestClient, db_session: Session
+) -> None:
+    people, kitchen_id, notebook_id = _home(client, db_session)
+    ana = people.as_("ana")
+    hidden = {**measured("butter", 100, "g"), "vague_text": "to taste"}
+    a = recipe(ana, notebook_id, "A", [hidden])
+    save_cart(ana, kitchen_id, [a], servings=4)
+
+    body = ana.get(_list(kitchen_id)).json()
+
+    assert shown(body) == [("butter", None, (("100", "g"),))]
+    assert body["your_call"] == []

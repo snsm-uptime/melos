@@ -1,7 +1,7 @@
 # Data Model: Catalog Management (rename and merge ingredient names)
 
-Migration: `api/adapters/persistence/migrations/versions/0020_catalog_other_names.py`
-(after `0019_ingredient_place_owner`). Decisions in [research.md](research.md).
+Migration: `api/adapters/persistence/migrations/versions/0021_catalog_other_names.py`
+(after `0020_ingredient_free_note`; numbered 0020 before main took that number). Decisions in [research.md](research.md).
 
 ## Changed: `recipe`
 

@@ -20,7 +20,7 @@ const sizeClassName = {
 
 /** A small filled circle, holding a count or empty. Display only, not interactive. */
 export function Badge({ count, label, size = "md", className }: BadgeProps) {
-  const classes = `inline-flex flex-shrink-0 items-center justify-center rounded-full bg-accent font-[600] leading-none tabular-nums text-on-accent ${sizeClassName[size]}${className ? ` ${className}` : ""}`;
+  const classes = `inline-flex flex-shrink-0 items-center justify-center rounded-full bg-accent-fill font-[600] leading-none tabular-nums text-on-accent ${sizeClassName[size]}${className ? ` ${className}` : ""}`;
   if (count === undefined) return <span aria-hidden="true" className={classes} />;
   return (
     <span role="img" aria-label={label} className={classes}>

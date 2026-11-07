@@ -34,6 +34,7 @@ def _recipe(detail: dict) -> SeedRecipe:
             quantity=line.get("quantity"),
             unit=line.get("unit"),
             size=line.get("size"),
+            vague_text=line.get("vague_text"),
             note=line.get("note"),
             preparation=line.get("preparation"),
         )

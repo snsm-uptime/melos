@@ -49,7 +49,7 @@ personal data here.
 
 ## recipe_languages.py — one-time language proposal (spec 043)
 
-Run once after deploying migration `0020_catalog_other_names`:
+Run once after deploying migration `0021_catalog_other_names`:
 
     docker compose exec api uv run python -m scripts.recipe_languages detect [--limit N]
     docker compose exec api uv run python -m scripts.recipe_languages status

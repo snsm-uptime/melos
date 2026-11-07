@@ -47,7 +47,10 @@ Recipe fields (only when outcome is "recipe"):
     the ingredient as name. Never fold it into a counted item with unit "unit".
   - size: "small", "medium" or "large", only for a counted item (unit "unit").
     Otherwise leave it out.
-  - note: optional short text, for example the vague phrase.
+  - vague_text: for a vague line only, the vague phrase as written ("to taste"), in the pasted
+    text's language. Null for a measured line.
+  - note: optional short text for a recommendation or disclaimer about the ingredient, never
+    the amount. Null when the text gives none.
 - steps: the cooking steps in order, one string each, in the pasted text's language.
 
 Do not invent any value the text does not give. Leave out a field you cannot fill.

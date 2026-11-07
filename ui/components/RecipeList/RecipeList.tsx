@@ -167,7 +167,7 @@ export function RecipeList({
       aria-label={t.filterLabel}
       placeholder={t.filterPlaceholder}
       onChange={(event) => setTyped({ from: q, text: event.target.value })}
-      className="box-border w-full min-w-0 appearance-none rounded-[var(--radius-md)] border border-border bg-surface px-[var(--space-4)] py-[var(--space-3)] text-[1rem] leading-normal text-foreground placeholder:text-muted"
+      className="box-border w-full min-w-0 appearance-none rounded-[var(--radius-md)] border border-field-border bg-surface px-[var(--space-4)] py-[var(--space-3)] text-[1rem] leading-normal text-foreground placeholder:text-muted"
     />
   );
 
@@ -229,10 +229,11 @@ export function RecipeList({
         <>
           <ul
             className={
-              // With image cards every card, the add card included, is one image wide (200px)
-              // and the row's height, so they all match.
+              // With image cards every card, the add card included, is the row's height, so they all
+              // match. Phones show 2 columns and tablets 3, filling the width; from lg up each card
+              // is one image wide (200px).
               uprightCards
-                ? "m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(0,200px))] gap-[var(--space-2)] p-0"
+                ? "m-0 grid list-none grid-cols-2 gap-[var(--space-2)] p-0 md:grid-cols-3 lg:grid-cols-[repeat(auto-fill,minmax(0,200px))]"
                 : layout === "wrap"
                   ? "m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-[var(--space-2)] p-0"
                   : styles.grid

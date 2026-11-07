@@ -34,6 +34,7 @@ export function buildSaveBody(
       unit: line.unit,
       size: line.size,
       preparation: line.preparation,
+      vague_text: line.vagueText,
       note: line.note,
     })),
     steps: draft.steps.map((step) => step.text),

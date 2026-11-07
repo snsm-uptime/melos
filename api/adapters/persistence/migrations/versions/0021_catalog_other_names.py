@@ -4,8 +4,8 @@
 notebook's recipe takes the kitchen's content language, a personal one its author's account
 language when that is English or Spanish, and anything else Spanish.
 
-Revision ID: 0020_catalog_other_names
-Revises: 0019_ingredient_place_owner
+Revision ID: 0021_catalog_other_names
+Revises: 0020_ingredient_free_note
 Create Date: 2026-11-06
 """
 
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
-revision: str = "0020_catalog_other_names"
-down_revision: str | None = "0019_ingredient_place_owner"
+revision: str = "0021_catalog_other_names"
+down_revision: str | None = "0020_ingredient_free_note"
 branch_labels: str | None = None
 depends_on: str | None = None
 

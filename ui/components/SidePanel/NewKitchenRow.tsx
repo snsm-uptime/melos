@@ -63,7 +63,7 @@ export function NewKitchenRow({
           maxLength={200}
           autoComplete="off"
           disabled={pending}
-          className="min-w-0 flex-1 border-0 border-b border-border bg-transparent py-1 text-[0.9rem] text-foreground outline-none focus:border-accent"
+          className="min-w-0 flex-1 border-0 border-b border-field-border bg-transparent py-1 text-[0.9rem] text-foreground outline-none focus:border-accent"
           onChange={(event) => setName(event.target.value)}
           onKeyDown={(event) => {
             if (event.key !== "Escape") return;

@@ -97,6 +97,6 @@ Body `{"en": "garlic", "es": "ajo"}`. `204`. FR-009d.
 - `GET /recipes/{id}`: adds `"language"` and `"proposed_language"` (null or `en`/`es`); each line adds `"shown_name"` (FR-006).
 - `PUT /recipes/{id}`: accepts `"language"` (setting it clears the proposal) and `"proposed_language": null` (dismiss). The edit form sends `language`.
 - `PATCH /recipes/{id}/language` (added 2026-11-06, owner choice for T062): body `{"language": "en" | "es" | null}`. The recipe page's "Detected: {language}. Apply? / Dismiss" banner uses it: a language applies it and clears the proposal, null dismisses the proposal. It needs no edit lock or recipe body, only write access. It is `409 recipe_locked` while another person edits the recipe, `403` read-only, `404` not found. It returns the recipe as `GET /recipes/{id}` does.
-- Capture draft responses: add `"language"` (from the extractor); save requests accept it.
+- Capture draft responses: add `"language"` (detected offline from the text, else the interface language); save requests accept it.
 - `GET /kitchens/{id}/shopping-list` and closed lists: each item's `name` is the name shown to the
   viewer (FR-007); adds `"kept_name"` for places and keys.

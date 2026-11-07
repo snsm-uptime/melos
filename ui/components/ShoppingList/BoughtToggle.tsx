@@ -20,7 +20,7 @@ export function BoughtToggle({
     <span className="relative inline-grid size-6 shrink-0 place-items-center">
       <input
         type="checkbox"
-        className="peer m-0 size-6 cursor-pointer appearance-none rounded-[var(--radius-md)] border border-border bg-background checked:border-accent checked:bg-accent disabled:cursor-default focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="peer m-0 size-6 cursor-pointer appearance-none rounded-[var(--radius-md)] border border-field-border bg-background checked:border-accent checked:bg-accent disabled:cursor-default focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         aria-label={shoppingListMessages[locale].markBought(name)}
         checked={bought}
         disabled={!onToggle}

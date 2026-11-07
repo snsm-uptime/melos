@@ -126,7 +126,7 @@ export function ItemChipSelector({
                   type="button"
                   onClick={() => handleToggle(label)}
                   disabled={busy}
-                  className={isSelected ? `${chipClassName.accent} cursor-pointer hover:bg-accent/10 transition-colors disabled:cursor-not-allowed disabled:opacity-60` : `${chipClassName.muted} cursor-pointer hover:bg-border/10 transition-colors disabled:cursor-not-allowed disabled:opacity-60`}
+                  className={isSelected ? `${chipClassName.accent} cursor-pointer hover:bg-accent-fill/10 transition-colors disabled:cursor-not-allowed disabled:opacity-60` : `${chipClassName.muted} cursor-pointer hover:bg-border/10 transition-colors disabled:cursor-not-allowed disabled:opacity-60`}
                 >
                   {label}
                 </button>

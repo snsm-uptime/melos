@@ -101,15 +101,26 @@ def recipe_id(engine: Engine) -> Iterator[str]:
 
 
 def _insert_line(engine: Engine, recipe: str, **values: object) -> None:
+    """A line with `vague` as its words, and `is_vague` as the flag (default: words set)."""
     row = {"name": "onion", "quantity": 1, "unit": "unit", "size": None, "vague": None}
     row.update(values)
+    is_vague = values.get("is_vague", row["vague"] is not None)
     with engine.begin() as conn:
         conn.execute(
             text(
                 "insert into recipe_ingredient (recipe_id, position, name, quantity, unit, size,"
-                " vague_note) values (:r, 0, :name, :quantity, :unit, :size, :vague)"
+                " vague, vague_note) values (:r, 0, :name, :quantity, :unit, :size, :is_vague,"
+                " :vague)"
             ),
-            {"r": recipe, **row},
+            {
+                "r": recipe,
+                "name": row["name"],
+                "quantity": row["quantity"],
+                "unit": row["unit"],
+                "size": row["size"],
+                "vague": row["vague"],
+                "is_vague": is_vague,
+            },
         )
 
 
@@ -122,6 +133,7 @@ def _insert_line(engine: Engine, recipe: str, **values: object) -> None:
         {"size": "huge"},
         {"vague": "a pinch"},
         {"quantity": None, "unit": None, "vague": None},
+        {"quantity": None, "unit": None, "vague": None, "is_vague": True},
         {"name": "  "},
     ],
 )
@@ -132,6 +144,52 @@ def test_line_checks_reject_broken_rows(engine: Engine, recipe_id: str, values: 
 
 def test_a_vague_line_and_a_measured_line_are_accepted(engine: Engine, recipe_id: str) -> None:
     _insert_line(engine, recipe_id, quantity=None, unit=None, vague="to taste", name="salt")
+
+
+def test_hidden_words_on_a_measured_line_are_accepted(engine: Engine, recipe_id: str) -> None:
+    _insert_line(engine, recipe_id, is_vague=False, vague="to taste", name="salt")
+
+
+def test_downgrade_refuses_while_hidden_words_exist_and_changes_nothing(
+    engine: Engine, recipe_id: str
+) -> None:
+    _insert_line(engine, recipe_id, is_vague=False, vague="to taste", name="salt")
+    url = database_url()
+    assert url is not None
+    with pytest.raises(RuntimeError, match="hold a free note or hidden vague text"):
+        command.downgrade(_config(url), "0019_ingredient_place_owner")
+    with engine.connect() as conn:
+        kept = conn.execute(
+            text(
+                "select count(*) from recipe_ingredient where vague_note = 'to taste' and not vague"
+            )
+        ).scalar_one()
+    assert kept == 1
+
+
+def test_upgrade_marks_existing_vague_lines_as_vague(engine: Engine, recipe_id: str) -> None:
+    url = database_url()
+    assert url is not None
+    cfg = _config(url)
+    command.downgrade(cfg, "0019_ingredient_place_owner")
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "insert into recipe_ingredient (recipe_id, position, name, vague_note)"
+                    " values (:r, 0, 'salt', 'to taste')"
+                ),
+                {"r": recipe_id},
+            )
+        command.upgrade(cfg, "head")
+        with engine.connect() as conn:
+            flag = conn.execute(
+                text("select vague from recipe_ingredient where recipe_id = :r and name = 'salt'"),
+                {"r": recipe_id},
+            ).scalar_one()
+        assert flag is True
+    finally:
+        command.upgrade(cfg, "head")
 
 
 def test_recipe_checks_reject_blank_title_and_zero_servings(engine: Engine, recipe_id: str) -> None:

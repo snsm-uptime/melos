@@ -52,7 +52,7 @@ def acceptance_draft() -> DraftRecipe:
         # MVP-OUT: main_ingredients=(),
         # MVP-OUT: cuisines=(),
         ingredient_lines=(
-            IngredientLine(name="salt", vague=True, note="a pinch of"),
+            IngredientLine(name="salt", vague=True, vague_text="a pinch of"),
             IngredientLine(name="onion", vague=False, quantity=2.0, unit="Unit", size="Large"),
         ),
         steps=("Simmer with the salt.",),

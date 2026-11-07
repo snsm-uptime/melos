@@ -112,7 +112,7 @@ export function FormIconField({
   const labelClasses =
     "text-[0.875rem] font-semibold text-foreground";
   const groupClasses =
-    "flex items-stretch w-full min-w-0 box-border border border-border rounded-[8px] bg-[var(--background,var(--surface))] overflow-hidden transition-all duration-150 disabled:opacity-65 disabled:cursor-not-allowed";
+    "flex items-stretch w-full min-w-0 box-border border border-field-border rounded-[8px] bg-[var(--background,var(--surface))] overflow-hidden transition-all duration-150 disabled:opacity-65 disabled:cursor-not-allowed";
   const inputClasses =
     "block flex-1 min-w-0 w-full box-border m-0 py-[0.6rem] px-[0.75rem] border-0 rounded-l-[8px] bg-transparent text-foreground text-base font-normal leading-[1.4] appearance-none disabled:opacity-65 disabled:cursor-not-allowed";
   // Structural-only overrides on top of IconButton's own base chrome (see

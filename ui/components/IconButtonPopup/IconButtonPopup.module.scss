@@ -46,8 +46,30 @@
 }
 
 .itemLayout {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   width: 100%;
   padding: 0.65rem 1rem;
   text-align: left;
+  white-space: nowrap;
+}
+
+/* Same size as the chrome's icon buttons (size-6), whatever the glyph's own class says. */
+.itemIcon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.itemIcon > svg {
+  width: 100%;
+  height: 100%;
+}
+
+.itemLabel {
+  min-width: 0;
 }

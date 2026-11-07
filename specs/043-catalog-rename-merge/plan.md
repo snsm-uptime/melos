@@ -29,7 +29,7 @@ port with a Gemini adapter and a prompt file (R9).
 
 **Primary Dependencies**: FastAPI, SQLAlchemy, Alembic, `google-genai` (through ports only), Tailwind 4. No new dependency.
 
-**Storage**: PostgreSQL 16. One migration, `0020_catalog_other_names`: `recipe.language`, `recipe.language_detected_at`, `ingredient.language`, new tables `ingredient_name` and `ingredient_pair_dismissal`, and `shopping_list_item.names`.
+**Storage**: PostgreSQL 16. One migration, `0021_catalog_other_names`: `recipe.language`, `recipe.language_detected_at`, `ingredient.language`, new tables `ingredient_name` and `ingredient_pair_dismissal`, and `shopping_list_item.names`.
 
 **Testing**: pytest (domain pure; application with fake ports, including a new `FakePairSuggester`; integration in the Compose test overlay), vitest for ui, a browser walk, and manual AI evaluation fixtures.
 
@@ -96,7 +96,7 @@ api/
 ├── adapters/
 │   ├── llm/gemini_pair_suggester.py, gemini_language_detector.py
 │   ├── llm/prompts/ingredient_pairs_system.md, recipe_language_system.md; recipe_extraction_system.md (+language)
-│   └── persistence/models.py, catalog.py, migrations/versions/0020_catalog_other_names.py
+│   └── persistence/models.py, catalog.py, migrations/versions/0021_catalog_other_names.py
 ├── api/routes/catalog.py          # new, per contracts/catalog.md; recipes.py, shopping_list.py (fields)
 ├── scripts/recipe_languages.py    # operator command: detect | status
 └── tests/                         # test_catalog_manage_{domain,application,integration}.py, migration test, fixtures/ai_eval/pairs/

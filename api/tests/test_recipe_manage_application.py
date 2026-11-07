@@ -110,7 +110,8 @@ class FakeRecipes:
                     unit=None if line.vague else line.unit,
                     size=None if line.vague else line.size,
                     preparation=line.preparation,
-                    note=line.note if line.vague else None,
+                    vague_text=line.vague_text if line.vague else None,
+                    note=line.note,
                 )
                 for line in recipe.lines
             ),
@@ -345,7 +346,11 @@ def test_edit_never_removes_catalog_names() -> None:
         {"lines": (_line(quantity=None),)},
         {"lines": (_line(quantity=0.0),)},
         {"base_servings": 0},
-        {"lines": (IngredientLine(name="salt", vague=True, quantity=2.0, unit="g", note="x"),)},
+        {
+            "lines": (
+                IngredientLine(name="salt", vague=True, quantity=2.0, unit="g", vague_text="x"),
+            )
+        },
         {"lines": tuple(_line(f"item{n}") for n in range(101))},
     ],
 )

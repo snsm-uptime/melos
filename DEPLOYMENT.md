@@ -251,7 +251,7 @@ docker compose exec db psql -U melos -d melos -c "\\dx vector"
 
 ### 7a. One-time commands after an upgrade
 
-After deploying migration `0020_catalog_other_names` (spec 043), run the recipe language
+After deploying migration `0021_catalog_other_names` (spec 043), run the recipe language
 proposal once. Existing recipes got a fallback language in the migration; this detects each
 recipe's language offline with lingua (no model call, no API key) and stores a proposal that
 people apply or dismiss on the recipe page. It never

@@ -3,7 +3,6 @@
 .button:not(:disabled):hover,
 .button:not(:disabled)[data-active="true"] {
   color: var(--accent);
-  background: rgba(226, 216, 200, 0.3); /* Fallback for --border at 30% opacity */
 }
 
 @supports (background: color-mix(in srgb, white, transparent)) {
@@ -14,7 +13,6 @@
 }
 
 .button:focus-visible {
-  outline: 2px solid rgba(63, 107, 69, 0.55); /* Fallback for --accent at 55% opacity */
   outline-offset: 2px;
 }
 
@@ -27,7 +25,6 @@
 .muted:not(:disabled):hover,
 .muted:not(:disabled)[data-active="true"] {
   color: var(--accent);
-  background: rgba(63, 107, 69, 0.12); /* Fallback for --accent at 12% opacity */
 }
 
 @supports (background: color-mix(in srgb, white, transparent)) {
@@ -38,7 +35,6 @@
 }
 
 .muted:focus-visible {
-  outline: 2px solid rgba(63, 107, 69, 0.55); /* Fallback for --accent at 55% opacity */
   outline-offset: 2px;
 }
 
@@ -91,7 +87,6 @@
 }
 
 .ghost:focus-visible {
-  outline: 2px solid rgba(63, 107, 69, 0.55);
   outline-offset: 2px;
 }
 
@@ -104,7 +99,7 @@
 /* Reset hover state on touch to prevent sticky appearance after tap */
 @media (hover: none) and (pointer: coarse) {
   .button:not(:disabled):active {
-    background: rgba(226, 216, 200, 0.3);
+    background: color-mix(in srgb, var(--border) 30%, transparent);
   }
 
   .button:not(:disabled):active:not(:focus-visible) {
@@ -112,7 +107,7 @@
   }
 
   .muted:not(:disabled):active {
-    background: rgba(63, 107, 69, 0.12);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
   }
 
   .muted:not(:disabled):active:not(:focus-visible) {

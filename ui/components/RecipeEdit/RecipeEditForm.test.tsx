@@ -60,6 +60,9 @@ async function flush() {
   });
 }
 
+const chrome = vi.hoisted(() => ({ scrolled: false }));
+vi.mock("@/components/ChromeScroll", () => ({ useChromeScrolled: () => chrome.scrolled }));
+
 describe("RecipeEditForm", () => {
   let container: HTMLDivElement;
   let root: Root;
@@ -122,6 +125,25 @@ describe("RecipeEditForm", () => {
     await flush();
   }
 
+  it("the page header is a frosted phone bar with no solid background", async () => {
+    render();
+    const header = container.querySelector("header") as HTMLElement;
+    expect(header.classList.contains("frost-bar")).toBe(true);
+    expect(header.classList.contains("frost-bar-phone")).toBe(true);
+    expect(header.classList.contains("bg-background")).toBe(false);
+    expect(header.getAttribute("data-frosted")).toBe("false");
+  });
+
+  it("frosts the page header once the main scroller has been scrolled", async () => {
+    chrome.scrolled = true;
+    try {
+      render();
+      expect(container.querySelector("header")?.getAttribute("data-frosted")).toBe("true");
+    } finally {
+      chrome.scrolled = false;
+    }
+  });
+
   it("has no English interface text in Spanish, and keeps the recipe's own words (spec 063)", async () => {
     act(() => {
       root.render(
@@ -168,11 +190,8 @@ describe("RecipeEditForm", () => {
   it("opens at the saved servings and amounts and saves the saved servings (spec 062)", async () => {
     render();
     expect(document.querySelector<HTMLInputElement>("input[type=number][min='1']")?.value).toBe("4");
-    expect(byLabel("Quantity").map((input) => (input as HTMLInputElement).value)).toEqual([
-      "1",
-      "2",
-      "",
-    ]);
+    // The vague line has no quantity box: its words are in the "Amount in words" field.
+    expect(byLabel("Quantity").map((input) => (input as HTMLInputElement).value)).toEqual(["1", "2"]);
     act(() => setValue(byLabel("Title")[0], "Renamed"));
 
     await save();
@@ -407,8 +426,8 @@ describe("RecipeEditForm", () => {
       myUnits = [...TEN];
       const shared = recipeFixture({
         ingredient_lines: [
-          { name: "frijoles", vague: false, quantity: 1, unit: "bote", size: null, preparation: null, note: null },
-          { name: "rice", vague: false, quantity: 1, unit: "cup", size: null, preparation: null, note: null },
+          { name: "frijoles", vague: false, quantity: 1, unit: "bote", size: null, preparation: null, vague_text: null, note: null },
+          { name: "rice", vague: false, quantity: 1, unit: "cup", size: null, preparation: null, vague_text: null, note: null },
         ],
       });
       await renderLoaded(shared);

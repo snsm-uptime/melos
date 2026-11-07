@@ -23,6 +23,7 @@ export type CaptureDraftResponse = {
       unit: string | null;
       size: string | null;
       preparation: string | null;
+      vague_text: string | null;
       note: string | null;
       text_name: string;
       match: { kind: "matched" | "new"; entry: string | null };

@@ -6,20 +6,26 @@ import { useMemo, useState } from "react";
 import {
   BackIcon,
   CartPlusIcon,
+  DotsIcon,
+  LinkIcon,
   PencilIcon,
   ShareIcon,
   TrashIcon,
 } from "@/app/icons";
+import { useChromeScrolled } from "@/components/ChromeScroll";
 import { EditorNotice } from "@/components/Cart/EditorNotice";
 import { Chip } from "@/components/Chip";
 import { IconButton } from "@/components/IconButton";
-import { ShareRecipeDialog } from "@/components/ShareRecipeDialog";
+import iconButtonStyles from "@/components/IconButton/IconButton.module.scss";
 import {
-  HeaderAction,
-  HeaderActions,
-} from "@/components/RecipeDraft/HeaderActions";
+  IconButtonPopup,
+  IconButtonPopupItem,
+  IconButtonPopupLinkItem,
+} from "@/components/IconButtonPopup";
+import { ShareRecipeDialog } from "@/components/ShareRecipeDialog";
 import { IngredientLineRow } from "@/components/RecipeDraft/IngredientLineRow";
 import { StepCard } from "@/components/RecipeDraft/StepCard";
+import { Tooltip } from "@/components/Tooltip";
 import { cartMessages } from "@/lib/i18n/cart";
 import type { Locale } from "@/lib/i18n/locale";
 import { messagesFor } from "@/lib/i18n/messages";
@@ -53,7 +59,8 @@ export type DetailCartAction = {
 /**
  * One saved recipe in the layout of the draft review page, display only: the title, the
  * ingredient cards and the step cards are text, with no fields, dropdowns, or move and remove
- * controls. Edit and Delete show only to those who can write (spec 027 FR-005).
+ * controls. Edit, Share and Delete sit in the chrome's dots menu; Edit and Delete show only to
+ * those who can write (spec 027 FR-005). The source page opens from a link icon beside the cart.
  *
  * The servings can be changed to see the amounts for another number (spec 062). The number is
  * state of this component only: it is not stored, not sent, and not passed to Edit, so a reload
@@ -68,6 +75,7 @@ export function RecipeDetailView({
   cartAction,
   onRecipeChange,
 }: RecipeDetailViewProps) {
+  const scrolled = useChromeScrolled();
   const t = recipeDetailMessages[locale];
   const shareText = messagesFor(recipeShareMessages, locale);
   const c = cartMessages[locale];
@@ -98,7 +106,10 @@ export function RecipeDetailView({
       ) : null}
       <div className="flex flex-col gap-6 pb-8 md:min-h-0 md:flex-1">
         {/* Same insets and Back slot as the draft page and AppShell's chrome header. */}
-        <header className="flex items-center gap-2 bg-background pt-[max(0.5rem,env(safe-area-inset-top))] max-md:sticky max-md:top-0 max-md:z-10 pr-[max(1rem,env(safe-area-inset-right))] pb-1 pl-[max(0.5rem,env(safe-area-inset-left))]">
+        <header
+        className="frost-bar frost-bar-phone flex items-center gap-2 pt-[max(0.5rem,env(safe-area-inset-top))] max-md:sticky max-md:top-0 max-md:z-10 pr-[max(1rem,env(safe-area-inset-right))] pb-1 pl-[max(0.5rem,env(safe-area-inset-left))]"
+        data-frosted={scrolled ? "true" : "false"}
+      >
           <div className="flex w-10 shrink-0 items-center justify-start self-center">
             <Link
               href={backHref}
@@ -137,8 +148,8 @@ export function RecipeDetailView({
               />
             ) : null}
           </div>
-          {cartAction ? (
-            <div className="flex shrink-0 items-center self-start">
+          <div className="flex shrink-0 items-center gap-1 self-start">
+            {cartAction ? (
               <IconButton
                 variant="ghost"
                 label={cartAction.inCart ? c.removeFromCart : c.addToCart}
@@ -149,40 +160,58 @@ export function RecipeDetailView({
                 }
                 onClick={cartAction.onToggle}
               />
-            </div>
-          ) : null}
-          <HeaderActions>
-            {recipe.can_write ? (
-              <>
-                {lockedBy ? (
-                  <HeaderAction
-                    onClick={() => {}}
-                    disabled
-                    label={t.edit}
-                    icon={<PencilIcon className="size-5" />}
-                  />
-                ) : (
-                  <HeaderAction
-                    href={editHref}
-                    label={t.edit}
-                    icon={<PencilIcon className="size-5" />}
-                  />
-                )}
-                <HeaderAction
-                  onClick={onDelete}
-                  disabled={Boolean(lockedBy)}
-                  label={t.delete}
-                  tone="danger"
-                  icon={<TrashIcon className="size-5" />}
-                />
-              </>
             ) : null}
-            <HeaderAction
-              onClick={() => setSharing(true)}
-              label={shareText.shareButton}
-              icon={<ShareIcon className="size-5" />}
-            />
-          </HeaderActions>
+            {source ? (
+              <Tooltip label={t.sourceLink}>
+                <a
+                  href={source}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                  aria-label={t.sourceLink}
+                  className={`m-0 inline-flex flex-shrink-0 items-center justify-center rounded-[8px] border-0 bg-transparent p-1 leading-none text-muted transition-all duration-150 ${iconButtonStyles.button} ${iconButtonStyles.ghost}`}
+                >
+                  <LinkIcon className="size-6" />
+                </a>
+              </Tooltip>
+            ) : null}
+            <IconButtonPopup
+              button={
+                <IconButton
+                  variant="ghost"
+                  label={t.options}
+                  icon={<DotsIcon className="size-6" />}
+                />
+              }
+            >
+              {recipe.can_write ? (
+                lockedBy ? (
+                  <IconButtonPopupItem disabled icon={<PencilIcon />}>
+                    {t.edit}
+                  </IconButtonPopupItem>
+                ) : (
+                  <IconButtonPopupLinkItem href={editHref} icon={<PencilIcon />}>
+                    {t.edit}
+                  </IconButtonPopupLinkItem>
+                )
+              ) : null}
+              <IconButtonPopupItem
+                onClick={() => setSharing(true)}
+                icon={<ShareIcon />}
+              >
+                {shareText.shareButton}
+              </IconButtonPopupItem>
+              {recipe.can_write ? (
+                <IconButtonPopupItem
+                  danger
+                  disabled={Boolean(lockedBy)}
+                  onClick={onDelete}
+                  icon={<TrashIcon />}
+                >
+                  {t.delete}
+                </IconButtonPopupItem>
+              ) : null}
+            </IconButtonPopup>
+          </div>
         </header>
 
         {lockedBy ? (
@@ -272,16 +301,6 @@ export function RecipeDetailView({
           </section>
         </div>
 
-        {source ? (
-          <a
-            href={source}
-            rel="noopener noreferrer"
-            target="_blank"
-            className="px-4 text-[0.9rem] text-accent"
-          >
-            {t.sourceLink}
-          </a>
-        ) : null}
       </div>
     </main>
   );

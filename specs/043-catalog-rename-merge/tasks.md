@@ -17,7 +17,7 @@
 
 **Purpose**: The data model, the catalog index, and the recipe language. When this phase is done, nothing behaves differently yet, because no notebook has other names.
 
-- [X] T002 Add the migration `api/adapters/persistence/migrations/versions/0020_catalog_other_names.py` (down revision `0019_ingredient_place_owner`):
+- [X] T002 Add the migration `api/adapters/persistence/migrations/versions/0021_catalog_other_names.py` (down revision `0019_ingredient_place_owner`; rebased onto `0020_ingredient_free_note` as 0021 when main was merged):
   - `recipe.language varchar(2)` with check `language IN ('en','es')`. Add it nullable, then fill it by the FR-005a fallback: a kitchen notebook's recipe gets `kitchens.content_language`; a personal one gets the author's `users.language` when its first two letters (lower-cased) are 'en' or 'es'; anything else gets 'es'. Then set NOT NULL.
   - `recipe.language_detected_at timestamptz NULL`.
   - `recipe.proposed_language varchar(2) NULL` with check `proposed_language IS NULL OR proposed_language IN ('en','es')`.

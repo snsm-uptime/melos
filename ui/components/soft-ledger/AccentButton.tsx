@@ -4,7 +4,7 @@ import { BaseButton, type BaseButtonProps, type DistributiveOmit } from "./BaseB
 
 type AccentButtonProps = DistributiveOmit<BaseButtonProps, "variant">;
 
-/** Blue accent CTA — outline idle, fills solid on hover. rounded-sm only; never pill. */
+/** Magenta filled CTA (spec 072) — outline idle, fills solid on hover. rounded-sm only; never pill. */
 export const AccentButton = forwardRef<
   HTMLButtonElement | HTMLAnchorElement,
   AccentButtonProps

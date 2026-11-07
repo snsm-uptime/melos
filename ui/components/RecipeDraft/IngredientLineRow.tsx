@@ -17,7 +17,7 @@ import { customUnitMessages } from "@/lib/i18n/customUnits";
 import type { Locale } from "@/lib/i18n/locale";
 import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
 import { useLocale } from "@/lib/i18n/useLocale";
-import type { RecipeResult, UnitCheck } from "@/lib/recipesClient";
+import type { RecipeLine, RecipeResult, UnitCheck } from "@/lib/recipesClient";
 
 import { NameChangeNotice } from "./NameChangeNotice";
 import { RowControls } from "./RowControls";
@@ -58,10 +58,12 @@ const amountClassName = `${fieldClassName} ${headingClassName} shrink-0 text-acc
 const labelClassName = "m-0 w-24 shrink-0 text-[0.8rem] font-medium text-muted";
 
 /**
- * One ingredient line (spec 016 FR-007 to FR-012). The name and the amount (quantity, unit, and size
- * for the unit "unit") share the top line, then the catalog match and vague toggle. Below are
- * labelled preparation and note. The bottom bar holds remove and the move buttons. A vague amount
- * clears the quantity and the unit. Errors show under the row.
+ * One ingredient line (spec 016 FR-007 to FR-012). The name and the amount share the top line: the
+ * quantity, unit and size (size for the unit "unit"), or, for a vague amount, one "Amount in words"
+ * field that holds the words ("to taste"), stored as the line's vagueText. Errors about the amount
+ * show under that top line. Then come the catalog match and vague toggle, and labelled preparation
+ * and note; the note is a free note for any line. The bottom bar holds remove and the move buttons.
+ * A vague amount clears the quantity and the unit.
  */
 function EditableIngredientLine({
   line,
@@ -155,6 +157,18 @@ function EditableIngredientLine({
                     onChange({ ...line, name: event.target.value })
                   }
                 />
+                {line.vague ? (
+                  <input
+                    aria-label={t.amountInWords}
+                    placeholder={t.amountInWordsPlaceholder}
+                    aria-invalid={errors.includes("vagueNeedsNote") || undefined}
+                    className={`${fieldClassName} ${headingClassName} w-40 shrink-0 text-right text-accent`}
+                    value={line.vagueText ?? ""}
+                    onChange={(event) =>
+                      onChange({ ...line, vagueText: event.target.value || null })
+                    }
+                  />
+                ) : (
                 <div className="flex shrink-0 items-center">
                   <input
                     type="number"
@@ -246,7 +260,23 @@ function EditableIngredientLine({
                     </select>
                   ) : null}
                 </div>
+                )}
               </div>
+
+              {errors.map((code) => (
+                <p
+                  key={code}
+                  role="alert"
+                  className="m-0 text-[0.8rem] text-error"
+                >
+                  {t.errors[code]}
+                </p>
+              ))}
+              {unitProblem ? (
+                <p role="alert" className="m-0 text-[0.8rem] text-error">
+                  {unitText[unitProblem]}
+                </p>
+              ) : null}
 
               <div className="flex items-center justify-between gap-2">
                 <select
@@ -346,21 +376,6 @@ function EditableIngredientLine({
                   }
                 />
               </div>
-
-              {errors.map((code) => (
-                <p
-                  key={code}
-                  role="alert"
-                  className="m-0 text-[0.8rem] text-error"
-                >
-                  {t.errors[code]}
-                </p>
-              ))}
-              {unitProblem ? (
-                <p role="alert" className="m-0 text-[0.8rem] text-error">
-                  {unitText[unitProblem]}
-                </p>
-              ) : null}
             </CardBody>
           </div>
           <RowControls
@@ -379,8 +394,8 @@ function EditableIngredientLine({
 
 /** What the read-only card needs of a line; a stored recipe's line has all of it. */
 export type ReadOnlyLine = Pick<
-  LineView,
-  "name" | "vague" | "quantity" | "unit" | "size" | "preparation" | "note"
+  RecipeLine,
+  "name" | "vague" | "quantity" | "unit" | "size" | "preparation" | "vague_text" | "note"
 >;
 
 type ReadOnlyIngredientLineProps = {
@@ -390,9 +405,10 @@ type ReadOnlyIngredientLineProps = {
   locale?: Locale;
 };
 
-/** The amount as one piece of text: "1 cup", "2 large", or nothing for a vague amount. */
+/** The amount as one piece of text: "1 cup", "2 large", or the words of a vague amount. */
 function amountText(line: ReadOnlyLine): string {
-  if (line.vague || line.quantity === null) return "";
+  if (line.vague) return line.vague_text ?? "";
+  if (line.quantity === null) return "";
   const unit = line.unit === "unit" ? line.size : line.unit;
   return [formatQuantity(line.quantity), unit].filter(Boolean).join(" ");
 }

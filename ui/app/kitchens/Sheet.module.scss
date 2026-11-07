@@ -6,6 +6,8 @@
   padding: 0;
   border: none;
   background: color-mix(in srgb, var(--foreground) 28%, transparent);
+  -webkit-backdrop-filter: blur(var(--frost-blur));
+  backdrop-filter: blur(var(--frost-blur));
   cursor: pointer;
   opacity: 0;
   transition: opacity 220ms ease;
@@ -59,6 +61,13 @@
   .backdrop,
   .sheet {
     transition: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .backdrop {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }
 

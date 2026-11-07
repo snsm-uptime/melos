@@ -1,7 +1,7 @@
-"""Migration 0020_catalog_other_names: fallback language, downgrade, upgrade (spec 043).
+"""Migration 0021_catalog_other_names: fallback language, downgrade, upgrade (spec 043).
 
 Requires DATABASE_URL. Skips when unset. Runs on the shared test database and restores head.
-Rows are written at 0019 with plain SQL, since the ORM models already have the new columns.
+Rows are written at 0020 with plain SQL, since the ORM models already have the new columns.
 """
 
 from __future__ import annotations
@@ -74,7 +74,7 @@ def test_fallback_language_then_down_and_up() -> None:
     users: list[UUID] = []
     try:
         command.upgrade(cfg, "head")
-        command.downgrade(cfg, "0019_ingredient_place_owner")
+        command.downgrade(cfg, "0020_ingredient_free_note")
         engine.dispose()
 
         owner = _user(engine, "es")
@@ -95,7 +95,7 @@ def test_fallback_language_then_down_and_up() -> None:
         personal_en = _recipe(engine, english, None)
         personal_unset = _recipe(engine, unset, None)
 
-        command.upgrade(cfg, "0020_catalog_other_names")
+        command.upgrade(cfg, "0021_catalog_other_names")
         engine.dispose()
         assert _languages(engine, [in_kitchen, personal_en, personal_unset]) == ["en", "en", "es"]
         assert inspect(engine).has_table("ingredient_name")
@@ -105,7 +105,7 @@ def test_fallback_language_then_down_and_up() -> None:
         )
         assert "names" in _columns(engine, "shopping_list_item")
 
-        command.downgrade(cfg, "0019_ingredient_place_owner")
+        command.downgrade(cfg, "0020_ingredient_free_note")
         engine.dispose()
         assert not inspect(engine).has_table("ingredient_name")
         assert not inspect(engine).has_table("ingredient_pair_dismissal")

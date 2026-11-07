@@ -285,6 +285,7 @@ def _line_key(line: IngredientLine) -> tuple[object, ...]:
         _fold(line.unit),
         _fold(line.size),
         _fold(line.preparation),
+        _fold(line.vague_text),
         _fold(line.note),
     )
 

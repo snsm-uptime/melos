@@ -49,7 +49,7 @@ describe("RecipeCard", () => {
     expect(container.textContent).toContain("7 ingredients");
   });
 
-  it("stands upright with the recipe image, at most 200px wide, in place of the pot", () => {
+  it("stands upright with the recipe image, filling its column on phones and tablets, at most 200px wide from lg, in place of the pot", () => {
     render({
       recipe: { ...recipe, preview_image: "data:image/jpeg;base64,AAAA" },
     });
@@ -57,9 +57,9 @@ describe("RecipeCard", () => {
       "[data-testid=recipe-card-image]",
     ) as HTMLImageElement;
     expect(img.getAttribute("src")).toBe("data:image/jpeg;base64,AAAA");
-    expect(container.querySelector("article")?.className).toContain(
-      "max-w-[200px]",
-    );
+    const classes = container.querySelector("article")?.className.split(/\s+/) ?? [];
+    expect(classes).toContain("lg:max-w-[200px]");
+    expect(classes).not.toContain("max-w-[200px]");
     expect(img.className).toContain("object-cover");
     expect(container.querySelector("[data-testid=recipe-pot-icon]")).toBeNull();
     expect(container.querySelector("article")?.className).toContain("flex-col");
@@ -72,9 +72,9 @@ describe("RecipeCard", () => {
     );
     expect(slot?.className).toContain("aspect-[4/3]");
     expect(slot?.querySelector("[data-testid=recipe-pot-icon]")).not.toBeNull();
-    expect(container.querySelector("article")?.className).toContain(
-      "max-w-[200px]",
-    );
+    const classes = container.querySelector("article")?.className.split(/\s+/) ?? [];
+    expect(classes).toContain("lg:max-w-[200px]");
+    expect(classes).not.toContain("max-w-[200px]");
     expect(container.querySelector("article")?.className).toContain("flex-col");
   });
 

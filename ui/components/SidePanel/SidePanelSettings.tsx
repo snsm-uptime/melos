@@ -60,9 +60,9 @@ export function SidePanelSettings({
         controls="side-panel-settings-options"
         onClick={onToggle}
       />
-      <div className={openOnlyClass}>
-        <SlideDown open={expanded} id="side-panel-settings-options" labelledBy="side-panel-settings">
-          <div className="mb-2 flex max-h-[50dvh] flex-col gap-3 overflow-y-auto border-b border-border px-2 pt-2 pb-3">
+      <div className={`flex min-h-0 flex-col ${openOnlyClass}`}>
+        <SlideDown className="min-h-0" open={expanded} id="side-panel-settings-options" labelledBy="side-panel-settings">
+          <div className="mb-2 flex max-h-full flex-col gap-3 overflow-y-auto border-b border-border px-2 pt-2 pb-3">
             <button type="button" className={`${panelEntryClass} !px-0`} disabled={signingOut} onClick={onPasswordReset}>
               {t.passwordReset}
             </button>

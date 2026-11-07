@@ -1,6 +1,6 @@
 /* button-system primitive — see
    _bmad-output/planning-artifacts/ux-designs/ux-finance-dashboard-2026-09-02-buttons/{DESIGN,EXPERIENCE}.md
-   Contained (primary/accent): solid fill idle, lightens on hover, darkens on
+   Contained (primary = violet fill, accent = magenta fill): solid fill idle, lightens on hover, darkens on
    press, flat gray when disabled. Outlined (ghost): transparent fill idle
    with variant-color border+text, tints faintly on hover/press. */
 
@@ -46,17 +46,17 @@
 }
 
 .primary {
-  background: var(--accent);
-  color: var(--on-accent);
-  --loader-ink: var(--on-accent);
-  --loader-fill: var(--accent);
+  background: var(--primary);
+  color: var(--on-primary);
+  --loader-ink: var(--on-primary);
+  --loader-fill: var(--primary);
 }
 .primary:not(:disabled):not([aria-disabled="true"]):hover,
 .primary:not(:disabled):not([aria-disabled="true"]):focus-visible {
-  background: color-mix(in srgb, var(--accent) 78%, white);
+  background: color-mix(in srgb, var(--primary) 78%, white);
 }
 .primary:not(:disabled):not([aria-disabled="true"]):active {
-  background: color-mix(in srgb, var(--accent) 78%, black);
+  background: color-mix(in srgb, var(--primary) 78%, black);
   box-shadow: none;
   transform: translateY(0);
 }

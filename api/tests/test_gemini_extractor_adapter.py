@@ -56,7 +56,7 @@ RECIPE_JSON = {
         "title": "Onion soup",
         # MVP-OUT: "main_ingredients": ["vegetables"],
         "ingredient_lines": [
-            {"name": "salt", "vague": True, "note": "a pinch of"},
+            {"name": "salt", "vague": True, "vague_text": "a pinch of"},
             {"name": "onion", "vague": False, "quantity": 2, "unit": "unit", "size": "large"},
         ],
         "steps": ["Simmer with the salt."],

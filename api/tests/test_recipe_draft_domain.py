@@ -39,7 +39,7 @@ def draft(
 ) -> DraftRecipe:
     if lines is None:
         lines = (
-            IngredientLine("salt", True, note="a pinch of"),
+            IngredientLine("salt", True, vague_text="a pinch of"),
             IngredientLine("onion", False, 2.0, "unit", "large"),
         )
     return DraftRecipe(
@@ -127,9 +127,9 @@ def test_vague_line_has_no_quantity_and_no_unit() -> None:
 
 def test_vague_line_keeps_its_note() -> None:
     checked = check(
-        draft(lines=(IngredientLine("salt", True, note=" to taste ", size="large"),)), CATALOG
+        draft(lines=(IngredientLine("salt", True, vague_text=" to taste ", size="large"),)), CATALOG
     )
-    assert checked.ingredient_lines[0].note == "to taste"
+    assert checked.ingredient_lines[0].vague_text == "to taste"
     assert checked.ingredient_lines[0].size is None
 
 
@@ -392,7 +392,7 @@ def test_line_problem_name_is_the_normalized_ingredient_name() -> None:
 
 
 def test_vague_line_without_amount_is_never_a_line_problem() -> None:
-    checked = check(draft(lines=(IngredientLine("salt", True, note="a pinch of"),)), CATALOG)
+    checked = check(draft(lines=(IngredientLine("salt", True, vague_text="a pinch of"),)), CATALOG)
     assert checked.ingredient_lines[0].vague is True
 
 

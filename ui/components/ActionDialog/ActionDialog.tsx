@@ -70,7 +70,7 @@ export function ActionDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-6"
+      className="modal-scrim fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-6"
       role="presentation"
       onClick={() => onOpenChange(false)}
     >

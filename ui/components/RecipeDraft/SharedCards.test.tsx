@@ -22,6 +22,7 @@ const line: LineView = {
   unit: "unit",
   size: "large",
   preparation: "picada",
+  vagueText: null,
   note: null,
   textName: "cebollas",
   match: { kind: "matched", entry: "cebolla" },
@@ -96,7 +97,7 @@ describe("shared draft cards follow the interface language (spec 063 FR-007)", (
   it("the read-only row labels are Spanish and show stored text as stored", () => {
     render(
       <ul>
-        <IngredientLineRow line={{ ...line, note: "to taste" }} readOnly locale="es" />
+        <IngredientLineRow line={{ ...line, vague_text: null, note: "to taste" }} readOnly locale="es" />
       </ul>,
     );
     expect(container.textContent).toContain("Preparación:");

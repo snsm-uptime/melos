@@ -131,6 +131,7 @@ def _draft_body(captured: CapturedDraft | CapturedPageDraft) -> dict[str, Any]:
                     "unit": line.unit,
                     "size": line.size,
                     "preparation": line.preparation,
+                    "vague_text": line.vague_text,
                     "note": line.note,
                     "text_name": line.text_name,
                     "match": _match_body(matches[index], line.name),

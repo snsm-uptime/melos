@@ -1,5 +1,6 @@
 "use client";
 
+import { useChromeScrolled } from "@/components/ChromeScroll";
 import { NotebookPicker } from "@/components/NotebookPicker";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -69,6 +70,7 @@ function nextKey(): string {
  * until the member saves, discards or leaves.
  */
 export function RecipeDraftEditor() {
+  const scrolled = useChromeScrolled();
   const t = useCaptureMessages();
   const locale = useLocale();
   const router = useRouter();
@@ -211,7 +213,10 @@ export function RecipeDraftEditor() {
   return (
     <div className="flex flex-col gap-6 pb-8 md:min-h-0 md:flex-1">
       {/* Same insets and Back slot as AppShell's chrome header. */}
-      <header className="flex items-center gap-2 bg-background pt-[max(0.5rem,env(safe-area-inset-top))] max-md:sticky max-md:top-0 max-md:z-10 pr-[max(1rem,env(safe-area-inset-right))] pb-1 pl-[max(0.5rem,env(safe-area-inset-left))]">
+      <header
+        className="frost-bar frost-bar-phone flex items-center gap-2 pt-[max(0.5rem,env(safe-area-inset-top))] max-md:sticky max-md:top-0 max-md:z-10 pr-[max(1rem,env(safe-area-inset-right))] pb-1 pl-[max(0.5rem,env(safe-area-inset-left))]"
+        data-frosted={scrolled ? "true" : "false"}
+      >
         <div className="flex w-10 shrink-0 items-center justify-start self-center">
           <IconButton
             variant="ghost"
@@ -351,7 +356,7 @@ export function RecipeDraftEditor() {
                     type="number"
                     min="1"
                     step="1"
-                    className="w-20 rounded-[0.75rem] border border-border bg-background px-3 py-1 text-[1rem] text-foreground"
+                    className="w-20 rounded-[0.75rem] border border-field-border bg-background px-3 py-1 text-[1rem] text-foreground"
                     value={draft.baseServings}
                     onChange={(event) =>
                       update({
@@ -414,6 +419,7 @@ export function RecipeDraftEditor() {
                         unit: null,
                         size: null,
                         preparation: null,
+                        vagueText: null,
                         note: null,
                         textName: "",
                         match: { kind: "new", entry: null },

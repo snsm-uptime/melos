@@ -11,14 +11,22 @@ const globals = readFileSync(join(here, "../../app/globals.css"), "utf8");
 describe("MenuSurface", () => {
   it("tints surface for hover and a stronger selected row, with theme text color", () => {
     expect(globals).toContain(
-      "--menu-item-hover: color-mix(in srgb, var(--accent) 10%, var(--surface));",
+      "--menu-item-hover: color-mix(in srgb, var(--accent-fill) 10%, var(--surface));",
     );
     expect(globals).toContain(
-      "--menu-item-selected: color-mix(in srgb, var(--accent) 22%, var(--surface));",
+      "--menu-item-selected: color-mix(in srgb, var(--accent-fill) 22%, var(--surface));",
     );
     expect(css).toContain("color: var(--foreground);");
     expect(css).toContain("background: var(--menu-item-hover);");
     expect(css).toContain("background: var(--menu-item-selected);");
     expect(css).toContain(':not([aria-selected="true"]):not(.itemSelected)');
+  });
+
+  it("frosts the panel on the surface at the shared frost settings, with a solid fallback", () => {
+    expect(css).toContain("background: color-mix(in srgb, var(--surface) var(--frost-alpha), transparent);");
+    expect(css).toContain("backdrop-filter: blur(var(--frost-blur));");
+    expect(css).toContain("-webkit-backdrop-filter: blur(var(--frost-blur));");
+    expect(css).toContain("@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)))");
+    expect(css).toContain("@media (prefers-reduced-transparency: reduce)");
   });
 });

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { BackIcon, CloseIcon, SaveIcon } from "@/app/icons";
+import { useChromeScrolled } from "@/components/ChromeScroll";
 import { CauldronLoader } from "@/components/CauldronLoader";
 import {
   HeaderAction,
@@ -91,6 +92,7 @@ export function RecipeEditForm({
   onLockLost,
   onSaved,
 }: RecipeEditFormProps) {
+  const scrolled = useChromeScrolled();
   const t = recipeDetailMessages[locale];
   const c = captureMessagesFor(locale);
   const router = useRouter();
@@ -241,7 +243,10 @@ export function RecipeEditForm({
   return (
     <div className="flex flex-col gap-6 pb-8 md:min-h-0 md:flex-1">
       {/* Same insets and Back slot as the draft page and AppShell's chrome header. */}
-      <header className="flex items-center gap-2 bg-background pt-[max(0.5rem,env(safe-area-inset-top))] max-md:sticky max-md:top-0 max-md:z-10 pr-[max(1rem,env(safe-area-inset-right))] pb-1 pl-[max(0.5rem,env(safe-area-inset-left))]">
+      <header
+        className="frost-bar frost-bar-phone flex items-center gap-2 pt-[max(0.5rem,env(safe-area-inset-top))] max-md:sticky max-md:top-0 max-md:z-10 pr-[max(1rem,env(safe-area-inset-right))] pb-1 pl-[max(0.5rem,env(safe-area-inset-left))]"
+        data-frosted={scrolled ? "true" : "false"}
+      >
         <div className="flex w-10 shrink-0 items-center justify-start self-center">
           <Link
             href={detailHref}
@@ -337,7 +342,7 @@ export function RecipeEditForm({
                   type="number"
                   min="1"
                   step="1"
-                  className="w-20 rounded-[0.75rem] border border-border bg-background px-3 py-1 text-[1rem] text-foreground"
+                  className="w-20 rounded-[0.75rem] border border-field-border bg-background px-3 py-1 text-[1rem] text-foreground"
                   value={state.baseServings}
                   onChange={(event) =>
                     commit({

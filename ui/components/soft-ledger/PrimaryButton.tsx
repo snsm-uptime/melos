@@ -4,7 +4,7 @@ import { BaseButton, type BaseButtonProps, type DistributiveOmit } from "./BaseB
 
 type PrimaryButtonProps = DistributiveOmit<BaseButtonProps, "variant">;
 
-/** Moss accent CTA — outline idle, fills solid on hover. rounded-sm only; never pill. */
+/** Violet filled CTA (spec 072) — outline idle, fills solid on hover. rounded-sm only; never pill. */
 export const PrimaryButton = forwardRef<
   HTMLButtonElement | HTMLAnchorElement,
   PrimaryButtonProps

@@ -116,6 +116,9 @@ describe("RecipeDetailScreen", () => {
     search = "from=" + encodeURIComponent("/notebooks/nb1?page=2");
     const mock = stub([{ status: 200, body: recipeFixture() }, { status: 204 }]);
     await render();
+    act(() =>
+      (container.querySelector("button[aria-label='Recipe options']") as HTMLButtonElement).click(),
+    );
     const open = Array.from(container.querySelectorAll("button")).find(
       (b) => b.textContent === "Delete",
     );
@@ -135,6 +138,9 @@ describe("RecipeDetailScreen", () => {
     search = "from=" + encodeURIComponent("/notebooks/nb1?page=2");
     stub([{ status: 200, body: recipeFixture() }]);
     await render();
+    act(() =>
+      (container.querySelector("button[aria-label='Recipe options']") as HTMLButtonElement).click(),
+    );
     const edit = Array.from(container.querySelectorAll("a")).find((a) => a.textContent === "Edit");
     expect(edit?.getAttribute("href")).toBe(
       `/recipes/r1/edit?from=${encodeURIComponent("/notebooks/nb1?page=2")}`,
@@ -147,6 +153,9 @@ describe("RecipeDetailScreen", () => {
     await render();
     const edit = () =>
       Array.from(container.querySelectorAll("a")).find((a) => a.textContent === "Edit");
+    act(() =>
+      (container.querySelector("button[aria-label='Recipe options']") as HTMLButtonElement).click(),
+    );
     const before = edit()?.getAttribute("href");
 
     const input = container.querySelector("input") as HTMLInputElement;

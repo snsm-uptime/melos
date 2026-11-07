@@ -74,7 +74,9 @@ def _save(
         "title": title,
         "base_servings": 2,
         "servings_estimated": False,
-        "ingredient_lines": [{"name": name, "vague": True, "note": "some"} for name in ingredients],
+        "ingredient_lines": [
+            {"name": name, "vague": True, "vague_text": "some"} for name in ingredients
+        ],
         "steps": ["Cook it."],
     }
     response = client.post("/recipes", json=body)

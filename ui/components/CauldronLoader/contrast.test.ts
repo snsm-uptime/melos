@@ -99,7 +99,7 @@ function colours(theme: keyof typeof THEMES) {
 
 /** Button fills and text, as set per variant in BaseButton.module.scss (data-model.md). */
 const VARIANTS = {
-  primary: { ink: "var(--on-accent)", fill: "var(--accent)" },
+  primary: { ink: "var(--on-primary)", fill: "var(--primary)" },
   accent: { ink: "var(--on-secondary)", fill: "var(--secondary)" },
   ghost: {
     ink: "var(--accent)",
@@ -108,20 +108,19 @@ const VARIANTS = {
   headerIcon: { ink: "var(--accent)", fill: "var(--background)" },
 } as const;
 
-const PAGE_CAULDRON = "color-mix(in srgb, var(--background) 40%, var(--foreground))";
 const bubbleOf = (ink: string, fill: string) => `color-mix(in srgb, ${ink} 80%, ${fill})`;
 
 describe.each(Object.keys(THEMES) as (keyof typeof THEMES)[])("loader contrast, %s theme", (theme) => {
   const { c } = colours(theme);
 
   it("shows the accent bubbles and drip against the background and the surface", () => {
-    expect(contrast(c("var(--accent)"), c("var(--background)"))).toBeGreaterThanOrEqual(3);
-    expect(contrast(c("var(--accent)"), c("var(--surface)"))).toBeGreaterThanOrEqual(3);
+    expect(contrast(c("var(--accent-fill)"), c("var(--background)"))).toBeGreaterThanOrEqual(3);
+    expect(contrast(c("var(--accent-fill)"), c("var(--surface)"))).toBeGreaterThanOrEqual(3);
   });
 
   it("shows the page cauldron against the background and the surface", () => {
-    expect(contrast(c(PAGE_CAULDRON), c("var(--background)"))).toBeGreaterThanOrEqual(3);
-    expect(contrast(c(PAGE_CAULDRON), c("var(--surface)"))).toBeGreaterThanOrEqual(3);
+    expect(contrast(c("var(--cauldron-body)"), c("var(--background)"))).toBeGreaterThanOrEqual(3);
+    expect(contrast(c("var(--cauldron-body)"), c("var(--surface)"))).toBeGreaterThanOrEqual(3);
   });
 
   it.each(Object.entries(VARIANTS))(
@@ -131,21 +130,4 @@ describe.each(Object.keys(THEMES) as (keyof typeof THEMES)[])("loader contrast, 
       expect(contrast(c(bubbleOf(ink, fill)), c(fill))).toBeGreaterThanOrEqual(3);
     },
   );
-});
-
-describe("loader contrast, values from research R6", () => {
-  it("matches the measured cauldron contrast on the background", () => {
-    const light = colours("light").c;
-    const dark = colours("dark").c;
-    expect(contrast(light(PAGE_CAULDRON), light("var(--background)"))).toBeCloseTo(4.03, 1);
-    expect(contrast(dark(PAGE_CAULDRON), dark("var(--background)"))).toBeCloseTo(6.08, 1);
-  });
-
-  it("matches the measured bubble contrast on a Primary button", () => {
-    const { ink, fill } = VARIANTS.primary;
-    const light = colours("light").c;
-    const dark = colours("dark").c;
-    expect(contrast(light(bubbleOf(ink, fill)), light(fill))).toBeCloseTo(4.54, 1);
-    expect(contrast(dark(bubbleOf(ink, fill)), dark(fill))).toBeCloseTo(5.79, 1);
-  });
 });

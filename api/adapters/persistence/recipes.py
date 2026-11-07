@@ -109,12 +109,14 @@ class SqlAlchemyRecipeRepository:
                     recipe_id=recipe_id,
                     position=position,
                     name=line.name,
+                    vague=line.vague,
                     quantity=None if line.vague else line.quantity,
                     unit=None if line.vague else line.unit,
                     size=None if line.vague else line.size,
                     preparation=line.preparation,
-                    # Only a vague amount keeps its words (PRD 1.6 line rules).
-                    vague_note=line.note if line.vague else None,
+                    # The words are kept on every line, so unchecking "Vague amount" hides them.
+                    vague_note=line.vague_text,
+                    note=line.note,
                 )
             )
         for position, text in enumerate(steps):
@@ -151,12 +153,13 @@ class SqlAlchemyRecipeRepository:
             lines=tuple(
                 RecipeLineDetail(
                     name=line.name,
-                    vague=line.vague_note is not None,
+                    vague=line.vague,
                     quantity=None if line.quantity is None else float(line.quantity),
                     unit=line.unit,
                     size=line.size,
                     preparation=line.preparation,
-                    note=line.vague_note,
+                    vague_text=line.vague_note,
+                    note=line.note,
                 )
                 for line in lines
             ),
@@ -391,6 +394,8 @@ class SqlAlchemyRecipeRepository:
                 RecipeIngredientModel.size,
                 RecipeIngredientModel.preparation,
                 RecipeIngredientModel.vague_note,
+                RecipeIngredientModel.note,
+                RecipeIngredientModel.vague,
             ).where(RecipeIngredientModel.recipe_id.in_(new_recipe_ids))
         ).all()
         self._insert(

@@ -42,7 +42,7 @@ export function DoneButton({ kitchenId, locale, listId, empty, editing, onClosed
       <button
         type="button"
         disabled={hint !== null}
-        className="min-h-11 rounded-[var(--radius-md)] bg-accent px-5 text-[0.95rem] font-[600] text-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
+        className="min-h-11 rounded-[var(--radius-md)] bg-primary px-5 text-[0.95rem] font-[600] text-on-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
         onClick={() => setOpen(true)}
       >
         {t.done}

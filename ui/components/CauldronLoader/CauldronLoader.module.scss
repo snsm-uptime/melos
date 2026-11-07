@@ -38,11 +38,11 @@
    token, so a theme change recolours a running loader without restarting its animation. */
 .page {
   .body {
-    fill: color-mix(in srgb, var(--background) 65%, var(--foreground));
+    fill: var(--cauldron-body);
   }
   .drip,
   .bubble {
-    fill: var(--secondary);
+    fill: var(--accent-fill);
   }
 }
 

@@ -11,12 +11,14 @@ import {
   MARK_VIEWBOX_ATTR,
 } from "@/components/CauldronLoader/geometry";
 
-const globals = readFileSync(resolve(__dirname, "globals.css"), "utf8");
-
-/** A token's value in each theme, in file order: light, then dark. */
-function themed(token: string): string[] {
-  return [...globals.matchAll(new RegExp(`${token}: (#[0-9a-f]{6});`, "g"))].map((m) => m[1]);
-}
+/**
+ * The logo's colours, frozen: spec 072 FR-016 keeps the logo unchanged while the app palette moves
+ * to the portfolio's. These are the Warm Balance values the logo was drawn in.
+ */
+const LOGO = {
+  light: { bg: "#f7f3ec", text: "#2a241c", ink: "#4356a3" },
+  dark: { bg: "#17140f", text: "#f0e9dc", ink: "#adbdff" },
+};
 
 /** What the logo's color-mix gives, for an icon that can't read the theme. */
 function mixed(colour: string, background: string, percent: number): string {
@@ -46,16 +48,13 @@ describe("browser icon", () => {
   });
 
   it("has the logo's colours in the light and dark themes", () => {
-    const [lightBg, darkBg] = themed("--wb-bg");
-    const [lightText, darkText] = themed("--wb-text");
-    const [lightInk, darkInk] = themed("--secondary");
     const rules = (text: string, ink: string, background: string) =>
       `.pot{fill:${mixed(text, background, MARK_POT_STRENGTH)}}` +
       `.ink{fill:${mixed(ink, background, MARK_INK_STRENGTH)}}`;
 
-    expect(svg).toContain(`<style>${rules(lightText, lightInk, lightBg)}@media`);
+    expect(svg).toContain(`<style>${rules(LOGO.light.text, LOGO.light.ink, LOGO.light.bg)}@media`);
     expect(svg).toContain(
-      `(prefers-color-scheme:dark){${rules(darkText, darkInk, darkBg)}}</style>`,
+      `(prefers-color-scheme:dark){${rules(LOGO.dark.text, LOGO.dark.ink, LOGO.dark.bg)}}</style>`,
     );
   });
 });

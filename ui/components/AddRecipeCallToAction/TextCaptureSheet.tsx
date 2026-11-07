@@ -3,7 +3,7 @@
 import { NotebookPicker } from "@/components/NotebookPicker";
 import { useEffect, useState } from "react";
 
-import { Sheet } from "@/app/kitchens/Sheet";
+import { ActionDialog } from "@/components/ActionDialog";
 import {
   fetchVocabulary,
   submitCapture,
@@ -60,6 +60,7 @@ export function toDraftView(response: CaptureDraftResponse): DraftView {
       unit: line.unit,
       size: line.size,
       preparation: line.preparation,
+      vagueText: line.vague_text,
       note: line.note,
       textName: line.text_name,
       match: line.match,
@@ -84,7 +85,7 @@ type TextCaptureSheetProps = {
 };
 
 const fieldClassName =
-  "w-full rounded-[0.75rem] border border-border bg-background px-3 py-2 text-[0.95rem] text-foreground";
+  "w-full rounded-[0.75rem] border border-field-border bg-background px-3 py-2 text-[0.95rem] text-foreground";
 
 /**
  * The text sheet (spec 016 FR-002, FR-003, FR-004, FR-016 to FR-018). The pasted text stays
@@ -184,7 +185,7 @@ export function TextCaptureSheet({
         type="button"
         onClick={() => void submit()}
         disabled={disabled}
-        className="self-end rounded-[0.75rem] bg-accent px-4 py-2 text-[0.95rem] text-background disabled:opacity-50"
+        className="self-end rounded-[0.75rem] bg-primary px-4 py-2 text-[0.95rem] text-on-primary disabled:opacity-50"
       >
         {submitting ? t.submitting : t.submit}
       </button>
@@ -192,12 +193,15 @@ export function TextCaptureSheet({
   );
 
   return (
-    <Sheet
+    <ActionDialog
       open={open}
-      onClose={closeSheet}
+      onOpenChange={(next) => {
+        if (!next) closeSheet();
+      }}
       closeLabel={t.close}
       title={notebook?.name ?? t.addRecipe}
-      body={body}
-    />
+    >
+      {body}
+    </ActionDialog>
   );
 }

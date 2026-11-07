@@ -174,7 +174,7 @@ export const SoftLedgerSelect = forwardRef<SoftLedgerSelectHandle, SoftLedgerSel
         className={
           ghost
             ? "flex items-center justify-between gap-1 w-full m-0 bg-transparent text-foreground text-left cursor-pointer leading-[1.4] outline-none disabled:opacity-55 disabled:cursor-not-allowed"
-            : "flex items-center justify-between gap-2 w-full m-0 box-border px-[0.7rem] py-[0.55rem] border border-border rounded-sm bg-surface text-foreground text-left cursor-pointer font-semibold leading-[1.4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-55 disabled:cursor-not-allowed aria-invalid:border-[#b33]"
+            : "flex items-center justify-between gap-2 w-full m-0 box-border px-[0.7rem] py-[0.55rem] border border-field-border rounded-sm bg-surface text-foreground text-left cursor-pointer font-semibold leading-[1.4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-55 disabled:cursor-not-allowed aria-invalid:border-error"
         }
         style={{
           fontFamily: ghost ? "inherit" : "var(--font-ui), system-ui, sans-serif",
@@ -201,8 +201,8 @@ export const SoftLedgerSelect = forwardRef<SoftLedgerSelectHandle, SoftLedgerSel
           style={{
             width: "0.55rem",
             height: "0.55rem",
-            borderRight: "2px solid rgba(var(--foreground), 0.55)",
-            borderBottom: "2px solid rgba(var(--foreground), 0.55)",
+            borderRight: "2px solid color-mix(in srgb, var(--foreground) 55%, transparent)",
+            borderBottom: "2px solid color-mix(in srgb, var(--foreground) 55%, transparent)",
             transform: "rotate(45deg) translateY(-0.15rem)",
           }}
           aria-hidden="true"
