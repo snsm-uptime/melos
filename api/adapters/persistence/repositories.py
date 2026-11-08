@@ -49,6 +49,7 @@ def _preferences_record(row: UserModel) -> UserPreferencesRecord:
         last_opened_kitchen_id=row.last_opened_kitchen_id,
         alias=row.alias,
         photo_base64=row.photo_base64,
+        disclaimers=row.disclaimers,
     )
 
 
@@ -149,6 +150,7 @@ class SqlAlchemyAuthUserRepository:
         clear_last_opened_kitchen_id: bool = False,
         photo_base64: str | None = None,
         clear_photo: bool = False,
+        disclaimers: bool | None = None,
     ) -> UserPreferencesRecord:
         row = self._session.get(UserModel, user_id)
         if row is None:
@@ -157,6 +159,8 @@ class SqlAlchemyAuthUserRepository:
             row.language = language
         if theme is not None:
             row.theme = theme
+        if disclaimers is not None:
+            row.disclaimers = disclaimers
         if clear_last_opened_kitchen_id:
             row.last_opened_kitchen_id = None
         elif last_opened_kitchen_id is not None:

@@ -6,6 +6,7 @@ import { MoonIcon, SettingsIcon, SunIcon, SystemIcon } from "@/app/icons";
 import { LanguageChoice } from "@/components/LanguageChoice";
 import { usePreferences } from "@/components/PreferencesProvider";
 import { SlideDown } from "@/components/SlideDown";
+import { ToggleSwitch } from "@/components/ToggleSwitch/ToggleSwitch";
 import { TriSwitch } from "@/components/TriSwitch";
 import { accountCopy } from "@/lib/i18n/account";
 import type { ThemePreference } from "@/lib/i18n/locale";
@@ -26,12 +27,26 @@ export function SidePanelSettings({
   onToggle: () => void;
 }) {
   const { openOnlyClass } = usePanelLayout();
-  const { theme, setTheme, ready, locale } = usePreferences();
+  const { theme, setTheme, setDisclaimers, me, ready, locale } = usePreferences();
   const t = accountCopy(locale);
   const label = sidePanelMessages[locale].settings;
   const [pending, setPending] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [disclaimerError, setDisclaimerError] = useState<string | null>(null);
+
+  async function onDisclaimers(next: boolean) {
+    setPending(true);
+    setDisclaimerError(null);
+    try {
+      await setDisclaimers(next);
+    } catch {
+      // The switch returns to its saved state: `me` was not changed.
+      setDisclaimerError(t.saveDisclaimersFailed);
+    } finally {
+      setPending(false);
+    }
+  }
 
   async function onTheme(next: ThemePreference) {
     setPending(true);
@@ -88,6 +103,19 @@ export function SidePanelSettings({
             <section className="flex flex-col gap-2">
               <h2 className={headingClass}>{t.language}</h2>
               <LanguageChoice />
+            </section>
+            <section className="flex flex-col gap-2">
+              <h2 className={headingClass}>{t.disclaimersLabel}</h2>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[0.8rem] text-muted">{t.disclaimersHint}</span>
+                <ToggleSwitch
+                  checked={me?.disclaimers ?? true}
+                  disabled={pending || !ready || signingOut || me === null}
+                  label={t.disclaimersLabel}
+                  onChange={(next) => void onDisclaimers(next)}
+                />
+              </div>
+              {disclaimerError ? <p className="m-0 text-[0.8rem] text-error">{disclaimerError}</p> : null}
             </section>
           </div>
         </SlideDown>

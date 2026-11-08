@@ -16,9 +16,11 @@ from domain.ingredient_catalog import CatalogIndex, MergePlan, SplitPlan
 from domain.ingredient_discovery import Candidate, RecipeLineName
 from domain.ingredient_translation import IngredientTranslationRequest, IngredientTranslationResult
 from domain.notebook import Notebook, NotebookRole
+from domain.picture_tiers import CalibrationTable, EncodingStep, Tier
 from domain.places import CustomPlace, PlaceRef
 from domain.recipe import EditedRecipe, NewRecipe
 from domain.recipe_page import PageRecipe
+from domain.recipe_picture import CheckedPicture
 from domain.recipe_search import SearchFilters
 from domain.shopping_list import SavedLine, SavedList
 
@@ -65,6 +67,8 @@ class UserPreferencesRecord:
     last_opened_kitchen_id: UUID | None = None
     alias: str | None = None
     photo_base64: str | None = None
+    # Spec 041: show the picture-capture disclaimer. True until the account turns it off.
+    disclaimers: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -562,6 +566,7 @@ class PreferencesRepository(Protocol):
         clear_last_opened_kitchen_id: bool = False,
         photo_base64: str | None = None,
         clear_photo: bool = False,
+        disclaimers: bool | None = None,
     ) -> UserPreferencesRecord: ...
 
     def claim_alias(self, user_id: UUID, alias: str) -> UserPreferencesRecord:
@@ -1089,6 +1094,41 @@ class RunLock(Protocol):
     """Port: at most one run at a time. Yields True when this run holds the lock."""
 
     def try_acquire(self) -> AbstractContextManager[bool]: ...
+@dataclass(frozen=True, slots=True)
+class Picture:
+    """A checked, processed picture sent to the assistant (spec 041). Never logged."""
+
+    data: bytes
+    media_type: str  # "image/webp" for the assistant
+
+
+@dataclass(frozen=True, slots=True)
+class ProcessedPicture:
+    """The compressed WebP and its metadata (spec 041). The original bytes are never kept."""
+
+    webp: bytes
+    tier: Tier
+    sharpness: float | None  # None for handwritten pictures (not measured, FR-025)
+    original_dimensions: tuple[int, int]
+    final_dimensions: tuple[int, int]
+    size_kb: float
+    steps_taken: tuple[EncodingStep, ...]
+
+
+class PicturePipeline(Protocol):
+    """Port: decode, orient, measure, choose a tier and compress one checked picture.
+
+    Raises PictureRefused("unsupported") for undecodable or too-large-in-pixels pictures and
+    PictureRefused("too_large") when no encoding step fits the tier's cap.
+    """
+
+    def process(
+        self,
+        picture: CheckedPicture,
+        *,
+        handwritten: bool,
+        table: CalibrationTable,
+    ) -> ProcessedPicture: ...
 
 
 class LanguageDetector(Protocol):

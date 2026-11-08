@@ -13,6 +13,7 @@ import uuid
 from collections.abc import Sequence
 from typing import Any, Literal
 
+from application.ports import Picture
 from application.recipe_extraction import (
     AIProviderError,
     Draft,
@@ -34,7 +35,13 @@ from google.genai import types
 from pydantic import BaseModel, ValidationError
 
 from adapters.llm.gemini_errors import classify
-from adapters.llm.prompt import build_contents, page_part_system_instruction, system_instruction
+from adapters.llm.prompt import (
+    build_contents,
+    build_picture_contents,
+    page_part_system_instruction,
+    picture_system_instruction,
+    system_instruction,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +115,36 @@ PAGE_PART_RESPONSE_SCHEMA: dict[str, Any] = {
 }
 
 
+# Picture mode (spec 041): one cookbook photo. Like page-part mode, no recipe field is required
+# (a photo may show only part of a recipe); the four outcomes and the two refusal reasons are
+# the ones the picture prompt names.
+PICTURE_RESPONSE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "outcome": {
+            "type": "string",
+            "enum": ["recipe", "not_a_recipe", "multiple_recipes", "unreadable"],
+        },
+        "reason": {
+            "type": "string",
+            "enum": ["not_food", "story_or_article"],
+        },
+        "recipe": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"},
+                "base_servings": {"type": "integer"},
+                "ingredient_lines": RESPONSE_SCHEMA["properties"]["recipe"]["properties"][
+                    "ingredient_lines"
+                ],
+                "steps": {"type": "array", "items": {"type": "string"}},
+            },
+        },
+    },
+    "required": ["outcome"],
+}
+
+
 class _LinePayload(BaseModel):
     name: str
     vague: bool
@@ -145,6 +182,12 @@ class _PartRecipePayload(BaseModel):
 
 class _PartPayload(BaseModel):
     outcome: Literal["recipe_part", "no_recipe_content", "multiple_recipes"]
+    recipe: _PartRecipePayload | None = None
+
+
+class _PicturePayload(BaseModel):
+    outcome: Literal["recipe", "not_a_recipe", "multiple_recipes", "unreadable"]
+    reason: str | None = None
     recipe: _PartRecipePayload | None = None
 
 
@@ -219,6 +262,34 @@ def _part_payload_to_result(payload: _PartPayload) -> ExtractionResult:
     )
 
 
+_PICTURE_REFUSAL_REASONS = {NotRecipeReason.NOT_FOOD.value, NotRecipeReason.STORY_OR_ARTICLE.value}
+
+
+def _picture_payload_to_result(payload: _PicturePayload) -> ExtractionResult:
+    """Picture outcomes (spec 041). `unreadable` and any unknown refusal reason are invalid."""
+    if payload.outcome == "multiple_recipes":
+        return NotARecipe(reason=NotRecipeReason.MULTIPLE_RECIPES)
+    if payload.outcome == "unreadable":
+        return InvalidOutput()
+    if payload.outcome == "not_a_recipe":
+        if payload.reason not in _PICTURE_REFUSAL_REASONS:
+            return InvalidOutput()
+        return NotARecipe(reason=NotRecipeReason(payload.reason))
+    recipe = payload.recipe
+    if recipe is None:
+        return InvalidOutput()
+    title = recipe.title.strip() if recipe.title and recipe.title.strip() else None
+    steps = tuple(step for step in recipe.steps if step.strip())
+    if title is None and not recipe.ingredient_lines and not steps:
+        return InvalidOutput()
+    return DraftPart(
+        title=title,
+        base_servings=recipe.base_servings,
+        ingredient_lines=tuple(_line(line) for line in recipe.ingredient_lines),
+        steps=steps,
+    )
+
+
 class GeminiRecipeExtractor:
     """Production RecipeExtractor. The key and model come from settings only (FR-009)."""
 
@@ -234,6 +305,7 @@ class GeminiRecipeExtractor:
         self._model = model
         self._system_instruction = system_instruction()
         self._part_system_instruction = page_part_system_instruction()
+        self._picture_system_instruction = picture_system_instruction()
         self._client = client
         self._client_lock = threading.Lock()
 
@@ -276,6 +348,74 @@ class GeminiRecipeExtractor:
                 request_ref,
             )
         return result
+
+    def extract_picture(
+        self,
+        picture: Picture,
+        ingredient_names: Sequence[str],
+        timeout_s: float,
+    ) -> ExtractionResult:
+        """One photo, one attempt (spec 041). Logs the class and a request reference only."""
+        if not self._api_key.strip() or not self._model.strip():
+            logger.error("recipe extraction not configured: class=AIProviderError")
+            return AIProviderError()
+
+        request_ref = str(uuid.uuid4())
+        turn = types.Content(
+            role="user",
+            parts=[
+                types.Part.from_bytes(data=picture.data, mime_type=picture.media_type),
+                types.Part.from_text(text=build_picture_contents(ingredient_names)),
+            ],
+        )
+        try:
+            response = self._client_or_default().models.generate_content(
+                model=self._model,
+                contents=[turn],
+                config=self._picture_config(timeout_s),
+            )
+        except Exception as exc:
+            result = self._classify(exc)
+            logger.warning(
+                "picture extraction failed: class=%s request=%s",
+                type(result).__name__,
+                request_ref,
+            )
+            return result
+
+        result = self._read_picture(response)
+        if isinstance(result, (InvalidOutput, AIProviderError)):
+            logger.warning(
+                "picture extraction failed: class=%s request=%s",
+                type(result).__name__,
+                request_ref,
+            )
+        return result
+
+    def _picture_config(self, timeout_s: float) -> types.GenerateContentConfig:
+        return types.GenerateContentConfig(
+            system_instruction=self._picture_system_instruction,
+            response_mime_type="application/json",
+            response_json_schema=PICTURE_RESPONSE_SCHEMA,
+            http_options=types.HttpOptions(
+                timeout=round(timeout_s * 1000),
+                retry_options=types.HttpRetryOptions(attempts=1),
+            ),
+        )
+
+    def _read_picture(self, response: Any) -> ExtractionResult:
+        body = getattr(response, "text", None)
+        if not body:
+            return InvalidOutput()
+        try:
+            payload = _PicturePayload.model_validate_json(body)
+        except ValidationError as exc:
+            logger.warning(
+                "picture output failed the schema: %s",
+                [(error["loc"], error["type"]) for error in exc.errors()],
+            )
+            return InvalidOutput()
+        return _picture_payload_to_result(payload)
 
     def _client_or_default(self) -> genai.Client:
         # Locked: the parts of one page call at the same time (spec 026). Two clients made in a

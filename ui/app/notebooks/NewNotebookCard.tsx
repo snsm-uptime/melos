@@ -64,10 +64,11 @@ export function NewNotebookCard({
 
   return (
     <>
+      {/* As tall as a notebook card, so the plus tile keeps its shape on a one-column phone grid. */}
       <AddItemCard
         label={t.newNotebook}
         onClick={() => setOpen(true)}
-        className="h-full"
+        className="h-full min-h-[5.8rem]"
       />
       {open ? (
         <NewNotebookDialog

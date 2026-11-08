@@ -48,6 +48,7 @@ class MePreferencesResult:
     last_opened_kitchen_id: UUID | None
     alias: str | None = None
     photo_base64: str | None = None
+    disclaimers: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +68,7 @@ class UpdatePreferencesCommand:
     theme: str | None = None
     photo_base64: str | None = None
     clear_photo: bool = False
+    disclaimers: bool | None = None
 
 
 def _coerce_language(stored: str | None) -> str | None:
@@ -92,6 +94,7 @@ def _to_result(row: UserPreferencesRecord) -> MePreferencesResult:
         last_opened_kitchen_id=row.last_opened_kitchen_id,
         alias=row.alias,
         photo_base64=row.photo_base64,
+        disclaimers=row.disclaimers,
     )
 
 
@@ -128,6 +131,7 @@ class UpdatePreferencesService:
             and command.theme is None
             and command.photo_base64 is None
             and not command.clear_photo
+            and command.disclaimers is None
         ):
             return GetMePreferencesService(self._repo).execute(
                 GetMePreferencesCommand(user_id=command.user_id)
@@ -147,5 +151,6 @@ class UpdatePreferencesService:
             theme=theme,
             photo_base64=photo_base64,
             clear_photo=command.clear_photo,
+            disclaimers=command.disclaimers,
         )
         return _to_result(row)

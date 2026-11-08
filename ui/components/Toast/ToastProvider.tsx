@@ -21,6 +21,11 @@ export type Toast = {
   action?: { label: string; onClick: () => void };
   /** Stays until dismissed or replaced (the idle warning). */
   persistent?: boolean;
+  /**
+   * How long a non-persistent toast stays, in milliseconds (spec 041: the picture disclaimer
+   * stays 10 s). Left out, the toast stays `TOAST_MS`.
+   */
+  durationMs?: number;
 };
 
 type ToastApi = {
@@ -63,7 +68,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       if (!toast.persistent) {
         timers.current.set(
           toast.id,
-          setTimeout(() => dismiss(toast.id), TOAST_MS),
+          setTimeout(() => dismiss(toast.id), toast.durationMs ?? TOAST_MS),
         );
       }
     },

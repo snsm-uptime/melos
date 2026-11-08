@@ -25,6 +25,7 @@ import { AddRecipeOptionsDialog } from "./AddRecipeOptionsDialog";
 import { captureTarget, pickerOptions } from "./captureNotebook";
 import { RecipeFromNotebookSheet } from "./RecipeFromNotebookSheet";
 import { TextCaptureSheet } from "./TextCaptureSheet";
+import { PictureCaptureSheet } from "./PictureCaptureSheet";
 import { UrlCaptureSheet } from "./UrlCaptureSheet";
 import { useFromNotebookTarget } from "./useFromNotebookTarget";
 
@@ -194,6 +195,7 @@ export function AddRecipeCallToAction({
         open={optionsOpen}
         onClose={() => setOptionsOpen(false)}
         onChooseUrl={() => choose("url")}
+        onChoosePicture={() => choose("picture")}
         onChooseText={() => choose("text")}
         onChooseManual={() => void chooseManual()}
         onChooseFromNotebook={() => {
@@ -220,6 +222,11 @@ export function AddRecipeCallToAction({
       />
       <UrlCaptureSheet
         open={sheetOpen && capture.source.kind === "url"}
+        candidates={candidates}
+        onDraftReady={goToDraft}
+      />
+      <PictureCaptureSheet
+        open={sheetOpen && capture.source.kind === "picture"}
         candidates={candidates}
         onDraftReady={goToDraft}
       />

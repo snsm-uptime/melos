@@ -54,3 +54,5 @@ export { LocationIcon } from "./LocationIcon";
 export { AnalyticsIcon } from "./AnalyticsIcon";
 export { ChefHatIcon } from "./ChefHatIcon";
 export { LinkIcon } from "./LinkIcon";
+export { CameraIcon } from "./CameraIcon";
+export { ClipboardIcon } from "./ClipboardIcon";

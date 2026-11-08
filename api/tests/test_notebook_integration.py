@@ -929,10 +929,11 @@ def test_notebook_routes_are_gets_on_the_four_contract_paths(client: TestClient)
     assert notebook_paths.pop("/notebooks/default") == {"get", "put"}
     assert {method for operations in notebook_paths.values() for method in operations} == {"get"}
     capture_paths = {path: set(ops) for path, ops in paths.items() if "/captures/" in path}
-    # Spec 026 adds capture from a link beside capture from text.
+    # Spec 026 adds capture from a link beside capture from text; spec 041 adds a photo.
     assert capture_paths == {
         "/notebooks/{notebook_id}/captures/text": {"post"},
         "/notebooks/{notebook_id}/captures/url": {"post"},
+        "/notebooks/{notebook_id}/captures/picture": {"post"},
     }
 
 

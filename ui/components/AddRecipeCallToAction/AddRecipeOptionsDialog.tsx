@@ -7,6 +7,8 @@ type AddRecipeOptionsDialogProps = {
   open: boolean;
   onClose: () => void;
   onChooseUrl: () => void;
+  /** Opens the picture sheet (spec 041). */
+  onChoosePicture: () => void;
   onChooseText: () => void;
   /** An empty recipe written by hand, with no assistant. */
   onChooseManual: () => void;
@@ -23,12 +25,13 @@ const optionClassName =
  * The add-recipe options (spec 016 FR-023): no confirm or cancel buttons, a vertical list
  * separated by dividers, in this order: URL, Picture, Text, Write it myself, then Recipe from
  * another notebook when the caller passes it (spec 069). URL opens the link sheet (spec 026);
- * Picture stays disabled until S-041; Write it myself opens an empty draft.
+ * Picture opens the picture sheet (spec 041); Write it myself opens an empty draft.
  */
 export function AddRecipeOptionsDialog({
   open,
   onClose,
   onChooseUrl,
+  onChoosePicture,
   onChooseText,
   onChooseManual,
   onChooseFromNotebook,
@@ -59,13 +62,10 @@ export function AddRecipeOptionsDialog({
         <li>
           <button
             type="button"
-            aria-disabled="true"
-            className={`${optionClassName} opacity-50`}
+            onClick={onChoosePicture}
+            className={optionClassName}
           >
             <span>{t.optionPicture}</span>
-            <span className="text-[0.8rem] text-muted">
-              {t.optionPictureNote}
-            </span>
           </button>
         </li>
         <li>

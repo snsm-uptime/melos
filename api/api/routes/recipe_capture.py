@@ -7,6 +7,7 @@ service text, keys or traces (FR-029).
 
 from __future__ import annotations
 
+import base64
 import uuid
 from typing import Any
 
@@ -18,6 +19,11 @@ from application.recipe_capture import (
     CaptureRecipeText,
     TextEmptyError,
     TextTooLongError,
+)
+from application.recipe_capture_picture import (
+    CapturedPictureDraft,
+    CapturePictureCommand,
+    CapturePictureRecipe,
 )
 from application.recipe_capture_url import (
     CapturedPageDraft,
@@ -41,10 +47,12 @@ from domain.ingredient_catalog import LineMatch, as_language
 from domain.page_link import MAX_LINK_CHARS, PageLinkRefused
 from domain.preferences import effective_language
 from domain.recipe_draft import clean_display_name
+from domain.recipe_picture import PictureRefused
 from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import JSONResponse
 
 from api.deps import (
+    get_capture_recipe_picture,
     get_capture_recipe_text,
     get_capture_recipe_url,
     get_preferences_repository,
@@ -52,7 +60,12 @@ from api.deps import (
     get_vocabulary_answer,
     require_user_alias,
 )
-from api.schemas.recipe_capture import CaptureTextBody, CaptureUrlBody, UnitCheckBody
+from api.schemas.recipe_capture import (
+    CapturePictureBody,
+    CaptureTextBody,
+    CaptureUrlBody,
+    UnitCheckBody,
+)
 from api.settings import load_recipe_text_max_chars
 
 # MVP-OUT: the draft no longer uses `domain.labels.pick_label` (category chip labels)
@@ -76,12 +89,16 @@ def _match_body(match: LineMatch | None, shown: str) -> dict[str, Any]:
     return {"kind": "matched", "entry": shown}
 
 
-def _draft_language(captured: CapturedDraft | CapturedPageDraft) -> str:
+def _draft_language(
+    captured: CapturedDraft | CapturedPageDraft | CapturedPictureDraft,
+) -> str:
     """The draft's language: the detected one, else the interface's, else Spanish (FR-005a)."""
     return captured.recipe.language or as_language(captured.language) or "es"
 
 
-def _draft_body(captured: CapturedDraft | CapturedPageDraft) -> dict[str, Any]:
+def _draft_body(
+    captured: CapturedDraft | CapturedPageDraft | CapturedPictureDraft,
+) -> dict[str, Any]:
     language = captured.language
     # MVP-OUT: main_labels = {item["id"]: item["label"] for item in vocabulary["main_ingredients"]}
     # MVP-OUT: cuisines = {item["id"]: item for item in vocabulary["cuisines"]}
@@ -352,6 +369,77 @@ def capture_recipe_url(
     if isinstance(outcome, NotARecipe) and outcome.reason != NotRecipeReason.MULTIPLE_RECIPES:
         # The use case never returns this; a page that is not a recipe is page_no_recipe.
         return _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "page_no_recipe", "")
+    return _outcome_response(outcome)
+
+
+def _picture_refused(exc: PictureRefused) -> JSONResponse:
+    """The picture itself cannot be used. Codes only, never the file name or technical text."""
+    code = {
+        "empty": "picture_empty",
+        "unsupported": "picture_unsupported",
+        "too_large": "picture_too_large",
+    }[exc.kind]
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        content={"detail": "", "code": code},
+    )
+
+
+def _picture_body(outcome: CapturedPictureDraft) -> dict[str, Any]:
+    """The draft, with the compressed picture's metadata in place of the link's `page` key."""
+    content = _draft_body(outcome)
+    picture = outcome.picture
+    content["picture"] = {
+        "tier": picture.tier.value,
+        "sharpness": picture.sharpness,
+        "original_dimensions": list(picture.original_dimensions),
+        "final_dimensions": list(picture.final_dimensions),
+        "size_kb": picture.size_kb,
+        "steps_taken": [
+            {"quality": step.quality, "max_side": step.max_side} for step in picture.steps_taken
+        ],
+        # The processed WebP only: the original upload is never kept or sent back.
+        "preview_image": "data:image/webp;base64," + base64.b64encode(picture.webp).decode("ascii"),
+    }
+    return content
+
+
+@router.post("/notebooks/{notebook_id}/captures/picture")
+def capture_recipe_picture(
+    notebook_id: uuid.UUID,
+    body: CapturePictureBody,
+    request: Request,
+    user_id: uuid.UUID = Depends(require_user_alias),
+    capture: CapturePictureRecipe = Depends(get_capture_recipe_picture),
+    prefs: PreferencesRepository = Depends(get_preferences_repository),
+) -> JSONResponse:
+    """A draft from one cookbook photo (spec 041, contracts/capture-picture-api.md)."""
+    try:
+        outcome = capture.execute(
+            CapturePictureCommand(
+                actor_user_id=user_id,
+                notebook_id=notebook_id,
+                image_base64=body.image_base64,
+                handwritten=body.handwritten,
+                language=_language(request, prefs, user_id),
+            )
+        )
+    except PictureRefused as exc:
+        return _picture_refused(exc)
+    except NotebookNotFoundError:
+        return _error(
+            status.HTTP_404_NOT_FOUND,
+            NotebookNotFoundError.CODE,
+            NotebookNotFoundError.MESSAGE,
+        )
+    except KitchenArchivedError:
+        return _error(
+            status.HTTP_409_CONFLICT,
+            KitchenArchivedError.CODE,
+            KitchenArchivedError.MESSAGE,
+        )
+    if isinstance(outcome, CapturedPictureDraft):
+        return JSONResponse(status_code=status.HTTP_200_OK, content=_picture_body(outcome))
     return _outcome_response(outcome)
 
 

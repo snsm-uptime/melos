@@ -149,7 +149,6 @@ export function SignupForm({ locale, inviteToken }: Props) {
 
   return (
     <form className={styles.form} onSubmit={onSubmit} noValidate>
-      <p className={styles.hint}>{subtitle}</p>
       {emailHint ? (
         <p className={styles.hint}>
           {ti.emailMatchHint.replace("{emailHint}", emailHint)}

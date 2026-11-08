@@ -48,6 +48,8 @@ class UserModel(Base):
     )
     language: Mapped[str | None] = mapped_column(String(8), nullable=True)
     theme: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # Spec 041: show the picture-capture disclaimer. True until the account turns it off.
+    disclaimers: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     last_opened_kitchen_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("kitchens.id", ondelete="SET NULL"), nullable=True
     )
