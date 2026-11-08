@@ -154,6 +154,7 @@ def _me_response(result) -> MeResponse:
         language=result.language,
         theme=result.theme,
         last_opened_kitchen_id=result.last_opened_kitchen_id,
+        disclaimers=result.disclaimers,
     )
 
 
@@ -256,7 +257,12 @@ def patch_current_user(
     # wire-set membership is the only signal for "clear".
     photo_field_set = "photo_base64" in body.model_fields_set
     clear_photo = photo_field_set and body.photo_base64 is None
-    wrote_prefs = body.language is not None or body.theme is not None or photo_field_set
+    wrote_prefs = (
+        body.language is not None
+        or body.theme is not None
+        or body.disclaimers is not None
+        or photo_field_set
+    )
     try:
         # Prefs / last-opened first; claim alias last so a later failure cannot
         # leave a set-once alias under an error JSON response (get_db commits on
@@ -279,6 +285,7 @@ def patch_current_user(
                 theme=body.theme,
                 photo_base64=body.photo_base64,
                 clear_photo=clear_photo,
+                disclaimers=body.disclaimers,
             )
         )
         if body.alias is not None:

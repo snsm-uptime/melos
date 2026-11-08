@@ -140,7 +140,7 @@ describe("QuickAddRecipe (spec 069 US2)", () => {
   it("opens URL, Picture, Text, Write it myself and Recipe from another notebook", async () => {
     await render();
     await open();
-    expect(options()).toEqual(["URL", "Picture", "Text", "Write it myself", "Recipe from another notebook"]);
+    expect(options()).toEqual(["URL", "Picture", "Text", "Write it myself", "Copy recipe from notebook"]);
   });
 
   it("inside a kitchen, Text captures into my own kitchen notebook and returns to this page", async () => {
@@ -168,7 +168,7 @@ describe("QuickAddRecipe (spec 069 US2)", () => {
     nav.pathname = "/notebooks";
     await render();
     await open();
-    await act(async () => button("Recipe from another notebook")!.click());
+    await act(async () => button("Copy recipe from notebook")!.click());
     await act(async () => {
       for (let i = 0; i < 6; i += 1) await Promise.resolve();
     });
@@ -193,7 +193,7 @@ describe("QuickAddRecipe (spec 069 US2)", () => {
     replaceMembershipKitchens([kitchen("k1", "Home", true)]);
     await render();
     await open();
-    expect(options()).toEqual(["URL", "Picture", "Text", "Write it myself", "Recipe from another notebook"]);
+    expect(options()).toEqual(["URL", "Picture", "Text", "Write it myself", "Copy recipe from notebook"]);
   });
 
   it("is labelled in Spanish", async () => {

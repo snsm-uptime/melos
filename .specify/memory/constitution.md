@@ -1,10 +1,13 @@
 # Melos Project Constitution
 
-**Version:** 2.0.0  
+**Version:** 2.1.1  
 **Ratified:** 2026-10-19  
-**Last Amended:** 2026-11-04
+**Last Amended:** 2026-11-07
 
 ### Amendment log
+
+- **2.1.1 (2026-11-07)**: Principle 2 names `pillow-heif` as an approved library for the spec 041 image pipeline, for HEIC decoding (PATCH: naming an approved library, no principle changed). Approved by the project lead on 2026-11-07.
+- **2.1.0 (2026-11-07)**: Principle 5 allows stored and served images and files (uploads and downloads) when the story designs their quality and resolution to the use case; visibility follows the record they belong to. Principle 2 names Pillow and NumPy as approved image libraries for the image pipeline (spec 041, research R-image). Approved by the project lead in the spec 041 clarification session (2026-11-07). Every other principle is unchanged.
 
 - **2.0.0 (2026-11-04)**: The MVP is closed: it is the work done up to 2026-11-04 (backlog stories S-001 to S-065 as recorded in `dev/docs/backlog.yaml` on that date). Work from now on is post-MVP and is not held to the MVP's product limits. Principle 5 drops "Photos are not stored"; principle 9 is redefined from the MVP scope and deadline to post-MVP scope by backlog priority. Every other principle is unchanged. Approved by the project lead in the spec 026 planning session (2026-11-04).
 
@@ -53,6 +56,7 @@ Amendments are recorded with their date and version in this document's header.
 **Non-negotiable rules:**
 - Python 3.12 and `uv` only—never `pip`, `python -m venv`, or `requirements.txt`
 - Node (ui/), Docker Compose, Alembic, ruff, pytest, vitest, eslint
+- Image pipeline (spec 041 only): Pillow, NumPy and pillow-heif (HEIC decoding), approved 2026-11-07 (constitution 2.1.0 and 2.1.1)
 - Next.js 16, React 19, Tailwind 4 (ui); FastAPI and SQLAlchemy (api)
 - Gemini API only, via `google-genai` SDK, through ports in `adapters/llm/`
 - Model names and sensitive config come from environment only, never hard-coded
@@ -96,7 +100,7 @@ Amendments are recorded with their date and version in this document's header.
 **Non-negotiable rules:**
 - An AI draft is never saved without the user confirming it first
 - The assistant only answers from the kitchen's recipes, ingredients, categories, and conversation history—no web search, no general knowledge, no nutrition or health advice
-- Images (recipe images, receipts, photos sent for capture) are stored only when a story says so, with a size limit and a format check; an image sent only for extraction is not kept unless its story stores it
+- Images and files (recipe images, receipts, photos sent for capture, uploads and downloads) may be stored and served only when a story says so; that story designs their quality and resolution, with the smallest that serves the use case, a size limit and a format check. A stored image is visible only to the people who can read the record it belongs to. An image sent only for extraction is not kept unless its story stores it
 - No unit conversion or carry-over ("1 cup + 20 tbsp" stays as is)
 - Messages are never edited after sending
 

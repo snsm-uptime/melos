@@ -85,6 +85,7 @@ describe("the add-recipe entry points in Spanish (spec 063)", () => {
           open
           onClose={() => {}}
           onChooseUrl={() => {}}
+          onChoosePicture={() => {}}
           onChooseText={() => {}}
           onChooseManual={() => {}}
         />,
@@ -94,7 +95,7 @@ describe("the add-recipe entry points in Spanish (spec 063)", () => {
     expect(text).toContain("Agregar una receta");
     expect(text).toContain("Texto");
     expect(text).toContain("Imagen");
-    expect(text).toContain("Próximamente");
+    expect(text).not.toContain("Próximamente");
     expect(text).not.toContain("Add a recipe");
     expect(text).not.toContain("Coming soon");
   });

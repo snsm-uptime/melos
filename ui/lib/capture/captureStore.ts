@@ -90,13 +90,22 @@ export type DraftView = {
   pageCut?: boolean;
   /** The recipe's language (spec 043): detected from the text, which the member may change. */
   recipeLanguage?: "en" | "es";
+  /** The draft came from a picture (spec 041): the source is a photo and the disclaimer shows. */
+  fromPicture?: boolean;
 };
 
 /**
  * What the capture sheet shows (spec 026): the text sheet, or the link sheet with the link the
  * member typed. Back and any refusal keep the link unchanged (FR-018).
  */
-export type CaptureSource = { kind: "text" } | { kind: "url"; link: string };
+export type CaptureSource =
+  | { kind: "text" }
+  | { kind: "url"; link: string }
+  /**
+   * The picture sheet (spec 041): the chosen file and the Handwritten switch. Both survive
+   * Back and any refusal; Discard empties the file.
+   */
+  | { kind: "picture"; file: File | null; handwritten: boolean };
 
 /** The match-control value that means "new ingredient". Not a catalog entry name. */
 export const NEW_CHOICE = "__new__";
@@ -181,11 +190,25 @@ export function openSheet(
 
 function sourceFor(kind: CaptureSource["kind"] | undefined): CaptureSource {
   if (kind === undefined || kind === state.source.kind) return state.source;
-  return kind === "url" ? { kind: "url", link: "" } : { kind: "text" };
+  if (kind === "url") return { kind: "url", link: "" };
+  if (kind === "picture") return { kind: "picture", file: null, handwritten: true };
+  return { kind: "text" };
 }
 
 export function setLink(link: string): void {
   update({ source: { kind: "url", link }, message: null });
+}
+
+/** The picture sheet's file: chosen, replaced or removed (null). Clears the message. */
+export function setPicture(file: File | null): void {
+  if (state.source.kind !== "picture") return;
+  update({ source: { ...state.source, file }, message: null });
+}
+
+/** The picture sheet's Handwritten switch. The chosen file is kept. */
+export function setHandwritten(on: boolean): void {
+  if (state.source.kind !== "picture") return;
+  update({ source: { ...state.source, handwritten: on } });
 }
 
 /** The member picked, replaced or removed (null) the draft's photo. */
@@ -368,15 +391,19 @@ export function discardDraft(): void {
     draft: null,
     originalHash: null,
     text: "",
-    source:
-      state.source.kind === "url"
-        ? { kind: "url", link: "" }
-        : { kind: "text" },
+    source: emptiedSource(state.source),
     sheetOpen: !state.draft?.manual,
     message: null,
     saveKey: null,
     saving: false,
   });
+}
+
+/** Discard empties what the sheet holds: the link, or the picture file (the switch is kept). */
+function emptiedSource(source: CaptureSource): CaptureSource {
+  if (source.kind === "url") return { kind: "url", link: "" };
+  if (source.kind === "picture") return { ...source, file: null };
+  return { kind: "text" };
 }
 
 /** Leave by any other route: the store is emptied (FR-032). */

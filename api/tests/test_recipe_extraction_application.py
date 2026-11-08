@@ -15,6 +15,7 @@ from dataclasses import replace
 
 import pytest
 from adapters.llm.fake_extractor import FakeRecipeExtractor
+from application.ports import Picture
 from application.recipe_extraction import (
     MAX_TEXT_CHARS,
     AIProviderError,
@@ -597,3 +598,79 @@ def test_each_page_part_gets_the_language_of_its_text() -> None:
     service = RecipeExtraction(FakeRecipeExtractor(part), _Languages("es"))
     result = service.extract("Sopa\nCocinar.", [], 10.0, mode=ExtractionMode.PAGE_PART, part=(1, 2))
     assert isinstance(result, DraftPart) and result.language == "es"
+
+
+# ── picture mode (spec 041, research R12) ──────────────────────────────────────
+
+
+def _picture() -> Picture:
+    return Picture(data=b"webp-bytes", media_type="image/webp")
+
+
+def _picture_part(lines: tuple[IngredientLine, ...] = ()) -> DraftPart:
+    return DraftPart(
+        title="Sopa",
+        base_servings=None,
+        ingredient_lines=lines,
+        steps=("Cocinar.",),
+    )
+
+
+def test_picture_calls_the_port_once_with_the_picture_names_and_timeout() -> None:
+    fake = FakeRecipeExtractor(_picture_part())
+    service = RecipeExtraction(fake)
+    picture = _picture()
+    service.extract_picture(picture, ["salt", "onion"], 12.5)
+    assert len(fake.picture_calls) == 1
+    call = fake.picture_calls[0]
+    assert (call.media_type, call.byte_count, call.ingredient_names, call.timeout_s) == (
+        "image/webp",
+        len(picture.data),
+        ("salt", "onion"),
+        12.5,
+    )
+
+
+def test_picture_part_gets_the_language_of_its_own_text() -> None:
+    languages = _Languages("es")
+    line = IngredientLine(name="sal", vague=True, vague_text="una pizca de")
+    service = RecipeExtraction(FakeRecipeExtractor(_picture_part((line,))), languages)
+    result = service.extract_picture(_picture(), [], 10.0)
+    assert isinstance(result, DraftPart) and result.language == "es"
+    assert languages.texts == ["Sopa\nsal\nCocinar."]
+
+
+def test_picture_part_without_a_detector_has_no_language() -> None:
+    service = RecipeExtraction(FakeRecipeExtractor(_picture_part()))
+    result = service.extract_picture(_picture(), [], 10.0)
+    assert isinstance(result, DraftPart) and result.language is None
+
+
+@pytest.mark.parametrize(
+    "outcome",
+    [
+        NotARecipe(NotRecipeReason.NOT_FOOD),
+        InvalidOutput(),
+        Unavailable(),
+        LimitReached(30),
+        AIProviderError(),
+    ],
+    ids=["not_a_recipe", "invalid", "unavailable", "limit", "provider"],
+)
+def test_picture_failures_pass_through_unchanged(outcome: object) -> None:
+    service = RecipeExtraction(FakeRecipeExtractor(outcome))  # type: ignore[arg-type]
+    assert service.extract_picture(_picture(), [], 10.0) is outcome
+
+
+def test_identical_pictures_at_the_same_time_make_two_port_calls() -> None:
+    fake = FakeRecipeExtractor(_picture_part())
+    service = RecipeExtraction(fake)
+    threads = [
+        threading.Thread(target=service.extract_picture, args=(_picture(), [], 10.0))
+        for _ in range(2)
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert len(fake.picture_calls) == 2

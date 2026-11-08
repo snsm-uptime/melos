@@ -87,10 +87,10 @@ describe("AddRecipeCallToAction", () => {
     }));
     expect(items).toEqual([
       { text: "URL", disabled: null },
-      { text: "PictureComing soon", disabled: "true" },
+      { text: "Picture", disabled: null },
       { text: "Text", disabled: null },
       { text: "Write it myselfAn empty recipe, no assistant", disabled: null },
-      { text: "Recipe from another notebook", disabled: null },
+      { text: "Copy recipe from notebook", disabled: null },
     ]);
     expect(button("Cancel")).toBeNull();
     expect(button("Confirm")).toBeNull();
@@ -118,12 +118,13 @@ describe("AddRecipeCallToAction", () => {
     expect(document.querySelector("textarea")).toBeNull();
   });
 
-  it("Picture stays disabled and opens nothing", () => {
+  it("Picture opens the picture sheet with a file input and no text or link field", () => {
     render();
     act(() => button("Add a recipe")!.click());
 
-    act(() => button("PictureComing soon")!.click());
+    act(() => button("Picture")!.click());
 
+    expect(document.querySelector("input[type='file']")).not.toBeNull();
     expect(document.querySelector("input[type='url']")).toBeNull();
     expect(document.querySelector("textarea")).toBeNull();
   });

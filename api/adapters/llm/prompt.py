@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 
-from adapters.llm.prompt_templates import render
+from adapters.llm.prompt_templates import load_template, render
 
 TEXT_OPEN = "<<<RECIPE_TEXT"
 TEXT_CLOSE = "RECIPE_TEXT>>>"
@@ -72,5 +72,41 @@ def _user_turn(text: str, ingredient_names: Sequence[str]) -> str:
         TEXT_CLOSE=TEXT_CLOSE,
         NAMES_OPEN=NAMES_OPEN,
         NAMES_JSON=json.dumps(sorted(set(ingredient_names)), ensure_ascii=False),
+        NAMES_CLOSE=NAMES_CLOSE,
+    )
+
+
+def _shared_ingredient_line_rules() -> str:
+    """The ingredient-line block of the page-part template, verbatim, so both prompts agree.
+
+    Cut from the template text between `- ingredient_lines:` and `- steps:`; the vague phrases
+    are filled here the same way the page-part prompt fills them.
+    """
+    template = load_template("recipe_extraction_page_part_system")
+    start = template.index("- ingredient_lines:")
+    end = template.index("- steps:")
+    return template[start:end].replace("{{VAGUE_PHRASES}}", VAGUE_PHRASES)
+
+
+def picture_system_instruction() -> str:
+    """System instruction for one cookbook photo (spec 041, FR-019 to FR-022)."""
+    return render(
+        "recipe_extraction_picture_system",
+        NAMES_OPEN=NAMES_OPEN,
+        NAMES_CLOSE=NAMES_CLOSE,
+        INGREDIENT_LINE_RULES=_shared_ingredient_line_rules(),
+    )
+
+
+def build_picture_contents(ingredient_names: Sequence[str]) -> str:
+    """User turn for a photo: the catalog names block and one line. The image is sent beside it.
+
+    The closing marker is cut out of each name, so no catalog name can close the block.
+    """
+    names = [name.replace(NAMES_CLOSE, "") for name in ingredient_names]
+    return render(
+        "recipe_extraction_picture_user",
+        NAMES_OPEN=NAMES_OPEN,
+        NAMES_JSON=json.dumps(sorted(set(names)), ensure_ascii=False),
         NAMES_CLOSE=NAMES_CLOSE,
     )

@@ -5,6 +5,8 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterator
 
+from adapters.image.calibration import load_calibration_table
+from adapters.image.pipeline import PillowPicturePipeline
 from adapters.language.lingua_detector import LinguaLanguageDetector
 from adapters.llm.gemini_embedder import GeminiEmbedder
 from adapters.llm.gemini_extractor import GeminiRecipeExtractor
@@ -74,6 +76,7 @@ from application.ports import (
     PageFetcher,
     PageReader,
     PasswordHasher,
+    PicturePipeline,
     PreferencesRepository,
     RefusedSiteLog,
     SessionRef,
@@ -82,6 +85,7 @@ from application.ports import (
 )
 from application.rate_limit import SlidingWindowRateLimiter, resolve_trusted_client_ip
 from application.recipe_capture import CaptureRecipeText
+from application.recipe_capture_picture import CapturePictureRecipe
 from application.recipe_capture_url import CaptureRecipeUrl
 from application.recipe_extraction import RecipeExtraction
 from application.recipe_lists import ListKitchenRecipesService, ListNotebookRecipesService
@@ -315,6 +319,28 @@ def get_capture_recipe_url(
         batch_chars=load_recipe_page_batch_chars(),
         max_batches=load_recipe_page_max_batches(),
         refused_sites=_refused_site_log(request, db),
+    )
+
+
+def get_picture_pipeline() -> PicturePipeline:
+    """Stateless, so one per request is fine (spec 041). Pillow and pillow-heif load here."""
+    return PillowPicturePipeline()
+
+
+def get_capture_recipe_picture(
+    db: Session = Depends(get_db),
+    extraction: RecipeExtraction = Depends(get_recipe_extraction),
+    pipeline: PicturePipeline = Depends(get_picture_pipeline),
+) -> CapturePictureRecipe:
+    """Picture capture shares the per-process extraction use case (spec 041)."""
+    return CapturePictureRecipe(
+        SqlAlchemyNotebookRepository(db),
+        SqlAlchemyIngredientCatalog(db),
+        extraction,
+        pipeline,
+        units=SqlAlchemyUnitRepository(db),
+        timeout_s=load_gemini_settings().image_timeout_s,
+        table=load_calibration_table(),
     )
 
 

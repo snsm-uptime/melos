@@ -31,8 +31,9 @@ class _FakeRepo:
         theme=None,
         last_opened_kitchen_id=None,
         clear_last_opened_kitchen_id=False,
+        disclaimers=None,
     ):  # noqa: ANN001
-        del last_opened_kitchen_id, clear_last_opened_kitchen_id
+        del last_opened_kitchen_id, clear_last_opened_kitchen_id, disclaimers
         raise AssertionError("not used")
 
 

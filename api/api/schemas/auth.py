@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictBool
 
 
 class RegisterRequest(BaseModel):
@@ -49,11 +49,14 @@ class MeResponse(BaseModel):
     language: str | None = None
     theme: str | None = None
     last_opened_kitchen_id: UUID | None = None
+    disclaimers: bool = True
 
 
 class PatchMeBody(BaseModel):
     language: Literal["en", "es"] | None = None
     theme: Literal["light", "dark", "system"] | None = None
+    # Strict: "no" and 1 are refused (spec 041), not coerced to a bool.
+    disclaimers: StrictBool | None = None
     last_opened_kitchen_id: UUID | None = None
     # Wide wire bound so length/charset failures answer with `invalid_alias`
     # from the domain instead of an unlabelled pydantic 422.

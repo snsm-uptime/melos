@@ -1,5 +1,6 @@
 /** Client helpers for capture and the controlled lists, through the same-origin BFF (spec 016). */
 
+import { downscalePicture } from "./pictureDownscale";
 import type { CaptureMessage } from "./captureStore";
 
 export type CaptureDraftResponse = {
@@ -33,6 +34,20 @@ export type CaptureDraftResponse = {
   };
   /** Link capture only (spec 026): where the draft came from and the page's photo. */
   page?: { source_url: string; preview_image: string | null; cut: boolean };
+  /** Picture capture only (spec 041): the compressed picture and how it was read. */
+  picture?: CapturePictureMeta;
+};
+
+export type CapturePictureMeta = {
+  tier: "tier_1" | "tier_2" | "tier_3";
+  /** Null for a handwritten picture, which is not measured (FR-025). */
+  sharpness: number | null;
+  original_dimensions: [number, number];
+  final_dimensions: [number, number];
+  size_kb: number;
+  steps_taken: { quality: number; max_side: number }[];
+  /** The processed WebP as a data URI; the original upload is never sent back. */
+  preview_image: string;
 };
 
 export type CaptureResult =
@@ -65,10 +80,43 @@ export async function submitLinkCapture(notebookId: string, url: string): Promis
   return postCapture(notebookId, "url", { url });
 }
 
+/**
+ * Submit one picture for one notebook (spec 041). The picture is shrunk first, then sent as
+ * standard base64 with no data-URI prefix. One attempt; the member retries by submitting again.
+ */
+export async function submitPictureCapture(
+  notebookId: string,
+  file: File,
+  handwritten: boolean,
+): Promise<CaptureResult> {
+  let shrunk: Blob;
+  try {
+    shrunk = await downscalePicture(file);
+  } catch {
+    // The browser cannot read it: nothing is sent in its place (FR-024).
+    return { ok: false, message: { code: "picture_unsupported" } };
+  }
+  return postCapture(notebookId, "picture", {
+    image_base64: await base64Of(shrunk),
+    handwritten,
+  });
+}
+
+/** Standard base64 of a blob's bytes, built in chunks so a large picture is no problem. */
+async function base64Of(blob: Blob): Promise<string> {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const CHUNK = 0x8000;
+  let binary = "";
+  for (let start = 0; start < bytes.length; start += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(start, start + CHUNK));
+  }
+  return btoa(binary);
+}
+
 async function postCapture(
   notebookId: string,
-  source: "text" | "url",
-  payload: Record<string, string>,
+  source: "text" | "url" | "picture",
+  payload: Record<string, string | boolean>,
 ): Promise<CaptureResult> {
   let response: Response;
   try {

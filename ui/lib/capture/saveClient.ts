@@ -18,11 +18,14 @@ export function buildSaveBody(
   const { draft, notebook, saveKey, text } = capture;
   if (!draft || !notebook || !saveKey) return null;
   const sourceUrl = draft.sourceUrl;
+  // A picture draft is a photo source: no text and no address are stored (spec 041, FR-019).
+  const photo = draft.fromPicture === true;
   return {
     save_key: saveKey,
     notebook_id: notebook.id,
-    source_text: sourceUrl ? "" : text.trim(),
-    ...(sourceUrl ? { source_url: sourceUrl } : {}),
+    source_text: photo || sourceUrl ? "" : text.trim(),
+    ...(photo ? { source_kind: "photo" } : {}),
+    ...(!photo && sourceUrl ? { source_url: sourceUrl } : {}),
     ...(previewImage ? { preview_image: previewImage } : {}),
     title: draft.title,
     base_servings: draft.baseServings,

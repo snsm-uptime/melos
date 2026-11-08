@@ -155,9 +155,9 @@ stories:
     title: Capture a recipe from a photo (JPEG, PNG, HEIC up to 10 MB)
     epic: Capture
     priority: should
-    status: backlog
+    status: in_progress
     journey: J2
-    source: prd.md J2, 1.5A
+    source: prd.md J2, 1.5A; specs/041-capture-recipe-photo
 
   # ---------------------------------------------------------------------------
   # Ask (J6) and MCP, open.

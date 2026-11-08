@@ -65,7 +65,12 @@ class SqlAlchemyRecipeRepository:
         try:
             # A savepoint, so a duplicate save key leaves the caller's transaction usable.
             with self._session.begin_nested():
-                if recipe.source_url is not None:
+                if recipe.source_kind == "photo":
+                    # A picture stores no url and no text: only the processed preview (spec 041).
+                    source = SourceModel(
+                        user_id=recipe.author_id, type="photo", url=None, raw_text=None
+                    )
+                elif recipe.source_url is not None:
                     # A link capture stores the address only, never the page (FR-019).
                     source = SourceModel(
                         user_id=recipe.author_id, type="url", url=recipe.source_url, raw_text=None
