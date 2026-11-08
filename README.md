@@ -37,9 +37,13 @@ The flow:
 
 1. Sign up (or get invited by email) and join a kitchen as owner or member.
    Everyone gets a default personal notebook and "My kitchen".
-2. Capture a recipe from pasted text (URL and photo come later); Gemini
-   extracts title, servings, ingredients and steps into a draft you review,
-   matching ingredient names to the notebook's catalog ("onions" → "onion").
+2. Capture a recipe from pasted text, a web link, or a photo of a cookbook page
+   (JPEG, PNG or HEIC up to 10 MB; a Handwritten switch for handwritten pages).
+   Gemini extracts title, servings, ingredients and steps into a draft you
+   review, matching ingredient names to the notebook's catalog ("onions" → "onion").
+   Picture capture waits `GEMINI_IMAGE_TIMEOUT_S` (30 s by default) for the
+   assistant; there is no other setting. The account's **Show disclaimers**
+   option (on by default) controls the reminder shown after a picture is read.
 3. Save the draft into a notebook; browse, filter, edit and delete recipes, and
    scale a recipe's servings on its detail page.
 4. Add recipes to the kitchen's cart and set the servings of each; ingredients

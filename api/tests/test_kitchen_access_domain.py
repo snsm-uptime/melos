@@ -117,6 +117,7 @@ class FakePrefsRepo:
         theme: str | None = None,
         last_opened_kitchen_id: UUID | None = None,
         clear_last_opened_kitchen_id: bool = False,
+        disclaimers: bool | None = None,
     ) -> UserPreferencesRecord:
         current = self.prefs[user_id]
         opened = current.last_opened_kitchen_id

@@ -14,7 +14,7 @@ import threading
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from domain.errors import DomainError
 from domain.ingredient_catalog import CatalogIndex, CatalogLike, as_language
@@ -28,6 +28,10 @@ from domain.recipe_draft import (
 # Partial page mode results (spec 026), re-exported: they live in the domain for merge_parts.
 from domain.recipe_page import DraftPart as DraftPart
 from domain.recipe_page import NoRecipeContent as NoRecipeContent
+
+if TYPE_CHECKING:
+    # ports.py imports this module, so the picture type is named for type checkers only.
+    from application.ports import Picture
 
 logger = logging.getLogger(__name__)
 MAX_TEXT_CHARS = 10_000
@@ -89,10 +93,12 @@ class AIProviderError:
 
 
 class ExtractionMode(StrEnum):
-    """WHOLE: one whole recipe (text capture). PAGE_PART: one part of a web page (spec 026)."""
+    """WHOLE: one whole recipe (text capture). PAGE_PART: one part of a web page (spec 026).
+    PICTURE: one cookbook photo (spec 041), reached through `extract_picture`."""
 
     WHOLE = "whole"
     PAGE_PART = "page_part"
+    PICTURE = "picture"
 
 
 ExtractionResult = (
@@ -124,6 +130,16 @@ class RecipeExtractor(Protocol):
         mode: ExtractionMode = ExtractionMode.WHOLE,
         part: tuple[int, int] | None = None,
     ) -> ExtractionResult: ...
+
+    def extract_picture(
+        self,
+        picture: Picture,
+        ingredient_names: Sequence[str],
+        timeout_s: float,
+    ) -> ExtractionResult:
+        """Picture mode (spec 041). Never returns Draft, DraftIncomplete or NoRecipeContent;
+        never raises for service, network or output problems."""
+        ...
 
 
 @dataclass(slots=True)
@@ -217,6 +233,33 @@ class RecipeExtraction:
                 self._in_flight.pop(key, None)
             flight.done.set()
         return flight.result
+
+    def extract_picture(
+        self,
+        picture: Picture,
+        ingredient_names: CatalogLike,
+        timeout_s: float,
+    ) -> ExtractionResult:
+        """One picture, one port call. No in-flight sharing: each photo is its own call (R12)."""
+        # Logged by media type, byte count and result class only: never the bytes (FR-021).
+        logger.info(
+            "picture extraction media_type=%s bytes=%d",
+            picture.media_type,
+            len(picture.data),
+        )
+        result = self._extractor.extract_picture(picture, _all_names(ingredient_names), timeout_s)
+        if isinstance(result, DraftPart) and self._languages is not None:
+            # The part's own text: title, line names and steps, joined with newlines.
+            text = "\n".join(
+                [
+                    *([result.title] if result.title else []),
+                    *(line.name for line in result.ingredient_lines),
+                    *result.steps,
+                ]
+            )
+            result = replace(result, language=self._language_of(text))
+        logger.info("picture extraction result=%s", type(result).__name__)
+        return result
 
     def _language_of(self, text: str):  # noqa: ANN202
         assert self._languages is not None

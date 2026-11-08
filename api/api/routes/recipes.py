@@ -177,6 +177,7 @@ def save_recipe(
         source_url=body.source_url,
         preview_image=body.preview_image,
         language=body.language,
+        source_kind=body.source_kind,
     )
     try:
         saved = save.execute(command)

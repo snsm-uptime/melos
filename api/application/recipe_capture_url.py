@@ -27,11 +27,11 @@ from domain.errors import KitchenArchivedError, NotebookNotFoundError
 from domain.ingredient_catalog import CatalogIndex
 from domain.page_link import normalize_link
 from domain.recipe_draft import (
-    DEFAULT_SERVINGS,
     DraftProblems,
     DraftRecipe,
     InvalidDraftError,
     check_draft,
+    open_incomplete,
 )
 from domain.recipe_page import (
     DraftPart,
@@ -181,7 +181,7 @@ class CaptureRecipeUrl:
             result = self._draft(pool, batches.batches, names, units)
             if isinstance(result, DraftIncomplete) and result.recipe is not None:
                 # Whatever the page gave opens in the form, which marks the missing parts.
-                result = Draft(recipe=_as_is(result.recipe))
+                result = Draft(recipe=open_incomplete(result.recipe))
             if isinstance(result, Draft) and source.page_recipe is not None:
                 result = Draft(recipe=apply_page_recipe(result.recipe, source.page_recipe))
             self._log(
@@ -272,22 +272,6 @@ class CaptureRecipeUrl:
     def _log(self, outcome: str, host: str, **counts: object) -> None:
         details = " ".join(f"{key}={value}" for key, value in counts.items())
         logger.info("link capture outcome=%s host=%s %s", outcome, host, details)
-
-
-def _as_is(recipe: DraftRecipe) -> DraftRecipe:
-    """An incomplete draft, unchecked: blanks stay blank and the form asks for them.
-
-    Lines are not matched to the catalog (they show as new). Servings left out by the page take
-    the usual default, marked estimated.
-    """
-    servings = recipe.base_servings if recipe.base_servings and recipe.base_servings >= 1 else None
-    return DraftRecipe(
-        title=(recipe.title or "").strip(),
-        base_servings=servings or DEFAULT_SERVINGS,
-        servings_estimated=servings is None,
-        ingredient_lines=recipe.ingredient_lines,
-        steps=tuple(step.strip() for step in recipe.steps if step and step.strip()),
-    )
 
 
 def _source(recipes: tuple[PageRecipe, ...], markdown: str) -> _Source:

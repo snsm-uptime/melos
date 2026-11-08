@@ -75,6 +75,46 @@ const en = {
   unavailableLink:
     "The assistant isn't responding. Your link is kept — try again.",
   misconfiguredLink: "Assistant misconfigured. Your link is kept",
+  // Picture capture (spec 041).
+  pictureTitle: "Add a picture",
+  pictureDrop: "Upload file or drag and drop",
+  pictureChoose: "Choose a picture",
+  pictureRemove: "Remove",
+  pictureReplace: "Replace",
+  picturePreviewAlt: "The chosen picture",
+  pictureFileLabel: (name: string, size: string) => `${name} (${size})`,
+  pictureSubmit: "Read recipe",
+  pictureHandwritten: "Handwritten",
+  pictureTyped: "Printed",
+  progressPhrases: [
+    "Searching ingredients",
+    "Reading the recipe",
+    "Counting the servings",
+    "Checking the measurements",
+    "Putting the steps in order",
+    "Polishing the draft",
+  ] as readonly string[],
+  progressHandwrittenPhrase: "Understanding your calligraphy",
+  pictureDisclaimer:
+    "This draft was read from a picture and may contain mistakes. Check the title, servings, ingredients and steps against the page.",
+  pictureUnsupported: "That file isn't a supported picture. Use a JPEG, PNG or HEIC image.",
+  pictureTooLarge: "That picture is too large. Use one up to 10 MB.",
+  pictureNeeded: "Choose a picture first.",
+  pictureCamera: "Take a photo",
+  picturePasteHint: "You can also paste an image (Ctrl/Cmd+V).",
+  pictureFromClipboard: "Copy from clipboard",
+  pictureClipboardHint: "Paste the copied picture with Ctrl/Cmd+V.",
+  pictureEdit: "Position the picture",
+  pictureDone: "Done",
+  pictureDragHint: "Drag the picture to position it.",
+  pictureZoom: "Zoom",
+  pictureSave: "Save",
+  pictureShoot: "Take photo",
+  pictureCameraOff: "The camera is not available. Choose a file instead.",
+  pictureOneAtATime: "Choose one picture at a time.",
+  invalidOutputPicture: "We couldn't read that recipe. Try a clearer photo.",
+  unavailablePicture: "The assistant isn't responding. Your picture is kept — try again.",
+  misconfiguredPicture: "Assistant misconfigured. Your picture is kept",
   pagePhotoAlt: "Photo from the recipe page",
   removePhoto: "Remove photo",
   addPhoto: "Add a photo",
@@ -238,6 +278,46 @@ const es: CaptureMessages = {
     "El asistente no responde. Tu enlace se conserva: inténtalo de nuevo.",
   misconfiguredLink:
     "El asistente está mal configurado. Tu enlace se conserva.",
+  // Picture capture (spec 041).
+  pictureTitle: "Añadir una imagen",
+  pictureDrop: "Sube un archivo o arrástralo aquí",
+  pictureChoose: "Elegir una imagen",
+  pictureRemove: "Quitar",
+  pictureReplace: "Cambiar",
+  picturePreviewAlt: "La imagen elegida",
+  pictureFileLabel: (name: string, size: string) => `${name} (${size})`,
+  pictureSubmit: "Leer receta",
+  pictureHandwritten: "Manuscrito",
+  pictureTyped: "Impreso",
+  progressPhrases: [
+    "Buscando ingredientes",
+    "Leyendo la receta",
+    "Contando las porciones",
+    "Revisando las medidas",
+    "Ordenando los pasos",
+    "Puliendo el borrador",
+  ] as readonly string[],
+  progressHandwrittenPhrase: "Entendiendo tu letra",
+  pictureDisclaimer:
+    "Este borrador se leyó de una imagen y puede tener errores. Revisa el título, las porciones, los ingredientes y los pasos con la página.",
+  pictureUnsupported: "Ese archivo no es una imagen compatible. Usa una imagen JPEG, PNG o HEIC.",
+  pictureTooLarge: "Esa imagen es demasiado grande. Usa una de hasta 10 MB.",
+  pictureNeeded: "Elige una imagen primero.",
+  pictureCamera: "Hacer una foto",
+  picturePasteHint: "También puedes pegar una imagen (Ctrl/Cmd+V).",
+  pictureFromClipboard: "Copiar del portapapeles",
+  pictureClipboardHint: "Pega la imagen copiada con Ctrl/Cmd+V.",
+  pictureEdit: "Ajustar la imagen",
+  pictureDone: "Listo",
+  pictureDragHint: "Arrastra la imagen para ajustarla.",
+  pictureZoom: "Ampliar",
+  pictureSave: "Guardar",
+  pictureShoot: "Tomar foto",
+  pictureCameraOff: "La cámara no está disponible. Elige un archivo.",
+  pictureOneAtATime: "Elige una imagen a la vez.",
+  invalidOutputPicture: "No pudimos leer esa receta. Prueba con una foto más nítida.",
+  unavailablePicture: "El asistente no responde. Tu imagen se conserva: inténtalo de nuevo.",
+  misconfiguredPicture: "El asistente está mal configurado. Tu imagen se conserva.",
   pagePhotoAlt: "Foto de la página de la receta",
   removePhoto: "Quitar foto",
   addPhoto: "Agregar una foto",
@@ -396,11 +476,18 @@ export function messageForCode(
   message: CaptureMessage,
   locale: Locale,
   max?: number,
-  source: "text" | "url" = "text",
+  source: "text" | "url" | "picture" = "text",
 ): string {
   const t = captureMessagesFor(locale);
   const link = source === "url";
+  const picture = source === "picture";
   switch (message.code) {
+    case "picture_empty":
+      return t.pictureNeeded;
+    case "picture_unsupported":
+      return t.pictureUnsupported;
+    case "picture_too_large":
+      return t.pictureTooLarge;
     case "link_empty":
     case "link_invalid":
       return t.linkInvalid;
@@ -422,9 +509,10 @@ export function messageForCode(
     case "ai_limit_reached":
       return t.limit;
     case "ai_invalid_output":
-      return t.invalidOutput;
+      return picture ? t.invalidOutputPicture : t.invalidOutput;
     case "ai_misconfigured":
-      return link ? t.misconfiguredLink : t.misconfigured;
+      if (link) return t.misconfiguredLink;
+      return picture ? t.misconfiguredPicture : t.misconfigured;
     case "text_too_long":
       return t.tooLong(max ?? 5000);
     case "kitchen_archived":
@@ -439,6 +527,7 @@ export function messageForCode(
     case "kitchen_not_found":
       return t.notFound;
     default:
-      return link ? t.unavailableLink : t.unavailable;
+      if (link) return t.unavailableLink;
+      return picture ? t.unavailablePicture : t.unavailable;
   }
 }

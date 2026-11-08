@@ -25,7 +25,7 @@ from domain.ingredient_catalog import as_language
 from domain.page_link import PageLinkRefused, check_link
 from domain.recipe import MAX_LINES, MAX_STEPS, NewRecipe, resolve_line_names
 from domain.recipe_draft import DraftRecipe, IngredientLine, InvalidDraftError, check_edited_draft
-from domain.recipe_preview import validate_preview_image
+from domain.recipe_preview import validate_picture_preview, validate_preview_image
 
 from application.notebooks import (
     NotebookView,
@@ -69,6 +69,8 @@ class SaveRecipeCommand:
     preview_image: str | None = None
     # 'en' or 'es', from the draft (spec 043 FR-005a); anything else stores Spanish.
     language: str | None = None
+    # "text", "url" or "photo" (spec 041). None infers it: a link when source_url is set, else text.
+    source_kind: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,8 +110,16 @@ class SaveRecipeDraft:
             raise TextTooLongError(self._max_text_chars)
         if len(command.lines) > MAX_LINES or len(command.steps) > MAX_STEPS:
             raise InvalidDraftError("too long")
-        source_url = self._source_url(command, source_text)
-        preview_image = validate_preview_image(command.preview_image)
+        source_kind = self._source_kind(command, source_text)
+        source_url = self._source_url(command, source_text) if source_kind == "url" else None
+        if source_kind == "photo":
+            preview_image = (
+                validate_picture_preview(command.preview_image)
+                if command.preview_image is not None
+                else None
+            )
+        else:
+            preview_image = validate_preview_image(command.preview_image)
 
         stored = self._recipes.find_by_save_key(command.actor_user_id, command.save_key)
         if stored is not None:
@@ -147,6 +157,7 @@ class SaveRecipeDraft:
             source_url=source_url,
             preview_image=preview_image,
             language=as_language(command.language) or "es",
+            source_kind=source_kind,  # type: ignore[arg-type]
         )
         try:
             stored = self._recipes.add(recipe)
@@ -171,6 +182,25 @@ class SaveRecipeDraft:
         return SavedRecipe(
             recipe=stored, notebook=view, created=True, created_catalog_names=new_names
         )
+
+    @staticmethod
+    def _source_kind(command: SaveRecipeCommand, source_text: str) -> str:
+        """The source the command names must agree with what it sends (spec 041 T057)."""
+        kind = command.source_kind
+        if kind is None:
+            kind = "url" if command.source_url is not None else "text"
+        if kind == "photo":
+            if source_text or command.source_url is not None:
+                raise InvalidDraftError("source")
+        elif kind == "url":
+            if command.source_url is None:
+                raise InvalidDraftError("source")
+        elif kind == "text":
+            if command.source_url is not None:
+                raise InvalidDraftError("source")
+        else:
+            raise InvalidDraftError("source")
+        return kind
 
     @staticmethod
     def _source_url(command: SaveRecipeCommand, source_text: str) -> str | None:

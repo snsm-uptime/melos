@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
+from typing import Literal
 from uuid import UUID
 
 from domain.ingredient_catalog import CatalogLike, Language, as_index, same_spelling
@@ -35,6 +36,8 @@ class NewRecipe:
     preview_image: str | None = None
     # The language most of the recipe is in (spec 043 FR-005a).
     language: Language = "es"
+    # Where the recipe came from: "photo" stores a source row with no url and no text (spec 041).
+    source_kind: Literal["text", "url", "photo"] = "text"
 
 
 @dataclass(frozen=True, slots=True)

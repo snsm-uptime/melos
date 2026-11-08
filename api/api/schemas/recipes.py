@@ -40,6 +40,8 @@ class SaveRecipeBody(BaseModel):
     preview_image: str | None = None
     # The draft's language (spec 043 FR-005a); left out stores Spanish.
     language: Literal["en", "es"] | None = None
+    # "photo" for a picture draft (spec 041); left out means text, or url when source_url is set.
+    source_kind: Literal["text", "url", "photo"] | None = None
 
 
 class UpdateRecipeBody(BaseModel):

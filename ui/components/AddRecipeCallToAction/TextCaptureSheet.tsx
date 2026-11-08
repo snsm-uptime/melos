@@ -75,6 +75,8 @@ export function toDraftView(response: CaptureDraftResponse): DraftView {
           pageCut: response.page.cut,
         }
       : {}),
+    // Picture capture only (spec 041): the processed WebP is the recipe's photo.
+    ...(response.picture ? { previewImage: response.picture.preview_image } : {}),
   };
 }
 

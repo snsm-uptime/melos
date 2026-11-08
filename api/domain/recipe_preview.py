@@ -31,6 +31,33 @@ def _matches(kind: str, data: bytes) -> bool:
     return len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP"
 
 
+PICTURE_PREVIEW_MAX_DECODED_BYTES = 500_000  # the largest tier cap (spec 041, FR-026)
+
+
+def validate_picture_preview(data_uri: str) -> str:
+    """The processed WebP of a picture recipe (spec 041): WebP only, at most 500,000 bytes.
+
+    The tier is not sent back on save, so the cap that holds on every tier is the one enforced.
+    """
+    prefix = "data:image/webp;base64,"
+    if not data_uri.startswith(prefix):
+        raise InvalidPreviewImageError("The picture must be a WebP data URI.")
+    encoded = data_uri[len(prefix) :]
+    if not encoded:
+        raise InvalidPreviewImageError("The picture is empty.")
+    if len(encoded) > PICTURE_PREVIEW_MAX_DECODED_BYTES * 4 // 3 + 4:
+        raise InvalidPreviewImageError("The picture is larger than 500 KB.")
+    try:
+        decoded = base64.b64decode(encoded, validate=True)
+    except (ValueError, binascii.Error) as exc:
+        raise InvalidPreviewImageError("The picture must be valid base64.") from exc
+    if len(decoded) > PICTURE_PREVIEW_MAX_DECODED_BYTES:
+        raise InvalidPreviewImageError("The picture is larger than 500 KB.")
+    if not _matches("webp", decoded):
+        raise InvalidPreviewImageError("The picture is not the format its prefix says.")
+    return data_uri
+
+
 def validate_preview_image(value: str | None) -> str | None:
     """Return the data URI unchanged, or raise InvalidPreviewImageError. None is no image."""
     if value is None:

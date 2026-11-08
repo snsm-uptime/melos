@@ -779,3 +779,20 @@ def check_draft(
         unknown_units=unknown_units,
         language=draft.language,
     )
+
+
+def open_incomplete(recipe: DraftRecipe) -> DraftRecipe:
+    """An incomplete draft, unchecked: blanks stay blank and the form asks for them.
+
+    Lines are not matched to the catalog (they show as new). Servings left out by the page take
+    the usual default, marked estimated. Shared by link and picture capture (spec 041).
+    """
+    servings = recipe.base_servings if recipe.base_servings and recipe.base_servings >= 1 else None
+    return DraftRecipe(
+        title=(recipe.title or "").strip(),
+        base_servings=servings or DEFAULT_SERVINGS,
+        servings_estimated=servings is None,
+        ingredient_lines=recipe.ingredient_lines,
+        steps=tuple(step.strip() for step in recipe.steps if step and step.strip()),
+        language=recipe.language,
+    )

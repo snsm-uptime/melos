@@ -44,6 +44,8 @@ export type MePreferences = {
   theme: ThemePreference | null;
   alias: string | null;
   photo_base64: string | null;
+  /** Show the picture-capture disclaimer (spec 041). True until the account turns it off. */
+  disclaimers: boolean;
 };
 
 type PreferencesContextValue = {
@@ -52,6 +54,8 @@ type PreferencesContextValue = {
   theme: ThemePreference;
   me: MePreferences | null;
   setTheme: (theme: ThemePreference) => Promise<void>;
+  /** Turn the disclaimers on or off (spec 041). Saved to the account; rejects when it fails. */
+  setDisclaimers: (next: boolean) => Promise<void>;
   /**
    * Choose the interface language (spec 063). Signed in: saved to the account with
    * `PATCH /auth/me`, and rejects when it cannot be saved. Signed out: kept in the session pick
@@ -149,6 +153,7 @@ export function PreferencesProvider({
         theme?: string | null;
         alias?: string | null;
         photo_base64?: string | null;
+        disclaimers?: boolean;
       };
       if (gen !== refreshGen.current || epoch !== prefsSessionEpoch) return;
       const nextLocale = resolveLocale(data.language);
@@ -168,6 +173,7 @@ export function PreferencesProvider({
         alias: typeof data.alias === "string" && data.alias ? data.alias : null,
         photo_base64:
           typeof data.photo_base64 === "string" && data.photo_base64 ? data.photo_base64 : null,
+        disclaimers: data.disclaimers !== false,
       });
       setLocale(nextLocale);
       setThemeState(nextTheme);
@@ -228,6 +234,7 @@ export function PreferencesProvider({
       email?: string;
       alias?: string | null;
       photo_base64?: string | null;
+      disclaimers?: boolean;
     };
     const nextLocale = resolveLocale(data.language);
     const nextTheme = resolveTheme(data.theme);
@@ -247,8 +254,29 @@ export function PreferencesProvider({
       alias: typeof data.alias === "string" && data.alias ? data.alias : null,
       photo_base64:
         typeof data.photo_base64 === "string" && data.photo_base64 ? data.photo_base64 : null,
+      disclaimers: data.disclaimers !== false,
     });
     applyDom(nextLocale, nextTheme);
+  }, []);
+
+  const setDisclaimers = useCallback(async (next: boolean) => {
+    refreshGen.current += 1;
+    const response = await fetch("/api/auth/me", {
+      method: "PATCH",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ disclaimers: next }),
+    });
+    if (!response.ok) {
+      throw new Error("Failed to save disclaimers");
+    }
+    const data = (await response.json()) as { disclaimers?: boolean };
+    const saved = data.disclaimers !== false;
+    setMe((current) => (current ? { ...current, disclaimers: saved } : current));
   }, []);
 
   const setLanguage = useCallback(
@@ -293,10 +321,11 @@ export function PreferencesProvider({
       theme,
       me,
       setTheme,
+      setDisclaimers,
       setLanguage,
       refresh,
     }),
-    [ready, locale, theme, me, setTheme, setLanguage, refresh],
+    [ready, locale, theme, me, setTheme, setDisclaimers, setLanguage, refresh],
   );
 
   return (
