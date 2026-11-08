@@ -25,3 +25,10 @@ services:
       timeout: 5s
       retries: 24
       start_period: 20s
+
+  jobs:
+    healthcheck:
+      interval: 30s
+      timeout: 5s
+      retries: 12
+      start_period: 30s

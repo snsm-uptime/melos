@@ -13,6 +13,8 @@ from uuid import UUID
 from domain.cart import CartAction
 from domain.default_kitchen import MemberKitchen
 from domain.ingredient_catalog import CatalogIndex, MergePlan, SplitPlan
+from domain.ingredient_discovery import Candidate, RecipeLineName
+from domain.ingredient_translation import IngredientTranslationRequest, IngredientTranslationResult
 from domain.notebook import Notebook, NotebookRole
 from domain.places import CustomPlace, PlaceRef
 from domain.recipe import EditedRecipe, NewRecipe
@@ -991,6 +993,102 @@ class IngredientPairSuggester(Protocol):
     def suggest(self, names: Sequence[tuple[str, str | None]]) -> list[tuple[str, str]]:
         """(english, spanish) pairs the model thinks are one ingredient; not yet filtered."""
         ...
+
+
+class IngredientTranslator(Protocol):
+    """Port: validate one ingredient name and translate it into the other language (spec 073).
+
+    Sends only the name and the two language codes, never recipe text (constitution 4). Raises a
+    domain error (TranslationUnavailable or TranslationUnparseable) when no answer comes back.
+    """
+
+    def translate(self, request: IngredientTranslationRequest) -> IngredientTranslationResult:
+        """The model's validity judgement and translation for one name."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class RecipeScan:
+    """The recipe lines read since the watermark, and how many recipes they came from."""
+
+    lines: list[RecipeLineName]
+    recipes_scanned: int
+
+
+@dataclass(frozen=True, slots=True)
+class PendingStandardIngredient:
+    """A standard ingredient the model has not checked yet, with its discovered name."""
+
+    id: UUID
+    name: str
+    language: Literal["en", "es"]
+
+
+class StandardCatalog(Protocol):
+    """Port: the standard ingredient table the scheduled job writes (spec 073).
+
+    Only the translation use case and the admin accept use case write standard names (FR-021).
+    """
+
+    def recipe_scan_since(self, since: datetime | None) -> RecipeScan:
+        """Recipe lines of recipes updated at or after `since`; all recipes when `since` is None."""
+        ...
+
+    def add_discovered(self, candidates: Sequence[Candidate]) -> int:
+        """Create one standard ingredient per new key, with its discovery name. Returns how many."""
+        ...
+
+    def pending_translations(self, limit: int) -> list[PendingStandardIngredient]:
+        """Up to `limit` standard ingredients with no `ai_checked_at`, oldest first."""
+        ...
+
+    def has_name_in_language(self, ingredient_id: UUID, language: Literal["en", "es"]) -> bool:
+        """Whether a standard name in that language already exists for the ingredient."""
+        ...
+
+    def save_translation(
+        self,
+        ingredient_id: UUID,
+        name: str,
+        language: Literal["en", "es"],
+        model: str,
+        checked_at: datetime,
+    ) -> None:
+        """Save the AI name and set `ai_checked_at` in one transaction (data-model rule)."""
+        ...
+
+    def mark_checked(self, ingredient_id: UUID, checked_at: datetime) -> None:
+        """Set `ai_checked_at` after an answer that saved nothing (invalid, or already named)."""
+        ...
+
+
+class JobRunLog(Protocol):
+    """Port: one `job_run` row per run; the last succeeded start is the discovery watermark."""
+
+    def start(self, started_at: datetime) -> UUID: ...
+
+    def skip(self, at: datetime) -> None: ...
+
+    def finish(
+        self,
+        run_id: UUID,
+        *,
+        status: Literal["succeeded", "failed"],
+        finished_at: datetime,
+        found: int,
+        translated: int,
+        rejected: int,
+        failed: int,
+        error: str | None,
+    ) -> None: ...
+
+    def last_succeeded_start(self) -> datetime | None: ...
+
+
+class RunLock(Protocol):
+    """Port: at most one run at a time. Yields True when this run holds the lock."""
+
+    def try_acquire(self) -> AbstractContextManager[bool]: ...
 
 
 class LanguageDetector(Protocol):

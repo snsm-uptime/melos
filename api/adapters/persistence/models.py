@@ -477,6 +477,7 @@ class RecipeModel(Base):
             unique=True,
             postgresql_where=text("save_key IS NOT NULL"),
         ),
+        Index("ix_recipe_updated_at", "updated_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -978,3 +979,121 @@ class RefusedSiteMemberModel(Base):
         Text, ForeignKey("refused_site.domain", ondelete="CASCADE"), primary_key=True
     )
     member_key: Mapped[bytes] = mapped_column(LargeBinary, primary_key=True)
+
+
+class StandardIngredientModel(Base):
+    """One real-world ingredient in the standard table, separate from every notebook (spec 073)."""
+
+    __tablename__ = "standard_ingredient"
+    __table_args__ = (
+        CheckConstraint("language IN ('en', 'es')", name="ck_standard_ingredient_language"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    normalized_name: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    language: Mapped[str] = mapped_column(String(2), nullable=False)
+    # Null means "not yet checked by the model"; set once it has answered (research R3).
+    ai_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class StandardIngredientNameModel(Base):
+    """A standard name in one language: discovered, AI-made or admin-accepted (spec 073)."""
+
+    __tablename__ = "standard_ingredient_name"
+    __table_args__ = (
+        UniqueConstraint(
+            "standard_ingredient_id", "language", name="uq_standard_ingredient_name_language"
+        ),
+        CheckConstraint("language IN ('en', 'es')", name="ck_standard_ingredient_name_language"),
+        CheckConstraint(
+            "source IN ('discovery', 'ai', 'admin')", name="ck_standard_ingredient_name_source"
+        ),
+        CheckConstraint("source <> 'ai' OR model IS NOT NULL", name="ck_standard_name_ai_model"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    standard_ingredient_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("standard_ingredient.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    language: Mapped[str] = mapped_column(String(2), nullable=False)
+    source: Mapped[str] = mapped_column(Text, nullable=False)
+    model: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class StandardIngredientReviewModel(Base):
+    """A person's custom value for an AI-made standard name, waiting for an admin (spec 073)."""
+
+    __tablename__ = "standard_ingredient_review"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'accepted', 'rejected')", name="ck_standard_review_status"
+        ),
+        CheckConstraint(
+            "(status = 'pending') = (decided_by IS NULL)", name="ck_standard_review_decided"
+        ),
+        Index("ix_standard_review_status_created", "status", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    standard_ingredient_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("standard_ingredient.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    replaces_name: Mapped[str] = mapped_column(Text, nullable=False)
+    proposed_name: Mapped[str] = mapped_column(Text, nullable=False)
+    proposed_language: Mapped[str] = mapped_column(String(2), nullable=False)
+    proposed_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'pending'"))
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class JobRunModel(Base):
+    """One hourly run of the scheduled jobs service; its last succeeded start is the watermark."""
+
+    __tablename__ = "job_run"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('running', 'succeeded', 'failed', 'skipped')", name="ck_job_run_status"
+        ),
+        CheckConstraint(
+            "found >= 0 AND translated >= 0 AND rejected >= 0 AND failed >= 0",
+            name="ck_job_run_counts",
+        ),
+        Index("ix_job_run_status_started", "status", "started_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    found: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    translated: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    rejected: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    failed: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)

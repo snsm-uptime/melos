@@ -1,15 +1,23 @@
 # Local / default Compose graph — melos
-# Services: db | api | ui | mcp (AD-2). Volumes outside the repo (AD-3 / NFR-9).
+# Services: db | api | ui | jobs (AD-2, spec 073). Volumes outside the repo (AD-3 / NFR-9).
 # Requires a local `.env` (copy from `.env.example`) — no silent secret defaults.
 
-# MELOS_COMPOSE_NAME / API_HOST_PORT / UI_HOST_PORT / MCP_HOST_PORT let parallel worktrees
+# MELOS_COMPOSE_NAME / API_HOST_PORT / UI_HOST_PORT let parallel worktrees
 # run isolated Compose stacks without port or container-name clashes.
 # Defaults preserve the single-checkout local workflow.
 name: ${MELOS_COMPOSE_NAME:-melos}
 
+# One logging setup for every service, so `docker compose logs` collects them together (spec 073 R7).
+x-json-logging: &json-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   db:
     image: pgvector/pgvector:pg16
+    logging: *json-logging
     env_file:
       - .env
     environment:
@@ -32,6 +40,7 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
+    logging: *json-logging
     env_file:
       - .env
     environment:
@@ -111,6 +120,7 @@ services:
     build:
       context: ./ui
       dockerfile: Dockerfile
+    logging: *json-logging
     env_file:
       - .env
     environment:
@@ -132,26 +142,37 @@ services:
     networks:
       - internal
 
-  mcp:
+  # Scheduled ingredient translation (spec 073). No published port: it only reaches db and Gemini.
+  # Built from the api image, with its own entry point and environment.
+  jobs:
     build:
-      context: ./mcp
+      context: ./api
       dockerfile: Dockerfile
-    ports:
-      - "${MCP_HOST_PORT:-9000}:9000"
+    command: ["python", "-m", "jobs"]
+    logging: *json-logging
+    env_file:
+      - .env
     environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       PYTHONUNBUFFERED: "1"
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_CHAT_MODEL: ${GEMINI_CHAT_MODEL:-gemini-2.0-flash}
-      GEMINI_EMBED_MODEL: ${GEMINI_EMBED_MODEL:-gemini-embedding-001}
-      GEMINI_EMBED_DIM: ${GEMINI_EMBED_DIM:-768}
+      # No default: the job stops at startup with a message when this is empty (FR-015).
+      GEMINI_TRANSLATE_MODEL: ${GEMINI_TRANSLATE_MODEL:-}
+      JOBS_INTERVAL_SECONDS: ${JOBS_INTERVAL_SECONDS:-3600}
+      JOBS_TRANSLATE_BATCH_SIZE: ${JOBS_TRANSLATE_BATCH_SIZE:-50}
+      JOBS_RUN_ONCE: ${JOBS_RUN_ONCE:-0}
+      JOBS_HEARTBEAT_PATH: ${JOBS_HEARTBEAT_PATH:-/tmp/jobs-heartbeat}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     healthcheck:
-      # python:3.12-slim has no curl — same urllib probe as api.
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/health')\""]
-      interval: 10s
+      # The job has no HTTP server: the heartbeat file must be less than 7200 s old (research R8).
+      test: ["CMD-SHELL", "python -m jobs.heartbeat"]
+      interval: 5m
       timeout: 5s
       retries: 3
+      start_period: 60s
+    restart: unless-stopped
     networks:
       - internal
 
