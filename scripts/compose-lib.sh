@@ -112,6 +112,7 @@ compose_print_urls() {
   echo "UI  http://localhost:${ui_port}"
   echo "API http://localhost:${api_port}"
   echo "Health: curl -sf http://localhost:${api_port}/health && curl -sf http://localhost:${ui_port}/health"
+  echo "Jobs (no port, heartbeat): docker compose ps jobs"
 }
 
 # MELOS_DATA as Compose sees it: .env may write it with ${HOME}, $HOME or ~.

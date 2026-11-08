@@ -106,5 +106,12 @@ services:
       retries: 15
       start_period: 45s
 
+  jobs:
+    healthcheck:
+      interval: 30s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
 volumes:
   ui_node_modules:

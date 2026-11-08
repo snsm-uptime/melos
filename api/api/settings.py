@@ -264,3 +264,24 @@ def load_embedding_settings() -> EmbeddingSettings:
         min_closeness=closeness,
         record_retention_days=_env_positive_int("SEARCH_RECORD_RETENTION_DAYS", 180),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class JobsSettings:
+    """The scheduled jobs service (spec 073). The model name has no default (FR-015)."""
+
+    translate_model: str
+    interval_seconds: int
+    translate_batch_size: int
+    run_once: bool
+    heartbeat_path: str
+
+
+def load_jobs_settings() -> JobsSettings:
+    return JobsSettings(
+        translate_model=(os.environ.get("GEMINI_TRANSLATE_MODEL") or "").strip(),
+        interval_seconds=_env_positive_int("JOBS_INTERVAL_SECONDS", 3600),
+        translate_batch_size=_env_positive_int("JOBS_TRANSLATE_BATCH_SIZE", 50),
+        run_once=_env_bool("JOBS_RUN_ONCE", default=False),
+        heartbeat_path=(os.environ.get("JOBS_HEARTBEAT_PATH") or "/tmp/jobs-heartbeat").strip(),
+    )

@@ -117,7 +117,7 @@ On the active list, tabs across the top show "All" and one tab per place that ha
 
 **Store tabs**
 
-- **FR-014**: The active list and closed lists MUST show an "All" tab and one tab per place with at least one item,; defaults first in the FR-006 order, then custom places alphabetically.
+- **FR-014**: The active list and closed lists MUST show an "All" tab and one tab per place with at least one item,; defaults first in the FR-006 order, then custom places alphabetically. The Place picker of a catalog or ingredient table is a separate control and lists custom places first, then defaults (spec 074, owner decision 2026-11-08).
 - **FR-015**: Each place tab MUST show the number of its items not yet bought.
 - **FR-016**: An item's place MUST be the place of the ingredient with the same normalized name (S-018 normalization); hand-added items follow the same rule.
 - **FR-016a**: Adding an item by hand (S-025) MUST offer an optional place picker. A picked place is saved to the adding person's places for that normalized name (replacing any earlier choice), and the name is listed on their catalog page from then on even if no catalog has it. Other members still see the item under their own place for that name.

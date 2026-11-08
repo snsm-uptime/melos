@@ -10,6 +10,7 @@ from domain.ingredient_catalog import (
     CatalogEntry,
     CatalogIndex,
     LineMatch,
+    discovery_key,
     match_line,
     name_taken,
     names_to_add,
@@ -227,3 +228,21 @@ def test_a_plain_index_answers_like_a_list_of_names() -> None:
     for text in ("tomatoes", "Red Peppers", "basil"):
         assert propose_entry(text, plain) == propose_entry(text, names)
         assert match_line(None, text, "tomato", plain) == match_line(None, text, "tomato", names)
+
+
+@pytest.mark.parametrize(
+    ("text", "key"),
+    [
+        ("Onions", "onion"),
+        ("  onion ", "onion"),
+        ("Tomatoes", "tomato"),
+        ("Berries", "berry"),
+        ("Leaves", "leaf"),
+        ("Cebollas", "cebolla"),
+        ("limón", "limon"),
+        ("limones", "limon"),
+        ("LIMON", "limon"),
+    ],
+)
+def test_discovery_key_joins_plurals_case_and_spaces(text: str, key: str) -> None:
+    assert discovery_key(text) == key

@@ -37,3 +37,9 @@ services:
   ui:
     profiles:
       - donotstart
+
+  jobs:
+    # Integration tests run in the api container against TEST_POSTGRES_DB. The job is not started
+    # here, so it never writes to a test database during the pass (spec 073, T050).
+    profiles:
+      - donotstart

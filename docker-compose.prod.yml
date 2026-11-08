@@ -40,3 +40,8 @@ services:
     environment:
       NODE_ENV: production
       AUTH_CLIENT_IP_HEADER: ${AUTH_CLIENT_IP_HEADER:-X-Melos-Client-IP}
+
+  jobs:
+    restart: unless-stopped
+    healthcheck:
+      start_period: 60s

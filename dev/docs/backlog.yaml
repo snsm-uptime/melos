@@ -90,6 +90,19 @@ stories:
       once, 70/70 checks pass; SC-001 about 0.85 s, SC-002 under 25 ms (specs/066-table-sort-search/notes.md).
       Pending: the owner's review of the Spanish strings in ui/lib/i18n/table.ts.
 
+  - id: S-074
+    title: Ingredients table layout for the user catalog views and the admin dashboard
+    epic: Platform
+    priority: should
+    status: backlog
+    source: owner request 2026-11-08 (ingredients table outline); ID proposed, owner to confirm
+    notes: >
+      Spec: specs/074-ingredients-table (draft). Shared first columns on the Ingredients page and the
+      admin Ingredients table; admin-only Standard status, Source and Notebooks columns; admin
+      Ingredients grouped by name (People = distinct authors, spec 055). Place picker lists custom
+      places first (spec 070 tabs unchanged). Language always shown in the catalog view. The admin
+      review list (spec 073 FR-022) is its own section. Reads existing tables only, no new data.
+
   # ---------------------------------------------------------------------------
   # Recipes (J3), open.
   # ---------------------------------------------------------------------------

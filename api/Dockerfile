@@ -22,6 +22,7 @@ COPY adapters ./adapters
 COPY api ./api
 COPY alembic.ini ./
 COPY scripts ./scripts
+COPY jobs ./jobs
 
 RUN chown -R appuser:appuser /app
 

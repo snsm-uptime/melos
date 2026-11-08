@@ -15,12 +15,12 @@ Melos runs as a multi-service Docker Compose stack on the operator's server:
 │ Reverse Proxy (nginx/Caddy) │ ← outside repo
 ├─────────────────────────────┤
 │ api:8000    ui:3000         │ ← HTTP (localhost only)
-│ mcp:9000    db:5432         │
+│ db:5432   (jobs: no port)   │
 └─────────────────────────────┘
 ```
 
 - **TLS termination** is managed **outside the repository** (by the reverse proxy)
-- **API, UI, and MCP** listen on `localhost` (Docker bridge) only
+- **API and UI** listen on `localhost` (Docker bridge) only; **jobs** publishes no port
 - **PostgreSQL** uses a dedicated volume at `${MELOS_DATA}/pgdata` (outside the container)
 - **No secrets** are stored in the repo; they live in `.env` on the operator's server only
 
@@ -32,7 +32,7 @@ Melos runs as a multi-service Docker Compose stack on the operator's server:
 
 2. **System Resources**
    - CPU: 2+ cores
-   - RAM: 2GB+ (for PostgreSQL, API, UI, MCP)
+   - RAM: 2GB+ (for PostgreSQL, API, UI, jobs)
    - Disk: 20GB+ for `${MELOS_DATA}`
 
 3. **Reverse Proxy** (outside repo)
@@ -214,7 +214,7 @@ NAME       IMAGE              STATUS
 melos-db   pgvector:pg16      Up (healthy)
 melos-api  melos-api:latest   Up (healthy)
 melos-ui   melos-ui:latest    Up (healthy)
-melos-mcp  melos-mcp:latest   Up (healthy)
+melos-jobs melos-api:latest   Up (healthy)
 ```
 
 ### 6. Verify Health Endpoints
@@ -228,9 +228,9 @@ curl -I http://localhost:8000/health
 curl -I http://localhost:3000/health
 # Expected: 200 OK with JSON {"status":"healthy","service":"ui","timestamp":"..."}
 
-# Check MCP health
-curl -I http://localhost:9000/health
-# Expected: 200 OK with JSON {"status":"healthy","service":"mcp","timestamp":"..."}
+# The jobs service has no HTTP port; Compose checks its heartbeat file
+docker compose ps jobs
+# Expected: (healthy)
 
 # Check from the reverse proxy
 curl -I https://melos.example.com/health
@@ -394,7 +394,7 @@ EOF
 docker stats
 
 # Restart the problematic service
-docker compose restart api  # or ui, db, mcp
+docker compose restart api  # or ui, db, jobs
 ```
 
 ## Security Checklist

@@ -93,8 +93,8 @@ PRD Appendix E); ingredient catalog matching stays.
 - **What it uses:** Gemini API via the `google-genai` SDK (chat model and
   embedding model, configured with `GEMINI_CHAT_MODEL`, `GEMINI_EMBED_MODEL`,
   `GEMINI_EMBED_DIM`), plus a RAG over the kitchen's recipes stored as vectors
-  in PostgreSQL with `pgvector`. An MCP service (separate container, port 9000)
-  exposes Melos to external AI clients.
+  in PostgreSQL with `pgvector`. A scheduled `jobs` service (spec 073, no published port)
+  validates and translates new ingredient names once an hour.
 - **Why this option:** [one or two sentences]
 - **What happens if it fails:** every external call (Gemini, web fetch, SMTP)
   goes through a port in `application/ports.py` and maps errors to domain errors
@@ -111,13 +111,13 @@ proven auth, architecture, tooling and deployment patterns
 | | What | Notes |
 |---|---|---|
 | **Reused as-is** | Hexagonal `api/` layout, `ui/` shell, `scripts/` compose helpers, CI workflow, Dockerfiles, auth layer (sessions, argon2, password reset, email verification, rate limiting) | Auth layer is not modified without explicit approval |
-| **Adapted** | Docker Compose (`pgvector/pgvector:pg16`, new `mcp` service), env prefix `FH_` → `MELOS_`, data dir `~/melos`, list → kitchen, UI in Spanish (default) and English, chosen in the account | Config changes go through `.env` and `api/settings.py`, never per-file renames |
-| **New** | Gemini integration, notebooks with snapshots and invites, recipe capture, cart/shopping list, conversations, embeddings, PDF export, MCP service | |
+| **Adapted** | Docker Compose (`pgvector/pgvector:pg16`, new `jobs` service, spec 073), env prefix `FH_` → `MELOS_`, data dir `~/melos`, list → kitchen, UI in Spanish (default) and English, chosen in the account | Config changes go through `.env` and `api/settings.py`, never per-file renames |
+| **New** | Gemini integration, notebooks with snapshots and invites, recipe capture, cart/shopping list, conversations, embeddings, PDF export, scheduled ingredient translation (jobs) | |
 | **Not reused** | All finance domain code (cards, statements, budgets, FX, bank adapters) and finance seed credentials | |
 
 **Stack:** Python 3.12 + `uv`, FastAPI, SQLAlchemy + Alembic, PostgreSQL 16 +
 pgvector, pytest, ruff · Next.js 16 (App Router, Turbopack), React 19,
-Tailwind CSS 4, TypeScript 5, Vitest, ESLint · Docker Compose (db, api, ui, mcp).
+Tailwind CSS 4, TypeScript 5, Vitest, ESLint · Docker Compose (db, api, ui, jobs).
 
 - **Tools:** Claude Code, Cursor, GitHub, Gemini API via google-genai SDK
 - **Agent context file:** [AGENTS.md](AGENTS.md) (project governance and work instructions)
@@ -198,7 +198,7 @@ mkdir -p "${MELOS_DATA:-$HOME/melos}/pgdata"
 (cd api && uv sync --group dev)
 (cd ui && npm install)
 
-# 4. Start db, api, ui and mcp (migrations run automatically on api start)
+# 4. Start db, api, ui and jobs (migrations run automatically on api start)
 ./scripts/compose-up.sh        # add -d to run in the background
 ```
 
@@ -206,7 +206,6 @@ Then check:
 
 - UI: http://localhost:3000 (login page)
 - API: http://localhost:8000/health
-- MCP: http://localhost:9000/health
 
 With `SEED_DEV_USER=1` (dev only) the API seeds two verified users (owner and
 member) sharing one kitchen, with one recipe from each of them, ready for testing auth,

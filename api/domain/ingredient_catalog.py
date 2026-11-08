@@ -209,6 +209,11 @@ def normalize_name(text: str) -> str:
     return _SPACES.sub(" ", without_accents.casefold()).strip()
 
 
+def discovery_key(name: str) -> str:
+    """The standard table's key for a name: its shortest singular form (spec 073, research R5)."""
+    return min(singular_forms(normalize_name(name)), key=lambda form: (len(form), form))
+
+
 def same_spelling(first: str, second: str) -> bool:
     """True when two names differ only in letter case or spaces, so no change is listed (FR-003)."""
     return _SPACES.sub(" ", first.casefold()).strip() == _SPACES.sub(" ", second.casefold()).strip()

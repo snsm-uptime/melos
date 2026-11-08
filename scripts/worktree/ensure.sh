@@ -34,7 +34,7 @@ mkdir -p "$DATA/pgdata" "$DATA/pdfs"
 # The api runs as a non-root user with no chown on start.
 chmod 777 "$DATA/pdfs"
 
-KEYS='MELOS_COMPOSE_NAME|API_HOST_PORT|UI_HOST_PORT|MCP_HOST_PORT|DEBUG_PORT|UI_DEBUG_PORT|UI_DEBUG_WORKER_PORT|MELOS_DATA|PUBLIC_APP_URL'
+KEYS='MELOS_COMPOSE_NAME|API_HOST_PORT|UI_HOST_PORT|DEBUG_PORT|UI_DEBUG_PORT|UI_DEBUG_WORKER_PORT|MELOS_DATA|PUBLIC_APP_URL'
 TMP="$(mktemp "$ROOT/.env.XXXXXX")"
 {
   grep -vE "^($KEYS)=" "$PRIMARY/.env" || true
@@ -43,7 +43,6 @@ TMP="$(mktemp "$ROOT/.env.XXXXXX")"
   echo "MELOS_COMPOSE_NAME=$NAME"
   echo "API_HOST_PORT=$((8000 + OFFSET * 10))"
   echo "UI_HOST_PORT=$((3000 + OFFSET * 10))"
-  echo "MCP_HOST_PORT=$((9400 + OFFSET * 10))"
   echo "DEBUG_PORT=$((5700 + OFFSET))"
   echo "UI_DEBUG_PORT=$((9200 + OFFSET * 2))"
   # Next.js needs this to be UI_DEBUG_PORT + 1.

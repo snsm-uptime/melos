@@ -39,7 +39,7 @@ cd ../ui && npm install
 ### Starting the Development Stack
 
 ```bash
-# Start all services (db, api, ui, mcp) in the foreground
+# Start all services (db, api, ui, jobs) in the foreground
 ./scripts/compose-up.sh
 
 # Or in the background
@@ -58,7 +58,7 @@ cd ../ui && npm install
 Services will be available at:
 - **UI (BFF):** http://localhost:3000
 - **API:** http://localhost:8000 (health check: `/health`)
-- **MCP:** http://localhost:9000 (health check: `/health`)
+- **Jobs:** no port; its health is a heartbeat file, checked by Compose
 
 ### Making Changes
 
@@ -144,7 +144,7 @@ Services will be available at:
 ```
 feat(T050): Implement Docker Compose health checks for all services
 
-Add /health endpoints for api, ui, and mcp services. Endpoints return
+Add /health endpoints for the api and ui services. Endpoints return
 timezone-aware UTC timestamp and service name per contracts/health.md.
 Updated docker-compose.yml healthcheck probes.
 
@@ -233,7 +233,6 @@ Before opening a PR, test the key user flows:
 3. **Health checks**
    - `curl http://localhost:8000/health` returns `"service":"api"`
    - `curl http://localhost:3000/health` returns `"service":"ui"`
-   - `curl http://localhost:9000/health` returns `"service":"mcp"`
 
 ## Documentation
 
