@@ -112,20 +112,30 @@ describe("Home page", () => {
     expect(redirect).not.toHaveBeenCalled();
   });
 
-  it("stacks the notebooks section: title and lede, then the demo, then one column per feature", async () => {
-    const markup = await renderHome();
-    const html = section(markup, "notebooks");
-    const group = groupsInOrder().find((g) => g.id === "notebooks")!;
+  it.each(["notebooks", "ingredients"] as const)(
+    "stacks the %s section: title and lede, then the demo, then one column per feature",
+    async (id) => {
+      const markup = await renderHome();
+      const html = section(markup, id);
+      const group = groupsInOrder().find((g) => g.id === id)!;
 
-    const title = html.indexOf(escaped(group.title.en));
-    const lede = html.indexOf(escaped(group.lede.en));
-    const demo = html.indexOf("data-demo-title");
-    const features = availableFeatures("notebooks").map((f) => html.indexOf(escaped(f.name.en)));
-    expect(title).toBeGreaterThan(-1);
-    expect(title).toBeLessThan(lede);
-    expect(lede).toBeLessThan(demo);
-    for (const position of features) expect(position).toBeGreaterThan(demo);
-    expect(html).toContain("md:grid-flow-col");
+      const title = html.indexOf(escaped(group.title.en));
+      const lede = html.indexOf(escaped(group.lede.en));
+      const demo = html.indexOf("data-demo-title");
+      const features = availableFeatures(id).map((f) => html.indexOf(escaped(f.name.en)));
+      expect(title).toBeGreaterThan(-1);
+      expect(title).toBeLessThan(lede);
+      expect(lede).toBeLessThan(demo);
+      for (const position of features) expect(position).toBeGreaterThan(demo);
+      expect(html).toContain("md:grid-flow-col");
+    },
+  );
+
+  it("keeps the other groups split: text and demo side by side", async () => {
+    const markup = await renderHome();
+    for (const id of ["capture", "together", "shop", "home"]) {
+      expect(section(markup, id), id).not.toContain("md:grid-flow-col");
+    }
   });
 
   it("draws the cook-together and shop sections, and only those, on one surface band", async () => {

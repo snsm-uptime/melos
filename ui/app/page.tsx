@@ -24,6 +24,9 @@ import { fetchSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
+/** Groups with the title above the demo and their features in columns below it; the rest are split. */
+const STACKED: ReadonlySet<GroupId> = new Set<GroupId>(["notebooks", "ingredients"]);
+
 /** Groups drawn together on a full-width surface band, to give the page some depth. */
 const BANDED: ReadonlySet<GroupId> = new Set<GroupId>(["together", "shop"]);
 
@@ -75,7 +78,7 @@ export default async function Home() {
             locale={locale}
             featuresHeading={t.featuresHeading}
             demo={<TourDemo id={group.id} locale={locale} />}
-            layout={group.id === "notebooks" ? "stacked" : "split"}
+            layout={STACKED.has(group.id) ? "stacked" : "split"}
           />
         ));
         return run.banded ? (
