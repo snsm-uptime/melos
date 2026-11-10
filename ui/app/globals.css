@@ -3,7 +3,7 @@
 /* Class strategy matches PreferencesProvider FOUC: html.dark / html.light */
 @custom-variant dark (&:where(.dark, .dark *));
 
-@theme {
+@theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-foreground: var(--foreground);
