@@ -300,6 +300,19 @@ body {
   background: var(--muted);
 }
 
+/* Landing tour (spec 075, research R6): a section reached from the index or a shared address
+   keeps a little room above its title. Smooth scrolling only when motion is welcome, and only on
+   the signed-out scroller. */
+[data-landing-section] {
+  scroll-margin-top: 1.5rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-scroller="signed-out"] {
+    scroll-behavior: smooth;
+  }
+}
+
 /* Side panel: the slide speed and the sizes its absolute offsets depend on. */
 :root {
   --panel-slide: 300ms;

@@ -21,6 +21,7 @@ export function GroupSection({ group, features, locale, featuresHeading, demo }:
   return (
     <section
       id={group.id}
+      data-landing-section
       aria-labelledby={`${group.id}-title`}
       className="mx-auto grid max-w-5xl grid-cols-1 items-center gap-8 px-page-gutter py-12 md:grid-cols-2 md:gap-12"
     >

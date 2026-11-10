@@ -2,7 +2,13 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { availableFeatures, groupsInOrder, plannedFeatures } from "@/lib/featureInventory";
+import {
+  availableFeatures,
+  groupsInOrder,
+  plannedFeatures,
+  type Feature,
+  type GroupId,
+} from "@/lib/featureInventory";
 import { landingMessages, type DemoId } from "@/lib/i18n/landing";
 
 const fetchSession = vi.fn();
@@ -138,6 +144,40 @@ describe("Home page", () => {
     }
   });
 
+  it("has an index of the six groups that links to their sections (US3)", async () => {
+    const markup = await renderHome();
+
+    const label = escaped(landingMessages.en.indexLabel);
+    const start = markup.indexOf(`<nav aria-label="${label}"`);
+    expect(start).toBeGreaterThan(-1);
+    const nav = markup.slice(start, markup.indexOf("</nav>", start));
+    const links = [...nav.matchAll(/<a href="([^"]+)"[^>]*>([^<]*)<\/a>/g)].map((m) => [m[1], m[2]]);
+    expect(links).toEqual(groupsInOrder().map((group) => [`#${group.id}`, escaped(group.title.en)]));
+    expect(start).toBeLessThan(markup.indexOf('<section id="capture"'));
+  });
+
+  it.each([
+    ["en", "es"],
+    ["es", "en"],
+  ] as const)("shows the whole tour in %s and nothing in %s (US4)", async (locale, other) => {
+    const markup = await renderHome(locale);
+    const demos: DemoId[] = ["overview", ...(GROUP_IDS as DemoId[])];
+
+    for (const group of groupsInOrder()) {
+      expect(markup, group.id).toContain(escaped(group.title[locale]));
+      expect(markup, group.id).not.toContain(escaped(group.title[other]));
+      for (const feature of availableFeatures(group.id)) {
+        expect(markup, feature.id).toContain(escaped(feature.name[locale]));
+      }
+    }
+    for (const id of demos) {
+      expect(markup, id).toContain(escaped(landingMessages[locale].demo[id].title));
+      expect(markup, id).toContain(escaped(landingMessages[locale].demo[id].description));
+      expect(markup, id).not.toContain(escaped(landingMessages[other].demo[id].title));
+      expect(markup, id).not.toContain(escaped(landingMessages[other].demo[id].description));
+    }
+  });
+
   it("says shopping list, never shopping kitchen (FR-016)", async () => {
     const en = await renderHome("en");
     expect(en).toContain("shopping list");
@@ -156,6 +196,68 @@ describe("Home page", () => {
     expect(markup).toContain("Iniciar sesión");
     expect(markup).not.toContain("Create an account");
     expect(markup).not.toContain("Sign in");
+  });
+
+  describe("follows the inventory (US5, FR-005)", () => {
+    const invented: Feature[] = [
+      {
+        id: "test-pantry-count",
+        group: "shop",
+        name: { en: "Pantry count", es: "Conteo de despensa" },
+        summary: { en: "Count what is left at home.", es: "Cuenta lo que queda en casa." },
+        stories: ["S-999"],
+        status: "available",
+      },
+      {
+        id: "test-meal-calendar",
+        group: "shop",
+        name: { en: "Meal calendar", es: "Calendario de comidas" },
+        summary: { en: "Put recipes on days.", es: "Pon recetas en días." },
+        stories: ["S-998"],
+        status: "planned",
+      },
+    ];
+
+    afterEach(() => {
+      vi.doUnmock("@/lib/featureInventory");
+    });
+
+    /** The real inventory with `change` applied to its feature list. */
+    function mockInventory(change: (list: readonly Feature[]) => Feature[]) {
+      vi.resetModules();
+      vi.doMock("@/lib/featureInventory", async (importOriginal) => {
+        const real = await importOriginal<typeof import("@/lib/featureInventory")>();
+        const list = change(real.features);
+        return {
+          ...real,
+          features: list,
+          availableFeatures: (group: GroupId) =>
+            list.filter((feature) => feature.group === group && feature.status === "available"),
+          plannedFeatures: () => list.filter((feature) => feature.status === "planned"),
+        };
+      });
+    }
+
+    it.each(["en", "es"] as const)("shows a new available feature in its group and a planned one only in the strip (%s)", async (locale) => {
+      mockInventory((list) => [...list, ...invented]);
+      const markup = await renderHome(locale);
+
+      const [available, planned] = invented;
+      expect(section(markup, "shop")).toContain(escaped(available.name[locale]));
+      expect(section(markup, "shop")).not.toContain(escaped(planned.name[locale]));
+      expect(section(markup, "coming-soon")).toContain(escaped(planned.name[locale]));
+      for (const id of GROUP_IDS.filter((g) => g !== "shop")) {
+        expect(section(markup, id)).not.toContain(escaped(available.name[locale]));
+      }
+    });
+
+    it("leaves out the coming-soon strip when nothing is planned", async () => {
+      mockInventory((list) => list.filter((feature) => feature.status !== "planned"));
+      const markup = await renderHome();
+
+      expect(markup).not.toContain('id="coming-soon"');
+      expect(markup).toContain('href="/signup"');
+    });
   });
 
   it("redirects to the resolved landing destination when signed in", async () => {

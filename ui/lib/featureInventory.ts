@@ -138,7 +138,7 @@ export const features: readonly Feature[] = [
   {
     id: "capture-matching",
     group: "capture",
-    name: { en: "Ingredients matched for you", es: "Ingredientes emparejados por ti" },
+    name: { en: "Ingredients matched for you", es: "Ingredientes reconocidos" },
     summary: {
       en: "Ingredient names are matched to the ones you already use, and you are told what changed.",
       es: "Los nombres de los ingredientes se emparejan con los que ya usas, y se te dice qué cambió.",

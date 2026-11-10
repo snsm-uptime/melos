@@ -122,7 +122,7 @@ function AppShellFrame({ children }: { children: ReactNode }) {
 
   if (!showHeader && !showPanel) {
     return (
-      <div className="fixed inset-0 overflow-y-auto">
+      <div data-scroller="signed-out" className="fixed inset-0 overflow-y-auto">
         {languageSwitch}
         {children}
         <ToastViewport

@@ -16,6 +16,7 @@ export { demoFor, TourDemo } from "./demos";
 export { ComingSoon, type ComingSoonProps } from "./ComingSoon";
 export { GroupSection, type GroupSectionProps } from "./GroupSection";
 export { LandingHero, type LandingHeroProps } from "./LandingHero";
+export { TourIndex, type TourIndexProps } from "./TourIndex";
 export { CaptureScene } from "./scenes/CaptureScene";
 export { HomeScene } from "./scenes/HomeScene";
 export { IngredientsScene } from "./scenes/IngredientsScene";

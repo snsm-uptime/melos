@@ -1,6 +1,13 @@
 import { redirect } from "next/navigation";
 
-import { ClosingCta, ComingSoon, GroupSection, LandingHero, TourDemo } from "@/components/LandingTour";
+import {
+  ClosingCta,
+  ComingSoon,
+  GroupSection,
+  LandingHero,
+  TourDemo,
+  TourIndex,
+} from "@/components/LandingTour";
 import { RedirectIfAuthenticated } from "@/components/RedirectIfAuthenticated";
 import { requireAlias } from "@/lib/alias";
 import { availableFeatures, groupsInOrder, plannedFeatures } from "@/lib/featureInventory";
@@ -35,6 +42,8 @@ export default async function Home() {
         signIn={t.signIn}
         demo={<TourDemo id="overview" locale={locale} />}
       />
+
+      <TourIndex groups={groupsInOrder()} locale={locale} label={t.indexLabel} />
 
       {groupsInOrder().map((group) => (
         <GroupSection

@@ -14,6 +14,7 @@ export function ComingSoon({ features, locale, title, lede }: ComingSoonProps) {
   return (
     <section
       id="coming-soon"
+      data-landing-section
       aria-labelledby="coming-soon-title"
       className="mx-auto flex max-w-5xl flex-col gap-4 px-page-gutter py-12"
     >

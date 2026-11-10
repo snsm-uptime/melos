@@ -111,10 +111,10 @@ pauses in place, is still under reduced motion, reads its description to a scree
 **Independent Test**: Each index link moves to its section with the title visible; `/#shop` opens at
 Plan the week and shop.
 
-- [ ] T031 [P] [US3] Add to `ui/app/page.home.test.tsx`: a `nav` with `aria-label` = `indexLabel` holds six links whose `href`s are `#capture`, `#notebooks`, `#together`, `#shop`, `#ingredients`, `#home` in order, with the group titles as text
-- [ ] T032 [P] [US3] Create `ui/components/LandingTour/TourIndex.tsx`: `nav` with `aria-label`, a wrapping row of six anchor links (chip-like pills) from `groupsInOrder()`; wraps at 320 px without sideways scroll; export from `index.ts`
-- [ ] T033 [US3] Render `TourIndex` between `LandingHero` and the first `GroupSection` in `ui/app/page.tsx`
-- [ ] T034 [US3] In `ui/components/AppShell.tsx`, add `data-scroller="signed-out"` to the signed-out scroll container (the `fixed inset-0 overflow-y-auto` div in the `!showHeader && !showPanel` branch); change nothing else there. In `ui/app/globals.css`, give landing sections (`[data-landing-section]`) a `scroll-margin-top` that clears the floating language switch, and set `scroll-behavior: smooth` on `[data-scroller="signed-out"]` only inside `@media (prefers-reduced-motion: no-preference)` (research R6). Add the `data-landing-section` attribute in `ui/components/LandingTour/GroupSection.tsx` and `ComingSoon.tsx`. Keep the existing `ui/components/AppShell.test.tsx` passing
+- [X] T031 [P] [US3] Add to `ui/app/page.home.test.tsx`: a `nav` with `aria-label` = `indexLabel` holds six links whose `href`s are `#capture`, `#notebooks`, `#together`, `#shop`, `#ingredients`, `#home` in order, with the group titles as text
+- [X] T032 [P] [US3] Create `ui/components/LandingTour/TourIndex.tsx`: `nav` with `aria-label`, a wrapping row of six anchor links (chip-like pills) from `groupsInOrder()`; wraps at 320 px without sideways scroll; export from `index.ts`
+- [X] T033 [US3] Render `TourIndex` between `LandingHero` and the first `GroupSection` in `ui/app/page.tsx`
+- [X] T034 [US3] In `ui/components/AppShell.tsx`, add `data-scroller="signed-out"` to the signed-out scroll container (the `fixed inset-0 overflow-y-auto` div in the `!showHeader && !showPanel` branch); change nothing else there. In `ui/app/globals.css`, give landing sections (`[data-landing-section]`) a `scroll-margin-top` that clears the floating language switch, and set `scroll-behavior: smooth` on `[data-scroller="signed-out"]` only inside `@media (prefers-reduced-motion: no-preference)` (research R6). Add the `data-landing-section` attribute in `ui/components/LandingTour/GroupSection.tsx` and `ComingSoon.tsx`. Keep the existing `ui/components/AppShell.test.tsx` passing
 
 **Checkpoint**: Index works with and without JavaScript.
 
@@ -127,9 +127,9 @@ Plan the week and shop.
 **Independent Test**: With `es` and `en`, no text from the other language appears anywhere,
 including demos and screen-reader descriptions.
 
-- [ ] T035 [US4] Add to `ui/app/page.home.test.tsx`: render with `serverLocale` = `"es"` and `"en"`; for each, every group title, every available feature name, the demo titles and descriptions of that locale appear, and none of the other locale's group titles or demo descriptions do
-- [ ] T036 [P] [US4] Add to `ui/components/LandingTour/scenes/scenes.test.tsx`: for each scene, the `es` render contains none of the `en` scene strings that differ between languages, and the reverse
-- [ ] T037 [US4] Read every Spanish string in `ui/lib/featureInventory.ts` and `ui/lib/i18n/landing.ts` against the app's existing Spanish terms (`ui/lib/i18n/*.ts`: "cuaderno", "cocina", "lista de compras", "cdas", "taza") and align wording so the tour uses the same words as the app
+- [X] T035 [US4] Add to `ui/app/page.home.test.tsx`: render with `serverLocale` = `"es"` and `"en"`; for each, every group title, every available feature name, the demo titles and descriptions of that locale appear, and none of the other locale's group titles or demo descriptions do
+- [X] T036 [P] [US4] Add to `ui/components/LandingTour/scenes/scenes.test.tsx`: for each scene, the `es` render contains none of the `en` scene strings that differ between languages, and the reverse
+- [X] T037 [US4] Read every Spanish string in `ui/lib/featureInventory.ts` and `ui/lib/i18n/landing.ts` against the app's existing Spanish terms (`ui/lib/i18n/*.ts`: "cuaderno", "cocina", "lista de compras", "cdas", "taza") and align wording so the tour uses the same words as the app
 
 **Checkpoint**: `npm test -- page.home scenes parity featureInventory` passes in both languages.
 
@@ -143,9 +143,9 @@ inventory.
 **Independent Test**: An invented available feature added in a test shows in its section in both
 languages; a planned one shows only in the strip.
 
-- [ ] T038 [US5] Add to `ui/app/page.home.test.tsx`: mock `@/lib/featureInventory` to add one invented available feature to `shop` and one invented planned feature; assert the first appears inside `#shop` in `en` and `es`, the second only inside `#coming-soon`; with no planned features, `#coming-soon` is absent
-- [ ] T039 [P] [US5] **Owner approval required first** (AGENTS.md "Amendments to Governance": changes to AGENTS.md need explicit approval). Ask the owner; only once approved, in `AGENTS.md` "Backlog files", add one line: when a done story adds, removes or changes a feature a person can use, it updates `ui/lib/featureInventory.ts` in the same change (planned → available when it ships) and its verification note says so (FR-017). If the owner declines, skip this task: T040 alone carries the rule
-- [ ] T040 [P] [US5] Add a header comment to `ui/lib/featureInventory.ts` stating the same rule and pointing to `specs/075-landing-feature-tour/contracts/feature-inventory.md`
+- [X] T038 [US5] Add to `ui/app/page.home.test.tsx`: mock `@/lib/featureInventory` to add one invented available feature to `shop` and one invented planned feature; assert the first appears inside `#shop` in `en` and `es`, the second only inside `#coming-soon`; with no planned features, `#coming-soon` is absent
+- [X] T039 [P] [US5] **Owner approval required first** (AGENTS.md "Amendments to Governance": changes to AGENTS.md need explicit approval). Ask the owner; only once approved, in `AGENTS.md` "Backlog files", add one line: when a done story adds, removes or changes a feature a person can use, it updates `ui/lib/featureInventory.ts` in the same change (planned → available when it ships) and its verification note says so (FR-017). If the owner declines, skip this task: T040 alone carries the rule
+- [X] T040 [P] [US5] Add a header comment to `ui/lib/featureInventory.ts` stating the same rule and pointing to `specs/075-landing-feature-tour/contracts/feature-inventory.md`
 
 ---
 
