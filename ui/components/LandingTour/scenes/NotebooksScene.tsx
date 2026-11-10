@@ -1,49 +1,79 @@
-import { NotebookIcon, RecipeIcon } from "@/app/icons";
+"use client";
+
+import { NotebookCard } from "@/components/NotebookCard/NotebookCard";
+import { RecipeCard } from "@/components/RecipeCard/RecipeCard";
+import { ServingsControl } from "@/components/RecipeDetail/ServingsControl";
+import { IngredientLineRow } from "@/components/RecipeDraft/IngredientLineRow";
 import { landingMessages } from "@/lib/i18n/landing";
 import type { Locale } from "@/lib/i18n/locale";
+import { recipeDetailMessages } from "@/lib/i18n/recipeDetail";
+import { scaleLine } from "@/lib/recipeScale";
 
-import { inAt, MiniCard, popAt, Scene, Swap } from "./parts";
+import { ANA, recipeCard, soupLines } from "./data";
+import { ignore, inAt, Rows, Scene, Swap } from "./parts";
 
-/** Notebooks (FR-006.2): a notebook's recipes, one opened, servings scaled from 4 to 2. */
+const SAVED_SERVINGS = 4;
+const CHOSEN_SERVINGS = 2;
+
+/**
+ * Notebooks (FR-006.2): Ana's Notebook and its recipe cards; the lentil soup opens on the recipe
+ * page's ingredients, where the servings go from 4 to 2 and every amount is halved, with the same
+ * servings control, ingredient cards and scaling as the recipe page.
+ */
 export function NotebooksScene({ locale }: { locale: Locale }) {
   const t = landingMessages[locale].demo.notebooks;
-  const [opened] = t.recipes;
+  const d = recipeDetailMessages[locale];
+  const saved = soupLines(locale);
+  const ingredients = (servings: number) => (
+    <Rows>
+      {saved.map((line) => (
+        <IngredientLineRow
+          key={line.name}
+          line={scaleLine(line, servings, SAVED_SERVINGS)}
+          readOnly
+          locale={locale}
+        />
+      ))}
+    </Rows>
+  );
+  const header = (servings: number) => (
+    <div className="flex items-center justify-between gap-2">
+      <h2 className="m-0 text-[1rem] font-[550] text-foreground">{d.ingredientsTitle}</h2>
+      <ServingsControl value={servings} onChange={ignore} locale={locale} />
+    </div>
+  );
   return (
     <Scene>
-      <MiniCard title={t.notebook} icon={<NotebookIcon />}>
-        <div className="grid grid-cols-3 gap-2">
-          {t.recipes.map((recipe, index) => (
-            <span
-              key={recipe}
-              className={`flex min-w-0 flex-col items-center gap-1 rounded-[var(--radius-sm)] border px-1 py-2 text-center text-[0.7rem] [&_svg]:size-5 ${
-                index === 0 ? `border-accent text-accent ${popAt(1)}` : "border-border text-muted"
-              }`}
-            >
-              <RecipeIcon />
-              <span className="line-clamp-2 w-full">{recipe}</span>
-            </span>
-          ))}
-        </div>
-      </MiniCard>
-
-      <MiniCard title={opened} icon={<RecipeIcon />} className={inAt(2)}>
-        <div className="flex items-center gap-2">
-          <span className="text-muted">{t.servings}</span>
-          <span className="rounded-[var(--radius-sm)] border border-accent px-2 font-semibold text-accent">
-            <Swap before="4" after="2" slot={3} />
-          </span>
-        </div>
-        <ul className="m-0 flex list-none flex-col gap-1 p-0">
-          {t.lines.map((line) => (
-            <li key={line.name} className="flex min-w-0 justify-between gap-2">
-              <span className="min-w-0 truncate">{line.name}</span>
-              <span className="shrink-0 font-semibold">
-                <Swap before={line.before} after={line.after} slot={4} />
-              </span>
-            </li>
-          ))}
-        </ul>
-      </MiniCard>
+      <Swap
+        slot={3}
+        before={
+          <div className="flex flex-col gap-2">
+            <div className={inAt(1)}>
+              <NotebookCard
+                name={t.notebook}
+                ownerAlias={ANA}
+                viewerAlias={ANA}
+                recipeCount={t.recipes.length}
+                access="owner"
+                isDefault
+                locale={locale}
+              />
+            </div>
+            {t.recipes.map((title, index) => (
+              <div key={title} className={inAt(2)}>
+                <RecipeCard recipe={recipeCard(`demo-${index}`, title, t.notebook, 3)} locale={locale} />
+              </div>
+            ))}
+          </div>
+        }
+        after={
+          <section className="flex flex-col gap-2">
+            <p className="m-0 text-[1.5rem] font-[550] leading-normal text-foreground">{t.recipes[0]}</p>
+            <Swap slot={5} before={header(SAVED_SERVINGS)} after={header(CHOSEN_SERVINGS)} />
+            <Swap slot={5} before={ingredients(SAVED_SERVINGS)} after={ingredients(CHOSEN_SERVINGS)} />
+          </section>
+        }
+      />
     </Scene>
   );
 }

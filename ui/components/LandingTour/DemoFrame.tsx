@@ -76,7 +76,8 @@ export function DemoFrame({ id, title, description, pauseLabel, playLabel, child
       data-playing={playing ? "true" : "false"}
       className={styles.frame}
     >
-      <div aria-hidden="true" className={styles.scene}>
+      {/* The scene is the app's own components: inert, so none of their controls can be reached. */}
+      <div aria-hidden="true" inert className={styles.scene}>
         {children}
       </div>
       <p className="sr-only">{description}</p>

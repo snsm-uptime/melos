@@ -51,17 +51,27 @@ the plan.
 
 ## R5. Reusing app components inside scenes
 
-- **Decision**: Reuse the visual building blocks that take plain props (`Chip`, `chipClassName`,
-  `linkCardClassName`/card classes, `CauldronMark`, icons from `app/icons`), and build scene
-  layouts with the same tokens. Do not mount data-bound components (`RecipeCard`, `ShoppingRow`,
-  `RecipeDraft`): they expect ids, links, handlers and client fetchers.
-- **Rationale**: The scenes look like the app and follow palette and theme changes (spec 072)
-  without importing behaviour that could fire a request (FR-010).
+- **Decision (revised 2026-11-10, owner request)**: Scenes mount the app's real components with
+  invented data in the app's own types (`scenes/data.ts`): `RecipeCard`, `NotebookCard`,
+  `CartEntryRow`, `ShoppingLineRow`, `TabList`/`TabButton`, `ServingsControl`, `IngredientLineRow`
+  (editable and read only), `AddRecipeOptionsDialog`, `ActionDialog`, `SearchableSelect`,
+  `DataTable` with the catalog's `catalogTable` schema, and `Avatar`. Labels come from the app's
+  messages. Components that read the api on mount (`ShareRecipeDialog`, `MergeDialog`, the text
+  capture sheet, whole screens) are not mounted; their dialog is drawn with `ActionDialog` and the
+  same fields.
+- **Safety**: the scene wrapper is `inert` and `aria-hidden`, so no control can be focused or
+  pressed. Small additive props keep the components from touching the page: `InlineDialogs`
+  (ActionDialog drawn in place: no scrim, focus trap, scroll lock or key handling), an optional
+  `kitchenId` on `RecipeChips`/`ShoppingRow` and `from` on `CartEntryRow` (no link, so no route
+  prefetch), and `locale` on `AddRecipeOptionsDialog`. `PlaceTabs` is not used: its scroll into view
+  would move the landing page. Tests check that no scene links anywhere or calls `fetch`.
 - **Other-theme card (home demo)**: dark tokens are defined only on `html.dark`, so a single dark
   card on a light page cannot get them. The theme token selectors gain a scope class
   (`html.dark, .theme-dark-scope`; same for light), so the card reads the same values with no copy.
-- **Alternatives considered**: Mounting real components with fake props and stubbed clients (fragile
-  coupling: every refactor of those components would break the landing page).
+- **Earlier decision, replaced**: scenes drawn with the app's tokens and small look-alike parts,
+  keeping data-bound components out. The owner found the demos did not show the real screens.
+- **Cost accepted**: a change to one of these components changes the landing demo with it, which is
+  the point; scene tests catch a change that breaks it.
 
 ## R6. Index and section addresses
 

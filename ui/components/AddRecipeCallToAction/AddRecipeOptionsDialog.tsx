@@ -1,6 +1,7 @@
 "use client";
 
 import { ActionDialog } from "@/components/ActionDialog/ActionDialog";
+import type { Locale } from "@/lib/i18n/locale";
 import { useCaptureMessages } from "@/lib/i18n/useCaptureMessages";
 
 type AddRecipeOptionsDialogProps = {
@@ -16,6 +17,8 @@ type AddRecipeOptionsDialogProps = {
   onChooseFromNotebook?: () => void;
   /** Shows that option disabled, with this reason (no active kitchen to add to). */
   fromNotebookDisabledReason?: string | null;
+  /** The language of the screen; the provider's language when not given. */
+  locale?: Locale;
 };
 
 const optionClassName =
@@ -36,8 +39,9 @@ export function AddRecipeOptionsDialog({
   onChooseManual,
   onChooseFromNotebook,
   fromNotebookDisabledReason,
+  locale,
 }: AddRecipeOptionsDialogProps) {
-  const t = useCaptureMessages();
+  const t = useCaptureMessages(locale);
   return (
     <ActionDialog
       open={open}

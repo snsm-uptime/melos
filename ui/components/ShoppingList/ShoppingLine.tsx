@@ -9,7 +9,8 @@ import { TruncatedText } from "./TruncatedText";
 
 type ShoppingLineRowProps = {
   line: ShoppingLine;
-  kitchenId: string;
+  /** Without it the recipe chips link nowhere (RecipeChips). */
+  kitchenId?: string;
   locale: Locale;
   /** Shown only for a stored, writable list (spec 070 R3). */
   onToggle?: (bought: boolean) => void;
@@ -33,7 +34,7 @@ export function ShoppingRow({
   detail: string;
   recipes: ShoppingRecipeRef[];
   bought: boolean | undefined;
-  kitchenId: string;
+  kitchenId?: string;
   locale: Locale;
   onToggle?: (bought: boolean) => void;
   showToggle: boolean;

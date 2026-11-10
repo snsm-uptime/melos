@@ -47,7 +47,8 @@ function otherNames(item: CatalogIngredient, t: CatalogMessages): string[] {
   ];
 }
 
-function catalogTable(
+/** The catalog's table schema; also drawn by the landing demo (spec 075). */
+export function catalogTable(
   t: CatalogMessages,
   canWrite: boolean,
   open: (next: Open) => void,

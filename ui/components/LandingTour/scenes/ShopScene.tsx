@@ -1,63 +1,83 @@
-import { CartIcon, CheckIcon } from "@/app/icons";
-import { Chip } from "@/components/Chip";
+"use client";
+
+import { CartEntryRow } from "@/components/Cart/CartEntryRow";
+import { ShoppingLineRow } from "@/components/ShoppingList/ShoppingLine";
+import { TabButton, TabList } from "@/components/Tabs";
 import { landingMessages } from "@/lib/i18n/landing";
 import type { Locale } from "@/lib/i18n/locale";
+import { shoppingListMessages } from "@/lib/i18n/shoppingList";
 
-import { inAt, ListLine, MiniCard, Scene, Struck, type Slot } from "./parts";
+import { cartEntries, shoppingLines } from "./data";
+import { ignore, inAt, Rows, Scene, Swap, type Slot } from "./parts";
 
 /**
- * Plan and shop (FR-006.4): recipe A (1 cup flour) and B (3 tbsp flour) in the cart become the one
- * line "flour — 1 cup + 3 tbsp" with both recipes' chips; on a place tab, two lines are bought.
+ * Plan and shop (FR-006.4): the cart's two recipes, then the shopping list with flour from both on
+ * one line, 1 cup + 3 tbsp, with both recipes' chips; on the Market tab, eggs and milk are checked
+ * as bought. The cart rows, tabs and list rows are the app's. The tabs are TabList without the
+ * arrows of PlaceTabs, whose scroll-into-view would move the landing page.
  */
 export function ShopScene({ locale }: { locale: Locale }) {
   const t = landingMessages[locale].demo.shop;
-  const bought: { text: string; slot: Slot }[] = [
-    { text: t.eggsLine, slot: 5 },
-    { text: t.milkLine, slot: 6 },
+  const l = shoppingListMessages[locale];
+  const lines = shoppingLines(locale);
+  const [entryA, entryB] = cartEntries(locale);
+  // Each state of the tabs is drawn once, so its ids carry the state.
+  const tabs = (market: boolean, left: number) => {
+    const id = `demo-shop-${market ? "market" : "all"}-${left}`;
+    return (
+      <TabList label={l.placeTabs}>
+        <TabButton id={`${id}-all`} selected={!market} onSelect={ignore} icon={null} label={l.allPlaces} />
+        <TabButton id={`${id}-market`} selected={market} onSelect={ignore} icon={null} label={l.tabCount(t.placeMarket, left)} />
+        <TabButton id={`${id}-bakery`} selected={false} onSelect={ignore} icon={null} label={l.tabCount(t.placeBakery, 1)} />
+      </TabList>
+    );
+  };
+  const bought: { key: string; slot: Slot; line: typeof lines.eggs }[] = [
+    { key: "eggs", slot: 5, line: lines.eggs },
+    { key: "milk", slot: 6, line: lines.milk },
   ];
   return (
     <Scene>
-      <MiniCard title={t.cart} icon={<CartIcon />}>
-        <div className={`flex min-w-0 justify-between gap-2 ${inAt(1)}`}>
-          <strong className="truncate font-semibold">{t.recipeA}</strong>
-          <span className="shrink-0 text-muted">{t.flourA}</span>
-        </div>
-        <div className={`flex min-w-0 justify-between gap-2 ${inAt(2)}`}>
-          <strong className="truncate font-semibold">{t.recipeB}</strong>
-          <span className="shrink-0 text-muted">{t.flourB}</span>
-        </div>
-      </MiniCard>
-
-      <MiniCard title={t.listTitle} className={inAt(3)}>
-        <div className="flex gap-3 border-b border-border text-[0.75rem]">
-          <span className="relative pb-1 font-semibold text-accent">
-            {t.placeMarket}
-            <span className={`absolute inset-x-0 bottom-[-1px] h-0.5 bg-accent ${inAt(4)}`} />
-          </span>
-          <span className="pb-1 text-muted">{t.placeBakery}</span>
-        </div>
-        <ListLine
-          chips={
-            <>
-              <Chip tone="accent">{t.recipeA}</Chip>
-              <Chip tone="accent">{t.recipeB}</Chip>
-            </>
+      <div className="flex flex-col gap-2">
+        <Rows className={inAt(1)}>
+          <CartEntryRow entry={entryA} factor={entryA.factor} locale={locale} />
+        </Rows>
+        <Rows className={inAt(2)}>
+          <CartEntryRow entry={entryB} factor={entryB.factor} locale={locale} />
+        </Rows>
+      </div>
+      <div className={`flex flex-col gap-2 ${inAt(3)}`}>
+        <Swap
+          slot={4}
+          before={tabs(false, 3)}
+          after={
+            <Swap
+              slot={5}
+              before={tabs(true, 3)}
+              after={<Swap slot={6} before={tabs(true, 2)} after={tabs(true, 1)} />}
+            />
           }
-        >
-          <strong className="font-semibold">{t.flourLine}</strong>
-        </ListLine>
-        {bought.map((line) => (
-          <div key={line.text} className="flex items-center gap-2">
-            <span className="relative flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-field-border">
-              <CheckIcon className={`size-3.5 text-accent ${inAt(line.slot)}`} />
-            </span>
-            <Struck slot={line.slot}>{line.text}</Struck>
-            <span className={inAt(line.slot)}>
-              <Chip>{t.bought}</Chip>
-            </span>
-          </div>
+        />
+        <Rows>
+          <ShoppingLineRow line={lines.flour} locale={locale} onToggle={ignore} />
+        </Rows>
+        {bought.map(({ key, slot, line }) => (
+          <Swap
+            key={key}
+            slot={slot}
+            before={
+              <Rows>
+                <ShoppingLineRow line={{ ...line, bought: false }} locale={locale} onToggle={ignore} />
+              </Rows>
+            }
+            after={
+              <Rows>
+                <ShoppingLineRow line={{ ...line, bought: true }} locale={locale} onToggle={ignore} />
+              </Rows>
+            }
+          />
         ))}
-      </MiniCard>
+      </div>
     </Scene>
   );
 }

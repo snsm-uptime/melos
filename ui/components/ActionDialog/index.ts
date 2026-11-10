@@ -1,1 +1,1 @@
-export { ActionDialog, type ActionDialogProps } from "./ActionDialog";
+export { ActionDialog, InlineDialogs, type ActionDialogProps } from "./ActionDialog";

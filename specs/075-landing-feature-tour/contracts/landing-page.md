@@ -49,4 +49,7 @@ visually hidden `<p>` with `description`.
 | ingredients | "onions" merged into "onion", Spanish variant "cebolla" shown |
 | home | The same card in Spanish and dark theme beside English and light |
 
-No scene makes a network request, links to an app route, or uses a real name or recipe.
+Scenes are the app's own components with invented data (research R5), inside an `inert`,
+`aria-hidden` wrapper. No scene makes a network request, links to an app route, or uses a real
+name or recipe. Units show as the app shows them in both languages ("1 cup + 3 tbsp", "2 unit
+large").

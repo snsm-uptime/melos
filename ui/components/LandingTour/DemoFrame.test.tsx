@@ -91,6 +91,8 @@ describe("DemoFrame (spec 075 contracts/landing-page.md)", () => {
     expect(frame().getAttribute("aria-label")).toBe("Two recipes, one shopping list");
     const scene = container.querySelector('[aria-hidden="true"]');
     expect(scene?.textContent).toBe("scene");
+    // The scene is the app's own controls: inert, so no visitor can focus or press them.
+    expect(scene?.hasAttribute("inert")).toBe(true);
     expect(container.textContent).toContain("The list shows flour — 1 cup + 3 tbsp.");
   });
 
