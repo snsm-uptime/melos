@@ -128,6 +128,18 @@ describe("Home page", () => {
     expect(html).toContain("md:grid-flow-col");
   });
 
+  it("draws the cook-together and shop sections, and only those, on one surface band", async () => {
+    const markup = await renderHome();
+
+    expect(markup.match(/data-landing-band/g)).toHaveLength(1);
+    const start = markup.indexOf("data-landing-band");
+    const band = markup.slice(start, markup.indexOf('<section id="ingredients"'));
+    expect(band).toContain("bg-surface");
+    expect(band).toContain('<section id="together"');
+    expect(band).toContain('<section id="shop"');
+    expect(markup.indexOf('<section id="notebooks"')).toBeLessThan(start);
+  });
+
   it("lists each available feature inside its own group section, and planned ones only in the strip", async () => {
     const markup = await renderHome();
 

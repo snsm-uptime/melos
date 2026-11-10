@@ -10,13 +10,34 @@ import {
 } from "@/components/LandingTour";
 import { RedirectIfAuthenticated } from "@/components/RedirectIfAuthenticated";
 import { requireAlias } from "@/lib/alias";
-import { availableFeatures, groupsInOrder, plannedFeatures } from "@/lib/featureInventory";
+import {
+  availableFeatures,
+  groupsInOrder,
+  plannedFeatures,
+  type FeatureGroup,
+  type GroupId,
+} from "@/lib/featureInventory";
 import { landingMessages } from "@/lib/i18n/landing";
 import { resolveServerAuthenticatedLanding } from "@/lib/serverLanding";
 import { getServerLocale } from "@/lib/serverLocale";
 import { fetchSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
+
+/** Groups drawn together on a full-width surface band, to give the page some depth. */
+const BANDED: ReadonlySet<GroupId> = new Set<GroupId>(["together", "shop"]);
+
+/** The groups in order, cut into runs of banded and plain groups. */
+function runs(groups: readonly FeatureGroup[]): { banded: boolean; groups: FeatureGroup[] }[] {
+  const out: { banded: boolean; groups: FeatureGroup[] }[] = [];
+  for (const group of groups) {
+    const banded = BANDED.has(group.id);
+    const last = out.at(-1);
+    if (last && last.banded === banded) last.groups.push(group);
+    else out.push({ banded, groups: [group] });
+  }
+  return out;
+}
 
 export default async function Home() {
   const session = await fetchSession();
@@ -45,17 +66,26 @@ export default async function Home() {
 
       <TourIndex groups={groupsInOrder()} locale={locale} label={t.indexLabel} />
 
-      {groupsInOrder().map((group) => (
-        <GroupSection
-          key={group.id}
-          group={group}
-          features={availableFeatures(group.id)}
-          locale={locale}
-          featuresHeading={t.featuresHeading}
-          demo={<TourDemo id={group.id} locale={locale} />}
-          layout={group.id === "notebooks" ? "stacked" : "split"}
-        />
-      ))}
+      {runs(groupsInOrder()).map((run) => {
+        const sections = run.groups.map((group) => (
+          <GroupSection
+            key={group.id}
+            group={group}
+            features={availableFeatures(group.id)}
+            locale={locale}
+            featuresHeading={t.featuresHeading}
+            demo={<TourDemo id={group.id} locale={locale} />}
+            layout={group.id === "notebooks" ? "stacked" : "split"}
+          />
+        ));
+        return run.banded ? (
+          <div key={run.groups[0].id} data-landing-band className="border-y border-border bg-surface">
+            {sections}
+          </div>
+        ) : (
+          sections
+        );
+      })}
 
       <ComingSoon
         features={plannedFeatures()}
