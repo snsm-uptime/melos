@@ -1,6 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { availableFeatures, groupsInOrder, plannedFeatures } from "@/lib/featureInventory";
+
 const fetchSession = vi.fn();
 const resolveServerAuthenticatedLanding = vi.fn();
 const requireAlias = vi.fn();
@@ -26,6 +28,32 @@ vi.mock("@/components/RedirectIfAuthenticated", () => ({
   RedirectIfAuthenticated: () => null,
 }));
 
+const GROUP_IDS = ["capture", "notebooks", "together", "shop", "ingredients", "home"];
+
+/** Text as renderToStaticMarkup writes it. */
+function escaped(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
+/** The markup of `<section id="…">`, up to its closing tag. */
+function section(markup: string, id: string): string {
+  const start = markup.indexOf(`<section id="${id}"`);
+  if (start < 0) return "";
+  return markup.slice(start, markup.indexOf("</section>", start));
+}
+
+async function renderHome(locale: "en" | "es" = "en"): Promise<string> {
+  fetchSession.mockResolvedValue(null);
+  serverLocale.mockResolvedValue(locale);
+  const { default: Home } = await import("./page");
+  return renderToStaticMarkup(await Home());
+}
+
 describe("Home page", () => {
   beforeEach(() => {
     fetchSession.mockReset();
@@ -41,43 +69,64 @@ describe("Home page", () => {
   });
 
   it("puts the decorative cauldron before the app name", async () => {
-    fetchSession.mockResolvedValue(null);
-    const { default: Home } = await import("./page");
-
-    const markup = renderToStaticMarkup(await Home());
+    const markup = await renderHome();
 
     const heading = markup.slice(markup.indexOf("<h1"), markup.indexOf("</h1>"));
     expect(heading).toContain('aria-hidden="true"');
     expect(heading.indexOf("<svg")).toBeLessThan(heading.indexOf("Melos"));
   });
 
-  it("shows product intro copy and sign-up/sign-in CTAs when signed out", async () => {
-    fetchSession.mockResolvedValue(null);
-    const { default: Home } = await import("./page");
+  it("shows the tour regions in order: hero, six groups, coming soon, closing call to action", async () => {
+    const markup = await renderHome();
 
-    const markup = renderToStaticMarkup(await Home());
+    expect(markup.match(/<h1[\s>]/g)).toHaveLength(1);
+    const positions = [...GROUP_IDS, "coming-soon"].map((id) => markup.indexOf(`<section id="${id}"`));
+    for (const position of positions) expect(position).toBeGreaterThan(-1);
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
 
-    expect(markup).not.toContain("Stack is up");
-    expect(markup).not.toContain("Compose services");
-    expect(markup).toMatch(/recipes/i);
-    expect(markup).toMatch(/shopping kitchen/i);
-    expect(markup).toMatch(/kitchens/i);
-    expect(markup).toContain('href="/signup"');
-    expect(markup).toContain('href="/sign-in"');
+    // The account buttons sit in the hero and again after the coming-soon strip.
+    const afterStrip = markup.slice(positions.at(-1)!);
+    expect(markup.indexOf('href="/signup"')).toBeLessThan(positions[0]);
+    expect(markup.indexOf('href="/sign-in"')).toBeLessThan(positions[0]);
+    expect(afterStrip).toContain('href="/signup"');
+    expect(afterStrip).toContain('href="/sign-in"');
     expect(markup).not.toContain('href="/docs"');
     expect(redirect).not.toHaveBeenCalled();
   });
 
-  it("shows the landing page in Spanish for a Spanish visitor", async () => {
-    fetchSession.mockResolvedValue(null);
-    serverLocale.mockResolvedValue("es");
-    const { default: Home } = await import("./page");
+  it("lists each available feature inside its own group section, and planned ones only in the strip", async () => {
+    const markup = await renderHome();
 
-    const markup = renderToStaticMarkup(await Home());
+    for (const group of groupsInOrder()) {
+      const html = section(markup, group.id);
+      expect(html, group.id).toContain(escaped(group.title.en));
+      for (const feature of availableFeatures(group.id)) {
+        expect(html, feature.id).toContain(escaped(feature.name.en));
+      }
+      for (const feature of plannedFeatures()) {
+        expect(html, feature.id).not.toContain(escaped(feature.name.en));
+      }
+    }
+    const strip = section(markup, "coming-soon");
+    for (const feature of plannedFeatures()) expect(strip, feature.id).toContain(escaped(feature.name.en));
+  });
+
+  it("says shopping list, never shopping kitchen (FR-016)", async () => {
+    const en = await renderHome("en");
+    expect(en).toContain("shopping list");
+    expect(en).not.toMatch(/shopping kitchen/i);
+
+    vi.resetModules();
+    const es = await renderHome("es");
+    expect(es).toContain("lista de compras");
+    expect(es).not.toMatch(/cocina de compras/i);
+  });
+
+  it("shows the landing page in Spanish for a Spanish visitor", async () => {
+    const markup = await renderHome("es");
 
     expect(markup).toContain("Crear una cuenta");
     expect(markup).toContain("Iniciar sesión");
-    expect(markup).toContain("Recetas");
     expect(markup).not.toContain("Create an account");
     expect(markup).not.toContain("Sign in");
   });
