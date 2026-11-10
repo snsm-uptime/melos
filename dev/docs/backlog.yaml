@@ -103,6 +103,20 @@ stories:
       places first (spec 070 tabs unchanged). Language always shown in the catalog view. The admin
       review list (spec 073 FR-022) is its own section. Reads existing tables only, no new data.
 
+  - id: S-075
+    title: Landing page feature tour (feature inventory, one section per feature group, a demo for each)
+    epic: Platform
+    priority: should
+    status: in_design
+    source: owner request 2026-11-10 (not in prd.md; extends the Visitor landing page)
+    notes: >
+      Spec: specs/075-landing-feature-tour (draft). One feature inventory of everything a person can
+      use, grouped into six groups (capture, notebooks, cook together, plan and shop, ingredients,
+      home); the signed-out landing page gets a redesigned hero with an overview demo, a section and
+      a self-playing animated demo with invented data per group, an index, a "Coming soon" strip of
+      planned features, and a closing call to action, in English and Spanish. Fixes the
+      "Shopping kitchen" copy slip.
+
   # ---------------------------------------------------------------------------
   # Recipes (J3), open.
   # ---------------------------------------------------------------------------
