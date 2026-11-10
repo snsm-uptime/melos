@@ -53,6 +53,7 @@ export default async function Home() {
           locale={locale}
           featuresHeading={t.featuresHeading}
           demo={<TourDemo id={group.id} locale={locale} />}
+          layout={group.id === "notebooks" ? "stacked" : "split"}
         />
       ))}
 

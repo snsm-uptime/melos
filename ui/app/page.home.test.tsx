@@ -112,6 +112,22 @@ describe("Home page", () => {
     expect(redirect).not.toHaveBeenCalled();
   });
 
+  it("stacks the notebooks section: title and lede, then the demo, then one column per feature", async () => {
+    const markup = await renderHome();
+    const html = section(markup, "notebooks");
+    const group = groupsInOrder().find((g) => g.id === "notebooks")!;
+
+    const title = html.indexOf(escaped(group.title.en));
+    const lede = html.indexOf(escaped(group.lede.en));
+    const demo = html.indexOf("data-demo-title");
+    const features = availableFeatures("notebooks").map((f) => html.indexOf(escaped(f.name.en)));
+    expect(title).toBeGreaterThan(-1);
+    expect(title).toBeLessThan(lede);
+    expect(lede).toBeLessThan(demo);
+    for (const position of features) expect(position).toBeGreaterThan(demo);
+    expect(html).toContain("md:grid-flow-col");
+  });
+
   it("lists each available feature inside its own group section, and planned ones only in the strip", async () => {
     const markup = await renderHome();
 

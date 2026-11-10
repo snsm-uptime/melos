@@ -59,19 +59,19 @@ export function NotebooksScene({ locale }: { locale: Locale }) {
                 locale={locale}
               />
             </div>
-            {t.recipes.map((title, index) => (
-              <div key={title} className={inAt(2)}>
-                <RecipeCard recipe={recipeCard(`demo-${index}`, title, t.notebook, 3)} locale={locale} />
-              </div>
-            ))}
+            <div className={`grid grid-cols-1 gap-2 min-[36rem]:grid-cols-3 ${inAt(2)}`}>
+              {t.recipes.map((title, index) => (
+                <RecipeCard key={title} recipe={recipeCard(`demo-${index}`, title, t.notebook, 3)} locale={locale} />
+              ))}
+            </div>
           </div>
         }
         after={
-          <section className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2">
             <p className="m-0 text-[1.5rem] font-[550] leading-normal text-foreground">{t.recipes[0]}</p>
             <Swap slot={5} before={header(SAVED_SERVINGS)} after={header(CHOSEN_SERVINGS)} />
             <Swap slot={5} before={ingredients(SAVED_SERVINGS)} after={ingredients(CHOSEN_SERVINGS)} />
-          </section>
+          </div>
         }
       />
     </Scene>
