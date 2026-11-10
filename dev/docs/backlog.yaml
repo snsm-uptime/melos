@@ -107,7 +107,7 @@ stories:
     title: Landing page feature tour (feature inventory, one section per feature group, a demo for each)
     epic: Platform
     priority: should
-    status: in_design
+    status: verification
     source: owner request 2026-11-10 (not in prd.md; extends the Visitor landing page)
     notes: >
       Spec: specs/075-landing-feature-tour (draft). One feature inventory of everything a person can
@@ -116,6 +116,15 @@ stories:
       a self-playing animated demo with invented data per group, an index, a "Coming soon" strip of
       planned features, and a closing call to action, in English and Spanish. Fixes the
       "Shopping kitchen" copy slip.
+      Built 2026-11-10 on branch 075-landing-feature-tour (ui only, no migration, no new library):
+      ui/lib/featureInventory.ts (25 available, 5 planned features) and ui/components/LandingTour
+      (owner approved the folder); AGENTS.md "Backlog files" gained the inventory rule (owner
+      approved). Tests: inventory invariants (8), page (13: order, anchors, index, both languages,
+      inventory-driven), DemoFrame (5), scenes (28); parity, palette and next build pass; lint clean
+      but the SignupForm warning already on main. Full vitest: the same 11 failures as on main
+      (RecipeFromNotebookSheet 10, CauldronLoader contrast "accent bubbles" 1); AdminDashboard
+      timed out under full-suite load and passes alone. Open: the browser walk (quickstart steps
+      1–12, T041) and timing the loops in the browser (T042; by design 12 s groups, 18 s overview).
 
   # ---------------------------------------------------------------------------
   # Recipes (J3), open.

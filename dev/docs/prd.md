@@ -470,7 +470,7 @@ The user signs up, signs in, signs out, resets their password by email and edits
 
 | Role | Who | Can |
 |---|---|---|
-| **Visitor** | Not signed in | Landing page, sign up, sign in, password reset, open an invite link |
+| **Visitor** | Not signed in | Landing page (a feature tour since spec 075: one section per feature group with an animated demo, built from `ui/lib/featureInventory.ts`), sign up, sign in, password reset, open an invite link |
 | **Member** | Belongs to a kitchen | Full CRUD on the kitchen's notebooks and their recipes, on the kitchen's cart and on their own conversations. Add their personal notebooks to the kitchen as snapshots. Leave the kitchen |
 | **Owner** | Created the kitchen, or was promoted | Everything a Member can do, plus: rename the kitchen, change `content_language`, invite and remove members, promote/demote, delete the kitchen |
 | **Notebook member** | Joined a personal notebook by invite | Full CRUD on the notebook's recipes and catalog. Leave the notebook |

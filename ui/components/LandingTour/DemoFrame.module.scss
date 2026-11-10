@@ -14,7 +14,8 @@
   padding: 1.25rem 1rem 2.75rem;
   border: 1px solid var(--border);
   border-radius: var(--rounded-lg);
-  background: color-mix(in srgb, var(--accent-fill) 6%, var(--background));
+  /* A light orange tint; at 3% the light theme's orange text still reads at 4.5:1 on it. */
+  background: color-mix(in srgb, var(--accent-fill) 3%, var(--background));
   overflow: hidden;
 }
 

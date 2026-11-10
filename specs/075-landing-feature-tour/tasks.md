@@ -153,9 +153,9 @@ languages; a planned one shows only in the strip.
 
 - [ ] T041 Walk `specs/075-landing-feature-tour/quickstart.md` steps 1 to 12 in the browser (stack up with `./scripts/compose-up.sh -d`); check every listed feature against the running app and fix the inventory for any that does not work today (SC-001, SC-002)
 - [ ] T042 [P] Time each demo loop in the browser: group demos under 15 s, overview under 20 s (SC-004); adjust durations in `ui/components/LandingTour/scenes/scenes.module.scss`
-- [ ] T043 [P] Check contrast of scene text and chips in light and dark against `ui/app/palette.test.ts` tokens; scenes use only existing tokens, with no hard-coded colours anywhere (the `HomeScene.tsx` cards get theirs from `.theme-light-scope` / `.theme-dark-scope`, T026)
-- [ ] T044 Run the full ui checks: `cd ui && npm test && npm run lint && npm run typecheck`; record any failure that already exists on `main` instead of hiding it
-- [ ] T045 Update `dev/docs/backlog.yaml` S-075 to `status: verification` with what was tested, and add the PRD note that the Visitor landing page is now the feature tour (`dev/docs/prd.md`, Visitor row and any landing description), per constitution 9
+- [X] T043 [P] Check contrast of scene text and chips in light and dark against `ui/app/palette.test.ts` tokens; scenes use only existing tokens, with no hard-coded colours anywhere (the `HomeScene.tsx` cards get theirs from `.theme-light-scope` / `.theme-dark-scope`, T026)
+- [X] T044 Run the full ui checks: `cd ui && npm test && npm run lint && npm run typecheck`; record any failure that already exists on `main` instead of hiding it
+- [X] T045 Update `dev/docs/backlog.yaml` S-075 to `status: verification` with what was tested, and add the PRD note that the Visitor landing page is now the feature tour (`dev/docs/prd.md`, Visitor row and any landing description), per constitution 9
 
 ---
 
