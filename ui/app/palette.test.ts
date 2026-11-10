@@ -122,8 +122,8 @@ function ratio(a: RGBA, b: RGBA): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-const light = declarations(blockBody(":root", "--background:"));
-const dark = declarations(blockBody("html.dark"));
+const light = declarations(blockBody(":root, .theme-light-scope", "--background:"));
+const dark = declarations(blockBody("html.dark, .theme-dark-scope"));
 const darkPrefers = declarations(blockBody("html:not(.light):not(.dark)"));
 const frostAlpha = light["--frost-alpha"];
 

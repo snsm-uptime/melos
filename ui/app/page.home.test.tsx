@@ -1,7 +1,9 @@
+import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { availableFeatures, groupsInOrder, plannedFeatures } from "@/lib/featureInventory";
+import { landingMessages, type DemoId } from "@/lib/i18n/landing";
 
 const fetchSession = vi.fn();
 const resolveServerAuthenticatedLanding = vi.fn();
@@ -26,6 +28,16 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/components/RedirectIfAuthenticated", () => ({
   RedirectIfAuthenticated: () => null,
+}));
+// The demo frame is a client component; here it shows what it was given, so the page renders on
+// the server alone.
+vi.mock("@/components/LandingTour/DemoFrame", () => ({
+  DemoFrame: ({ title, description, children }: { title: string; description: string; children: ReactNode }) => (
+    <figure data-demo-title={title}>
+      <figcaption>{description}</figcaption>
+      {children}
+    </figure>
+  ),
 }));
 
 const GROUP_IDS = ["capture", "notebooks", "together", "shop", "ingredients", "home"];
@@ -109,6 +121,21 @@ describe("Home page", () => {
     }
     const strip = section(markup, "coming-soon");
     for (const feature of plannedFeatures()) expect(strip, feature.id).toContain(escaped(feature.name.en));
+  });
+
+  it("shows the overview demo in the hero, then one demo per group, in order", async () => {
+    const markup = await renderHome();
+    const demo = landingMessages.en.demo;
+
+    const titles = [...markup.matchAll(/data-demo-title="([^"]*)"/g)].map((m) => m[1]);
+    expect(titles).toEqual(
+      ["overview", ...GROUP_IDS].map((id) => escaped(demo[id as DemoId].title)),
+    );
+    expect(markup.indexOf("data-demo-title")).toBeLessThan(markup.indexOf('<section id="capture"'));
+    for (const id of GROUP_IDS) {
+      const key = id as "capture";
+      expect(section(markup, id), id).toContain(escaped(demo[key].description));
+    }
   });
 
   it("says shopping list, never shopping kitchen (FR-016)", async () => {

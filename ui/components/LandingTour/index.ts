@@ -11,6 +11,15 @@
  */
 
 export { ClosingCta, type ClosingCtaProps } from "./ClosingCta";
+export { DemoFrame, type DemoFrameProps } from "./DemoFrame";
+export { demoFor, TourDemo } from "./demos";
 export { ComingSoon, type ComingSoonProps } from "./ComingSoon";
 export { GroupSection, type GroupSectionProps } from "./GroupSection";
 export { LandingHero, type LandingHeroProps } from "./LandingHero";
+export { CaptureScene } from "./scenes/CaptureScene";
+export { HomeScene } from "./scenes/HomeScene";
+export { IngredientsScene } from "./scenes/IngredientsScene";
+export { NotebooksScene } from "./scenes/NotebooksScene";
+export { OverviewScene } from "./scenes/OverviewScene";
+export { ShopScene } from "./scenes/ShopScene";
+export { TogetherScene } from "./scenes/TogetherScene";

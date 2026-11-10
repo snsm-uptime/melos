@@ -22,8 +22,8 @@ function declarations(selector: RegExp): Record<string, string> {
 }
 
 const THEMES = {
-  light: declarations(/^:root\s*\{([^}]*)\}/m),
-  dark: declarations(/^html\.dark\s*\{([^}]*)\}/m),
+  light: declarations(/^:root, \.theme-light-scope\s*\{([^}]*)\}/m),
+  dark: declarations(/^html\.dark, \.theme-dark-scope\s*\{([^}]*)\}/m),
 } as const;
 
 /** Splits on commas that are not inside brackets. */

@@ -41,7 +41,9 @@
   --spacing-row-y: var(--row-y);
 }
 
-:root {
+/* `.theme-light-scope` / `.theme-dark-scope` give one element the other theme's tokens, with no
+   copied values (spec 075: the landing page's home demo shows a light and a dark card side by side). */
+:root, .theme-light-scope {
   /* Light theme derived from the portfolio palette (spec 072 US3, contracts/theme-tokens.md).
      Orange is the main colour: --accent is orange ink for text and icons, --accent-fill is the
      orange area that carries text, --primary (violet) fills buttons. */
@@ -173,7 +175,7 @@ html.light {
   color-scheme: light;
 }
 
-html.dark {
+html.dark, .theme-dark-scope {
   /* Native controls (number spinners, select arrows) follow the app theme. */
   color-scheme: dark;
   /* Dark theme on the portfolio palette (spec 072 US2). Both dark blocks must stay identical:
