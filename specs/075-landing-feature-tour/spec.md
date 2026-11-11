@@ -71,6 +71,13 @@ Planned features (marked planned in the inventory, shown only in the "Coming soo
 - Q: Are the six groups, in the proposed order, the walkthrough wanted? → A: Yes: Capture any recipe, Your recipe notebooks, Cook together, Plan the week and shop, Ingredients that stay tidy, Made for your home.
 - Q: Should the top of the page be redesigned too? → A: Full redesign: a new headline, a new intro, and a short overview animation that plays the whole flow from capture to shopping list; the account buttons stay.
 
+### Session 2026-11-11
+
+- Q: Where on the landing page should the new background vectors appear? → A: At key points only: the hero (its waves stay), the surface band behind "Cook together" and "Plan the week and shop", and the closing call to action.
+- Q: What should the background vectors look like? → A: Large blurred colour blobs (orange and purple glows) behind the content.
+- Q: Should the glows move, or stay still? → A: Still; the glows never move, so the demos stay the only moving part of the page.
+- Q: How strong should the glows be? → A: Soft: clearly visible as a glow, while all text over it still meets 4.5:1 contrast (AA) in light and dark themes, checked by a test.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Walk through what the app does (Priority: P1)
@@ -263,6 +270,16 @@ appears in its group's list on the page, in both languages.
   inventory; adding it to the AGENTS.md backlog rule as well needs the owner's explicit approval
   (AGENTS.md, Amendments to Governance).
 
+- **FR-018**: The page MUST give a sense of depth with decorative background vectors at three
+  places only: the hero (its existing waves), the full-width surface band behind "Cook together"
+  and "Plan the week and shop", and the closing call to action. No other section has them. The
+  band and the closing call to action get large blurred colour blobs: soft orange and purple
+  glows behind the content, drawn in the palette's accent and primary colours. The glows are
+  still: they never animate, with or without reduced motion. They are soft: clearly visible as a
+  glow, but all text over them, muted text included, keeps at least 4.5:1 contrast in light and
+  dark themes. They are decorative only: hidden from screen readers, never catching clicks, and
+  never causing sideways scrolling (FR-015).
+
 ### Key Entities
 
 - **Feature group**: one of six themes of the app, in a fixed order; has a title and one or two
@@ -287,6 +304,8 @@ appears in its group's list on the page, in both languages.
 - **SC-005**: 0 untranslated strings in either language, checked by a test.
 - **SC-006**: The page has no sideways scrolling at 320 px wide, and every section is reachable from
   the index in one choice.
+- **SC-007**: Over the strongest point of each glow, foreground and muted text keep at least 4.5:1
+  contrast against the background they sit on, in light and dark themes, checked by a test.
 
 ## Assumptions
 
