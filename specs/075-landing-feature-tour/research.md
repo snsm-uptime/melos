@@ -98,3 +98,16 @@ the plan.
   in the quickstart walk. Admin-only features are left out. The quick add entry belongs to group 1.
   Note: the backlog lists S-069 twice (refused sites and quick add); the inventory stores story ids
   as strings with a short label, so both can be named without guessing a new number.
+
+## R9. Background glows
+
+- **Decision**: Draw the glows as SVG radial gradients (an ellipse per glow, from the token colour
+  at a per-theme strength to transparent), like the hero's SVG waves. Strength lives in two tokens
+  per theme block, `--glow-accent-strength` and `--glow-primary-strength`.
+- **Rationale**: A radial gradient has a known strongest point, so a test can composite it over
+  the background and prove text contrast (SC-007). The colours are the palette's own tokens, so
+  the glows follow theme and palette changes. Nothing moves, as the owner chose (FR-018).
+- **Alternatives considered**: CSS `filter: blur()` on coloured shapes (the peak depends on blur
+  radius and shape size, so contrast cannot be computed from tokens, and large blurs cost paint
+  time); background images (a file per theme, no token link).
+

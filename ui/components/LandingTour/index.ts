@@ -14,6 +14,7 @@ export { ClosingCta, type ClosingCtaProps } from "./ClosingCta";
 export { DemoFrame, type DemoFrameProps } from "./DemoFrame";
 export { demoFor, TourDemo } from "./demos";
 export { ComingSoon, type ComingSoonProps } from "./ComingSoon";
+export { Glows, type GlowPlace } from "./Glows";
 export { GroupSection, type GroupSectionProps } from "./GroupSection";
 export { LandingHero, type LandingHeroProps } from "./LandingHero";
 export { TourIndex, type TourIndexProps } from "./TourIndex";

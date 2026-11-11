@@ -150,6 +150,28 @@ describe("Home page", () => {
     expect(markup.indexOf('<section id="notebooks"')).toBeLessThan(start);
   });
 
+  it("draws still, hidden glows on the band and the closing call to action only (FR-018)", async () => {
+    const markup = await renderHome();
+
+    const glows = [...markup.matchAll(/<svg[^>]*data-landing-glows[^>]*>[\s\S]*?<\/svg>/g)];
+    expect(glows).toHaveLength(2);
+    const band = markup.indexOf("data-landing-band");
+    const bandEnd = markup.indexOf('<section id="ingredients"');
+    const closing = markup.indexOf("</section>", markup.indexOf('<section id="coming-soon"'));
+    const [inBand, inClosing] = glows.map((match) => match.index!);
+    expect(inBand).toBeGreaterThan(band);
+    expect(inBand).toBeLessThan(bandEnd);
+    expect(inClosing).toBeGreaterThan(closing);
+
+    for (const [svg] of glows) {
+      expect(svg).toContain('aria-hidden="true"');
+      expect(svg).toContain("pointer-events-none");
+      expect(svg).not.toMatch(/<animate|animation|animate-/);
+    }
+    // Nothing before the band has a glow: the hero keeps its waves, capture and notebooks are plain.
+    expect(markup.indexOf("data-landing-glows")).toBeGreaterThan(band);
+  });
+
   it("lists each available feature inside its own group section, and planned ones only in the strip", async () => {
     const markup = await renderHome();
 

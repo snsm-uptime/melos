@@ -311,9 +311,9 @@ appears in its group's list on the page, in both languages.
 
 - The audience is visitors who are not signed in; signed-in people never see the page (unchanged).
 - "Feature demos" means the landing page's feature cards; there is no other demo page today. The
-  demos are built from the app's own look with invented data, not screen recordings and not a
-  live sandbox, so they stay in step with the palette, cost nothing to run, and never touch real
-  data.
+  demos are the app's own components with invented data (research R5, revised 2026-11-10), not
+  screen recordings and not a live sandbox, so they stay in step with the app and the palette,
+  cost nothing to run, and never touch real data.
 - The inventory is kept in the repository as the single source both for the landing page and for
   people working on the app. Its exact place and format are for the plan.
 - The inventory's first draft (Context) comes from the done stories up to 2026-11-10; the plan

@@ -53,3 +53,20 @@ Scenes are the app's own components with invented data (research R5), inside an 
 `aria-hidden` wrapper. No scene makes a network request, links to an app route, or uses a real
 name or recipe. Units show as the app shows them in both languages ("1 cup + 3 tbsp", "2 unit
 large").
+
+## Background glows (FR-018, SC-007)
+
+Soft orange and purple glows give the page depth at two places only: the full-width surface band
+(`data-landing-band`, behind "Cook together" and "Plan the week and shop") and the closing call to
+action. The hero keeps its waves; no other section has decoration.
+
+- `Glows` (`components/LandingTour/Glows.tsx`, `place: "band" | "closing"`) renders one
+  `<svg data-landing-glows aria-hidden="true" focusable="false">` with `pointer-events-none`,
+  absolutely filling its parent, which is `relative isolate overflow-hidden` (no sideways scroll).
+- Each glow is an ellipse filled with a radial gradient from the token colour to transparent:
+  `--accent-fill` at `--glow-accent-strength`, `--primary` at `--glow-primary-strength`. The two
+  strengths are set per theme in `app/globals.css` (light 0.14 / 0.10, dark 0.22 / 0.18).
+- Still: no animation, with or without reduced motion.
+- `glowContrast.test.ts` checks that `--foreground` and `--muted` keep 4.5:1 over each glow's
+  strongest point on the band (`--surface`) and the closing (`--background`), in both themes.
+

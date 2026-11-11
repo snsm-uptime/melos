@@ -101,7 +101,9 @@ ui/
 │   ├── TourIndex.tsx                 # Six anchor links
 │   ├── GroupSection.tsx              # Title, lede, feature list, demo
 │   ├── ComingSoon.tsx                # Planned features strip (hidden when none)
-│   ├── ClosingCta.tsx
+│   ├── ClosingCta.tsx                # Closing account buttons over the closing glows
+│   ├── Glows.tsx                     # Still SVG radial-gradient glows: band and closing (FR-018)
+│   ├── glowContrast.test.ts          # Text keeps 4.5:1 over each glow's peak, both themes (SC-007)
 │   ├── DemoFrame.tsx                 # "use client": in-view play/pause, pause button, sr description
 │   ├── DemoFrame.module.scss         # play-state rules, reduced-motion guard
 │   ├── DemoFrame.test.tsx
