@@ -32,13 +32,19 @@ function Edge({ side }: { side: "top" | "bottom" }) {
       focusable="false"
       viewBox="0 0 1440 48"
       preserveAspectRatio="none"
+      className="pointer-events-none absolute inset-x-0 h-8 w-full md:h-12"
+      // Inline, not utility classes: position and colours hold even before the stylesheet has the
+      // classes (a dev server that has not recompiled draws an unstyled path black, inside the band).
       // One pixel over the band, so no hairline shows at the seam.
-      className={`pointer-events-none absolute inset-x-0 h-8 w-full md:h-12 ${
-        side === "top" ? "bottom-[calc(100%-1px)]" : "top-[calc(100%-1px)]"
-      }`}
+      style={side === "top" ? { bottom: "calc(100% - 1px)" } : { top: "calc(100% - 1px)" }}
     >
-      <path d={fill} className="fill-surface" />
-      <path d={curve} className="fill-none stroke-border" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+      <path d={fill} style={{ fill: "var(--surface)" }} />
+      <path
+        d={curve}
+        style={{ fill: "none", stroke: "var(--border)" }}
+        strokeWidth="1"
+        vectorEffect="non-scaling-stroke"
+      />
     </svg>
   );
 }

@@ -64,6 +64,8 @@ waves; no other section has background decoration.
   with `pointer-events-none`, as wide as the band, reaching 32 px (48 px from md) into the
   neighbouring section's padding and overlapping the band by 1 px so no seam shows.
 - The svg fills the band side of the curve with `--surface` and draws `--border` along the curve
-  (a non-scaling 1 px stroke). Still; no animation.
+  (a non-scaling 1 px stroke). Still; no animation. The fill, stroke and the outside position are
+  inline styles, not utility classes, so an edge is never drawn black or inside the band while a
+  stylesheet lacks new classes (seen on a dev server that had not recompiled).
 - The page test checks the two edges sit around the band's sections, are hidden and still, and
   that no straight `border-y` or glow remains.

@@ -168,7 +168,7 @@ describe("Home page", () => {
     for (const [svg] of edges) {
       expect(svg).toContain('aria-hidden="true"');
       expect(svg).toContain("pointer-events-none");
-      expect(svg).toContain("fill-surface");
+      expect(svg).toContain("fill:var(--surface)");
       expect(svg).toMatch(/ C[\d,. ]+/); // a curve, not a straight edge
       expect(svg).not.toMatch(/<animate|animation|animate-/);
     }
