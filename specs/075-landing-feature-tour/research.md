@@ -99,15 +99,14 @@ the plan.
   Note: the backlog lists S-069 twice (refused sites and quick add); the inventory stores story ids
   as strings with a short label, so both can be named without guessing a new number.
 
-## R9. Background glows
+## R9. Depth on the surface band
 
-- **Decision**: Draw the glows as SVG radial gradients (an ellipse per glow, from the token colour
-  at a per-theme strength to transparent), like the hero's SVG waves. Strength lives in two tokens
-  per theme block, `--glow-accent-strength` and `--glow-primary-strength`.
-- **Rationale**: A radial gradient has a known strongest point, so a test can composite it over
-  the background and prove text contrast (SC-007). The colours are the palette's own tokens, so
-  the glows follow theme and palette changes. Nothing moves, as the owner chose (FR-018).
-- **Alternatives considered**: CSS `filter: blur()` on coloured shapes (the peak depends on blur
-  radius and shape size, so contrast cannot be computed from tokens, and large blurs cost paint
-  time); background images (a file per theme, no token link).
-
+- **Decision (owner, 2026-11-11)**: Curved top and bottom edges on the surface band, drawn as two
+  inline SVGs filled with `--surface` with a `--border` line along the curve. No background glows.
+- **Rationale**: The owner disliked the glows once built and asked for curves instead of the band's
+  straight edges. SVG paths stretch to any width with `preserveAspectRatio="none"`, take their
+  colours from tokens, so they follow theme and palette, and cost no images.
+- **Replaced**: still SVG radial-gradient glows on the band and the closing call to action, with
+  per-theme strength tokens and a contrast test (built and removed the same day).
+- **Alternatives considered**: CSS `clip-path` or `border-radius` on the band (a clip cannot draw
+  the border line along the curve; a radius gives rounded corners, not a curve across the width).

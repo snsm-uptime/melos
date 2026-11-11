@@ -54,19 +54,16 @@ Scenes are the app's own components with invented data (research R5), inside an 
 name or recipe. Units show as the app shows them in both languages ("1 cup + 3 tbsp", "2 unit
 large").
 
-## Background glows (FR-018, SC-007)
+## Surface band edges (FR-018)
 
-Soft orange and purple glows give the page depth at two places only: the full-width surface band
-(`data-landing-band`, behind "Cook together" and "Plan the week and shop") and the closing call to
-action. The hero keeps its waves; no other section has decoration.
+The full-width surface band (`SurfaceBand`, `data-landing-band`) behind "Cook together" and "Plan
+the week and shop" has curved top and bottom edges instead of straight borders. The hero keeps its
+waves; no other section has background decoration.
 
-- `Glows` (`components/LandingTour/Glows.tsx`, `place: "band" | "closing"`) renders one
-  `<svg data-landing-glows aria-hidden="true" focusable="false">` with `pointer-events-none`,
-  absolutely filling its parent, which is `relative isolate overflow-hidden` (no sideways scroll).
-- Each glow is an ellipse filled with a radial gradient from the token colour to transparent:
-  `--accent-fill` at `--glow-accent-strength`, `--primary` at `--glow-primary-strength`. The two
-  strengths are set per theme in `app/globals.css` (light 0.14 / 0.10, dark 0.22 / 0.18).
-- Still: no animation, with or without reduced motion.
-- `glowContrast.test.ts` checks that `--foreground` and `--muted` keep 4.5:1 over each glow's
-  strongest point on the band (`--surface`) and the closing (`--background`), in both themes.
-
+- Each edge is an `<svg data-landing-band-edge="top|bottom" aria-hidden="true" focusable="false">`
+  with `pointer-events-none`, as wide as the band, reaching 32 px (48 px from md) into the
+  neighbouring section's padding and overlapping the band by 1 px so no seam shows.
+- The svg fills the band side of the curve with `--surface` and draws `--border` along the curve
+  (a non-scaling 1 px stroke). Still; no animation.
+- The page test checks the two edges sit around the band's sections, are hidden and still, and
+  that no straight `border-y` or glow remains.

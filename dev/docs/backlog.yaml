@@ -128,10 +128,10 @@ stories:
       2026-11-11, owner changes: demos are the app's real components with invented data (inert
       scene; research R5 revised), notebooks and ingredients sections stacked, cook together and
       shop on a surface band, @theme inline so the light/dark demo cards keep their theme.
-      FR-018 / SC-007 background glows built and tested (T046–T055): still SVG radial-gradient
-      glows on the band and the closing call to action, strengths per theme in globals.css;
-      glowContrast.test (12) proves text keeps 4.5:1 over each glow's peak; page test checks
-      placement, aria-hidden and no animation. Screenshots light and dark at 1280 and 500 px.
+      FR-018 background depth: glows were built (T046–T055) and removed at the owner's request;
+      instead the surface band has curved top and bottom edges (SurfaceBand.tsx, T056–T059), still
+      and hidden from screen readers; page test checks them. Screenshots light and dark at 1280
+      and 500 px.
 
   # ---------------------------------------------------------------------------
   # Recipes (J3), open.

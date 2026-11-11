@@ -141,7 +141,7 @@ describe("Home page", () => {
   it("draws the cook-together and shop sections, and only those, on one surface band", async () => {
     const markup = await renderHome();
 
-    expect(markup.match(/data-landing-band/g)).toHaveLength(1);
+    expect(markup.match(/data-landing-band(?!-)/g)).toHaveLength(1);
     const start = markup.indexOf("data-landing-band");
     const band = markup.slice(start, markup.indexOf('<section id="ingredients"'));
     expect(band).toContain("bg-surface");
@@ -150,26 +150,31 @@ describe("Home page", () => {
     expect(markup.indexOf('<section id="notebooks"')).toBeLessThan(start);
   });
 
-  it("draws still, hidden glows on the band and the closing call to action only (FR-018)", async () => {
+  it("gives the band curved top and bottom edges, decorative only, and no glows (FR-018)", async () => {
     const markup = await renderHome();
 
-    const glows = [...markup.matchAll(/<svg[^>]*data-landing-glows[^>]*>[\s\S]*?<\/svg>/g)];
-    expect(glows).toHaveLength(2);
     const band = markup.indexOf("data-landing-band");
-    const bandEnd = markup.indexOf('<section id="ingredients"');
-    const closing = markup.indexOf("</section>", markup.indexOf('<section id="coming-soon"'));
-    const [inBand, inClosing] = glows.map((match) => match.index!);
-    expect(inBand).toBeGreaterThan(band);
-    expect(inBand).toBeLessThan(bandEnd);
-    expect(inClosing).toBeGreaterThan(closing);
+    const top = markup.indexOf('data-landing-band-edge="top"');
+    const together = markup.indexOf('<section id="together"');
+    const shop = markup.indexOf('<section id="shop"');
+    const bottom = markup.indexOf('data-landing-band-edge="bottom"');
+    expect(band).toBeLessThan(top);
+    expect(top).toBeLessThan(together);
+    expect(shop).toBeLessThan(bottom);
+    expect(bottom).toBeLessThan(markup.indexOf('<section id="ingredients"'));
 
-    for (const [svg] of glows) {
+    const edges = [...markup.matchAll(/<svg[^>]*data-landing-band-edge[^>]*>[\s\S]*?<\/svg>/g)];
+    expect(edges).toHaveLength(2);
+    for (const [svg] of edges) {
       expect(svg).toContain('aria-hidden="true"');
       expect(svg).toContain("pointer-events-none");
+      expect(svg).toContain("fill-surface");
+      expect(svg).toMatch(/ C[\d,. ]+/); // a curve, not a straight edge
       expect(svg).not.toMatch(/<animate|animation|animate-/);
     }
-    // Nothing before the band has a glow: the hero keeps its waves, capture and notebooks are plain.
-    expect(markup.indexOf("data-landing-glows")).toBeGreaterThan(band);
+    // The band's edges are the curves: no straight borders, and the glows are gone.
+    expect(markup).not.toContain("border-y");
+    expect(markup).not.toContain("data-landing-glows");
   });
 
   it("lists each available feature inside its own group section, and planned ones only in the strip", async () => {

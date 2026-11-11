@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 import {
   ClosingCta,
   ComingSoon,
-  Glows,
   GroupSection,
   LandingHero,
+  SurfaceBand,
   TourDemo,
   TourIndex,
 } from "@/components/LandingTour";
@@ -83,14 +83,7 @@ export default async function Home() {
           />
         ));
         return run.banded ? (
-          <div
-            key={run.groups[0].id}
-            data-landing-band
-            className="relative isolate overflow-hidden border-y border-border bg-surface"
-          >
-            <Glows place="band" />
-            {sections}
-          </div>
+          <SurfaceBand key={run.groups[0].id}>{sections}</SurfaceBand>
         ) : (
           sections
         );

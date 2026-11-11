@@ -58,9 +58,6 @@
   --on-accent: #141218;
   --primary: #9035d6;
   --on-primary: #ffffff;
-  /* Landing glows' peak opacity (spec 075 FR-018); low enough that text keeps 4.5:1 over them (SC-007). */
-  --glow-accent-strength: 0.14;
-  --glow-primary-strength: 0.10;
   --secondary: #d82591;
   --on-secondary: #ffffff;
   --error: #c42727;
@@ -194,9 +191,6 @@ html.dark, .theme-dark-scope {
   --on-accent: #141218;
   --primary: #6d1aad;
   --on-primary: #ffffff;
-  /* Landing glows' peak opacity (spec 075 FR-018); low enough that text keeps 4.5:1 over them (SC-007). */
-  --glow-accent-strength: 0.22;
-  --glow-primary-strength: 0.18;
   --secondary: #d82591;
   --on-secondary: #ffffff;
   --error: #f87171;
@@ -227,9 +221,6 @@ html.dark, .theme-dark-scope {
     --on-accent: #141218;
     --primary: #6d1aad;
     --on-primary: #ffffff;
-    /* Landing glows' peak opacity, as in html.dark (spec 075 FR-018, SC-007). */
-    --glow-accent-strength: 0.22;
-    --glow-primary-strength: 0.18;
     --secondary: #d82591;
     --on-secondary: #ffffff;
     --error: #f87171;

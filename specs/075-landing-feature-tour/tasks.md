@@ -159,6 +159,11 @@ languages; a planned one shows only in the strip.
 
 ## Phase 9: Background depth (FR-018, SC-007; clarified 2026-11-11)
 
+> **Replaced the same day (owner, 2026-11-11)**: the glows were built (T046–T055, commit 58741e9)
+> and then removed at the owner's request; Phase 10 gives the surface band curved edges instead.
+> `Glows.tsx`, `glowContrast.test.ts` and the `--glow-*-strength` tokens no longer exist, and SC-007
+> was dropped from the spec.
+
 **Goal**: Still, soft orange and purple glows behind the surface band ("Cook together" and "Plan the
 week and shop") and behind the closing call to action; the hero keeps its waves and no other
 section gets decoration.
@@ -198,6 +203,20 @@ test can compute). Colours come only from tokens: orange `var(--accent-fill)`, p
 - [X] T054 Build and screenshot with headless Chrome (`cd ui && npx next build && npx next start -p 3123`, then Chrome `--headless=new --force-prefers-reduced-motion` with `--force-dark-mode` and with `--blink-settings=preferredColorScheme=1`) at 1280 and 500 px wide, at `#together` and at the end of the page; confirm the glows show in both themes and nothing scrolls sideways. 320 px is checked in the browser walk (T041), since headless Chrome cannot render narrower than about 500 px
 - [X] T055 Run `cd ui && npx vitest run app/page.home.test.tsx components/LandingTour app/palette.test.ts && npx eslint app components/LandingTour && npx tsc --noEmit -p .`; record any failure that already exists on `main`. Add a line to the S-075 note in `dev/docs/backlog.yaml` that FR-018 / SC-007 (background glows) are built and tested. Commit the phase (constitution 8), no push
 
+## Phase 10: Curved surface band edges (FR-018, revised 2026-11-11)
+
+**Goal**: The surface band behind "Cook together" and "Plan the week and shop" has gently curved
+top and bottom edges instead of straight borders; no glows anywhere.
+
+**Independent test**: The page test finds two still, hidden curve edges around the band's
+sections, filled with `--surface`, and no `border-y` or glow; screenshots show the curves in light
+and dark at 1280 and 500 px with no sideways scrolling.
+
+- [X] T056 Remove the glows: delete `ui/components/LandingTour/Glows.tsx` and `ui/components/LandingTour/glowContrast.test.ts`, drop the `--glow-accent-strength` / `--glow-primary-strength` tokens from the three theme blocks of `ui/app/globals.css`, restore `ui/components/LandingTour/ClosingCta.tsx` to its pre-glow markup, and remove the export from `ui/components/LandingTour/index.ts`
+- [X] T057 Create `ui/components/LandingTour/SurfaceBand.tsx`: a `relative bg-surface` wrapper with `data-landing-band` and two `Edge` SVGs (`data-landing-band-edge="top|bottom"`, `aria-hidden`, `focusable="false"`, `pointer-events-none`, `preserveAspectRatio="none"`, 32 px tall, 48 px from md) placed just outside the band with 1 px overlap; each fills the band side of a cubic curve with `fill-surface` and strokes the curve with `stroke-border` (non-scaling 1 px). Export it from `ui/components/LandingTour/index.ts` and use it for the banded run in `ui/app/page.tsx` in place of the `border-y` div
+- [X] T058 In `ui/app/page.home.test.tsx`, replace the glow test with one for the curved edges (order around the band's sections, hidden, still, `fill-surface`, a `C` curve, no `border-y`, no glows), and narrow the band count to `/data-landing-band(?!-)/g`
+- [X] T059 Update FR-018 in `specs/075-landing-feature-tour/spec.md` (and drop SC-007), the contract's "Surface band edges" section, research R9, the plan tree, quickstart step 13 and the S-075 backlog note; build and screenshot light and dark at 1280 and 500 px; run the page, landing and palette tests, lint and types
+
 ---
 
 ## Dependencies & Execution Order
@@ -209,7 +228,8 @@ test can compute). Colours come only from tokens: orange `var(--accent-fill)`, p
 - **US4 (T035–T037)** needs US1; T036 needs US2's scenes.
 - **US5 (T038–T040)** needs US1 (ComingSoon, sections); T039 and T040 can start any time after T003.
 - **Polish (T041–T045)** after the stories in scope are done.
-- **Background depth (T046–T055)** needs the surface band in `ui/app/page.tsx` and `ClosingCta.tsx` (both exist). Tests T046, T047 first; T048 makes T046 pass; T049 before T050 and T051; T050 and T051 make T047 pass; docs T052, T053 any time; T054, T055 last. T041 (browser walk) should run after this phase so it covers the glows too.
+- **Curved band edges (T056–T059)** replace Phase 9; T041 (browser walk) should run after them.
+- **Background depth (T046–T055, replaced)** needed the surface band in `ui/app/page.tsx` and `ClosingCta.tsx` (both exist). Tests T046, T047 first; T048 makes T046 pass; T049 before T050 and T051; T050 and T051 make T047 pass; docs T052, T053 any time; T054, T055 last. T041 (browser walk) should run after this phase so it covers the glows too.
 
 ```text
 T001 → T003 → T004,T005 → T006 ┐

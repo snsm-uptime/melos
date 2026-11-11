@@ -41,6 +41,5 @@ and not "Shopping kitchen", the Spanish page "lista de compras" and not "Cocina 
 11. VoiceOver over a demo: reads its title and description, not the animated fragments. (FR-009)
 12. Sign in, then open `/`: redirected to the usual start page as before. (FR-014)
 13. Signed out, in light and dark: the band behind "Cook together" and "Plan the week and shop"
-    and the closing call to action show soft orange and purple glows that do not move; the hero
-    still shows its waves; no other section has decoration; all text over a glow reads clearly.
-    (FR-018, SC-007)
+    has curved top and bottom edges with a thin line along each curve, not straight edges; the
+    hero still shows its waves; no other section has background decoration. (FR-018)
