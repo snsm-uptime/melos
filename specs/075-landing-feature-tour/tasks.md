@@ -157,6 +157,47 @@ languages; a planned one shows only in the strip.
 - [X] T044 Run the full ui checks: `cd ui && npm test && npm run lint && npm run typecheck`; record any failure that already exists on `main` instead of hiding it
 - [X] T045 Update `dev/docs/backlog.yaml` S-075 to `status: verification` with what was tested, and add the PRD note that the Visitor landing page is now the feature tour (`dev/docs/prd.md`, Visitor row and any landing description), per constitution 9
 
+## Phase 9: Background depth (FR-018, SC-007; clarified 2026-11-11)
+
+**Goal**: Still, soft orange and purple glows behind the surface band ("Cook together" and "Plan the
+week and shop") and behind the closing call to action; the hero keeps its waves and no other
+section gets decoration.
+
+**Independent test**: The page test finds the glows in exactly the band and the closing call to
+action, hidden from screen readers, with no animation; a contrast test proves foreground and muted
+text keep 4.5:1 over the strongest point of each glow in light and dark; screenshots at 1280, 500
+and 320 px show the glows with no sideways scrolling.
+
+**Design (fixed here so the tasks need no further choice)**: the glows are vectors, like the hero's
+waves: one inline `<svg>` per place, each glow an `<ellipse>` filled with a `<radialGradient>` whose
+centre stop is the colour at full strength and whose edge stop is fully transparent. No CSS
+`filter: blur()` (a radial gradient gives the same soft edge with a known peak, which the contrast
+test can compute). Colours come only from tokens: orange `var(--accent-fill)`, purple
+`var(--primary)`. Peak strength per theme comes from two new tokens, `--glow-accent-strength` and
+`--glow-primary-strength`, in both theme blocks of `ui/app/globals.css`. Nothing animates.
+
+### Tests for background depth
+
+- [ ] T046 [P] Write `ui/components/LandingTour/glowContrast.test.ts` (node env), reading `ui/app/globals.css` with the same `blockBody` / `declarations` helpers as `ui/app/palette.test.ts` (copy them, or move both copies into a shared helper beside palette.test.ts and import it from both). For each theme block (`:root, .theme-light-scope` and `html.dark, .theme-dark-scope`) and each place (band over `--surface`, closing over `--background`): mix each glow colour (`--accent-fill` at `--glow-accent-strength`, `--primary` at `--glow-primary-strength`) over the place's background with plain alpha compositing, then assert the WCAG contrast of `--foreground` and of `--muted` against the result is at least 4.5 (SC-007). Also assert each strength parses as a number between 0.05 and 0.5, so a glow is visible and cannot be a solid wash. It must fail until T048 adds the tokens
+- [ ] T047 [P] Add to `ui/app/page.home.test.tsx`: the markup has exactly two `data-landing-glows` elements, one inside the `data-landing-band` element and one inside the closing call to action (after `<section id="coming-soon"`); each is an `<svg` with `aria-hidden="true"` and a `pointer-events-none` class; none is inside the hero `<section` or any `<section id="…">` outside the band; and the glows markup contains no `animate` element and no `animation` / `animate-` class (FR-018). It must fail until T050 and T051
+
+### Implementation for background depth
+
+- [ ] T048 Add `--glow-accent-strength` and `--glow-primary-strength` to both theme blocks of `ui/app/globals.css` (`:root, .theme-light-scope` and `html.dark, .theme-dark-scope`), with a one-line comment that they are the glows' peak opacity, kept low enough for SC-007. Start from light 0.14 / 0.10 and dark 0.22 / 0.18, then lower any value T046 rejects; record the final values in the comment. Run T046 until it passes
+- [ ] T049 [P] Create `ui/components/LandingTour/Glows.tsx`, a server component `Glows({ place }: { place: "band" | "closing" })` that renders one `<svg data-landing-glows aria-hidden="true" focusable="false" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 -z-10 h-full w-full">` with a `viewBox` of `0 0 1440 800`, two `<radialGradient>` defs (ids made unique per place, e.g. `glow-band-accent`, so two instances on one page never share an id) whose stops use `style={{ stopColor: "var(--accent-fill)", stopOpacity: "var(--glow-accent-strength)" }}` at offset 0 and `stopOpacity: 0` at offset 1 (same for primary), and two or three large ellipses: for `band`, orange to the upper left and purple to the lower right; for `closing`, one orange and one purple meeting behind the centred text. Export it from `ui/components/LandingTour/index.ts`. Add a JSDoc line naming FR-018 and saying the glows are still on purpose
+- [ ] T050 In `ui/app/page.tsx`, make the band wrapper `relative isolate overflow-hidden border-y border-border bg-surface` (isolate keeps the `-z-10` glows above the band's own background; overflow-hidden keeps them from causing sideways scrolling, FR-015) and render `<Glows place="band" />` as its first child
+- [ ] T051 In `ui/components/LandingTour/ClosingCta.tsx`, wrap the existing content in a full-width `<div className="relative isolate overflow-hidden">` with `<Glows place="closing" />` as its first child; keep the inner `mx-auto max-w-2xl …` block and its classes unchanged
+
+### Documentation for background depth
+
+- [ ] T052 [P] In `specs/075-landing-feature-tour/contracts/landing-page.md`, add a "Background glows" section: where they are (band and closing only; hero keeps its waves), `data-landing-glows`, `aria-hidden`, no pointer events, still, tokens used, and the SC-007 test. In `specs/075-landing-feature-tour/research.md`, add "R9. Background glows": SVG radial gradients over CSS blur (known peak for the contrast test, same vector approach as the hero), alternatives considered (CSS `filter: blur`, background images)
+- [ ] T053 [P] In `specs/075-landing-feature-tour/plan.md` "Source Code", add `Glows.tsx` under `components/LandingTour/` and `glowContrast.test.ts`; in `specs/075-landing-feature-tour/quickstart.md`, add a step: in light and dark, the band and the closing call to action show soft orange and purple glows that do not move, the hero still shows its waves, and no other section has decoration. In `specs/075-landing-feature-tour/spec.md` Assumptions, reword "The demos are built from the app's own look with invented data" to say they are the app's own components with invented data (research R5, revised 2026-11-10)
+
+### Verification for background depth
+
+- [ ] T054 Build and screenshot with headless Chrome (`cd ui && npx next build && npx next start -p 3123`, then Chrome `--headless=new --force-prefers-reduced-motion` with `--force-dark-mode` and with `--blink-settings=preferredColorScheme=1`) at 1280 and 500 px wide, at `#together` and at the end of the page; confirm the glows show in both themes and nothing scrolls sideways. 320 px is checked in the browser walk (T041), since headless Chrome cannot render narrower than about 500 px
+- [ ] T055 Run `cd ui && npx vitest run app/page.home.test.tsx components/LandingTour app/palette.test.ts && npx eslint app components/LandingTour && npx tsc --noEmit -p .`; record any failure that already exists on `main`. Add a line to the S-075 note in `dev/docs/backlog.yaml` that FR-018 / SC-007 (background glows) are built and tested. Commit the phase (constitution 8), no push
+
 ---
 
 ## Dependencies & Execution Order
@@ -168,6 +209,7 @@ languages; a planned one shows only in the strip.
 - **US4 (T035–T037)** needs US1; T036 needs US2's scenes.
 - **US5 (T038–T040)** needs US1 (ComingSoon, sections); T039 and T040 can start any time after T003.
 - **Polish (T041–T045)** after the stories in scope are done.
+- **Background depth (T046–T055)** needs the surface band in `ui/app/page.tsx` and `ClosingCta.tsx` (both exist). Tests T046, T047 first; T048 makes T046 pass; T049 before T050 and T051; T050 and T051 make T047 pass; docs T052, T053 any time; T054, T055 last. T041 (browser walk) should run after this phase so it covers the glows too.
 
 ```text
 T001 → T003 → T004,T005 → T006 ┐
@@ -183,6 +225,7 @@ T001 → T003 → T004,T005 → T006 ┐
 - **US1**: T009, T010, T011, T012 together (four new files), then T013 and T014.
 - **US2**: T016 and T017 (tests) together; then T021–T025 and T027 (six scene files) together after T020. T026 is not [P]: it edits `ui/app/globals.css` and `ui/app/palette.test.ts`, which T034 (US3) also edits, so do not run T026 and T034 at the same time.
 - **US3/US4/US5**: T032, T036, T039, T040 touch different files and can run alongside each other.
+- **Background depth**: T046 and T047 together (different test files); T049 alongside T048 (new file vs `globals.css`); T052 and T053 alongside any of them. T050 and T051 touch different files but both need T049.
 
 ## Implementation Strategy
 
@@ -190,4 +233,6 @@ T001 → T003 → T004,T005 → T006 ┐
    US1 alone is shippable if demos slip (empty slots render nothing; sections still list features).
 2. Add **US3** (index) and **US4** (language checks); both are small.
 3. Add **US5** (process line and dynamic test) last.
-4. Commit per phase (constitution 8); do not push before the owner's review.
+4. Add **background depth** (Phase 9, FR-018 / SC-007) after the owner's layout changes; it is
+   small and shippable on its own.
+5. Commit per phase (constitution 8); do not push before the owner's review.
