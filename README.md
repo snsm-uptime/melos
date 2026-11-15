@@ -208,9 +208,11 @@ Then check:
 - API: http://localhost:8000/health
 - MCP: http://localhost:9000/health
 
-With `SEED_DEV_USER=1` (dev only) the API seeds two verified users (owner and
-member) sharing one kitchen, with one recipe from each of them, ready for testing auth,
-kitchen membership and the recipe lists. Under the dev overlay the owner is also an admin
+With `SEED_DEV_USER=1` (dev only) the API seeds three verified users with fixed credentials
+(`owner@dev.com`, `member@dev.com`, `invitado@dev.com`; password in
+`api/scripts/seed_dev_user.py`), the first two sharing one kitchen, with demo recipes spread
+over their notebooks, ready for testing auth, kitchen membership, the recipe lists and the
+catalog languages. Under the dev overlay the owner is also an admin
 (`SEED_DEV_USER_ADMIN`, default `1`; set `0` to opt out), so `/admin` works on a fresh stack.
 
 **The admin dashboard**
