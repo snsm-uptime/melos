@@ -212,6 +212,10 @@ move the whole entry, unchanged otherwise, to the end of
 `dev/docs/backlog-done.yaml` in the same change. Story numbers are unique across
 both files: before adding a story, check both for the next free number. A check
 still open on a done story is recorded in its note in `backlog-done.yaml`.
+A done story that adds, removes or changes a feature a person can use updates
+the feature inventory, `ui/lib/featureInventory.ts`, in the same change
+(planned becomes available when it ships), and its verification note says so
+(spec 075 FR-017).
 
 ## Development environment
 

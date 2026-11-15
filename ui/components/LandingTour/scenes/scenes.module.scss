@@ -1,0 +1,115 @@
+/* Landing demo scenes (spec 075, research R2). Every element's resting style is the scene's final
+   state, which is what a visitor who reduces motion, a browser without JavaScript or a demo that
+   has not started yet shows. The scenes are the app's own components with invented data, drawn a
+   little smaller so a screen fits beside the section text. Motion is declared only inside `prefers-reduced-motion:
+   no-preference`, runs only once DemoFrame sets `data-started="true"`, and stops in place through
+   `--demo-play-state`. Only transform and opacity animate.
+
+   A scene is a loop of `--loop` seconds. Its steps happen at fixed points of the loop, the slots
+   below: `inN` fades an element in at slot N, `outN` fades one out, `popN` gives it a short bump. Every step returns to the start at 92–100%, so the
+   loop begins again from a clean scene. */
+
+$slots: (
+  1: 6%,
+  2: 18%,
+  3: 30%,
+  4: 42%,
+  5: 54%,
+  6: 66%,
+);
+
+.scene {
+  --loop: 12s;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  zoom: 0.85;
+}
+
+/* The overview plays the whole flow, so it gets a longer loop (SC-004: under 20 s). */
+.long {
+  --loop: 18s;
+}
+
+/* Two states in one place: both share the cell, so nothing shifts. */
+.swap {
+  display: grid;
+  min-width: 0;
+
+  > * {
+    grid-area: 1 / 1;
+  }
+}
+
+
+@each $n, $at in $slots {
+  /* Gone in the final state. */
+  .out#{$n} {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @each $n, $at in $slots {
+    @keyframes scene-in-#{$n} {
+      0%,
+      #{$at} {
+        opacity: 0;
+        transform: translateY(0.4rem);
+      }
+      #{$at + 4%},
+      92% {
+        opacity: 1;
+        transform: none;
+      }
+      100% {
+        opacity: 0;
+        transform: none;
+      }
+    }
+
+    @keyframes scene-out-#{$n} {
+      0%,
+      #{$at} {
+        opacity: 1;
+      }
+      #{$at + 4%},
+      92% {
+        opacity: 0;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+
+
+    @keyframes scene-pop-#{$n} {
+      0%,
+      #{$at},
+      #{$at + 6%},
+      100% {
+        transform: none;
+      }
+      #{$at + 3%} {
+        transform: scale(1.06);
+      }
+    }
+
+    [data-started="true"] .in#{$n} {
+      animation: scene-in-#{$n} var(--loop) ease-out infinite;
+      animation-play-state: var(--demo-play-state, running);
+    }
+
+    [data-started="true"] .out#{$n} {
+      animation: scene-out-#{$n} var(--loop) ease-out infinite;
+      animation-play-state: var(--demo-play-state, running);
+    }
+
+
+    [data-started="true"] .pop#{$n} {
+      animation: scene-pop-#{$n} var(--loop) ease-in-out infinite;
+      animation-play-state: var(--demo-play-state, running);
+    }
+  }
+}

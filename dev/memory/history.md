@@ -65,3 +65,9 @@
 - **Decisions:** S-026 (capture from a URL) was specified, clarified and planned: one page fetch on ports 80/443 to a checked public address, JSON-LD for title, steps and servings with ingredient lines still sent to Gemini, page content turned into Markdown and split into parallel block-aligned batches when too long (any failed batch fails the capture), the main photo fetched once and stored as a preview (new column, migration 0015); page rendering deferred to S-066. The owner approved trafilatura.
 - **Project facts:** the MVP closed with the work done up to 2026-11-04; later work is post-MVP. Constitution 2.0.0 replaced the photo rule (images stored only where a story says so) and redefined principle 9; PRD, AGENTS.md, README and backlog header were updated, and must stories S-067 (recipe image) and S-068 (cart receipts) were added.
 - **Finished changes:** S-026 tasks generated (63 tasks), docs committed on worktree-26 for the owner to fast-forward.
+
+## 061126
+
+- **Preferences/corrections:** every 3-dot popup menu item leads with its action's standard icon at chrome size (1.5rem), label on one line, enforced through an icon prop on IconButtonPopupItem/LinkItem.
+- **Decisions:** S-072 (acrylic chrome and portfolio palette) was specified, clarified, planned and broken into 40 tasks: sticky top bars frosted once content scrolls under them (88% opacity), dots menus and dropdowns always frosted, dialogs and side panel solid; orange is the main colour, violet for brand and filled buttons, light theme derived from the dark portfolio palette, AA contrast checked by palette.test.ts.
+- **Finished changes:** recipe page Edit, Share and Delete moved into a dots menu, and the source link became a link icon beside the cart icon.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, type ReactNode } from "react";
+import { createContext, useContext, useId, useRef, type ReactNode } from "react";
 
 import { CloseIcon } from "@/app/icons";
 import { IconButton } from "@/components/IconButton";
@@ -8,6 +8,17 @@ import { IconButton } from "@/components/IconButton";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { GhostButton } from "@/components/soft-ledger/GhostButton";
 import { PrimaryButton } from "@/components/soft-ledger/PrimaryButton";
+
+/**
+ * Inside this provider an open dialog is drawn in place, as a panel in the page flow: no scrim, no
+ * focus trap, no scroll lock and no key handling. For pictures of the app, such as the landing
+ * demos (spec 075), where a dialog is shown but never used.
+ */
+const InlineDialogContext = createContext(false);
+
+export function InlineDialogs({ children }: { children: ReactNode }) {
+  return <InlineDialogContext.Provider value>{children}</InlineDialogContext.Provider>;
+}
 
 export type ActionDialogProps = {
   /** Whether the dialog is open */
@@ -58,9 +69,10 @@ export function ActionDialog({
   const hasFooter = confirmLabel !== undefined || cancelLabel !== undefined;
   const panelRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const inline = useContext(InlineDialogContext);
 
   useFocusTrap({
-    isActive: open,
+    isActive: open && !inline,
     containerRef: panelRef,
     defaultFocusRef: cancelRef,
     onEscapePress: () => onOpenChange(false),
@@ -68,52 +80,57 @@ export function ActionDialog({
 
   if (!open) return null;
 
+  const panel = (
+    <div
+      ref={panelRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      className="w-full max-w-[28rem] rounded-md border border-border bg-surface p-5 shadow-none"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <h2 id={titleId} className="m-0 text-[1.05rem] font-[550] text-foreground">
+          {title}
+        </h2>
+        {closeLabel ? (
+          <IconButton
+            variant="ghost"
+            className="size-8"
+            label={closeLabel}
+            icon={<CloseIcon className="size-5" />}
+            onClick={() => onOpenChange(false)}
+          />
+        ) : null}
+      </div>
+      <div className="mt-4">{children}</div>
+      {hasFooter ? (
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <GhostButton
+            ref={cancelRef}
+            onClick={() => onOpenChange(false)}
+            disabled={pending}
+          >
+            {cancelLabel}
+          </GhostButton>
+          {confirmLabel !== undefined ? (
+            <PrimaryButton onClick={onConfirm} disabled={pending} loading={pending}>
+              {confirmLabel}
+            </PrimaryButton>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+  if (inline) return panel;
+
   return (
     <div
       className="modal-scrim fixed inset-0 z-50 flex items-center justify-center bg-background/70 px-6"
       role="presentation"
       onClick={() => onOpenChange(false)}
     >
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="w-full max-w-[28rem] rounded-md border border-border bg-surface p-5 shadow-none"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-center justify-between gap-2">
-          <h2 id={titleId} className="m-0 text-[1.05rem] font-[550] text-foreground">
-            {title}
-          </h2>
-          {closeLabel ? (
-            <IconButton
-              variant="ghost"
-              className="size-8"
-              label={closeLabel}
-              icon={<CloseIcon className="size-5" />}
-              onClick={() => onOpenChange(false)}
-            />
-          ) : null}
-        </div>
-        <div className="mt-4">{children}</div>
-        {hasFooter ? (
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
-            <GhostButton
-              ref={cancelRef}
-              onClick={() => onOpenChange(false)}
-              disabled={pending}
-            >
-              {cancelLabel}
-            </GhostButton>
-            {confirmLabel !== undefined ? (
-              <PrimaryButton onClick={onConfirm} disabled={pending} loading={pending}>
-                {confirmLabel}
-              </PrimaryButton>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+      {panel}
     </div>
   );
 }

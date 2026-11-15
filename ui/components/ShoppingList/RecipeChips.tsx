@@ -6,7 +6,8 @@ import { shoppingListMessages } from "@/lib/i18n/shoppingList";
 import type { ShoppingRecipeRef } from "@/lib/shoppingListClient";
 
 type RecipeChipsProps = {
-  kitchenId: string;
+  /** Without it the chips are plain text, links to nothing (a picture of a list, spec 075). */
+  kitchenId?: string;
   recipes: ShoppingRecipeRef[];
   locale: Locale;
 };
@@ -18,7 +19,7 @@ type RecipeChipsProps = {
  */
 export function RecipeChips({ kitchenId, recipes, locale }: RecipeChipsProps) {
   const t = shoppingListMessages[locale];
-  const from = `/kitchens/${encodeURIComponent(kitchenId)}/cart`;
+  const from = kitchenId ? `/kitchens/${encodeURIComponent(kitchenId)}/cart` : null;
   return (
     <ul
       aria-label={t.recipesLabel}
@@ -31,6 +32,10 @@ export function RecipeChips({ kitchenId, recipes, locale }: RecipeChipsProps) {
               title={recipe.title}
               className={`${chipClassName.muted} opacity-70`}
             >
+              {recipe.title}
+            </span>
+          ) : from === null ? (
+            <span title={recipe.title} className={chipClassName.muted}>
               {recipe.title}
             </span>
           ) : (

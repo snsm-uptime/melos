@@ -14,8 +14,8 @@ type CartEntryRowProps = {
   /** Shown instead of the entry's saved factor while editing. */
   factor: string;
   locale: Locale;
-  /** The address the recipe page's Back returns to. */
-  from: string;
+  /** The address the recipe page's Back returns to. Without it the title is not a link. */
+  from?: string;
   /** Set in the editing view. */
   onServingsChange?: (servings: number) => void;
   onRemove?: () => void;
@@ -35,12 +35,16 @@ export function CartEntryRow({
   return (
     <li className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-border bg-surface p-3">
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <Link
-          href={`/recipes/${encodeURIComponent(entry.recipe_id)}?from=${encodeURIComponent(from)}`}
-          className="truncate text-[1rem] font-[550] text-foreground no-underline hover:text-accent"
-        >
-          {entry.title}
-        </Link>
+        {from ? (
+          <Link
+            href={`/recipes/${encodeURIComponent(entry.recipe_id)}?from=${encodeURIComponent(from)}`}
+            className="truncate text-[1rem] font-[550] text-foreground no-underline hover:text-accent"
+          >
+            {entry.title}
+          </Link>
+        ) : (
+          <span className="truncate text-[1rem] font-[550] text-foreground">{entry.title}</span>
+        )}
         <span className="truncate text-[0.85rem] text-muted">{entry.notebook_name}</span>
         <span className="text-[0.85rem] text-muted">{t.serves(entry.base_servings)}</span>
       </div>
