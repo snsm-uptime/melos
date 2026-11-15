@@ -182,8 +182,8 @@ export function AddRecipeCallToAction({
           {t.addRecipeButton}
         </AccentButton>
       ) : (
-        // Fills its grid row so it matches the card beside it; never shorter than the shortest
-        // NotebookCard (one title line, the recipe count, its padding and border).
+        // Fills its grid row so it matches the cards; RecipeList's rows share one height, so this
+        // holds on a one-column phone list too.
         <AddItemCard
           label={t.addRecipe}
           onClick={() => setOptionsOpen(true)}
