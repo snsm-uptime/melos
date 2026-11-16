@@ -116,7 +116,7 @@ None. The two stories touch separate code paths: US1 the capture store and sign-
 - [X] T017 [P] Run `npm run lint && npm run typecheck && npm run test` in `ui/`. Everything must pass.
 - [ ] T018 Run the full manual check in `specs/076-keep-pasted-recipe-text/quickstart.md` against `./scripts/compose-up.sh` on desktop and on a phone-width viewport (constitution 6). Note the results in the PR.
 - [X] T019 [P] Record the side-panel change in spec 016: add a note under FR-001a in `specs/016-capture-recipe-text/spec.md` saying the side panel offers personal and kitchen notebooks together, superseded by spec 076 FR-008.
-- [ ] T020 Commit per story (US1, US2, docs), with messages explaining what changed and why. Open a PR to `main` for review (constitution 8).
+- [X] T020 Commit per story (US1, US2, docs), with messages explaining what changed and why. Open a PR to `main` for review (constitution 8).
 
 ---
 
