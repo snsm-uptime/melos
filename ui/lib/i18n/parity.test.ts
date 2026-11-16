@@ -66,6 +66,7 @@ const SAME_ON_PURPOSE = new Set<string>([
   "admin.none", // the dash shown for an empty value
   "admin.kinds.personal", // "Personal" is the same word in Spanish
   "notebooks.tabPersonal", // "Personal", as above
+  "notebooks.personalGroup", // "Personal", as above
   "admin.columns.users.alias", // "Alias" is the same word in Spanish
   "admin.columns.refusedSites.totalRefusals", // "Total" is the same word in Spanish
   "account.photoCropZoom", // "Zoom" is the word used in Spanish too

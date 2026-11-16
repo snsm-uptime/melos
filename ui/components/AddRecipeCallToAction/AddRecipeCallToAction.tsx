@@ -36,6 +36,10 @@ export type CaptureCandidate = {
   name: string;
   kind: "personal" | "kitchen";
   kitchenId: string | null;
+  /** Shown after the name in the picker: "Personal" or the kitchen's name (spec 076). */
+  detail?: string;
+  /** Starts a group in the picker (spec 076). */
+  dividerBefore?: boolean;
 };
 
 type AddRecipeCallToActionProps = {

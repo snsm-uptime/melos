@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { notebookPicker, pickedNotebook } from "@/components/NotebookPicker/testHelpers";
+import { notebookChoices, notebookPicker, pickedNotebook } from "@/components/NotebookPicker/testHelpers";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -150,5 +150,37 @@ describe("AddRecipeCallToAction", () => {
     act(() => button("Text")!.click());
 
     expect(pickedNotebook()).toBe("My own notebook (new)");
+  });
+
+  it("on a notebook's page captures into that notebook with no picker (spec 076 FR-009)", () => {
+    const list: CaptureCandidate[] = [
+      { id: "nb-family", name: "Family list", kind: "personal", kitchenId: null },
+    ];
+    act(() => {
+      root.render(
+        <AddRecipeCallToAction candidates={list} defaultId="nb-family" returnPath="/notebooks/nb-family" />,
+      );
+    });
+    act(() => button("Add a recipe")!.click());
+    act(() => button("Text")!.click());
+
+    expect(notebookPicker()).toBeNull();
+    expect(document.querySelector("[role='dialog']")?.textContent).toContain("Family list");
+  });
+
+  it("on a kitchen's page offers only that kitchen's notebooks (spec 076 FR-010)", () => {
+    const list: CaptureCandidate[] = [
+      { id: "kn-ana", name: "ana's (Home) Notebook", kind: "kitchen", kitchenId: "k1" },
+      { id: "kn-ben", name: "ben's (Home) Notebook", kind: "kitchen", kitchenId: "k1" },
+    ];
+    act(() => {
+      root.render(
+        <AddRecipeCallToAction candidates={list} defaultId="kn-ana" returnPath="/kitchens/k1" />,
+      );
+    });
+    act(() => button("Add a recipe")!.click());
+    act(() => button("Text")!.click());
+
+    expect(notebookChoices()).toEqual(["ana's (Home) Notebook", "ben's (Home) Notebook"]);
   });
 });

@@ -24,6 +24,10 @@ export const notebooksMessages = {
     loading: "Loading notebooks",
     openNotebooks: "Notebooks",
     ownNotebookNew: "My own notebook (new)",
+    /** The add-recipe picker's label for a personal notebook among kitchen ones (spec 076). */
+    personalGroup: "Personal",
+    /** A kitchen's label in the picker when its name is not known yet. */
+    kitchenFallback: "Kitchen",
     originLabel: (name: string) => `Copied from ${name}`,
     snapshotAction: "Add a notebook",
     snapshotChoose: "Add a notebook to this kitchen",
@@ -131,6 +135,8 @@ export const notebooksMessages = {
     loading: "Cargando cuadernos",
     openNotebooks: "Cuadernos",
     ownNotebookNew: "Mi propio cuaderno (nuevo)",
+    personalGroup: "Personal",
+    kitchenFallback: "Cocina",
     originLabel: (name: string) => `Copiado de ${name}`,
     snapshotAction: "Agregar un cuaderno",
     snapshotChoose: "Agregar un cuaderno a esta cocina",

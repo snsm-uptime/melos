@@ -4,7 +4,14 @@ import { SearchableSelect } from "@/components/SearchableSelect";
 import type { Locale } from "@/lib/i18n/locale";
 import { sidePanelMessages } from "@/lib/i18n/sidePanel";
 
-export type NotebookPickerOption = { id: string; name: string };
+export type NotebookPickerOption = {
+  id: string;
+  name: string;
+  /** Shown after the name ("Dinners · Casa Soto"); searched like the name (spec 076). */
+  detail?: string;
+  /** Draws a divider above this row (a new group). */
+  dividerBefore?: boolean;
+};
 
 const FIELD_CLASS =
   "w-full justify-between rounded-[var(--rounded-sm)] border border-border bg-surface px-2 py-1.5 text-left text-[0.95rem] text-foreground outline-none focus-visible:border-accent disabled:opacity-60";
@@ -45,7 +52,8 @@ export function NotebookPicker({
       disabled={disabled}
       options={notebooks.map((notebook) => ({
         value: notebook.id,
-        label: notebook.name,
+        label: notebook.detail ? `${notebook.name} · ${notebook.detail}` : notebook.name,
+        dividerBefore: notebook.dividerBefore,
       }))}
       onChange={(id) => onChange(id)}
     />

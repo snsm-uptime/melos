@@ -8,6 +8,7 @@ import {
   replaceMembershipKitchens,
   resetMembershipKitchensStore,
 } from "@/app/kitchens/membershipKitchensStore";
+import { notebookChoices, pickedNotebook } from "@/components/NotebookPicker/testHelpers";
 import { clearCapture, getCaptureState } from "@/lib/capture/captureStore";
 
 import { QuickAddRecipe, kitchenFromPath } from "./QuickAddRecipe";
@@ -56,31 +57,26 @@ const kitchen = (id: string, name: string, archived = false) => ({
 let container: HTMLDivElement;
 let root: Root;
 
+/** What GET /api/notebooks returns: personal notebooks and every kitchen's notebooks. */
+let listed: Record<string, unknown>[] = [];
+
+const personalRows = () => [
+  notebook("p-other", "Weekend"),
+  notebook("p-default", "ana's Notebook", { is_default: true }),
+  notebook("p-shared", "ben's Notebook", { access: "member", owner_alias: "ben" }),
+];
+const kitchenRow = (id: string, name: string, kitchenId: string, extra: Record<string, unknown> = {}) =>
+  notebook(id, name, { kind: "kitchen", kitchen_id: kitchenId, kitchen_is_archived: false, ...extra });
+const homeRows = () => [
+  kitchenRow("kn-ben", "ben's (Home) Notebook", "k1"),
+  kitchenRow("kn-ana", "ana's (Home) Notebook", "k1", { is_own_capture_notebook: true }),
+];
+
 function fetchMock(input: RequestInfo | URL): Promise<Response> {
   const url = String(input);
-  if (url === "/api/notebooks") {
-    return Promise.resolve(
-      json(200, {
-        notebooks: [
-          notebook("p-other", "Weekend"),
-          notebook("p-default", "ana's Notebook", { is_default: true }),
-        ],
-      }),
-    );
-  }
-  if (url === "/api/notebooks/kitchens/k1") {
-    return Promise.resolve(
-      json(200, {
-        notebooks: [
-          notebook("kn-ben", "ben's (Home) Notebook", { kind: "kitchen", kitchen_id: "k1" }),
-          notebook("kn-ana", "ana's (Home) Notebook", {
-            kind: "kitchen",
-            kitchen_id: "k1",
-            is_own_capture_notebook: true,
-          }),
-        ],
-      }),
-    );
+  if (url === "/api/notebooks") return Promise.resolve(json(200, { notebooks: listed }));
+  if (url === "/api/notebooks/default") {
+    return Promise.resolve(json(200, notebook("p-made", "ana's Notebook", { is_default: true })));
   }
   return Promise.resolve(json(200, { max_text_chars: 5000 }));
 }
@@ -112,6 +108,7 @@ function options(): string[] {
 
 beforeEach(() => {
   prefs.value = null;
+  listed = [...personalRows(), ...homeRows()];
   nav.pathname = "/kitchens/k1/shopping-lists";
   clearCapture();
   replaceMembershipKitchens([kitchen("k1", "Home"), kitchen("k2", "Cabin")]);
@@ -200,5 +197,110 @@ describe("QuickAddRecipe (spec 069 US2)", () => {
     prefs.value = { locale: "es" };
     await render();
     expect(button("Agregar receta")).not.toBeNull();
+  });
+});
+
+describe("QuickAddRecipe notebook choice (spec 076 US2)", () => {
+  async function openText() {
+    await render();
+    await open();
+    await act(async () => button("Text")!.click());
+  }
+
+  function dividers(): number {
+    act(() => document.querySelector<HTMLButtonElement>('button[aria-label="Notebook"]')!.click());
+    const count = document.querySelectorAll('[role="listbox"] [role="separator"]').length;
+    act(() => document.querySelector<HTMLButtonElement>('button[aria-label="Notebook"]')!.click());
+    return count;
+  }
+
+  it("outside a kitchen offers personal notebooks, then each active kitchen's, with the default preselected", async () => {
+    nav.pathname = "/notebooks";
+    listed = [
+      ...personalRows(),
+      kitchenRow("kn-cabin", "Cabin dinners", "k2"),
+      ...homeRows(),
+    ];
+    await openText();
+
+    expect(notebookChoices()).toEqual([
+      "Weekend · Personal",
+      "ana's Notebook · Personal",
+      "ben's Notebook · Personal",
+      "ben's (Home) Notebook · Home",
+      "ana's (Home) Notebook · Home",
+      "Cabin dinners · Cabin",
+    ]);
+    expect(dividers()).toBe(2);
+    expect(pickedNotebook()).toBe("ana's Notebook · Personal");
+    expect(getCaptureState().notebook?.id).toBe("p-default");
+  });
+
+  it("leaves out the notebooks of an archived kitchen", async () => {
+    nav.pathname = "/notebooks";
+    listed = [
+      ...personalRows(),
+      kitchenRow("kn-cabin", "Cabin dinners", "k2", { kitchen_is_archived: true }),
+    ];
+    await openText();
+
+    expect(notebookChoices()).toEqual(["Weekend", "ana's Notebook", "ben's Notebook"]);
+  });
+
+  it("on a kitchen's pages puts that kitchen first and preselects my own notebook there", async () => {
+    listed = [...personalRows(), kitchenRow("kn-cabin", "Cabin dinners", "k2"), ...homeRows()];
+    await openText();
+
+    expect(notebookChoices()).toEqual([
+      "ben's (Home) Notebook · Home",
+      "ana's (Home) Notebook · Home",
+      "Weekend · Personal",
+      "ana's Notebook · Personal",
+      "ben's Notebook · Personal",
+      "Cabin dinners · Cabin",
+    ]);
+    expect(getCaptureState().notebook?.id).toBe("kn-ana");
+  });
+
+  it("offers a new notebook only for the kitchen whose pages are open", async () => {
+    listed = [
+      ...personalRows(),
+      kitchenRow("kn-ben", "ben's (Home) Notebook", "k1"),
+      kitchenRow("kn-cabin", "Cabin dinners", "k2"),
+    ];
+    await openText();
+
+    const choices = notebookChoices();
+    expect(choices.filter((name) => name.startsWith("My own notebook (new)"))).toEqual([
+      "My own notebook (new) · Home",
+    ]);
+    expect(choices[0]).toBe("My own notebook (new) · Home");
+    expect(pickedNotebook()).toBe("My own notebook (new) · Home");
+  });
+
+  it("with personal notebooks only, shows the picker as before", async () => {
+    nav.pathname = "/notebooks";
+    listed = personalRows();
+    await openText();
+
+    expect(notebookChoices()).toEqual(["Weekend", "ana's Notebook", "ben's Notebook"]);
+    expect(dividers()).toBe(0);
+  });
+
+  it("with no personal notebook yet, makes the default one first", async () => {
+    nav.pathname = "/notebooks";
+    listed = homeRows();
+    await openText();
+
+    const urls = vi.mocked(fetch).mock.calls.map(([url]) => String(url));
+    expect(urls).toContain("/api/notebooks/default");
+    expect(notebookChoices()[0]).toBe("ana's Notebook · Personal");
+    expect(getCaptureState().notebook?.id).toBe("p-made");
+  });
+
+  it("never asks for one kitchen's notebooks on their own", async () => {
+    await openText();
+    const urls = vi.mocked(fetch).mock.calls.map(([url]) => String(url));
+    expect(urls.some((url) => url.startsWith("/api/notebooks/kitchens/"))).toBe(false);
   });
 });
