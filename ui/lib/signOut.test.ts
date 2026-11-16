@@ -11,6 +11,7 @@ vi.mock("@/app/kitchens/membershipKitchensStore", () => ({
   resetMembershipKitchensStore: () => resetMembershipKitchensStore(),
 }));
 
+import { getCaptureState, setText } from "./capture/captureStore";
 import { signOut } from "./signOut";
 
 describe("signOut", () => {
@@ -30,6 +31,15 @@ describe("signOut", () => {
     expect(clearPrefsCache).toHaveBeenCalledTimes(2);
     expect(resetMembershipKitchensStore).toHaveBeenCalledTimes(2);
     expect(assign).toHaveBeenCalledWith("/sign-in");
+  });
+
+  it("clears the kept capture text (spec 076 FR-004)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
+    setText("abc");
+    expect(window.sessionStorage.getItem("melos.capture.text")).toBe("abc");
+    await signOut("/");
+    expect(window.sessionStorage.getItem("melos.capture.text")).toBeNull();
+    expect(getCaptureState().text).toBe("");
   });
 
   it("still opens the target when the network fails", async () => {

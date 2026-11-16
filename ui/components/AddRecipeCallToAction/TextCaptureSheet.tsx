@@ -91,7 +91,8 @@ const fieldClassName =
 
 /**
  * The text sheet (spec 016 FR-002, FR-003, FR-004, FR-016 to FR-018). The pasted text stays
- * in the store, so a failure or Back keeps it. One submission at a time; no automatic retry.
+ * in the store, so a failure or Back keeps it, and it survives a reload or leaving the app for
+ * the tab's session (spec 076). One submission at a time; no automatic retry.
  */
 export function TextCaptureSheet({
   open,

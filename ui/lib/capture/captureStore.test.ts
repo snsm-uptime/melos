@@ -1,4 +1,6 @@
-import { beforeEach, describe, expect, it } from "vitest";
+/** @vitest-environment jsdom */
+
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   backToSheet,
@@ -251,5 +253,90 @@ describe("link capture (spec 026)", () => {
     setLink(LINK);
 
     expect(getCaptureState().message).toBeNull();
+  });
+});
+
+describe("kept text (spec 076)", () => {
+  const KEY = "melos.capture.text";
+  type Store = typeof import("./captureStore");
+
+  async function freshStore(): Promise<Store> {
+    vi.resetModules();
+    return import("./captureStore");
+  }
+
+  beforeEach(() => window.sessionStorage.clear());
+  afterEach(() => vi.restoreAllMocks());
+
+  it("keeps the text in the tab's session storage, and removes the key when it is cleared", async () => {
+    const store = await freshStore();
+    store.setText("abc");
+    expect(window.sessionStorage.getItem(KEY)).toBe("abc");
+    store.setText("");
+    expect(window.sessionStorage.getItem(KEY)).toBeNull();
+  });
+
+  it("starts from the kept text after a reload", async () => {
+    window.sessionStorage.setItem(KEY, "2 large onions");
+    const store = await freshStore();
+    expect(store.getCaptureState().text).toBe("2 large onions");
+  });
+
+  it("does not drop the kept text when the store changes before it is first read", async () => {
+    window.sessionStorage.setItem(KEY, "2 large onions");
+    const store = await freshStore();
+    store.openSheet(notebook, "text");
+    expect(store.getCaptureState().text).toBe("2 large onions");
+    expect(window.sessionStorage.getItem(KEY)).toBe("2 large onions");
+  });
+
+  it("keeps the text on close, Back, a refusal and the draft", async () => {
+    const store = await freshStore();
+    store.openSheet(notebook, "text");
+    store.setText("abc");
+    store.closeSheet();
+    store.failSubmit({ code: "x" });
+    store.showDraft(draft, "en");
+    store.backToSheet();
+    expect(window.sessionStorage.getItem(KEY)).toBe("abc");
+    expect(store.getCaptureState().text).toBe("abc");
+  });
+
+  it.each([
+    ["Save", (store: Store) => store.markSaved("/x")],
+    ["Discard", (store: Store) => store.discardDraft()],
+    ["a hand-written draft", (store: Store) => store.startManualDraft(notebook, "en")],
+    ["clearKeptCaptureText", (store: Store) => store.clearKeptCaptureText()],
+    ["leaving the draft", (store: Store) => store.clearCapture()],
+  ])("removes the text on %s", async (_label, act) => {
+    const store = await freshStore();
+    store.openSheet(notebook, "text");
+    store.setText("abc");
+    store.showDraft(draft, "en");
+    act(store);
+    expect(window.sessionStorage.getItem(KEY)).toBeNull();
+    expect(store.getCaptureState().text).toBe("");
+  });
+
+  it("keeps a long text in full", async () => {
+    const long = "x".repeat(12000);
+    window.sessionStorage.setItem(KEY, long);
+    const store = await freshStore();
+    expect(store.getCaptureState().text).toHaveLength(12000);
+    store.setText(`${long}y`);
+    expect(window.sessionStorage.getItem(KEY)).toHaveLength(12001);
+  });
+
+  it("works in memory when storage is blocked", async () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    const store = await freshStore();
+    expect(store.getCaptureState().text).toBe("");
+    expect(() => store.setText("abc")).not.toThrow();
+    expect(store.getCaptureState().text).toBe("abc");
   });
 });

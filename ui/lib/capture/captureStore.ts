@@ -1,8 +1,10 @@
 "use client";
 
 /**
- * Client-only capture state (spec 016 data-model "Client-only state"). One store per tab;
- * a reload clears it. Nothing here is sent to the api except the text on submit.
+ * Client-only capture state (spec 016 data-model "Client-only state"). One store per tab; a
+ * reload clears it, except the text sheet's text, which is kept in the tab's session storage
+ * until it is saved, discarded or signed out, or the tab closes (spec 076). Nothing here is
+ * sent to the api except the text on submit.
  */
 
 import { useSyncExternalStore } from "react";
@@ -149,16 +151,58 @@ const EMPTY: CaptureState = {
   savedNotice: null,
 };
 
+/** The tab's session-storage key for the text sheet's text (spec 076). */
+const KEPT_TEXT_KEY = "melos.capture.text";
+
+/** The kept text, or "" when there is none or storage is blocked. */
+function readKeptText(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.sessionStorage.getItem(KEPT_TEXT_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/** Keeps `text` for the tab; "" removes it. Storage errors leave the store in memory only. */
+function writeKeptText(text: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (text === "") window.sessionStorage.removeItem(KEPT_TEXT_KEY);
+    else window.sessionStorage.setItem(KEPT_TEXT_KEY, text);
+  } catch {
+    // Blocked or full: the text stays in memory, as before spec 076.
+  }
+}
+
 let state: CaptureState = EMPTY;
+/** Set once the kept text has been read; only in the browser, so the server stays EMPTY. */
+let keptTextLoaded = false;
 const listeners = new Set<() => void>();
 
+function loadKeptText(): void {
+  if (keptTextLoaded || typeof window === "undefined") return;
+  keptTextLoaded = true;
+  state = { ...state, text: readKeptText() };
+}
+
 function update(patch: Partial<CaptureState>): void {
+  loadKeptText();
+  const textChanged = patch.text !== undefined && patch.text !== state.text;
   state = { ...state, ...patch };
+  if (textChanged) writeKeptText(state.text);
   listeners.forEach((listener) => listener());
 }
 
 export function getCaptureState(): CaptureState {
+  loadKeptText();
   return state;
+}
+
+/** Removes the kept text from this tab and from memory. Called on sign-in and sign-out. */
+export function clearKeptCaptureText(): void {
+  writeKeptText("");
+  update({ text: "" });
 }
 
 export function subscribeCapture(listener: () => void): () => void {
@@ -406,8 +450,10 @@ function emptiedSource(source: CaptureSource): CaptureSource {
   return { kind: "text" };
 }
 
-/** Leave by any other route: the store is emptied (FR-032). */
+/** Leave by any other route: the store and the kept text are emptied (FR-032). */
 export function clearCapture(): void {
+  writeKeptText("");
+  keptTextLoaded = true;
   state = EMPTY;
   listeners.forEach((listener) => listener());
 }

@@ -18,3 +18,8 @@ globalThis.ResizeObserver ??= class {
   unobserve() {}
   disconnect() {}
 };
+
+/** Capture text kept in session storage (spec 076) must not leak from one test to the next. */
+beforeEach(() => {
+  if (typeof window !== "undefined") window.sessionStorage.clear();
+});
