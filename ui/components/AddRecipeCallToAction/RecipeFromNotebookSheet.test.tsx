@@ -164,7 +164,7 @@ async function choose(label: string, option: string) {
 }
 
 const ORIGINAL = "Original notebook";
-const RECIPES = "Search recipes";
+const RECIPES = "Search recipe";
 
 const copied = {
   recipe_id: "c1",
@@ -198,7 +198,7 @@ afterEach(() => {
 describe("RecipeFromNotebookSheet (spec 069)", () => {
   it("quick add: the recipe select stays disabled until an original notebook is chosen", async () => {
     await render({ kitchenId: "k1" });
-    expect(byLabel(ORIGINAL)!.textContent).toContain("Choose a notebook");
+    expect(byLabel(ORIGINAL)!.textContent).toContain("Pick a notebook");
     expect(byLabel(RECIPES)!.disabled).toBe(true);
     expect(recipeQueries).toEqual([]);
 
