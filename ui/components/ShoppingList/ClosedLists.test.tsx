@@ -53,7 +53,7 @@ describe("closed lists", () => {
     view.render(<ClosedLists kitchenId="k1" locale="en" />);
     await settle();
 
-    expect(useChromeHeader).toHaveBeenCalledWith({ backHref: "/kitchens/k1", title: "Past lists" });
+    expect(useChromeHeader).toHaveBeenCalledWith({ backHref: "/kitchens/k1", title: "Past Carts" });
     expect(view.container.querySelector('a[href="/kitchens/k1"]')).toBeNull();
     expect(view.container.querySelector("h1")).toBeNull();
   });
@@ -84,7 +84,7 @@ describe("closed lists", () => {
     view.render(<ClosedListDetail kitchenId="k1" listId="l1" locale="es" />);
     await settle();
 
-    expect(view.container.textContent).toContain("Cerrada el");
+    expect(view.container.textContent).toContain("Cerrado el");
     expect(view.container.textContent).toContain("jabón");
     expect(view.container.querySelector("button")).toBeNull();
   });

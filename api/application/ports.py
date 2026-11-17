@@ -1094,6 +1094,8 @@ class RunLock(Protocol):
     """Port: at most one run at a time. Yields True when this run holds the lock."""
 
     def try_acquire(self) -> AbstractContextManager[bool]: ...
+
+
 @dataclass(frozen=True, slots=True)
 class Picture:
     """A checked, processed picture sent to the assistant (spec 041). Never logged."""
