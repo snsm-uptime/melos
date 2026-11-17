@@ -114,8 +114,8 @@ describe.each(Object.keys(THEMES) as (keyof typeof THEMES)[])("loader contrast, 
   const { c } = colours(theme);
 
   it("shows the accent bubbles and drip against the background and the surface", () => {
-    expect(contrast(c("var(--accent-fill)"), c("var(--background)"))).toBeGreaterThanOrEqual(3);
-    expect(contrast(c("var(--accent-fill)"), c("var(--surface)"))).toBeGreaterThanOrEqual(3);
+    expect(contrast(c("var(--accent)"), c("var(--background)"))).toBeGreaterThanOrEqual(3);
+    expect(contrast(c("var(--accent)"), c("var(--surface)"))).toBeGreaterThanOrEqual(3);
   });
 
   it("shows the page cauldron against the background and the surface", () => {

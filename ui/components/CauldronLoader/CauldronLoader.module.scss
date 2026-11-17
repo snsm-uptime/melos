@@ -40,9 +40,11 @@
   .body {
     fill: var(--cauldron-body);
   }
+  /* The orange ink, not --accent-fill: the lighter orange reads under 3:1 on the light page
+     (spec 065 SC-003). Both are the same orange on the dark theme. */
   .drip,
   .bubble {
-    fill: var(--accent-fill);
+    fill: var(--accent);
   }
 }
 
