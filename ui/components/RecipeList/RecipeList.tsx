@@ -232,23 +232,27 @@ export function RecipeList({
               // With image cards every card, the add card included, is the row's height, so they all
               // match. Phones show 2 columns and tablets 3, filling the width; from lg up each card
               // is one image wide (200px). Without images every row is as tall as the tallest, so on
-              // a one-column phone list the add card's row is a card's height, not a thin bar.
+              // a one-column list the add card's row is a card's height, not a thin bar. The rows are
+              // `1fr`, not Tailwind's `auto-rows-fr` (`minmax(0, 1fr)`): Safari doesn't equalise rows
+              // with a 0 minimum.
               uprightCards
                 ? "m-0 grid list-none grid-cols-2 gap-[var(--space-2)] p-0 md:grid-cols-3 lg:grid-cols-[repeat(auto-fill,minmax(0,200px))]"
                 : layout === "wrap"
-                  ? "m-0 grid list-none auto-rows-fr grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-[var(--space-2)] p-0"
-                  : `${styles.grid} auto-rows-fr`
+                  ? "m-0 grid list-none auto-rows-[1fr] grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-[var(--space-2)] p-0"
+                  : `${styles.grid} auto-rows-[1fr]`
             }
           >
             {addCandidates && addCandidates.length > 0 ? (
-              <li>
+              // A grid, so the add card stretches to the row as a grid item rather than through a
+              // percentage height.
+              <li className="grid">
                 <AddRecipeCallToAction
                   candidates={addCandidates}
                   defaultId={addDefaultId ?? addCandidates[0]?.id ?? null}
                   returnPath={returnPath}
                   kitchenId={addKitchenId}
-        sourceNotebookId={addSourceNotebookId}
-        onCopied={onAddCopied}
+                  sourceNotebookId={addSourceNotebookId}
+                  onCopied={onAddCopied}
                 />
               </li>
             ) : null}
