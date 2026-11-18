@@ -1,3 +1,4 @@
+import { ShoppingListExport } from "@/components/ShoppingListExport";
 import { ClosedListDetail } from "@/components/ShoppingList";
 import { requireAlias } from "@/lib/alias";
 import { getServerLocale } from "@/lib/serverLocale";
@@ -20,6 +21,7 @@ export default async function KitchenShoppingListPage({
   return (
     <main className={styles.detailMain}>
       <ClosedListDetail kitchenId={kitchenId} listId={listId} locale={locale} />
+      <ShoppingListExport kitchenId={kitchenId} listId={listId} />
     </main>
   );
 }

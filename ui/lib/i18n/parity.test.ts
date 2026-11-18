@@ -17,6 +17,7 @@ import { placesMessages } from "./places";
 import { recipeDetailMessages } from "./recipeDetail";
 import { recipeListMessages } from "./recipeLists";
 import { recipeShareMessages } from "./recipeShare";
+import { shoppingExportMessages } from "./shoppingExport";
 import { shoppingListMessages } from "./shoppingList";
 import { sidePanelMessages } from "./sidePanel";
 import { signInMessages } from "./signin";
@@ -47,6 +48,7 @@ const SETS: Record<string, { en: unknown; es: unknown }> = {
   recipeDetail: recipeDetailMessages,
   recipeLists: recipeListMessages,
   recipeShare: recipeShareMessages,
+  shoppingExport: shoppingExportMessages,
   shoppingList: shoppingListMessages,
   sidePanel: sidePanelMessages,
   signIn: signInMessages,
