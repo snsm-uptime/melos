@@ -1,6 +1,7 @@
 """Gemini adapter for the RecipeExtractor port (google-genai).
 
-One attempt per call (SDK retries are switched off). Every SDK or transport
+One attempt per call (SDK retries are switched off), plus one more after a short pause when the
+service answers with a server error (5xx). Every SDK or transport
 error is mapped to a result class here, and no exception text, key or service
 body leaves this module (FR-003 to FR-005, FR-009, FR-014, SC-006).
 """
@@ -9,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 import uuid
 from collections.abc import Sequence
 from typing import Any, Literal
@@ -32,6 +34,7 @@ from domain.recipe_draft import (
 )
 from google import genai
 from google.genai import types
+from google.genai.errors import ServerError
 from pydantic import BaseModel, ValidationError
 
 from adapters.llm.gemini_errors import classify
@@ -44,6 +47,10 @@ from adapters.llm.prompt import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Pause before the one retry after a server error (spec 015 clarification, 2026-11-18): a 503
+# "high demand" from the model is often gone a second later.
+SERVER_ERROR_RETRY_DELAY_S = 1.0
 
 RESPONSE_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -324,7 +331,8 @@ class GeminiRecipeExtractor:
 
         request_ref = str(uuid.uuid4())
         try:
-            response = self._client_or_default().models.generate_content(
+            response = self._generate(
+                request_ref,
                 model=self._model,
                 contents=build_contents(
                     text, ingredient_names, part if mode is ExtractionMode.PAGE_PART else None
@@ -369,7 +377,8 @@ class GeminiRecipeExtractor:
             ],
         )
         try:
-            response = self._client_or_default().models.generate_content(
+            response = self._generate(
+                request_ref,
                 model=self._model,
                 contents=[turn],
                 config=self._picture_config(timeout_s),
@@ -416,6 +425,16 @@ class GeminiRecipeExtractor:
             )
             return InvalidOutput()
         return _picture_payload_to_result(payload)
+
+    def _generate(self, request_ref: str, **kwargs: Any) -> Any:
+        """One call, and one retry after a short pause when the service answers 5xx."""
+        models = self._client_or_default().models
+        try:
+            return models.generate_content(**kwargs)
+        except ServerError:
+            logger.info("model call retried: class=ServerError request=%s", request_ref)
+            time.sleep(SERVER_ERROR_RETRY_DELAY_S)
+            return models.generate_content(**kwargs)
 
     def _client_or_default(self) -> genai.Client:
         # Locked: the parts of one page call at the same time (spec 026). Two clients made in a

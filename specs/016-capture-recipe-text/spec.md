@@ -192,7 +192,7 @@ After reviewing a draft, the member decides not to keep it. They choose Discard.
 - **FR-002**: The submit control MUST be disabled while the input is empty, contains only whitespace, or is longer than 5,000 characters after trimming surrounding spaces. Over the limit, the member MUST see "That text is too long. Paste up to 5,000 characters."
 - **FR-003**: On submit, the system MUST send the pasted text to the recipe-extraction assistant together with the existing ingredient names of the capture's notebook, so that existing names can be reused. In a kitchen with no notebook yet, the member's own names are sent.
 - **FR-004**: The system MUST show a visible progress state while the assistant is working, and MUST NOT accept a second submission until the first one ends.
-- **FR-025**: The system MUST make one attempt per submission. It MUST NOT retry automatically; the member retries by submitting again.
+- **FR-025**: The system MUST make one attempt per submission. It MUST NOT retry automatically; the member retries by submitting again. Exception (spec 015, Session 2026-11-18): when the assistant answers with a server error, the extractor retries once after a short pause, inside the same submission.
 - **FR-026**: Every member MUST see either a draft or a message within the assistant's configured wait plus two seconds of submitting (10 seconds by default for text).
 
 **Draft review screen**

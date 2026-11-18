@@ -20,7 +20,9 @@ from application.recipe_extraction import (
     InvalidOutput,
     NotARecipe,
     NotRecipeReason,
+    Unavailable,
 )
+from google.genai.errors import ServerError
 
 SECRET_KEY = "SECRET-KEY-123"
 PICTURE_BYTES = b"WEBP-PICTURE-BYTES-XYZ"
@@ -33,9 +35,11 @@ class _StubModels:
 
     def generate_content(self, **kwargs):
         self.calls.append(kwargs)
-        if isinstance(self.behaviour, BaseException):
-            raise self.behaviour
-        return self.behaviour
+        # A list plays one behaviour per call (the 5xx retry); anything else repeats.
+        behaviour = self.behaviour.pop(0) if isinstance(self.behaviour, list) else self.behaviour
+        if isinstance(behaviour, BaseException):
+            raise behaviour
+        return behaviour
 
 
 class _StubClient:
@@ -46,6 +50,11 @@ class _StubClient:
 @pytest.fixture(autouse=True)
 def _logger_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(gemini_extractor.logger, "disabled", False)
+
+
+@pytest.fixture(autouse=True)
+def _no_retry_pause(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(gemini_extractor, "SERVER_ERROR_RETRY_DELAY_S", 0.0)
 
 
 def _response(payload) -> SimpleNamespace:
@@ -175,3 +184,25 @@ def test_logs_never_hold_the_image_bytes_or_the_payload_text(
     assert "WEBP-PICTURE" not in text
     assert "PAYLOAD-TEXT" not in text
     assert SECRET_KEY not in text
+
+
+def _server_error() -> ServerError:
+    return ServerError(503, {"error": {"code": 503, "message": "high demand"}}, None)
+
+
+def test_picture_server_error_is_retried_once() -> None:
+    answer = _response({"outcome": "recipe", "recipe": {"steps": ["Cook."]}})
+    extractor, models = _extractor([_server_error(), answer])
+
+    result = extractor.extract_picture(_picture(), ["salt"], 9.0)
+
+    assert isinstance(result, DraftPart)
+    assert len(models.calls) == 2
+    assert models.calls[0] == models.calls[1]
+
+
+def test_picture_server_error_twice_is_unavailable() -> None:
+    extractor, models = _extractor(_server_error())
+
+    assert extractor.extract_picture(_picture(), ["salt"], 9.0) == Unavailable()
+    assert len(models.calls) == 2
