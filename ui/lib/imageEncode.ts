@@ -125,8 +125,8 @@ function loadDataUri(dataUri: string): Promise<HTMLImageElement> {
 
 /**
  * Shrink the page photo of a link capture before Save: longest side 800 px (never enlarged),
- * JPEG, quality stepped down from 0.85 to 0.4 until it fits 300 KB (the api's limit).
- * Returns null when the photo cannot be read or cannot fit; the recipe is then saved without it.
+ * JPEG, quality stepped down from 0.85 to 0.4 until it fits 300 KB (the api's limit). A JPEG
+ * that already meets these rules is returned unchanged. Returns null when the photo cannot be read or cannot fit; the recipe is then saved without it.
  */
 export async function encodeRecipePreview(
   dataUri: string,
@@ -140,6 +140,14 @@ export async function encodeRecipePreview(
   const width = img.naturalWidth || img.width;
   const height = img.naturalHeight || img.height;
   if (!width || !height) return null;
+  // Already shrunk (a photo the person picked, S-067): kept as is, not compressed twice.
+  if (
+    dataUri.startsWith("data:image/jpeg;base64,") &&
+    Math.max(width, height) <= PREVIEW_LONGEST_SIDE &&
+    decodedByteLength(dataUri) <= PREVIEW_MAX_BYTES
+  ) {
+    return dataUri;
+  }
   return encodePreviewArea(img, { x: 0, y: 0, width, height });
 }
 

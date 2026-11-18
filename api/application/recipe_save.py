@@ -112,12 +112,10 @@ class SaveRecipeDraft:
             raise InvalidDraftError("too long")
         source_kind = self._source_kind(command, source_text)
         source_url = self._source_url(command, source_text) if source_kind == "url" else None
-        if source_kind == "photo":
-            preview_image = (
-                validate_picture_preview(command.preview_image)
-                if command.preview_image is not None
-                else None
-            )
+        # A photo source keeps the processed WebP of its picture; a photo the member picked
+        # instead (S-067) is a JPEG and follows the ordinary preview rule.
+        if source_kind == "photo" and (command.preview_image or "").startswith("data:image/webp;"):
+            preview_image = validate_picture_preview(command.preview_image)
         else:
             preview_image = validate_preview_image(command.preview_image)
 

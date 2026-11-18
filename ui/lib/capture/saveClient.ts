@@ -67,8 +67,15 @@ function readLineProblems(value: unknown): CaptureMessage["lineProblems"] {
 /** Save the draft once. The same key is sent on a retry, so a repeat never makes a second recipe. */
 export async function submitSave(capture: CaptureState): Promise<SaveResult> {
   const photo = capture.draft?.previewImage ?? null;
-  // Shrunk here, so the api never needs an image library; a photo that cannot fit is left out.
-  const previewImage = photo ? await encodeRecipePreview(photo) : null;
+  // The picture of a picture draft is the api's own processed WebP (spec 041, FR-022): sent as is,
+  // since shrinking it to JPEG here makes the api refuse it. Any other photo is shrunk here, so the
+  // api never needs an image library; a photo that cannot fit is left out.
+  const keepAsIs = capture.draft?.fromPicture === true && photo?.startsWith("data:image/webp;");
+  const previewImage = photo
+    ? keepAsIs
+      ? photo
+      : await encodeRecipePreview(photo)
+    : null;
   const body = buildSaveBody(capture, previewImage);
   if (!body) return { ok: false, message: { code: "save_unavailable" } };
 

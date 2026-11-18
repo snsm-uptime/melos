@@ -235,7 +235,7 @@ describe("encodeRecipePreview (spec 026)", () => {
       return quality > 0.6 ? 400_000 : 250_000;
     });
 
-    const result = await encodeRecipePreview("data:image/jpeg;base64,AAAA");
+    const result = await encodeRecipePreview("data:image/png;base64,AAAA");
 
     expect(result).not.toBeNull();
     expect(qualities).toEqual([0.85, 0.75, 0.65, 0.55]);
@@ -245,7 +245,28 @@ describe("encodeRecipePreview (spec 026)", () => {
     stubImage(800, 800);
     stubCanvas(() => 400_000);
 
-    expect(await encodeRecipePreview("data:image/jpeg;base64,AAAA")).toBeNull();
+    expect(await encodeRecipePreview("data:image/png;base64,AAAA")).toBeNull();
+  });
+
+  it("keeps a JPEG that is already shrunk, without compressing it again (S-067)", async () => {
+    stubImage(800, 600);
+    stubCanvas(() => 1000);
+
+    expect(await encodeRecipePreview("data:image/jpeg;base64,AAAA")).toBe("data:image/jpeg;base64,AAAA");
+    expect(sizes).toEqual([]);
+  });
+
+  it("still shrinks a JPEG that is too wide or too heavy", async () => {
+    stubImage(1600, 1200);
+    stubCanvas(() => 1000);
+    await encodeRecipePreview("data:image/jpeg;base64,AAAA");
+    expect(sizes[0]).toEqual({ width: 800, height: 600 });
+
+    stubImage(800, 600);
+    stubCanvas(() => 1000);
+    const heavy = "data:image/jpeg;base64," + "A".repeat(Math.ceil((300_001 * 4) / 3) + 4);
+    await encodeRecipePreview(heavy);
+    expect(sizes).toHaveLength(1);
   });
 
   it("returns null when the photo cannot be read", async () => {

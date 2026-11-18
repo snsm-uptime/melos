@@ -237,3 +237,34 @@ describe("a draft from a link (spec 026)", () => {
     expect(body?.source_text).toBe("2 large onions.");
   });
 });
+
+describe("a draft from a picture (spec 041)", () => {
+  function pictureState(previewImage: string | null): CaptureState {
+    const base = state({ text: "" });
+    return { ...base, draft: { ...base.draft!, fromPicture: true, previewImage } };
+  }
+
+  it("sends the api's WebP picture as is, never shrunk to JPEG", async () => {
+    encode.result = "data:image/jpeg;base64,SMALL";
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await submitSave(pictureState("data:image/webp;base64,PICTURE"));
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.preview_image).toBe("data:image/webp;base64,PICTURE");
+    expect(body.source_kind).toBe("photo");
+  });
+
+  it("shrinks a photo the member picked instead (S-067)", async () => {
+    encode.result = "data:image/jpeg;base64,SMALL";
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await submitSave(pictureState("data:image/jpeg;base64,PICKED"));
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).preview_image).toBe(
+      "data:image/jpeg;base64,SMALL",
+    );
+  });
+});

@@ -85,3 +85,9 @@ def test_the_link_preview_rule_is_unchanged() -> None:
     )
     with pytest.raises(InvalidPreviewImageError):
         validate_preview_image(too_big)
+
+
+def test_a_photo_the_member_picked_instead_saves_under_the_ordinary_rule() -> None:
+    h, nid = _harness()
+    h.run(nid, source_text="", source_kind="photo", preview_image=JPEG_URI)
+    assert h.recipes.stored[0].preview_image == JPEG_URI
