@@ -45,15 +45,6 @@ stories:
     source: prd.md Appendix A (ShoppingListItem)
     notes: Adding and removing hand items moved to S-025 (2026-10-30). This story keeps editing the other lines.
 
-  - id: S-024
-    title: Shopping list export as Markdown copy and PDF
-    epic: Cart
-    priority: must
-    status: backlog
-    journey: J5
-    source: prd.md J5 Export
-    acceptance: [AC5.5]
-
   - id: S-068
     title: Cart receipts (paste what was bought; match it to the shopping list and keep it with the list)
     epic: Cart

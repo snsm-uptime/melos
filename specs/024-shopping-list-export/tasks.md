@@ -117,7 +117,7 @@
 
 **Purpose**: Checks that span the stories.
 
-- [ ] T034 [P] Add the export entry to the feature inventory in `ui/lib/featureInventory.ts` only if the owner confirms the feature is ready for the landing page (AGENTS.md "Backlog files" inventory rule)
+- [X] T034 [P] Add the export entry to the feature inventory in `ui/lib/featureInventory.ts` only if the owner confirms the feature is ready for the landing page (AGENTS.md "Backlog files" inventory rule)
 - [X] T035 [P] Verify the Spanish strings in `ui/lib/i18n/shoppingExport.ts` match the English keys one to one (existing parity test pattern, `ui/lib/i18n/*.test.ts`)
 - [X] T036 Run `cd api && uv run ruff check . && uv run ruff format --check .` and fix findings in the files this feature touched
 - [X] T037 Run `cd ui && npm run lint && npm run typecheck` and fix findings in the files this feature touched

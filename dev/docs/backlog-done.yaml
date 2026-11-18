@@ -684,3 +684,24 @@ stories:
       bilingual users: a recipe gains a language, an ingredient keeps one name variant per language,
       recipes and the shopping list show the variant in their language, one merge reaches every
       notebook the person can write to, and the model suggests English-Spanish pairs to confirm.
+
+  - id: S-024
+    title: Shopping list export as Markdown copy and PDF
+    epic: Cart
+    priority: must
+    status: done
+    journey: J5
+    source: prd.md J5 Export; specs/024-shopping-list-export
+    acceptance: [AC5.5]
+    verification: >
+      Implemented 2026-11-18 on branch 076-keep-pasted-recipe-text (spec 024 commits 44a4556,
+      f6bceb7, 54c9fb7), mixed with spec 076 on the same branch. No migration; the export reads the
+      saved list (active or closed) and never writes. GET /kitchens/{id}/shopping-lists/{list_id}/export
+      with format markdown or pdf. api: 25 new tests (domain, markdown, PDF, use case with fake ports,
+      HTTP with Postgres: format 400, Markdown body, PDF headers, closed list, non-member and unknown
+      ID with the same 404, PDF failure 500 with Markdown still 200); the existing shopping and cart
+      suites pass (281). A PDF of 100 lines was parsed with pypdf outside the project: 3 pages, accents
+      intact. ui: component and client tests, parity test, full vitest run (199 files, 1762 tests),
+      lint and typecheck clean; the inventory entry shop-export is available. Open check: the browser
+      walk at 360 px and 1280 px in English and Spanish (quickstart section 6, tasks T038) is not run.
+      The export is mounted on the closed-list page only; the active list has no export entry yet.
