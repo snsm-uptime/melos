@@ -186,8 +186,8 @@ export function AddRecipeCallToAction({
           {t.addRecipeButton}
         </AccentButton>
       ) : (
-        // Fills its grid row so it matches the cards; RecipeList's rows share one height, so this
-        // holds on a one-column phone list too.
+        // Fills its grid cell so it matches the cards; RecipeList's rows share one height, so this
+        // holds on a one-column list too.
         <AddItemCard
           label={t.addRecipe}
           onClick={() => setOptionsOpen(true)}

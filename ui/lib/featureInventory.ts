@@ -317,6 +317,17 @@ export const features: readonly Feature[] = [
     stories: ["S-070"],
     status: "available",
   },
+  {
+    id: "shop-export",
+    group: "shop",
+    name: { en: "Export the shopping list", es: "Exporta la lista de compras" },
+    summary: {
+      en: "Copy your list as Markdown or download it as a PDF, for any list you saved.",
+      es: "Copia tu lista en Markdown o descárgala en PDF, de cualquier lista que hayas guardado.",
+    },
+    stories: ["S-024"],
+    status: "available",
+  },
 
   // 5. Ingredients that stay tidy
   {
@@ -409,17 +420,6 @@ export const features: readonly Feature[] = [
       es: "Guarda o imprime una receta en PDF.",
     },
     stories: ["S-028"],
-    status: "planned",
-  },
-  {
-    id: "planned-list-export",
-    group: "shop",
-    name: { en: "Export the shopping list", es: "Exporta la lista de compras" },
-    summary: {
-      en: "Take your shopping list to another app.",
-      es: "Lleva tu lista de compras a otra app.",
-    },
-    stories: ["S-024"],
     status: "planned",
   },
   {

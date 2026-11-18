@@ -62,9 +62,18 @@ export async function forwardRecipeRequest(
   }
 
   if (upstream.status === 204) return new NextResponse(null, { status: 204 });
-  const text = await upstream.text();
-  return new NextResponse(text, {
-    status: upstream.status,
-    headers: { "Content-Type": upstream.headers.get("Content-Type") || "application/json" },
+  const responseHeaders = new Headers({
+    "Content-Type": upstream.headers.get("Content-Type") || "application/json",
   });
+  const disposition = upstream.headers.get("Content-Disposition");
+  if (disposition) responseHeaders.set("Content-Disposition", disposition);
+  // A PDF is bytes: it must not go through text, or the file is corrupted (spec 024).
+  if (responseHeaders.get("Content-Type")?.startsWith("application/pdf")) {
+    return new NextResponse(await upstream.arrayBuffer(), {
+      status: upstream.status,
+      headers: responseHeaders,
+    });
+  }
+  const text = await upstream.text();
+  return new NextResponse(text, { status: upstream.status, headers: responseHeaders });
 }

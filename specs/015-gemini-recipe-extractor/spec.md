@@ -16,7 +16,7 @@
 
 - Q: How long should the app wait for the assistant before it gives up with "unavailable"? → A: 10 seconds for text and URL input; 30 seconds for image (photo) input.
 - Q: What is the longest pasted text the app should accept before it refuses? → A: 10,000 characters.
-- Q: When the assistant times out or returns a server error, should the app retry automatically? → A: No. One attempt per request; the member presses try again, and the text stays in the box.
+- Q: When the assistant times out or returns a server error, should the app retry automatically? → A: No. One attempt per request; the member presses try again, and the text stays in the box. *(Narrowed 2026-11-18: a server error now gets one automatic retry; see below.)*
 - Q: Should a missing key or model name be reported as "unavailable" or as its own class? → A: Its own class, `AIProviderError`, separate from "unavailable".
 - Q: What form should the usage-limit wait hint take? → A: Whole seconds in `retry_after_seconds`, or null when the service gives none.
 - Q: What are the draft title and step rules? → A: Title required, 200 characters or fewer. At least one step.
@@ -35,6 +35,10 @@
 ### Session 2026-10-22
 
 - Q: Does the cuisine steps rule need more than 4 matched ingredients, or at least 4? → A: At least 4 distinct ingredient ids found in the steps. The title rule (70% coverage) is unchanged.
+
+### Session 2026-11-18
+
+- Q: The model answers 503 "high demand" on some calls, and a call a second later works. Should a server error still go straight to the member? → A: No. A server error (5xx) gets exactly one more attempt after a 1-second pause, for text, page-part and picture calls. If the retry also fails, the result is "unavailable" as before. Timeouts, connection errors, the usage limit (429) and other client errors are not retried. Supersedes the 2026-10-20 "no automatic retry" answer for server errors only.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -214,6 +218,6 @@ Developers and automated tests can replace the assistant with a stand-in that re
 - The constitution's answer-from-recipes rule (§5) governs the kitchen assistant's answers. This adapter answers no questions; it only turns pasted text into a draft or a "not a recipe" result, so no exception is needed.
 - The input length limit (10,000 characters) and the timeouts are fixed in Clarifications, not in the PRD.
 - Added 2026-10-22 (spec 016 plan review): each ingredient line gains an optional `preparation` ("chopped"), returned by the extractor and kept out of the name. Spec 016 FR-007, FR-010 and FR-012 need it. The data model and the prompt carry it.
-- Retry: the extraction makes one attempt per call, and the member retries manually (see Clarifications).
+- Retry: the extraction makes one attempt per call, plus one automatic retry after a server error (5xx); otherwise the member retries manually (see Clarifications, Session 2026-11-18).
 - Loading state: the loading indicator is specified in S-016, not here.
 - Unique vague amounts are saved by S-016 after the member confirms a draft. This feature stores nothing (FR-011, SC-007). *Note (2026-10-22, S-016 clarification): this storage moved to S-020, which owns Save; S-016 offers Discard only.*

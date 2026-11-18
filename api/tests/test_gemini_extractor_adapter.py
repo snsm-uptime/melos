@@ -71,9 +71,11 @@ class _StubModels:
 
     def generate_content(self, **kwargs):
         self.calls.append(kwargs)
-        if isinstance(self.behaviour, BaseException):
-            raise self.behaviour
-        return self.behaviour
+        # A list plays one behaviour per call (the 5xx retry); anything else repeats.
+        behaviour = self.behaviour.pop(0) if isinstance(self.behaviour, list) else self.behaviour
+        if isinstance(behaviour, BaseException):
+            raise behaviour
+        return behaviour
 
 
 class _StubClient:
@@ -86,6 +88,11 @@ def _logger_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
     # Alembic's fileConfig, run by the Postgres integration fixtures, disables
     # existing loggers for the rest of the session. Re-enable this one for log checks.
     monkeypatch.setattr(gemini_extractor.logger, "disabled", False)
+
+
+@pytest.fixture(autouse=True)
+def _no_retry_pause(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(gemini_extractor, "SERVER_ERROR_RETRY_DELAY_S", 0.0)
 
 
 def response(payload) -> SimpleNamespace:
@@ -377,6 +384,34 @@ def test_timeout_connection_and_server_errors_are_unavailable(error) -> None:
     extractor_, _ = extractor(error)
 
     assert extractor_.extract("text", [], 10.0) == Unavailable()
+
+
+def test_server_error_is_retried_once_and_the_retry_answer_is_used() -> None:
+    extractor_, models = extractor([api_error(ServerError, 503), response(RECIPE_JSON)])
+
+    result = extractor_.extract("text", [], 10.0)
+
+    assert isinstance(result, Draft)
+    assert len(models.calls) == 2
+
+
+def test_server_error_twice_is_unavailable_after_two_calls() -> None:
+    extractor_, models = extractor(api_error(ServerError, 503))
+
+    assert extractor_.extract("text", [], 10.0) == Unavailable()
+    assert len(models.calls) == 2
+
+
+@pytest.mark.parametrize(
+    "error",
+    [httpx.ReadTimeout("slow"), api_error(ClientError, 429), api_error(ClientError, 400)],
+)
+def test_timeouts_and_client_errors_are_not_retried(error) -> None:
+    extractor_, models = extractor(error)
+
+    extractor_.extract("text", [], 10.0)
+
+    assert len(models.calls) == 1
 
 
 def test_429_without_hint_is_limit_reached_with_none() -> None:

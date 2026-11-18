@@ -101,6 +101,7 @@ from application.recipe_save import SaveRecipeDraft
 from application.recipe_search import MarkSearchResultUsed, SearchRecipesService
 from application.recipe_share import ListShareCandidatesService, ShareRecipeService
 from application.recipe_vocabulary import vocabulary_answer
+from application.shopping_export import ExportShoppingListService
 from application.shopping_list import (
     ActiveListSync,
     AddShoppingItemService,
@@ -565,6 +566,14 @@ def get_closed_shopping_lists(db: Session = Depends(get_db)) -> ClosedShoppingLi
         SqlAlchemyCartRepository(db),
         SqlAlchemyShoppingListRepository(db),
         SqlAlchemyPlaceRepository(db),
+        prefs=SqlAlchemyAuthUserRepository(db),
+    )
+
+
+def get_export_shopping_list(db: Session = Depends(get_db)) -> ExportShoppingListService:
+    return ExportShoppingListService(
+        SqlAlchemyKitchenRepository(db),
+        SqlAlchemyShoppingListRepository(db),
         prefs=SqlAlchemyAuthUserRepository(db),
     )
 
