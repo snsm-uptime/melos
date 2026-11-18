@@ -5,10 +5,12 @@ The use cases do the access checks and the writes; this module maps their errors
 
 from __future__ import annotations
 
+import logging
 import uuid
 from collections.abc import Callable
 
 from application.ports import SessionRef
+from application.shopping_export import ExportShoppingListService
 from application.shopping_list import (
     AddShoppingItemService,
     ClosedListView,
@@ -30,13 +32,15 @@ from domain.errors import (
     ShoppingListNotActiveError,
     ShoppingListNotFoundError,
 )
-from fastapi import APIRouter, Depends, Response, status
+from domain.shopping_export import ExportDocument, render_markdown, render_pdf
+from fastapi import APIRouter, Depends, Query, Response, status
 from fastapi.responses import JSONResponse
 
 from api.deps import (
     get_add_shopping_item,
     get_close_shopping_list,
     get_closed_shopping_lists,
+    get_export_shopping_list,
     get_get_shopping_list,
     get_remove_shopping_item,
     get_set_item_bought,
@@ -52,6 +56,9 @@ from api.schemas.shopping_list import (
 )
 
 router = APIRouter(tags=["shopping-list"])
+logger = logging.getLogger(__name__)
+
+EXPORT_FORMATS = ("markdown", "pdf")
 
 
 def _error(status_code: int, code: str, detail: str, **extra: object) -> JSONResponse:
@@ -197,3 +204,60 @@ def get_closed_shopping_list(
     service: ClosedShoppingListsService = Depends(get_closed_shopping_lists),
 ) -> Response:
     return _closed(_run(lambda: service.get(ref, kitchen_id, list_id)))
+
+
+def _export_not_found() -> JSONResponse:
+    """One answer for an unknown list and an unreadable kitchen alike (spec 024 FR-013)."""
+    return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"detail": "Not found"})
+
+
+def _markdown(document: ExportDocument) -> Response:
+    text = render_markdown(document)
+    logger.info(
+        "shopping list export outcome=ok format=markdown line_count=%d",
+        len(document.lines) + len(document.your_call),
+    )
+    return Response(content=text, media_type="text/markdown; charset=utf-8")
+
+
+def _pdf(document: ExportDocument) -> Response:
+    line_count = len(document.lines) + len(document.your_call)
+    try:
+        content = render_pdf(document)
+    except Exception:
+        # Only the outcome and the count are logged, never the line text (research R7).
+        logger.warning("shopping list export outcome=pdf_failed line_count=%d", line_count)
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": "PDF could not be created"},
+        )
+    logger.info("shopping list export outcome=ok format=pdf line_count=%d", line_count)
+    filename = f"shopping-list-{document.list_date.isoformat()}.pdf"
+    return Response(
+        content=content,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/kitchens/{kitchen_id}/shopping-lists/{list_id}/export")
+def export_shopping_list(
+    kitchen_id: uuid.UUID,
+    list_id: uuid.UUID,
+    format: str | None = Query(default=None),  # noqa: A002 - the contract's query name
+    ref: SessionRef = Depends(require_session_ref),
+    service: ExportShoppingListService = Depends(get_export_shopping_list),
+) -> Response:
+    """Read-only: the Markdown copy or the PDF of any list of the kitchen (spec 024)."""
+    if format not in EXPORT_FORMATS:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"detail": "format must be markdown or pdf"},
+        )
+    try:
+        document = service.execute(ref, kitchen_id, list_id)
+    except (KitchenNotFoundError, ShoppingListNotFoundError):
+        return _export_not_found()
+    if format == "markdown":
+        return _markdown(document)
+    return _pdf(document)
