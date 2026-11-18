@@ -181,7 +181,11 @@ stories:
       the owner's alias. Read-only: no create, rename or delete (S-059), no capture picker
       (S-016), no recipe lists (S-021), no invites (S-057) and no snapshots (S-035).
       "unknown" is shown where the contract gives a null owner alias.
-    verification: pending implementation
+    verification: >
+      Built on main: the kitchen's notebook list in ui/app/kitchens/[kitchenId]/notebooks/page.tsx
+      (60b7178, S-035) and the personal Notebook tab in ui/app/notebooks/NotebookTabScreen.tsx
+      (b166b56, S-059). Corrected by S-077 on 2026-11-18; the earlier note said "pending
+      implementation".
 
   - id: S-016
     title: Capture a recipe from pasted text into a draft review screen
@@ -443,7 +447,7 @@ stories:
       SC-002 ten timed runs (2 drafts, then the key's usage limit); SC-006 evaluation about 75%
       (Spanish counted lines lose quantity and unit in the whole-recipe prompt).
 
-  - id: S-069
+  - id: S-078
     title: Refused site registry (a site's license wall gets its own message and is counted for the admin)
     epic: Capture
     priority: must
@@ -465,6 +469,8 @@ stories:
       the site's own text; refused_site_member holds an HMAC fingerprint per member for the
       distinct count, never a user id (migration 0016). The admin dashboard (spec 055) shows them
       in a "Refused sites" tab, so the owner can see which sites are worth licensing.
+      Renumbered from S-069 by S-077 on 2026-11-18 (owner): S-069 is the quick add story (spec 069),
+      which matches its spec folder. This story's spec folder is 067; its commits cite "spec 067".
 
   - id: S-062
     title: Scale a recipe's servings on the detail page to see proportional amounts (view only, not saved)
@@ -541,6 +547,8 @@ stories:
       The image is shown on the detail and on recipe cards (S-047 uses it in place of the default
       pot). Open for its spec: whether a photo capture (S-041) keeps its photo as the recipe image,
       and the size and format limits. Build after S-026, which adds the column and the check.
+      No spec folder of its own; specs/067-refused-site-registry belongs to S-078 (noted by S-077,
+      2026-11-18).
 
   - id: S-069
     title: Recipe quick add button in the navigation, and adding a personal-notebook recipe to a kitchen
@@ -603,7 +611,9 @@ stories:
       Research R-1: join times exist (created_at on kitchen_memberships and notebook_membership), so the
       order is recent shared activity, then alias. R-4 gap: no server dedupe of a repeated request.
       Not yet done: quickstart browser walk (T034); archived-kitchen co-members are included by default
-      (owner answer pending, T004). Stays in_progress until T034 passes.
+      (owner answer pending, T004). Open: T034 (quickstart browser walk) and T004 (owner answer on
+      archived-kitchen co-members). Corrected by S-077 on 2026-11-18. T004 answered by the owner on
+      2026-11-18: members of archived kitchens are included, as built; open: T034 only.
 
   - id: S-064
     title: Left side panel replaces the bottom tab bar and the kitchens list, with default kitchen, recipe count and log out
@@ -684,6 +694,9 @@ stories:
       bilingual users: a recipe gains a language, an ingredient keeps one name variant per language,
       recipes and the shopping list show the variant in their language, one merge reaches every
       notebook the person can write to, and the model suggests English-Spanish pairs to confirm.
+    verification: >
+      Merged #40 (c0c1721). Tasks 61/64; open: T058 (browser walk), T059 (AI evaluation); T060 done by
+      this entry. Recorded by S-077 on 2026-11-18.
 
   - id: S-024
     title: Shopping list export as Markdown copy and PDF
@@ -705,3 +718,142 @@ stories:
       lint and typecheck clean; the inventory entry shop-export is available. Open check: the browser
       walk at 360 px and 1280 px in English and Spanish (quickstart section 6, tasks T038) is not run.
       The export is mounted on the closed-list page only; the active list has no export entry yet.
+
+  - id: S-041
+    title: Capture a recipe from a photo (JPEG, PNG, HEIC up to 10 MB)
+    epic: Capture
+    priority: should
+    status: done
+    journey: J2
+    source: prd.md J2, 1.5A; specs/041-capture-recipe-photo
+    verification: >
+      Recorded by S-077 on 2026-11-18 from main (e4b2bb8): merged #42 (120a09d). Tasks 67/86. Open
+      checks: T003 (evaluation images), T035, T046, T053, T060, T067, T069, T070 (tests), T077
+      (calibration, release gate), T079 (PRD), T080 (spec alignment), T081 (full automated run),
+      T082 (timing), T083 (browser walk), T084 (evaluation), T085 (security pass); T086 done by this
+      entry. Unbuilt scope: T065 and its test T062, the picture pop-up from the author's avatar
+      (spec 041 FR-027); split into S-081 (owner, 2026-11-18). Feature inventory:
+      "Capture from a photo" already available.
+
+  - id: S-066
+    title: Sort and search as a standard layout for every table
+    epic: Platform
+    priority: should
+    status: done
+    source: todos.md (dashboard table request, 2026-11-04)
+    notes: >
+      Spec: specs/066-table-sort-search. Every column table gets alphabetical and numerical sort, ascending
+      and descending. The dashboard's units, ingredients and recipes tables get a search bar above them.
+      Built once as a shared table layout, so later table features reach every table.
+      The owner approved building it before the open Must stories on 2026-11-04 (constitution 9).
+      Built 2026-11-04 as ui/components/DataTable (multi-level sort, search) with four schemas in
+      ui/app/admin/adminTables.tsx. Tests: 16 helper, 12 component, 4 new dashboard tests pass; lint and
+      typecheck clean. Browser walk 2026-11-04: quickstart steps 1-8 at 360/1280px, en and es, keyboard
+      once, 70/70 checks pass; SC-001 about 0.85 s, SC-002 under 25 ms (specs/066-table-sort-search/notes.md).
+      Pending: the owner's review of the Spanish strings in ui/lib/i18n/table.ts.
+    verification: >
+      Recorded by S-077 on 2026-11-18 from main (e4b2bb8): tasks 25/25; browser walk 70/70 on
+      2026-11-04 (cd0b5ba). Open: the owner's review of the Spanish strings in ui/lib/i18n/table.ts.
+
+  - id: S-072
+    title: Acrylic (see-through, blurred) app chrome and the portfolio colour palette in light and dark
+    epic: Platform
+    priority: should
+    status: done
+    source: owner request 2026-11-06 (post-MVP; not in prd.md); specs/072-acrylic-nav-palette
+    notes: >
+      Copies the scrolled navbar of the owner's portfolio (snsm-uptime/portfolio, src/components/navbar.tsx:
+      background at 80% with a backdrop blur and a small shadow once the page has scrolled) and its
+      palette (src/app/globals.css). The portfolio defines only a dark palette, so the light one is
+      derived for Melos.
+    verification: >
+      Recorded by S-077 on 2026-11-18 from main (e4b2bb8): on main in c99d0c6 (palette), e1806b8
+      (frosted top bar) and follow-ups 8aa92a5, b5a519e, d85f3e1. Tasks 34/40; open: T002, T017,
+      T030, T035 (walks and measurements), T037 (performance); T040 done by this entry.
+
+  - id: S-075
+    title: Landing page feature tour (feature inventory, one section per feature group, a demo for each)
+    epic: Platform
+    priority: should
+    status: done
+    source: owner request 2026-11-10 (not in prd.md; extends the Visitor landing page)
+    notes: >
+      Spec: specs/075-landing-feature-tour (draft). One feature inventory of everything a person can
+      use, grouped into six groups (capture, notebooks, cook together, plan and shop, ingredients,
+      home); the signed-out landing page gets a redesigned hero with an overview demo, a section and
+      a self-playing animated demo with invented data per group, an index, a "Coming soon" strip of
+      planned features, and a closing call to action, in English and Spanish. Fixes the
+      "Shopping kitchen" copy slip.
+      Built 2026-11-10 on branch 075-landing-feature-tour (ui only, no migration, no new library):
+      ui/lib/featureInventory.ts (25 available, 5 planned features) and ui/components/LandingTour
+      (owner approved the folder); AGENTS.md "Backlog files" gained the inventory rule (owner
+      approved). Tests: inventory invariants (8), page (13: order, anchors, index, both languages,
+      inventory-driven), DemoFrame (5), scenes (28); parity, palette and next build pass; lint clean
+      but the SignupForm warning already on main. Full vitest: the same 11 failures as on main
+      (RecipeFromNotebookSheet 10, CauldronLoader contrast "accent bubbles" 1); AdminDashboard
+      timed out under full-suite load and passes alone. Open: the browser walk (quickstart steps
+      1–12, T041) and timing the loops in the browser (T042; by design 12 s groups, 18 s overview).
+      2026-11-11, owner changes: demos are the app's real components with invented data (inert
+      scene; research R5 revised), notebooks and ingredients sections stacked, cook together and
+      shop on a surface band, @theme inline so the light/dark demo cards keep their theme.
+      FR-018 background depth: glows were built (T046–T055) and removed at the owner's request;
+      instead the surface band has curved top and bottom edges (SurfaceBand.tsx, T056–T059), still
+      and hidden from screen readers; page test checks them. Screenshots light and dark at 1280
+      and 500 px.
+    verification: >
+      Recorded by S-077 on 2026-11-18 from main (e4b2bb8): merged #45 (5f42942). Tasks 57/59; open:
+      T041 (browser walk), T042 (loop timings).
+
+  - id: S-073
+    title: Scheduled ingredient translation service
+    epic: Capture
+    priority: should
+    status: done
+    source: specs/073-ingredient-translation-cron
+    notes: >
+      A `jobs` Compose service runs the scheduled ingredient translation; the `mcp` Compose service
+      was removed in the same change. The admin review of AI-made standard names (US3, FR-022) is
+      split into S-080.
+    verification: >
+      Recorded by S-077 on 2026-11-18 from main (e4b2bb8): merged #43 (bd5f790). Tasks 46/58; the
+      review list (US3, T031–T040) is split into S-080; open: T055 (quickstart walk), T056 (EXPLAIN
+      ANALYZE). Feature inventory already cites S-073 as available.
+
+  - id: S-076
+    title: Keep pasted recipe text and offer personal notebooks
+    epic: Capture
+    priority: must
+    status: done
+    journey: J2
+    source: owner request (post-MVP); specs/076-keep-pasted-recipe-text
+    verification: >
+      Recorded by S-077 on 2026-11-18 from main (e4b2bb8): merged #46 (b9c4fe3) and #47 (3c9094e).
+      Tasks 19/20; open: T018 (manual quickstart walk at desktop and phone width). Feature inventory:
+      checked, no change (the spec refines capture from text and quick add, both listed).
+
+  - id: S-034
+    title: AI evaluation set (about 10 fixtures) with expected drafts
+    epic: Quality
+    priority: must
+    status: done
+    source: prd.md 1.8 item 5, Appendix C (AI evaluation)
+    notes: >
+      Capture evaluation fixtures exist in `api/tests/fixtures/ai_eval` (specs 015, 026, 041, 043);
+      the owner decides whether they meet this story (S-077, 2026-11-18).
+    verification: >
+      Accepted by the owner on 2026-11-18 (S-077 review): the capture evaluation fixtures in
+      api/tests/fixtures/ai_eval meet the story. Eleven text capture cases at the top level, plus
+      the language, matching, pages and pairs sets with their CASES.md (specs 015, 026, 041, 043).
+
+  - id: S-077
+    title: Backlog cleanup against what is built
+    epic: Platform
+    priority: should
+    status: done
+    source: owner request 2026-11-18; specs/077-backlog-cleanup
+    verification: >
+      Done 2026-11-18 on branch 077-backlog-cleanup from main (e4b2bb8). Change list and owner answers
+      in specs/077-backlog-cleanup/notes.md, approved by the owner on 2026-11-18. Quickstart 1–3: both
+      files parse, no duplicate IDs, statuses valid, highest S-081, every spec folder maps to a story;
+      ui/lib/featureInventory.test.ts passes (8). Feature inventory: the link-capture
+      feature cites S-078 (the registry) after the renumbering; no other change.

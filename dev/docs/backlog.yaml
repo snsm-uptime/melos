@@ -4,6 +4,7 @@
 #
 # Status values:
 #   done         implemented and merged (manual verification may still be open; see verification)
+#   verification built, not yet merged on main; checks running
 #   in_progress  being implemented now
 #   in_design    a speckit spec exists under specs/ for the story, no implementation yet
 #   backlog      no speckit spec yet (PRD mention alone is not enough), or explicitly Later in the PRD
@@ -29,13 +30,19 @@
 # Done stories live in dev/docs/backlog-done.yaml (moved 2026-11-05): when a story is done, move
 # its entry there with its verification note. Story numbers are unique across both files.
 # Reordered 2026-11-05: the shopping list is the focus (S-070 added). No story was removed;
-# duplicate entries of S-067 (the stale backlog copy; the done copy kept) and S-068 were merged. Open stories are grouped by
-# epic and journey below the focus.
+# duplicate entries of S-067 (the stale backlog copy; the done copy kept) and S-068 were merged.
+# Cleaned up 2026-11-18 (S-077): built stories moved to done, duplicate IDs renumbered (registry
+# S-069 → S-078, page rendering S-066 → S-079; merged stories keep their numbers), spec 073 split
+# (S-080), spec 041's picture pop-up split (S-081). A story is done when its scope is merged on main; open
+# walks and reviews go in its verification note. Next free number: one more than the highest across
+# both files and specs/.
+#
+# Current order: open shopping work (S-046, S-068); then Platform, Capture, Recipes, Ask, MCP, Quality and
+# deployment, Later. Open stories are grouped by epic and journey.
 
 stories:
   # ---------------------------------------------------------------------------
-  # Focus 2026-11-05: shopping list (owner priority). Shopping by store first, then
-  # the open shopping-list work it sits on, then the stories that extend it.
+  # Shopping list (J5), open. Shopping by store (S-070) is built; these extend it.
   # ---------------------------------------------------------------------------
   - id: S-046
     title: Edit shopping list items while the list is active
@@ -43,7 +50,10 @@ stories:
     priority: should
     status: backlog
     source: prd.md Appendix A (ShoppingListItem)
-    notes: Adding and removing hand items moved to S-025 (2026-10-30). This story keeps editing the other lines.
+    notes: >
+      Adding and removing hand items moved to S-025 (2026-10-30). This story keeps editing the other lines.
+      The item PATCH route only sets `bought` (spec 070); quantity and name edits are not built (checked
+      by S-077, 2026-11-18).
 
   - id: S-068
     title: Cart receipts (paste what was bought; match it to the shopping list and keep it with the list)
@@ -61,31 +71,14 @@ stories:
       receipt items are shown, and whether S-031 (history in chat) reads receipts.
 
   # ---------------------------------------------------------------------------
-  # Next: open Platform work already built and waiting for its browser walk.
+  # Platform, open.
   # ---------------------------------------------------------------------------
-
-  - id: S-066
-    title: Sort and search as a standard layout for every table
-    epic: Platform
-    priority: should
-    status: verification
-    source: todos.md (dashboard table request, 2026-11-04)
-    notes: >
-      Spec: specs/066-table-sort-search. Every column table gets alphabetical and numerical sort, ascending
-      and descending. The dashboard's units, ingredients and recipes tables get a search bar above them.
-      Built once as a shared table layout, so later table features reach every table.
-      The owner approved building it before the open Must stories on 2026-11-04 (constitution 9).
-      Built 2026-11-04 as ui/components/DataTable (multi-level sort, search) with four schemas in
-      ui/app/admin/adminTables.tsx. Tests: 16 helper, 12 component, 4 new dashboard tests pass; lint and
-      typecheck clean. Browser walk 2026-11-04: quickstart steps 1-8 at 360/1280px, en and es, keyboard
-      once, 70/70 checks pass; SC-001 about 0.85 s, SC-002 under 25 ms (specs/066-table-sort-search/notes.md).
-      Pending: the owner's review of the Spanish strings in ui/lib/i18n/table.ts.
 
   - id: S-074
     title: Ingredients table layout for the user catalog views and the admin dashboard
     epic: Platform
     priority: should
-    status: backlog
+    status: in_design
     source: owner request 2026-11-08 (ingredients table outline); ID proposed, owner to confirm
     notes: >
       Spec: specs/074-ingredients-table (draft). Shared first columns on the Ingredients page and the
@@ -94,42 +87,38 @@ stories:
       places first (spec 070 tabs unchanged). Language always shown in the catalog view. The admin
       review list (spec 073 FR-022) is its own section. Reads existing tables only, no new data.
 
-  - id: S-075
-    title: Landing page feature tour (feature inventory, one section per feature group, a demo for each)
+  - id: S-080
+    title: Admin review of AI-made standard ingredient names (accept or reject a person's proposed value)
     epic: Platform
     priority: should
-    status: verification
-    source: owner request 2026-11-10 (not in prd.md; extends the Visitor landing page)
+    status: in_design
+    source: specs/073-ingredient-translation-cron (US3, FR-022)
     notes: >
-      Spec: specs/075-landing-feature-tour (draft). One feature inventory of everything a person can
-      use, grouped into six groups (capture, notebooks, cook together, plan and shop, ingredients,
-      home); the signed-out landing page gets a redesigned hero with an overview demo, a section and
-      a self-playing animated demo with invented data per group, an index, a "Coming soon" strip of
-      planned features, and a closing call to action, in English and Spanish. Fixes the
-      "Shopping kitchen" copy slip.
-      Built 2026-11-10 on branch 075-landing-feature-tour (ui only, no migration, no new library):
-      ui/lib/featureInventory.ts (25 available, 5 planned features) and ui/components/LandingTour
-      (owner approved the folder); AGENTS.md "Backlog files" gained the inventory rule (owner
-      approved). Tests: inventory invariants (8), page (13: order, anchors, index, both languages,
-      inventory-driven), DemoFrame (5), scenes (28); parity, palette and next build pass; lint clean
-      but the SignupForm warning already on main. Full vitest: the same 11 failures as on main
-      (RecipeFromNotebookSheet 10, CauldronLoader contrast "accent bubbles" 1); AdminDashboard
-      timed out under full-suite load and passes alone. Open: the browser walk (quickstart steps
-      1–12, T041) and timing the loops in the browser (T042; by design 12 s groups, 18 s overview).
-      2026-11-11, owner changes: demos are the app's real components with invented data (inert
-      scene; research R5 revised), notebooks and ingredients sections stacked, cook together and
-      shop on a surface band, @theme inline so the light/dark demo cards keep their theme.
-      FR-018 background depth: glows were built (T046–T055) and removed at the owner's request;
-      instead the surface band has curved top and bottom edges (SurfaceBand.tsx, T056–T059), still
-      and hidden from screen readers; page test checks them. Screenshots light and dark at 1280
-      and 500 px.
+      Split from S-073 by S-077 on 2026-11-18. Remaining tasks in
+      specs/073-ingredient-translation-cron/tasks.md: T031–T040. S-074 places this list in its own section.
+
+  # ---------------------------------------------------------------------------
+  # Capture (J2), open.
+  # ---------------------------------------------------------------------------
+
+  - id: S-081
+    title: Picture pop-up from the author's avatar (photo capture follow-up)
+    epic: Capture
+    priority: should
+    status: in_design
+    journey: J2
+    source: specs/041-capture-recipe-photo (FR-027, tasks T062, T065)
+    notes: >
+      Split from S-041 by S-077 on 2026-11-18 (owner). The pop-up of spec 041 FR-027 opens from the
+      author's avatar on a recipe card, on the recipe detail and from the side panel's own entry.
+      Remaining tasks in specs/041-capture-recipe-photo/tasks.md: T062 (test), T065.
 
   # ---------------------------------------------------------------------------
   # Recipes (J3), open.
   # ---------------------------------------------------------------------------
 
   - id: S-047
-    title: Kitchen recipes page as cards with image or default pot, author chips, ingredient filter and cart-frequency sort
+    title: "Kitchen recipe cards: author and notebook filters, ingredient filter, cart-frequency sort"
     epic: Recipes
     priority: should
     status: backlog
@@ -141,9 +130,13 @@ stories:
       cart in this kitchen, ascending or descending (recipe.cart_add_count). Cards cover every
       notebook of the kitchen. Author alias comes from the recipe's author_id; "unknown" when the
       author's account is deleted (redesign 2026-10-23).
+      Cards with the recipe image or default pot and the author chip are built (S-067, S-021,
+      ui/components/RecipeCard). Not built: sort by recipe.cart_add_count (counted, read only by the
+      admin dashboard), and the author, notebook and ingredient filters; the list has a text filter
+      only (checked by S-077, 2026-11-18).
 
   - id: S-048
-    title: Copy a recipe into another notebook (normalize names, confirm)
+    title: Confirm ingredient name changes when copying a recipe into another notebook
     epic: Recipes
     priority: should
     status: backlog
@@ -154,12 +147,11 @@ stories:
       Any recipe the person can read, into a notebook they can write to. Names are
       normalized against the target's catalog with the S-018 matcher; the target's names win and
       the person sees every change before confirming. The person is the copy's author. The copy
-      has no link to the original; the two drift apart. Note (2026-11-05): the single-recipe copy with
-      name matching is built under S-071 (ShareRecipeService), so S-048 needs only its confirmation
-      step. S-035 built the shared step first:
-      SqlAlchemyRecipeRepository.copy_all copies a whole notebook and keeps authors, so a single
-      recipe copy reuses its parts and adds the name matching. Copied recipes need embeddings
-      (S-019).
+      has no link to the original; the two drift apart.
+      Copy from any readable notebook is built (S-069, spec 069) and copy to a co-member's default
+      notebook with name matching (S-071). What is left: show each name change from the target
+      catalog and let the person confirm before the copy is saved (AC3.3, AC3.4). Checked by S-077,
+      2026-11-18.
 
   - id: S-028
     title: Recipe PDF with correct accents and fractions
@@ -180,18 +172,6 @@ stories:
       Spec 019 FR-015b (2026-11-02): the ingredient filter keeps recipes that contain every chosen
       ingredient; each chosen ingredient shows as a chip below the search bar with a close icon that
       removes it and re-runs the search; ingredients are offered from the searched catalogs only.
-
-  # ---------------------------------------------------------------------------
-  # Capture (J2), open.
-  # ---------------------------------------------------------------------------
-
-  - id: S-041
-    title: Capture a recipe from a photo (JPEG, PNG, HEIC up to 10 MB)
-    epic: Capture
-    priority: should
-    status: in_progress
-    journey: J2
-    source: prd.md J2, 1.5A; specs/041-capture-recipe-photo
 
   # ---------------------------------------------------------------------------
   # Ask (J6) and MCP, open.
@@ -242,7 +222,7 @@ stories:
     status: backlog
     source: prd.md 1.3.1, Appendix A (MCP column), Appendix C
     notes: >
-      Container, health endpoint and lock file exist from the bootstrap. Keys, auth and tools
+      The `mcp` Compose service was removed in spec 073 (#43); the story starts from no service. Keys, auth and tools
       (capture, read recipes, cart ops, shopping list ops, ask) are not built. The capture tool
       takes a target notebook (one the user owns or is a member of).
 
@@ -255,31 +235,8 @@ stories:
     source: prd.md J0 API Key Management, 1.3.1
 
   # ---------------------------------------------------------------------------
-  # Look and feel, open.
-  # ---------------------------------------------------------------------------
-
-  - id: S-072
-    title: Acrylic (see-through, blurred) app chrome and the portfolio colour palette in light and dark
-    epic: Platform
-    priority: should
-    status: in_design
-    source: owner request 2026-11-06 (post-MVP; not in prd.md); specs/072-acrylic-nav-palette
-    notes: >
-      Copies the scrolled navbar of the owner's portfolio (snsm-uptime/portfolio, src/components/navbar.tsx:
-      background at 80% with a backdrop blur and a small shadow once the page has scrolled) and its
-      palette (src/app/globals.css). The portfolio defines only a dark palette, so the light one is
-      derived for Melos.
-
-  # ---------------------------------------------------------------------------
   # Quality and deployment, open.
   # ---------------------------------------------------------------------------
-
-  - id: S-034
-    title: AI evaluation set (about 10 fixtures) with expected drafts
-    epic: Quality
-    priority: must
-    status: backlog
-    source: prd.md 1.8 item 5, Appendix C (AI evaluation)
 
   - id: S-033
     title: Deploy v1 on the owner's server with the prod overlay
@@ -322,7 +279,7 @@ stories:
       PassOwnedNotebooksService before deleting the user row, in the same transaction, under the
       conditions in specs/058-notebook-ownership-passing/contracts/ownership-rule.md.
 
-  - id: S-066
+  - id: S-079
     title: Render recipe pages that build their content only in the browser (URL capture)
     epic: Capture
     priority: later
@@ -333,6 +290,8 @@ stories:
       Spec 026 reads the HTML as the site sends it and runs no page scripts. Rendering pages needs a
       headless browser, a new service or library, so it needs the owner's approval and an
       architecture exception, and the same address checks for every request the browser makes.
+      Renumbered from S-066 by S-077 on 2026-11-18: S-066 is table sort and search (spec 066), which
+      was merged first. dev/memory logs cite this story as S-066.
 
   - id: S-051
     title: Ingredient ML tagger (e.g. Hugging Face model)

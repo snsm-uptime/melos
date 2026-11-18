@@ -110,7 +110,7 @@ export const features: readonly Feature[] = [
       en: "Share a recipe page's link; if a site refuses, you get a clear message saying so.",
       es: "Comparte el enlace de una página de recetas; si un sitio no lo permite, un mensaje claro te lo dice.",
     },
-    stories: ["S-026", "S-069"],
+    stories: ["S-026", "S-078"],
     status: "available",
   },
   {
